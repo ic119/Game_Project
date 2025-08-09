@@ -1,5 +1,5 @@
 ﻿using JJORY.Module;
-using JJORY.Utils;
+using JJORY.Util;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;

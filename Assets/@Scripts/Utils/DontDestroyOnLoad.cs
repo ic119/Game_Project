@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace JJORY.Utils
+namespace JJORY.Util
 {
     public class DontDestroyOnLoad : MonoBehaviour
     {
