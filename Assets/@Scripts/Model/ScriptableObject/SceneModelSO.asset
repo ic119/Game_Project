@@ -12,4 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6986375f96cdef849b344ab040e4ca74, type: 3}
   m_Name: SceneModelSO
   m_EditorClassIdentifier: 
-  scneneModel_List: []
+  scneneModel_List:
+  - sceneTag: main
+    loadScenes:
+    - MainScene
+    activeScene: main
