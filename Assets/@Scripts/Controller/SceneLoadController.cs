@@ -1,142 +1,104 @@
 ﻿using JJORY.Model;
 using JJORY.Model.SO;
 using JJORY.Util;
+using JJORY.Define;
+
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
-using UnityEngine.ResourceManagement.AsyncOperations;
 using UnityEngine.SceneManagement;
-using UnityEngine.TextCore;
 
 namespace JJORY.Module
 {
     public class SceneLoadController : SingletonObject<SceneLoadController>
     {
         #region Variable
-        [SerializeField] private SceneModel cur_SceneModel;
-        private Dictionary<string, SceneModel> sceneModel_Dictionary = new Dictionary<string, SceneModel>();
+        [Header("Current Scene Module")]
+        [SerializeField] SceneModel currentSceneModel;
 
-        [Range(0.0f, 2.0f)]
-        [SerializeField] private float delayTime;
-        [SerializeField] private string scene_Address = "Load_Scene";
+        [Header("Load Scene Dictionary")]
+        Dictionary<string, SceneModel> dicSceneModels;
 
-        public float cur_LoadProgress { get; private set; } = 0.0f;
-        public bool isLoading { get; private set; } = false;
+        [Header("Current Load Progress")]
+        public float cur_LoadProgress = 0.0f;
         #endregion
 
         #region Method
-        public void Init(Action _onReady)
+        public void Init(Action _callback)
         {
-            var handle = Addressables.LoadAssetAsync<SceneModelSO>("SceneModelSO");
-            handle.Completed += h =>
+            Addressables.LoadAssetAsync<SceneModelSO>("SceneModelSO").Completed += (result) =>
             {
-                if (h.Status != AsyncOperationStatus.Succeeded || h.Result == null)
-                {
-                    Debug.LogError("[SceneLoadController] SceneModelSO 로드 실패");
-                    _onReady?.Invoke();
-                    return;
-                }
+                dicSceneModels = new Dictionary<string, SceneModel>();
 
-                sceneModel_Dictionary = new Dictionary<string, SceneModel>();
-                foreach (var model in h.Result.scneneModel_List)
-                {
-                    if (!sceneModel_Dictionary.ContainsKey(model.sceneTag))
-                        sceneModel_Dictionary.Add(model.sceneTag, model);
-                }
+                List<SceneModel> sceneModels = result.Result.scneneModel_List;
 
-                _onReady?.Invoke();
+                for (int i = 0; i < sceneModels.Count; i++)
+                {
+                    if (!dicSceneModels.ContainsKey(sceneModels[i].sceneTag))
+                    {
+                        dicSceneModels.Add(sceneModels[i].sceneTag, sceneModels[i]);
+                    }
+                }
+                _callback?.Invoke();
             };
         }
 
-        private void LoadSceneByTags(string _tag)
+        public void LoadSceneByTags(string _tag)
         {
-            if(sceneModel_Dictionary != null)
+            if (!dicSceneModels.ContainsKey(_tag))
             {
-                Utils.CreateLogMessage<SceneLoadController>("Init 상태 미완료");
-                return;
+                Utils.CreateLogMessage<SceneLoadController>($"{_tag}는 존재하지 않습니다.");
+                //Utils.GenerateLogMessage<SceneLoadController>($"{tags}는 없는 태그 입니다.");
             }
-
-            if (sceneModel_Dictionary.TryGetValue(_tag, out var model) == false)
+            else
             {
-                Utils.CreateLogMessage<SceneLoadController>("존재 하지 않는 Tag");
-                return;
+                currentSceneModel = dicSceneModels[_tag];
+                StartCoroutine(SceneLoadRoutine(currentSceneModel));
             }
-
-            if (isLoading == true)
-            {
-                Utils.CreateLogMessage<SceneLoadController>("로딩 중");
-                return;
-            }
-
-            cur_SceneModel = model;
-            
         }
 
-        private IEnumerator LoadAddressableAsset(SceneModel _targetModel)
+        private IEnumerator SceneLoadRoutine(SceneModel _targetModel)
         {
-            isLoading = true;
+            UIController.Instance.CloseMask();
+            yield return new WaitForSeconds(1.0f);
             cur_LoadProgress = 0.0f;
 
+            AsyncOperation asyncLoadingScene = SceneManager.LoadSceneAsync(DEFINE.LOADING_SCENE);
+            yield return new WaitUntil(() => asyncLoadingScene.isDone);
 
-            #region Loading Scene 추가
-            var loading_Handle = Addressables.LoadSceneAsync(scene_Address, LoadSceneMode.Additive);
+            UnityEngine.SceneManagement.Scene targetActiveScene = new UnityEngine.SceneManagement.Scene();
 
-            while(!loading_Handle.IsDone)
+            List<string> sceneTarget = _targetModel.loadScenes;
+            int count = 0;
+            while (count < sceneTarget.Count)
             {
-                cur_LoadProgress = Mathf.Clamp01(loading_Handle.PercentComplete * 0.1f);
-                yield return null;
+                AsyncOperation async = SceneManager.LoadSceneAsync(sceneTarget[count], LoadSceneMode.Additive);
+                //전부 로드 할때 까지 대기합니다.
+                while (!async.isDone)
+                {
+                    cur_LoadProgress = ((float)count / (float)sceneTarget.Count) + (1.0f / (float)sceneTarget.Count) * async.progress;
+                    yield return null;
+                }
+                if (_targetModel.activeScene == sceneTarget[count])
+                {
+                    targetActiveScene = SceneManager.GetSceneByName(sceneTarget[count]);
+                    SceneManager.SetActiveScene(targetActiveScene);
+                }
+                count++;
+                cur_LoadProgress = (float)count / (float)sceneTarget.Count;
+                yield return new WaitForSeconds(1.0f);
             }
 
-            if (loading_Handle.Status != AsyncOperationStatus.Succeeded)
-            {
-                Utils.CreateLogMessage<SceneLoadController>("Load_Scene 로드 실패");
-                isLoading = false;
-                yield break;
-            }
-            #endregion
-            var scenes = _targetModel.loadScenes;
-            int total = Mathf.Max(1, scenes.Count);
+            AsyncOperation UnloadLoadingScene = SceneManager.UnloadSceneAsync(DEFINE.LOADING_SCENE);
+            yield return new WaitUntil(() => UnloadLoadingScene.isDone);
 
-            for (int i = 0; i < scenes.Count; i++)
-            {
-                var scene_Key = scenes[i];
-                var scene_Handler = Addressables.LoadSceneAsync(scene_Key, LoadSceneMode.Additive);
-
-                while(!scene_Handler.IsDone)
-                {
-                    float base_Progress = 0.1f + (0.9f * (i / (float)total));
-                    cur_LoadProgress = Mathf.Clamp01(base_Progress + (0.9f / total) * scene_Handler.PercentComplete);
-                    yield return null;  
-                }
-
-                if (scene_Handler.Status != AsyncOperationStatus.Succeeded)
-                {
-                    Utils.CreateLogMessage<SceneLoadController>($"{scene_Key} 로드 실패");
-                    break;
-                }
-
-                if (_targetModel.activeScene == scene_Key)
-                {
-                    var loaded = scene_Handler.Result.Scene;
-                    SceneManager.SetActiveScene(loaded);
-                }
-
-                if (delayTime > 0.0f)
-                {
-                    yield return new WaitForSeconds(delayTime);
-                }
-            }
-
-            var unLoad_Handler = Addressables.UnloadSceneAsync(loading_Handle);
-            while(!unLoad_Handler.IsDone)
-            {
-                yield return null;
-            }
 
             cur_LoadProgress = 1.0f;
-            isLoading = false;
+
+            UIController.Instance.OpenMask();
+            yield return new WaitForSeconds(1.0f);
         }
         #endregion
     }
