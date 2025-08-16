@@ -1,4 +1,5 @@
 ﻿using DG.Tweening;
+using JJORY.Util;
 using UnityEngine;
 using UnityEngine.Experimental.GlobalIllumination;
 
@@ -22,16 +23,18 @@ namespace JJORY.Module
         #region Method
         public void DoClose(float _duration)
         {
+            Utils.CreateLogMessage<InvertMaskController>("DoClose Tween 시작!");
             DOTween.KillAll();
             DOTween.To(() => range, (value) => range = value, 0.0f, _duration)
-                   .onComplete += () => { gameObject.SetActive(false); };
+                   .onComplete += () => { this.gameObject.SetActive(false); };
         }
 
         public void DoOpen(float _duration)
         {
+            Utils.CreateLogMessage<InvertMaskController>("DoOpen Tween 시작!");
             DOTween.KillAll();
             DOTween.To(() => range, (value) => range = value, 1.0f, _duration)
-                   .onComplete += () => { gameObject.SetActive(false); };
+                   .onComplete += () => { this.gameObject.SetActive(false); };
         }
         #endregion
     }

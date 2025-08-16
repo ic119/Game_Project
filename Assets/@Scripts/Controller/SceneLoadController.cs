@@ -50,7 +50,6 @@ namespace JJORY.Module
             if (!dicSceneModels.ContainsKey(_tag))
             {
                 Utils.CreateLogMessage<SceneLoadController>($"{_tag}는 존재하지 않습니다.");
-                //Utils.GenerateLogMessage<SceneLoadController>($"{tags}는 없는 태그 입니다.");
             }
             else
             {
@@ -59,6 +58,11 @@ namespace JJORY.Module
             }
         }
 
+        /// <summary>
+        /// Scene 전환 코루틴 함수
+        /// </summary>
+        /// <param name="_targetModel"></param>
+        /// <returns></returns>
         private IEnumerator SceneLoadRoutine(SceneModel _targetModel)
         {
             UIController.Instance.CloseMask();
