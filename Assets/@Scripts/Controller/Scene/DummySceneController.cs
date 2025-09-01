@@ -39,7 +39,8 @@ namespace JJORY.Scene.Dummy
             public IEnumerator Execute()
             {
                 yield return null;
-                SceneLoadController.Instance.LoadSceneByTags("main");
+                //SceneLoadController.Instance.LoadSceneByTags("Main");
+                SceneLoadController.Instance.LoadSceneByTags("Login");
             }
         }
 

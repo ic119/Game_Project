@@ -13,7 +13,11 @@ MonoBehaviour:
   m_Name: SceneModelSO
   m_EditorClassIdentifier: 
   scneneModel_List:
-  - sceneTag: main
+  - sceneTag: Login
+    loadScenes:
+    - LoginScene
+    activeScene: Login
+  - sceneTag: Main
     loadScenes:
     - MainScene
-    activeScene: main
+    activeScene: Main
