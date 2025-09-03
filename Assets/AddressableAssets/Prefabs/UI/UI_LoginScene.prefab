@@ -1195,9 +1195,9 @@ RectTransform:
   - {fileID: 2547957376869772878}
   m_Father: {fileID: 870340479906782122}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 264.72998, y: -20}
   m_SizeDelta: {x: 160, y: 40}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &4371121110572337994
@@ -1492,8 +1492,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4281479730
-  m_fontColor: {r: 0.19607843, g: 0.19607843, b: 0.19607843, a: 1}
+    rgba: 4294967295
+  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -1880,9 +1880,9 @@ RectTransform:
   - {fileID: 3215566076504522450}
   m_Father: {fileID: 7244693413119319940}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 230, y: -231.75}
   m_SizeDelta: {x: 270, y: 44}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &7972341919330834688
@@ -2237,9 +2237,9 @@ RectTransform:
   - {fileID: 7435072703846580698}
   m_Father: {fileID: 870340479906782122}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 80, y: -20}
   m_SizeDelta: {x: 160, y: 40}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &3938739236935959383
@@ -2458,7 +2458,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &160038436392501957
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2493,10 +2493,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cb5503abaa2d3974bacaca77dd6c352e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  accout_InputField: {fileID: 0}
-  password_InputField: {fileID: 0}
-  cancel_Button: {fileID: 0}
-  craete_Button: {fileID: 0}
+  accout_InputField: {fileID: 7495120287295621006}
+  password_InputField: {fileID: 4043807454299984110}
+  cancel_Button: {fileID: 4546733697092415034}
+  craete_Button: {fileID: 1373941145402526530}
 --- !u!1 &6295204948035822476
 GameObject:
   m_ObjectHideFlags: 0
@@ -2960,9 +2960,9 @@ RectTransform:
   - {fileID: 8951346798324257346}
   m_Father: {fileID: 7244693413119319940}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 230, y: -132}
   m_SizeDelta: {x: 270, y: 44}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &3936129601851604809
@@ -3846,12 +3846,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ca582cf15a07c3d40b68a2bd3357c88f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  account_InputField: {fileID: 0}
-  password_InputField: {fileID: 0}
-  regist_Button: {fileID: 0}
-  login_Button: {fileID: 0}
+  account_InputField: {fileID: 6257030496999917521}
+  password_InputField: {fileID: 2512575884769905830}
+  regist_Button: {fileID: 6257958508933604910}
+  login_Button: {fileID: 6845673699834781552}
   account_Value: 
   password_Value: 
+  ui_RegistPopup: {fileID: 6241065847743006318}
 --- !u!1 &8727245344867347625
 GameObject:
   m_ObjectHideFlags: 0
@@ -3946,7 +3947,7 @@ MonoBehaviour:
     m_Left: 0
     m_Right: 0
     m_Top: 110
-    m_Bottom: 70
+    m_Bottom: 135
   m_ChildAlignment: 1
   m_Spacing: 0
   m_ChildForceExpandWidth: 1

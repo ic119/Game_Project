@@ -1,3 +1,4 @@
+ï»¿using JJORY.Util;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,18 +9,23 @@ namespace JJORY.Controller.UI
     public class UI_LoginSceneController : MonoBehaviour
     {
         #region Variable
-        [Header("UI º¯¼ö")]
+        [Header("UI ë³€ìˆ˜")]
         [SerializeField] private TMP_InputField account_InputField;
         [SerializeField] private TMP_InputField password_InputField;
         [SerializeField] private Button regist_Button;
         [SerializeField] private Button login_Button;
 
-        [Header("°èÁ¤ »ı¼º °ü·Ã")]
+        [Header("ê³„ì • ìƒì„± ê´€ë ¨")]
         [SerializeField] private string account_Value;
         [SerializeField] private string password_Value;
+        [SerializeField] private GameObject ui_RegistPopup;
         #endregion
 
         #region LifeCycle
+        private void Awake()
+        {
+            regist_Button.onClick.AddListener(OnClickRegistButton);
+        }
         #endregion
 
         #region Method
@@ -31,7 +37,11 @@ namespace JJORY.Controller.UI
 
         private void OnClickRegistButton()
         {
-
+            if (ui_RegistPopup != null && ui_RegistPopup.activeSelf == false)
+            {
+                ui_RegistPopup.SetActive(true);
+                Utils.CreateLogMessage<UI_LoginSceneController>("ê³„ì •ìƒì„± ë²„íŠ¼ í´ë¦­");
+            }
         }
         #endregion
     }
