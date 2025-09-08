@@ -24,15 +24,29 @@ namespace JJORY.Controller.UI
         #region LifeCycle
         private void Awake()
         {
+            Init();
+
+            login_Button.onClick.AddListener(OnClickLoginButton);
             regist_Button.onClick.AddListener(OnClickRegistButton);
         }
         #endregion
 
         #region Method
+        /// <summary>
+        /// InputField 초기화
+        /// </summary>
+        private void Init()
+        {
+            account_InputField.inputType = TMP_InputField.InputType.Standard;
+            account_InputField.contentType = TMP_InputField.ContentType.Name;
+
+            password_InputField.inputType = TMP_InputField.InputType.AutoCorrect;
+            password_InputField.contentType = TMP_InputField.ContentType.Password;
+        }
 
         private void OnClickLoginButton()
         {
-
+            Utils.CreateLogMessage<UI_LoginSceneController>("로그인 버튼 클릭");
         }
 
         private void OnClickRegistButton()
