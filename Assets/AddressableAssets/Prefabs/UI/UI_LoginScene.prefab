@@ -93,8 +93,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 16
-  m_fontSizeBase: 16
+  m_fontSize: 22
+  m_fontSizeBase: 22
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -839,8 +839,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 16
-  m_fontSizeBase: 16
+  m_fontSize: 22
+  m_fontSizeBase: 22
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -1882,8 +1882,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 230, y: -231.75}
-  m_SizeDelta: {x: 270, y: 44}
+  m_AnchoredPosition: {x: 230, y: -246.45}
+  m_SizeDelta: {x: 338, y: 60.4}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &7972341919330834688
 CanvasRenderer:
@@ -2493,10 +2493,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cb5503abaa2d3974bacaca77dd6c352e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  accout_InputField: {fileID: 7495120287295621006}
+  account_InputField: {fileID: 7495120287295621006}
   password_InputField: {fileID: 4043807454299984110}
   cancel_Button: {fileID: 4546733697092415034}
   craete_Button: {fileID: 1373941145402526530}
+  inputField_Arr: []
 --- !u!1 &6295204948035822476
 GameObject:
   m_ObjectHideFlags: 0
@@ -2882,8 +2883,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 16
-  m_fontSizeBase: 16
+  m_fontSize: 22
+  m_fontSizeBase: 22
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -2962,8 +2963,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 230, y: -132}
-  m_SizeDelta: {x: 270, y: 44}
+  m_AnchoredPosition: {x: 230, y: -114.2}
+  m_SizeDelta: {x: 338, y: 60.4}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &3936129601851604809
 CanvasRenderer:
@@ -3665,8 +3666,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 16
-  m_fontSizeBase: 16
+  m_fontSize: 22
+  m_fontSizeBase: 22
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -3853,6 +3854,7 @@ MonoBehaviour:
   account_Value: 
   password_Value: 
   ui_RegistPopup: {fileID: 6241065847743006318}
+  inputField_Arr: []
 --- !u!1 &8727245344867347625
 GameObject:
   m_ObjectHideFlags: 0
@@ -3946,8 +3948,8 @@ MonoBehaviour:
   m_Padding:
     m_Left: 0
     m_Right: 0
-    m_Top: 110
-    m_Bottom: 135
+    m_Top: 84
+    m_Bottom: 96
   m_ChildAlignment: 1
   m_Spacing: 0
   m_ChildForceExpandWidth: 1
