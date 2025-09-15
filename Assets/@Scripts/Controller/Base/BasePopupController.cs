@@ -14,24 +14,26 @@ namespace JJORY.Popup.Base
         /// <param name="_key">Addressable 등록 key</param>
         /// <param name="_parent">위치 선정 부모 오브젝트</param>
         /// <returns></returns>
-        protected IEnumerator InstantiateAsset(string _key, GameObject _parent)
+        protected GameObject InstantiateAsset(string _key, GameObject _parent)
         {
             AsyncOperationHandle handler;
 
             while (!AddressableController.Instance.GetHandler(_key, out handler))
             {
-                yield return null;
+                break;
             }
 
             // 로딩 완료될 때까지 대기
             while (!handler.IsDone)
             {
-                yield return null;
+                break;
             }
 
             GameObject prefab = handler.Result as GameObject;
             GameObject go = AddressableController.Instance.InstantiatePrefab(_key, prefab);
             go.transform.parent = _parent.transform;
+
+            return go;
         }
         #endregion
     }

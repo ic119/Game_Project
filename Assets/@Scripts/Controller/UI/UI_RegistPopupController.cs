@@ -1,6 +1,7 @@
 ﻿using JJORY.Define;
 using JJORY.Popup.Base;
 using JJORY.Util;
+using JJORY.View.UI;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -92,8 +93,14 @@ namespace JJORY.Controller.UI
                 PlayerPrefs.Save();
 
                 Utils.CreateLogMessage<UI_RegistPopupController>("회원가입 성공!");
+                GameObject popup = InstantiateAsset(AddressKey.UI_AlarmPopup.ToString(), transform.parent.gameObject);
 
-                gameObject.SetActive(false);
+
+                UI_AlarmPopupView view = popup.GetComponent<UI_AlarmPopupView>();
+                UI_AlarmPopupController controller = popup.GetComponent<UI_AlarmPopupController>();
+                
+                view.ContentGenerate("계정 생성", "회원가입을 완료하였습니다.");
+
             }
         }
 
@@ -101,7 +108,7 @@ namespace JJORY.Controller.UI
         {
             account_InputField.text = "";
             password_InputField.text = "";
-            gameObject.SetActive(false);
+            //gameObject.SetActive(false);
             Utils.CreateLogMessage<UI_RegistPopupController>("취소 버튼 클릭");
         }
 

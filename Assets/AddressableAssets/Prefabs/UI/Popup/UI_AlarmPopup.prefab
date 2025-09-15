@@ -360,6 +360,8 @@ GameObject:
   - component: {fileID: 2354422126279198136}
   - component: {fileID: 1699645748939048482}
   - component: {fileID: 8167491160266512057}
+  - component: {fileID: 7940935896987711376}
+  - component: {fileID: 8426292855695034364}
   m_Layer: 5
   m_Name: UI_AlarmPopup
   m_TagString: Untagged
@@ -451,6 +453,33 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 4294967295
+--- !u!114 &7940935896987711376
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1832394578069963388}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: edee1b1a2bfb7054d9fb8ddae9318a27, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  confirm_Button: {fileID: 4786220202043644474}
+--- !u!114 &8426292855695034364
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1832394578069963388}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d460e4935a3e2a24c8e44bc7fd48c8f1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  title_Text: {fileID: 232937248413898022}
+  content_Text: {fileID: 7274646435310600600}
 --- !u!1 &3857498146609073951
 GameObject:
   m_ObjectHideFlags: 0
@@ -720,7 +749,7 @@ GameObject:
   - component: {fileID: 8410027484101979945}
   - component: {fileID: 4786220202043644474}
   m_Layer: 5
-  m_Name: Check_Button
+  m_Name: Confirm_Button
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
