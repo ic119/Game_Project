@@ -1,8 +1,10 @@
-﻿using JJORY.Util;
+﻿using JJORY.Define;
+using JJORY.Util;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
+using WebSocketSharp;
 
 namespace JJORY.Controller.UI
 {
@@ -18,8 +20,6 @@ namespace JJORY.Controller.UI
         [Header("계정 정보 변수")]
         private string account_Value;
         private string password_Value;
-        private const string account_Key = "Player_Account";
-        private const string password_Key = "Player_Password";
 
         [Header("키보드 액션")]
         [SerializeField] private TMP_InputField[] inputField_Arr;
@@ -75,23 +75,23 @@ namespace JJORY.Controller.UI
         
         private void RegistInfoSave()
         {
-            if (string.IsNullOrEmpty(account_Value))
+            if (string.IsNullOrEmpty(account_InputField.text))
             {
                 Utils.CreateLogMessage<UI_RegistPopupController>("아이디를 입력해주세요!");
                 return;
             }
-            if (string.IsNullOrEmpty(password_Value))
+            if (string.IsNullOrEmpty(password_InputField.text))
             {
                 Utils.CreateLogMessage<UI_RegistPopupController>("패스워드를 입력해주세요!");
                 return;
             }
-            if (string.IsNullOrEmpty(account_Value) == false && string.IsNullOrEmpty(password_Value) == false)
+            if (string.IsNullOrEmpty(account_InputField.text) == false && string.IsNullOrEmpty(password_InputField.text) == false)
             {
                 account_Value = account_InputField.text;
                 password_Value = password_InputField.text;
 
-                PlayerPrefs.SetString(account_Key, account_Value);
-                PlayerPrefs.SetString(password_Key, password_Value);
+                PlayerPrefs.SetString(DEFINE.account_Key, account_Value);
+                PlayerPrefs.SetString(DEFINE.password_Key, password_Value);
                 PlayerPrefs.Save();
                 Utils.CreateLogMessage<UI_RegistPopupController>("회원가입 성공!");
                 gameObject.SetActive(false);

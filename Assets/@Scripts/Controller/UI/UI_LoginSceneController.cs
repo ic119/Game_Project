@@ -1,9 +1,8 @@
-﻿using JJORY.Util;
+﻿using JJORY.Define;
+using JJORY.Util;
 using TMPro;
-using Unity.Collections;
 using UnityEngine;
 using UnityEngine.UI;
-using static System.Net.Mime.MediaTypeNames;
 
 
 namespace JJORY.Controller.UI
@@ -79,6 +78,8 @@ namespace JJORY.Controller.UI
             string account_InputField_Value = account_InputField.text;
             string password_InputField_Value = password_InputField.text;
 
+            string get_Account = PlayerPrefs.GetString(DEFINE.account_Key);
+            string get_Password = PlayerPrefs.GetString(DEFINE.password_Key);
 
             Utils.CreateLogMessage<UI_LoginSceneController>("로그인 버튼 클릭");
 
@@ -94,9 +95,10 @@ namespace JJORY.Controller.UI
                 return;
             }
 
-            if(account_InputField_Value.Equals(admin_Account) && password_InputField_Value.Equals(admin_Password))
+            if(account_InputField_Value.Equals(get_Account) && password_InputField_Value.Equals(get_Password))
             {
                 Utils.CreateLogMessage<UI_LoginSceneController>("로그인 성공!");
+
             }
             else if (account_InputField_Value.Equals(admin_Account) == false)
             {
