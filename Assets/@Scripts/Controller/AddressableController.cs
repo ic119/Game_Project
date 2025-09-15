@@ -60,6 +60,23 @@ namespace JJORY.Module
             return _type;
         }
 
+        public void InstantiatePrefab(string key, Transform parent = null, Action<GameObject> onCompleted = null)
+        {
+            var handle = Addressables.LoadAssetAsync<GameObject>(key);
+            handle.Completed += (AsyncOperationHandle<GameObject> op) =>
+            {
+                if (op.Status == AsyncOperationStatus.Succeeded)
+                {
+                    GameObject instance = GameObject.Instantiate(op.Result, parent);
+                    onCompleted?.Invoke(instance);
+                }
+                else
+                {
+                    Debug.LogError($"Failed to load prefab: {key}");
+                }
+            };
+        }
+
         /// <summary>
         /// Dictionary에 Add 되어진 key값으로 통해 handler 추출
         /// </summary>

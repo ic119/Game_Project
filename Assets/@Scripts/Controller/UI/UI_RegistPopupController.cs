@@ -1,14 +1,13 @@
 ﻿using JJORY.Define;
+using JJORY.Popup.Base;
 using JJORY.Util;
 using TMPro;
 using UnityEngine;
-using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
-using WebSocketSharp;
 
 namespace JJORY.Controller.UI
 {
-    public class UI_RegistPopupController : MonoBehaviour
+    public class UI_RegistPopupController : BasePopupController
     {
         #region Variable
         [Header("UI 변수")]
@@ -34,9 +33,6 @@ namespace JJORY.Controller.UI
             craete_Button.onClick.AddListener(OnClickCraeteButton);
         }
 
-        private void OnEnable()
-        {
-        }
 
         private void Update()
         {
@@ -78,6 +74,7 @@ namespace JJORY.Controller.UI
             if (string.IsNullOrEmpty(account_InputField.text))
             {
                 Utils.CreateLogMessage<UI_RegistPopupController>("아이디를 입력해주세요!");
+                
                 return;
             }
             if (string.IsNullOrEmpty(password_InputField.text))
@@ -93,7 +90,9 @@ namespace JJORY.Controller.UI
                 PlayerPrefs.SetString(DEFINE.account_Key, account_Value);
                 PlayerPrefs.SetString(DEFINE.password_Key, password_Value);
                 PlayerPrefs.Save();
+
                 Utils.CreateLogMessage<UI_RegistPopupController>("회원가입 성공!");
+
                 gameObject.SetActive(false);
             }
         }
