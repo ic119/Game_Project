@@ -1,6 +1,7 @@
 ﻿using JJORY.Util;
 using System;
 using System.Collections.Generic;
+using Unity.Collections;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
@@ -23,22 +24,37 @@ namespace JJORY.Module
         /// <param name="_onLoad">콜백함수</param>
         public void LoadPrefab<T>(string _address, Action<T> _onLoad = null) where T : UnityEngine.Object
         {
-            AsyncOperationHandle<T> handler = Addressables.LoadAssetAsync<T>(_address);
-            Debug.Log($">>>>> {_address} Loaded");
-
-            handler.Completed += h =>
+            if (GetHandler(_address, out var _handler))
             {
-                if (h.Status == AsyncOperationStatus.Succeeded)
+                return;
+            }
+            else
+            {
+                AsyncOperationHandle<T> handler = Addressables.LoadAssetAsync<T>(_address);
+                Debug.Log($">>>>> {_address} Loaded");
+
+                handler.Completed += h =>
                 {
-                    key_Dictionary.Add(_address, h);
-                    Debug.Log($">>>>> key_Dictionary Count : {key_Dictionary.Count}");
-                    _onLoad?.Invoke(h.Result);
-                }
-                else
-                {
-                    Addressables.Release(h);
-                }
-            };
+                    if (h.Status == AsyncOperationStatus.Succeeded)
+                    {
+                        if (key_Dictionary.ContainsKey(_address) == false)
+                        {
+                            key_Dictionary.Add(_address, h);
+                        }
+                        else
+                        {
+                            Utils.CreateLogMessage<AddressableController>($"이미 {_address} 키가 존재합니다.");
+                        }
+                        _onLoad?.Invoke(h.Result);
+
+                        Utils.CreateLogMessage<AddressableController>($"Current Key_Dictionary Count : {key_Dictionary.Count}");
+                    }
+                    else
+                    {
+                        Addressables.Release(h);
+                    }
+                };
+            }
         }
 
         /// <summary>
@@ -60,21 +76,46 @@ namespace JJORY.Module
             return _type;
         }
 
-        public void InstantiatePrefab(string key, Transform parent = null, Action<GameObject> onCompleted = null)
+        /// <summary>
+        /// Instantiate 헬퍼 함수
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="_key"></param>
+        /// <param name="_parent"></param>
+        /// <returns></returns>
+        public T InstantiatePrefabHelper<T>(string _key, Transform _parent = null) where T : UnityEngine.Object
         {
-            var handle = Addressables.LoadAssetAsync<GameObject>(key);
-            handle.Completed += (AsyncOperationHandle<GameObject> op) =>
+            if (GetHandler(_key, out var _handler) == false)
             {
-                if (op.Status == AsyncOperationStatus.Succeeded)
+                Utils.CreateLogMessage<AddressableController>($"{_key}는 아직 로드되지 않았습니다.");
+                return null;
+            }
+
+            if (_handler.IsValid() == false || _handler.Status != AsyncOperationStatus.Succeeded)
+            {
+                Utils.CreateLogMessage<AddressableController>($"{_key}의 Handler가 유효하지 않거나 로드 실패했습니다.");
+                return null;
+            }
+
+            var asset = _handler.Result as T;
+
+            if (asset == null)
+            {
+                Utils.CreateLogMessage<AddressableController>($"[{_key}] 에셋을 {typeof(T).Name}로 변환할 수 없습니다. 실제 타입: {_handler.Result?.GetType().Name}");
+                return null;
+            }
+
+            if (asset is GameObject prefab)
+            {
+                if (_parent == null)
                 {
-                    GameObject instance = GameObject.Instantiate(op.Result, parent);
-                    onCompleted?.Invoke(instance);
+                    return UnityEngine.Object.Instantiate(prefab) as T;
                 }
-                else
-                {
-                    Debug.LogError($"Failed to load prefab: {key}");
-                }
-            };
+
+                return UnityEngine.Object.Instantiate(prefab, _parent) as T;
+            }
+
+            return asset;
         }
 
         /// <summary>
@@ -102,6 +143,5 @@ namespace JJORY.Module
             }
         }
         #endregion
-
     }
 }
