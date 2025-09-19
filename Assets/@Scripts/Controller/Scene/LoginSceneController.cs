@@ -16,6 +16,8 @@ namespace JJORY.Scene.Login
         {
             AddressableController.Instance.LoadPrefab<GameObject>(AddressKey.UI_LoginScene.ToString());
             AddressableController.Instance.LoadPrefab<GameObject>(AddressKey.UI_AlarmPopup.ToString());
+
+            SceneLoadController.Instance.LoadSceneByTags("Main");
         }
 
         private void Start()
