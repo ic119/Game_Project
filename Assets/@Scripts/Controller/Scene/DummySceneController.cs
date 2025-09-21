@@ -38,8 +38,17 @@ namespace JJORY.Scene.Dummy
         {
             public IEnumerator Execute()
             {
-                yield return null;
                 SceneLoadController.Instance.LoadSceneByTags("Login");
+                yield return null;
+            }
+        }
+
+        class EventControl : Sequence
+        {
+            public IEnumerator Execute()
+            {
+                Utils.CreateLogMessage<DummySceneController>("3. EventController Load Complete");
+                yield return null;
             }
         }
 
@@ -49,10 +58,13 @@ namespace JJORY.Scene.Dummy
             AddressableLoad addressableLoad = new AddressableLoad();
             SceneModuleLoad sceneModuleLoad = new SceneModuleLoad();
             MoveScene moveScene = new MoveScene();
+            EventControl eventControl = new EventControl();
 
             SequenceActionUtils.Instance.Enqueue(addressableLoad);
             SequenceActionUtils.Instance.Enqueue(sceneModuleLoad);
             SequenceActionUtils.Instance.Enqueue(moveScene);
+            SequenceActionUtils.Instance.Enqueue(eventControl);
+
 
             SequenceActionUtils.Instance.DoSequenceAction();
         }
