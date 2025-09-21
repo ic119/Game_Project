@@ -1,7 +1,9 @@
 ﻿using JJORY.Define;
+using JJORY.Module;
 using JJORY.Popup.Base;
 using JJORY.Util;
 using JJORY.View.UI;
+using Photon.Realtime;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -30,10 +32,13 @@ namespace JJORY.Controller.UI
         private void Start()
         {
             Init();
+        }
+
+        private void OnEnable()
+        {
             cancel_Button.onClick.AddListener(OnClickCancelButton);
             craete_Button.onClick.AddListener(OnClickCraeteButton);
         }
-
 
         private void Update()
         {
@@ -53,6 +58,8 @@ namespace JJORY.Controller.UI
 
         private void OnDisable()
         {
+            cancel_Button.onClick.RemoveListener(OnClickCancelButton);
+            craete_Button.onClick.RemoveListener(OnClickCraeteButton);
             account_InputField.text = "";
             password_InputField.text = "";
         }
@@ -93,14 +100,13 @@ namespace JJORY.Controller.UI
                 PlayerPrefs.Save();
 
                 Utils.CreateLogMessage<UI_RegistPopupController>("회원가입 성공!");
-                GameObject popup = InstantiateAsset(AddressKey.UI_AlarmPopup.ToString(), transform.parent.gameObject);
 
+                GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.UI_AlarmPopup.ToString(),
+                                                                                                      transform.parent.gameObject.transform);
+                //GameObject popup = InstantiateAsset(AddressKey.UI_AlarmPopup.ToString(), transform.parent.gameObject);
 
-                UI_AlarmPopupView view = popup.GetComponent<UI_AlarmPopupView>();
                 UI_AlarmPopupController controller = popup.GetComponent<UI_AlarmPopupController>();
-                
-                view.ContentGenerate("계정 생성", "회원가입을 완료하였습니다.");
-
+                EventController.Instance.InvokeShowPopup("계정 생성", "회원가입을 완료하였습니다.");
             }
         }
 
@@ -108,7 +114,6 @@ namespace JJORY.Controller.UI
         {
             account_InputField.text = "";
             password_InputField.text = "";
-            //gameObject.SetActive(false);
             Utils.CreateLogMessage<UI_RegistPopupController>("취소 버튼 클릭");
         }
 

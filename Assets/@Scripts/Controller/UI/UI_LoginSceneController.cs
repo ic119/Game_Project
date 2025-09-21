@@ -1,4 +1,5 @@
 ﻿using JJORY.Define;
+using JJORY.Module;
 using JJORY.Util;
 using TMPro;
 using UnityEngine;
@@ -98,13 +99,16 @@ namespace JJORY.Controller.UI
             if(account_InputField_Value.Equals(get_Account) && password_InputField_Value.Equals(get_Password))
             {
                 Utils.CreateLogMessage<UI_LoginSceneController>("로그인 성공!");
-
+                GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.UI_AlarmPopup.ToString(),
+                                                                                                      transform.parent.gameObject.transform);
+                UI_AlarmPopupController controller = popup.GetComponent<UI_AlarmPopupController>();
+                EventController.Instance.InvokeShowPopup("계정 생성", "회원가입을 완료하였습니다.");
             }
-            else if (account_InputField_Value.Equals(admin_Account) == false)
+            else if (account_InputField_Value.Equals(get_Account) == false)
             {
                 Utils.CreateLogMessage<UI_LoginSceneController>("아이디를 올바르게 입력해주세요!");
             }
-            else if (password_InputField_Value.Equals(admin_Password) == false)
+            else if (password_InputField_Value.Equals(get_Password) == false)
             {
                 Utils.CreateLogMessage<UI_LoginSceneController>("패스워드를 올바르게 입력해주세요!");
             }
