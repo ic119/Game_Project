@@ -112,7 +112,10 @@ namespace JJORY.Module
                     return UnityEngine.Object.Instantiate(prefab) as T;
                 }
 
-                return UnityEngine.Object.Instantiate(prefab, _parent) as T;
+                GameObject go = AddressableController.Instance.InstantiatePrefab(_key, prefab);
+                go.transform.parent = _parent.transform;
+                //return UnityEngine.Object.Instantiate(prefab, _parent) as T;
+                return go as T;
             }
 
             return asset;
