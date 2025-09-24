@@ -99,10 +99,9 @@ namespace JJORY.Controller.UI
             if(account_InputField_Value.Equals(get_Account) && password_InputField_Value.Equals(get_Password))
             {
                 Utils.CreateLogMessage<UI_LoginSceneController>("로그인 성공!");
-                GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.UI_AlarmPopup.ToString(),
-                                                                                                      transform.parent.gameObject.transform);
-                UI_AlarmPopupController controller = popup.GetComponent<UI_AlarmPopupController>();
-                EventController.Instance.InvokeShowPopup("계정 생성", "회원가입을 완료하였습니다.");
+                
+                // 로그인 성공 시 LoadingScene을 거쳐 MainScene으로 전환
+                SceneLoadController.Instance.LoadSceneByTags("Main");
             }
             else if (account_InputField_Value.Equals(get_Account) == false)
             {
