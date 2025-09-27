@@ -1,16 +1,13 @@
 ﻿using JJORY.Define;
 using JJORY.Module;
-using JJORY.Popup.Base;
 using JJORY.Util;
-using JJORY.View.UI;
-using Photon.Realtime;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace JJORY.Controller.UI
 {
-    public class UI_RegistPopupController : BasePopupController
+    public class UI_RegistPopupController : MonoBehaviour
     {
         #region Variable
         [Header("UI 변수")]
@@ -103,8 +100,7 @@ namespace JJORY.Controller.UI
 
                 GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.UI_AlarmPopup.ToString(),
                                                                                                       transform.parent.gameObject.transform);
-                //GameObject popup = InstantiateAsset(AddressKey.UI_AlarmPopup.ToString(), transform.parent.gameObject);
-
+                
                 UI_AlarmPopupController controller = popup.GetComponent<UI_AlarmPopupController>();
                 EventController.Instance.InvokeShowPopup("계정 생성", "회원가입을 완료하였습니다.");
             }
