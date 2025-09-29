@@ -1,4 +1,5 @@
 ﻿using JJORY.Module;
+using JJORY.Util;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.ResourceManagement.AsyncOperations;
@@ -22,6 +23,13 @@ namespace JJORY.Scene.Login
         private void Start()
         {
             StartCoroutine(InstantiateAsset(AddressKey.UI_LoginScene.ToString(), gameObject));
+        }
+
+        private void OnDestroy() 
+        {
+            Utils.CreateLogMessage<LoginSceneController>("LoginScene 제거");
+            AddressableController.Instance.ReleaseHandler(AddressKey.UI_LoginScene.ToString());
+            AddressableController.Instance.ReleaseHandler(AddressKey.UI_AlarmPopup.ToString());
         }
         #endregion
 

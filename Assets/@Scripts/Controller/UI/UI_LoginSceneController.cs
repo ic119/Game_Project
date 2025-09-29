@@ -99,9 +99,12 @@ namespace JJORY.Controller.UI
             if(account_InputField_Value.Equals(get_Account) && password_InputField_Value.Equals(get_Password))
             {
                 Utils.CreateLogMessage<UI_LoginSceneController>("로그인 성공!");
+
+                // CloseMask() 먼저 실행
+                UIController.Instance.CloseMask();
                 
-                // 로그인 성공 시 LoadingScene을 거쳐 MainScene으로 전환
-                SceneLoadController.Instance.LoadSceneByTags("Main");
+                // CloseMask 애니메이션 완료 후 씬 전환
+                StartCoroutine(LoadMainSceneAfterMask());
             }
             else if (account_InputField_Value.Equals(get_Account) == false)
             {
@@ -140,6 +143,21 @@ namespace JJORY.Controller.UI
 
             cur_Index = (cur_Index + 1) % inputField_Arr.Length;
             inputField_Arr[cur_Index].ActivateInputField();
+        }
+
+        /// <summary>
+        /// CloseMask 애니메이션 완료 후 MainScene으로 전환하는 코루틴
+        /// </summary>
+        private System.Collections.IEnumerator LoadMainSceneAfterMask()
+        {
+            // CloseMask 애니메이션 완료까지 대기 (1초)
+            yield return new WaitForSeconds(1.0f);
+            
+            // SceneLoadController 초기화 및 MainScene 로드
+            SceneLoadController.Instance.Init(() =>
+            {                
+                SceneLoadController.Instance.LoadSceneByTags("Main");
+            });
         }
         #endregion
     }

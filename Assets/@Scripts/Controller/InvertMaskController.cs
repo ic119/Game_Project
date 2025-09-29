@@ -26,7 +26,9 @@ namespace JJORY.Module
             Utils.CreateLogMessage<InvertMaskController>("DoClose Tween 시작!");
             DOTween.KillAll();
             DOTween.To(() => range, (value) => range = value, 0.0f, _duration)
-                   .onComplete += () => { this.gameObject.SetActive(false); };
+                   .onComplete += () => { 
+                       this.gameObject.SetActive(false);
+                   };
         }
 
         public void DoOpen(float _duration)

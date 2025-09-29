@@ -56,5 +56,8 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "Game_Project.sln"
+    "dotnet.defaultSolution": "Game_Project.sln",
+    "dotrush.roslyn.projectOrSolutionFiles": [
+        "d:\\Portfolio\\Game_Project\\Game_Project.sln"
+    ]
 }

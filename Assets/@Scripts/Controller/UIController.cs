@@ -13,7 +13,7 @@ public class UIController : SingletonObject<UIController>
     public void CloseMask()
     {
         invertMaskController.gameObject.SetActive(true);
-        invertMaskController.DoClose(1.0f);
+        invertMaskController.DoClose(1.1f);
     }
 
     public void OpenMask()
