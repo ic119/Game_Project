@@ -110,6 +110,7 @@ namespace JJORY.Controller.UI
         {
             account_InputField.text = "";
             password_InputField.text = "";
+            gameObject.SetActive(false);
             Utils.CreateLogMessage<UI_RegistPopupController>("취소 버튼 클릭");
         }
 
