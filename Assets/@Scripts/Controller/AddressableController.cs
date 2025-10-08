@@ -31,7 +31,7 @@ namespace JJORY.Module
             else
             {
                 AsyncOperationHandle<T> handler = Addressables.LoadAssetAsync<T>(_address);
-                Debug.Log($">>>>> {_address} Loaded");
+                Debug.Log($">>>>> {_address} 로드 성공");
 
                 handler.Completed += h =>
                 {
