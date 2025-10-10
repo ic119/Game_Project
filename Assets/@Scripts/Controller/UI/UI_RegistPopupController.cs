@@ -100,7 +100,7 @@ namespace JJORY.Controller.UI
 
                 GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.UI_AlarmPopup.ToString(),
                                                                                                       transform.parent.gameObject.transform);
-                
+                Utils.CreateLogMessage<UI_RegistPopupController>($"transform : {transform.parent.gameObject.name}");
                 UI_AlarmPopupController controller = popup.GetComponent<UI_AlarmPopupController>();
                 EventController.Instance.InvokeShowPopup("계정 생성", "회원가입을 완료하였습니다.");
             }

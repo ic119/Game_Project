@@ -1,4 +1,5 @@
-﻿using JJORY.Define;
+﻿using JJORY.Controller.Base;
+using JJORY.Define;
 using JJORY.Module;
 using JJORY.Util;
 using TMPro;
@@ -8,7 +9,7 @@ using UnityEngine.UI;
 
 namespace JJORY.Controller.UI
 {
-    public class UI_LoginSceneController : MonoBehaviour
+    public class UI_LoginSceneController : BasePopupController
     {
         #region Variable
         [Header("UI 변수")]
@@ -105,20 +106,22 @@ namespace JJORY.Controller.UI
             else if (account_InputField_Value.Equals(get_Account) == false)
             {
                 Utils.CreateLogMessage<UI_LoginSceneController>("아이디를 올바르게 입력해주세요!");
-                GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.UI_AlarmPopup.ToString(),
-                                                                                                      transform);
 
+                GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.UI_AlarmPopup.ToString(),
+                                                                                                      gameObject.transform);
+                Utils.CreateLogMessage<UI_RegistPopupController>($"transform : {gameObject.name}");
                 UI_AlarmPopupController controller = popup.GetComponent<UI_AlarmPopupController>();
-                EventController.Instance.InvokeShowPopup("로그인", "아이디를 올바르게 입력해주세요!");
+                EventController.Instance.InvokeShowPopup("계정 입력 오류", "올바른 계정을 입력해주세요!");
             }
             else if (password_InputField_Value.Equals(get_Password) == false)
             {
                 Utils.CreateLogMessage<UI_LoginSceneController>("패스워드를 올바르게 입력해주세요!");
-                GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.UI_AlarmPopup.ToString(),
-                                                                                                      transform);
 
+                GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.UI_AlarmPopup.ToString(),
+                                                                                                      gameObject.transform);
+                Utils.CreateLogMessage<UI_RegistPopupController>($"transform : {gameObject.name}");
                 UI_AlarmPopupController controller = popup.GetComponent<UI_AlarmPopupController>();
-                EventController.Instance.InvokeShowPopup("로그인", "패스워드를 올바르게 입력해주세요!");
+                EventController.Instance.InvokeShowPopup("패스워드 입력 오류", "올바른 패스워드를 입력해주세요!");
             }
         }
 
