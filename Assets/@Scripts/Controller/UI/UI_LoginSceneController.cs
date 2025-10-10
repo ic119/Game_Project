@@ -25,10 +25,6 @@ namespace JJORY.Controller.UI
         [Header("키보드 액션")]
         [SerializeField] private TMP_InputField[] inputField_Arr;
         private int cur_Index = 0;
-
-        [Header("관리자 정보")]
-        private string admin_Account = "admin";
-        private string admin_Password = "1234";
         #endregion
 
         #region LifeCycle
@@ -109,10 +105,20 @@ namespace JJORY.Controller.UI
             else if (account_InputField_Value.Equals(get_Account) == false)
             {
                 Utils.CreateLogMessage<UI_LoginSceneController>("아이디를 올바르게 입력해주세요!");
+                GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.UI_AlarmPopup.ToString(),
+                                                                                                      transform);
+
+                UI_AlarmPopupController controller = popup.GetComponent<UI_AlarmPopupController>();
+                EventController.Instance.InvokeShowPopup("로그인", "아이디를 올바르게 입력해주세요!");
             }
             else if (password_InputField_Value.Equals(get_Password) == false)
             {
                 Utils.CreateLogMessage<UI_LoginSceneController>("패스워드를 올바르게 입력해주세요!");
+                GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.UI_AlarmPopup.ToString(),
+                                                                                                      transform);
+
+                UI_AlarmPopupController controller = popup.GetComponent<UI_AlarmPopupController>();
+                EventController.Instance.InvokeShowPopup("로그인", "패스워드를 올바르게 입력해주세요!");
             }
         }
 

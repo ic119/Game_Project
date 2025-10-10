@@ -40,6 +40,9 @@ namespace JJORY.Controller.UI
         #endregion
 
         #region Method
+        /// <summary>
+        /// 캐릭터 생성 및 불러오기 시 해당 캐릭터 스테이터스 목록 출력
+        /// </summary>
         private void CreateStatusInfo() //string _title, int _value
         {
             if (statusInfoListItem_Prefab == null)
@@ -47,26 +50,35 @@ namespace JJORY.Controller.UI
                 Utils.CreateLogMessage<UI_CharacterPopupController>("캐릭터 스테이터스 정보창 Prefab Null");
             }
             else
-            {
+            {   
                 for (int i = 0; i < 4; i++)
                 {
-                    GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),
-                                                                                                          content_Rect);
-                    StatusInfoItemVIew view = popup.GetComponent<StatusInfoItemVIew>();
                     if (i == 0)
                     {
+                        GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),
+                                                                                                          content_Rect);
+                        StatusInfoItemVIew view = popup.GetComponent<StatusInfoItemVIew>();
                         view.DataSetting("레벨", 1);
                     }
                     else if (i == 1)
                     {
+                        GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),
+                                                                                                          content_Rect);
+                        StatusInfoItemVIew view = popup.GetComponent<StatusInfoItemVIew>();
                         view.DataSetting("힘", 10);
                     }
                     else if (i == 2)
                     {
+                        GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),
+                                                                                                          content_Rect);
+                        StatusInfoItemVIew view = popup.GetComponent<StatusInfoItemVIew>();
                         view.DataSetting("민첩", 10);
                     }
                     else if (i == 3)
                     {
+                        GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),
+                                                                                                          content_Rect);
+                        StatusInfoItemVIew view = popup.GetComponent<StatusInfoItemVIew>();
                         view.DataSetting("지력", 10);
                     }
                 }

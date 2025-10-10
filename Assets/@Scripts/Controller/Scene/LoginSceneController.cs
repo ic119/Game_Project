@@ -47,7 +47,7 @@ namespace JJORY.Scene.Login
 
             while (!AddressableController.Instance.GetHandler(_key, out handler))
             {
-                yield return null;
+                yield return null;  
             }
 
             // 로딩 완료될 때까지 대기
