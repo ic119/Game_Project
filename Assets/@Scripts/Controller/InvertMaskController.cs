@@ -16,7 +16,7 @@ namespace JJORY.Module
         #region LifeCycle
         private void Update()
         {
-            GetComponent<RectTransform>().sizeDelta = Vector2.Lerp(Vector2.zero, new Vector2(3200, 4200), range);
+            GetComponent<RectTransform>().sizeDelta = Vector2.Lerp(Vector2.zero, new Vector2(2200, 2800), range);
         }
         #endregion
 
