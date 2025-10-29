@@ -1,28 +1,36 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 
 namespace JJORY.Controller
 {
     public class PlayerController : MonoBehaviour
     {
         #region Variable
-        [Header("ÀÌµ¿ °ü·Ã")]
+        [Header("ì´ë™ ê´€ë ¨")]
         [SerializeField, Range(0f, 20f)] private float moveSpeed = 6f;
-        [SerializeField] private bool isCameraRelative = false; // true¸é Ä«¸Ş¶ó ±âÁØ(Æò¸é) ÀÌµ¿
+        [SerializeField] private bool isCameraRelative = false; // trueë©´ ì¹´ë©”ë¼ ê¸°ì¤€(í‰ë©´) ì´ë™
 
-        [Header("Áß·Â ¹× ÁöÇü °ü·Ã")]
+        [Header("íšŒì „ ê´€ë ¨")]
+        [SerializeField, Range(0f, 30f)] private float rotateSpeed = 12f;
+        [SerializeField, Tooltip("ê²½ì‚¬ë©´ì— ëª¸ì„ ê¸°ìš¸ì—¬ ì •ë ¬í• ì§€ ì—¬ë¶€")]
+        private bool alignToGroundNormal = false;
+        [SerializeField, Tooltip("ì–¼ë§ˆ ì´ìƒ ì›€ì§ì˜€ì„ ë•Œë§Œ íšŒì „")]
+        private float minMoveToRotate = 0.001f;
+
+
+        [Header("ì¤‘ë ¥ ë° ì§€í˜• ê´€ë ¨")]
         [SerializeField] private float gravity = 25f;
-        [SerializeField, Range(0f, 80f)] private float slopeLimit = 50f; // Çã¿ë °æ»ç
+        [SerializeField, Range(0f, 80f)] private float slopeLimit = 50f; // í—ˆìš© ê²½ì‚¬
         [SerializeField] private float groundCheckDistance = 0.08f;
         [SerializeField] private LayerMask collisionMask = ~0;
 
-        [Header("Ä³¸¯ÅÍ ¿ÜÇü °ü·Ã")]
+        [Header("ìºë¦­í„° ì™¸í˜• ê´€ë ¨")]
         [SerializeField] private float radius = 0.3f;
         [SerializeField] private float height = 1.8f;
         [SerializeField] private Vector3 center = new Vector3(0, 0.9f, 0);
-        [SerializeField, Tooltip("Ãæµ¹ ³¢ÀÓ ¹æÁö ¿©À¯")] private float skin = 0.02f;
-        [SerializeField, Tooltip("Ãæµ¹ÇØ°á ¹İº¹ È½¼ö")] private int maxSlideIterations = 3;
+        [SerializeField, Tooltip("ì¶©ëŒ ë¼ì„ ë°©ì§€ ì—¬ìœ ")] private float skin = 0.02f;
+        [SerializeField, Tooltip("ì¶©ëŒí•´ê²° ë°˜ë³µ íšŸìˆ˜")] private int maxSlideIterations = 3;
 
-        private Vector3 velocity;       // ÇöÀç ÇÁ·¹ÀÓ ¼Óµµ(Áß·Â Æ÷ÇÔ)
+        private Vector3 velocity;       // í˜„ì¬ í”„ë ˆì„ ì†ë„(ì¤‘ë ¥ í¬í•¨)
         private bool isGrounded;
         private Vector3 groundNormal = Vector3.up;
         #endregion
@@ -30,12 +38,13 @@ namespace JJORY.Controller
         #region LifeCycle
         private void Update()
         {
-            float dt = Time.deltaTime;
+            float time = Time.deltaTime;
 
-            Vector2 input = GetArrowInput();
+            // í™”ì‚´í‘œ ì…ë ¥
+            //Vector2 input = GetArrowInput();
 
-            // 1) È­»ìÇ¥ ÀÔ·Â (Horizontal: ¡ç¡æ, Vertical: ¡è¡é)
-            //Vector2 input = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
+            // í™”ì‚´í‘œ & WASD ì…ë ¥
+            Vector2 input = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
             Vector3 wishDir = Vector3.zero;
 
             if (isCameraRelative && Camera.main != null)
@@ -50,45 +59,91 @@ namespace JJORY.Controller
                 wishDir = (Vector3.forward * input.y + Vector3.right * input.x).normalized;
             }
 
-            // 2) ¸ñÇ¥ ¼öÆò ¼Óµµ ±¸¼º
+            // ëª©í‘œ ìˆ˜í‰ ì†ë„ 
             Vector3 horizontalVel = wishDir * moveSpeed;
 
-            // 3) Áß·Â/Á¢Áö Ã³¸®
-            GroundCheck(); // isGrounded, groundNormal °»½Å
+            // ì¤‘ë ¥ & ì ‘ì§€ ì²˜ë¦¬
+            GroundCheck(); // isGrounded, groundNormal ê°±ì‹ 
 
             if (isGrounded)
             {
-                // Á¢Áö ½Ã ¼öÁ÷¼Óµµ °íÁ¤(¹Ù´Ú¿¡ ¹ĞÂø)
+                // ì ‘ì§€ ì‹œ ìˆ˜ì§ì†ë„ ê³ ì •(ë°”ë‹¥ì— ë°€ì°©)
                 if (Vector3.Angle(groundNormal, Vector3.up) <= slopeLimit)
                 {
-                    velocity.y = -0f; // »ìÂ¦ ´©¸£´Â Á¤µµ
+                    velocity.y = 0f; // ì‚´ì§ ëˆ„ë¥´ëŠ” ì •ë„
                 }
                 else
                 {
-                    velocity += Vector3.down * gravity * dt; // °¡ÆÄ¸£¸é ¹Ì²ô·¯Áú ¼ö ÀÖ°Ô Áß·Â À¯Áö
+                    // ê°€íŒŒë¥¸ ê¸¸ì—ì„  ë¯¸ë„ëŸ¬ì§ˆ ìˆ˜ ìˆê²Œ ì¤‘ë ¥ ìœ ì§€ ì²˜ë¦¬
+                    velocity += Vector3.down * gravity * time;
                 }
             }
             else
             {
-                velocity += Vector3.down * gravity * dt;
+                velocity += Vector3.down * gravity * time;
             }
 
-            // 4) ÃÖÁ¾ ¼Óµµ(¼öÆò + ¼öÁ÷)
+            // ìµœì¢… ì†ë„(ìˆ˜í‰ + ìˆ˜ì§)
             velocity.x = horizontalVel.x;
             velocity.z = horizontalVel.z;
 
-            // 5) Ãæµ¹/½½¶óÀÌµå ¹İ¿µ ÀÌµ¿
-            Vector3 displacement = velocity * dt;
+            // ì¶©ëŒ & ìŠ¬ë¼ì´ë“œ ë°˜ì˜ ì´ë™
+            Vector3 displacement = velocity * time;
             MoveWithSlides(displacement);
 
-            // 6) ÀÌµ¿ ÈÄ ´Ù½Ã Á¢Áö Ã¼Å©(ÇÁ·¹ÀÓ ¾ÈÁ¤¿ë)
+            // ì´ë™ í›„ ë‹¤ì‹œ ì ‘ì§€ ì²´í¬(í”„ë ˆì„ ì•ˆì • ì²˜ë¦¬)
             GroundCheck();
+
+            Vector3 prevPos = transform.position;
+            // === ì‹¤ì œ ì›€ì§ì¸ ë°©í–¥ìœ¼ë¡œ íšŒì „ ===
+            //Vector3 moveDelta = transform.position - prevPos;   // ì¶©ëŒ/ìŠ¬ë¼ì´ë“œ ë°˜ì˜ëœ ì‹¤ì œ ì´ë™ëŸ‰
+            //FaceMovementDirection(moveDelta, time);
         }
         #endregion
 
         #region Method
         /// <summary>
-        /// È­»ìÇ¥ ÀÔ·ÂÀ» ÅëÇØ ÀÌµ¿°ª °è»ê
+        /// ì‹¤ì œ ì›€ì§ì¸ ë°©í–¥(moveDelta)ì„ ê¸°ì¤€ìœ¼ë¡œ íšŒì „
+        /// </summary>
+        private void FaceMovementDirection(Vector3 moveDelta, float dt)
+        {
+            // ë„ˆë¬´ ì‘ê²Œ ì›€ì§ì˜€ìœ¼ë©´ íšŒì „í•˜ì§€ ì•ŠìŒ
+            if (moveDelta.sqrMagnitude < (minMoveToRotate * minMoveToRotate))
+                return;
+
+            if (alignToGroundNormal)
+            {
+                // B) ì§€ë©´ ë²•ì„  ì •ë ¬: ê²½ì‚¬ë©´ì— ë¶™ì—¬ì„œ ë°”ë¼ë³´ê²Œ
+                Vector3 dirOnGround = Vector3.ProjectOnPlane(moveDelta, groundNormal);
+                if (dirOnGround.sqrMagnitude < 1e-6f) return;
+
+                Quaternion target = Quaternion.LookRotation(dirOnGround.normalized, groundNormal);
+                transform.rotation = Quaternion.Slerp(
+                    transform.rotation, target,
+                    1f - Mathf.Exp(-rotateSpeed * dt)
+                );
+            }
+            else
+            {
+                // A) Yawë§Œ íšŒì „: í•­ìƒ ìˆ˜ì§ìœ¼ë¡œ
+                Vector3 dir = moveDelta; dir.y = 0f;
+                if (dir.sqrMagnitude < 1e-6f) return;
+
+                float currentYaw = transform.eulerAngles.y;
+                float targetYaw = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg;
+                float newYaw = Mathf.LerpAngle(currentYaw, targetYaw, 1f - Mathf.Exp(-rotateSpeed * dt));
+
+                Vector3 eul = transform.eulerAngles;
+                eul.x = 0f;          // í”¼ì¹˜ ê³ ì • (ì›í•˜ë©´ ìœ ì§€)
+                eul.z = 0f;          // ë¡¤ ê³ ì •
+                eul.y = newYaw;
+                transform.eulerAngles = eul;
+            }
+        }
+
+
+        /// <summary>
+        /// í™”ì‚´í‘œ ì…ë ¥ì„ í†µí•´ ì´ë™ê°’ ê³„ì‚°
         /// </summary>
         /// <returns></returns>
         private Vector2 GetArrowInput()
@@ -117,7 +172,7 @@ namespace JJORY.Controller
         #endregion
 
         /// <summary>
-        /// Ãæµ¹ ¹× ½½¶óÀÌµå ÇØ°á Ã³¸®
+        /// ì¶©ëŒ ë° ìŠ¬ë¼ì´ë“œ í•´ê²° ì²˜ë¦¬
         /// </summary>
         /// <param name="_displacement"></param>
         private void MoveWithSlides(Vector3 _displacement)
@@ -137,15 +192,15 @@ namespace JJORY.Controller
 
                 if (CapsuleCast(pos, dir, dist + skin, out RaycastHit hit))
                 {
-                    // 1) Ãæµ¹ ÁöÁ¡ ¹Ù·Î ¾Õ±îÁö ÀÌµ¿
+                    // ì¶©ëŒ ì§€ì  ë°”ë¡œ ì•ê¹Œì§€ ì´ë™
                     float travel = Mathf.Max(hit.distance - skin, 0f);
                     pos += dir * travel;
 
-                    // 2) ³²Àº ÀÌµ¿À» Ç¥¸é ±âÁØÀ¸·Î ½½¶óÀÌµå
+                    // ë‚¨ì€ ì´ë™ì„ í‘œë©´ ê¸°ì¤€ìœ¼ë¡œ ìŠ¬ë¼ì´ë“œ
                     Vector3 n = hit.normal;
                     remaining = Vector3.ProjectOnPlane(remaining - dir * travel, n);
 
-                    // 3) ³Ê¹« ÀÛÀº ³ë¸ÖÀº ¹«½Ã(¼öÄ¡ ¾ÈÁ¤)
+                    // ì‘ì€ normalê°’ì€ ë¬´ì‹œ(ìˆ˜ì¹˜ ì•ˆì • ëª©ì )
                     if (n.sqrMagnitude < 1e-6f)
                     {
                         break;
@@ -153,7 +208,7 @@ namespace JJORY.Controller
                 }
                 else
                 {
-                    // Ãæµ¹ ¾øÀ¸¸é ³²Àº ¸¸Å­ ÀÌµ¿
+                    // ì¶©ëŒ ì—†ìœ¼ë©´ ë‚¨ì€ ë§Œí¼ ì´ë™
                     pos += remaining;
                     break;
                 }
@@ -162,15 +217,15 @@ namespace JJORY.Controller
         }
 
         /// <summary>
-        /// ÁöÇü Ã¼Å©
+        /// ì§€í˜• ì²´í¬
         /// </summary>
         private void GroundCheck()
         {
-            // Ä¸½¶ÀÇ ¾Æ·¡ ³¡Á¡¿¡¼­ »ìÂ¦ ¾Æ·¡·Î °Ë»ç
+            // ìº¡ìŠì˜ ì•„ë˜ ëì ì—ì„œ ì‚´ì§ ì•„ë˜ë¡œ ê²€ì‚¬
             GetCapsule(out Vector3 p1, out Vector3 p2);
             Vector3 down = Vector3.down;
 
-            // ½ºÇÇ¾îÄ³½ºÆ®·Î ¹Ù´Ú È®ÀÎ
+            // ìŠ¤í”¼ì–´ìºìŠ¤íŠ¸ë¡œ ë°”ë‹¥ í™•ì¸
             if (Physics.CapsuleCast(p1, p2, radius - 0.01f, down, out RaycastHit hit, groundCheckDistance + skin, collisionMask, QueryTriggerInteraction.Ignore))
             {
                 groundNormal = hit.normal;
@@ -185,7 +240,7 @@ namespace JJORY.Controller
         }
 
         /// <summary>
-        /// Ä¸½¶Ä³½ºÆ®·Î ÅëÇØ Ã³¸®
+        /// ìº¡ìŠìºìŠ¤íŠ¸ë¡œ í†µí•´ ì²˜ë¦¬
         /// </summary>
         /// <param name="_worldPos"></param>
         /// <param name="_dir"></param>
@@ -199,7 +254,7 @@ namespace JJORY.Controller
         }
 
         /// <summary>
-        /// Ä¸½¶ Å©±â Get
+        /// ìº¡ìŠ í¬ê¸° Get
         /// </summary>
         /// <param name="_p1"></param>
         /// <param name="_p2"></param>
@@ -209,8 +264,8 @@ namespace JJORY.Controller
             Vector3 basePos = _overridePos ?? transform.position;
             Vector3 c = basePos + center;
             float half = Mathf.Max(0f, (height * 0.5f) - radius);
-            _p1 = c + Vector3.up * half; // À§ ±¸ Áß½É
-            _p2 = c - Vector3.up * half; // ¾Æ·¡ ±¸ Áß½É
+            _p1 = c + Vector3.up * half; // ìœ„ êµ¬ ì¤‘ì‹¬
+            _p2 = c - Vector3.up * 0.1f; // ì•„ë˜ êµ¬ ì¤‘ì‹¬
         }
 
 #if UNITY_EDITOR
@@ -220,6 +275,7 @@ namespace JJORY.Controller
             UnityEditor.Handles.color = new Color(0, 1, 1, 0.5f);
             UnityEditor.Handles.DrawWireDisc(p1, Vector3.up, radius);
             UnityEditor.Handles.DrawWireDisc(p2, Vector3.up, radius);
+
             Gizmos.color = new Color(0, 1, 1, 0.25f);
             Gizmos.DrawLine(p1 + Vector3.right * radius, p2 + Vector3.right * radius);
             Gizmos.DrawLine(p1 - Vector3.right * radius, p2 - Vector3.right * radius);
