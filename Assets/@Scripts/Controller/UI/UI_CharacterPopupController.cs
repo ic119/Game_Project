@@ -1,4 +1,4 @@
-using JJORY.Module;
+ï»¿using JJORY.Module;
 using JJORY.Util;
 using JJORY.View.UI;
 using System.Runtime.ExceptionServices;
@@ -11,11 +11,11 @@ namespace JJORY.Controller.UI
     public class UI_CharacterPopupController : MonoBehaviour
     {
         #region Variable
-        [Header("Á¤º¸Ã¢ ½ºÅ×ÀÌÅÍ½º ScrollView °ü·Ã º¯¼ö")]
+        [Header("ì •ë³´ì°½ ìŠ¤í…Œì´í„°ìŠ¤ ScrollView ê´€ë ¨ ë³€ìˆ˜")]
         [SerializeField] private GameObject statusInfoListItem_Prefab;
         [SerializeField] private RectTransform content_Rect;
 
-        [Header("»óÈ£ÀÛ¿ë ¹öÆ° º¯¼ö")]
+        [Header("ìƒí˜¸ì‘ìš© ë²„íŠ¼ ë³€ìˆ˜")]
         [SerializeField] private Button create_Button;
         [SerializeField] private Button play_Button;
         #endregion
@@ -41,13 +41,13 @@ namespace JJORY.Controller.UI
 
         #region Method
         /// <summary>
-        /// Ä³¸¯ÅÍ »ı¼º ¹× ºÒ·¯¿À±â ½Ã ÇØ´ç Ä³¸¯ÅÍ ½ºÅ×ÀÌÅÍ½º ¸ñ·Ï Ãâ·Â
+        /// ìºë¦­í„° ìƒì„± ë° ë¶ˆëŸ¬ì˜¤ê¸° ì‹œ í•´ë‹¹ ìºë¦­í„° ìŠ¤í…Œì´í„°ìŠ¤ ëª©ë¡ ì¶œë ¥
         /// </summary>
         private void CreateStatusInfo() //string _title, int _value
         {
             if (statusInfoListItem_Prefab == null)
             {
-                Utils.CreateLogMessage<UI_CharacterPopupController>("Ä³¸¯ÅÍ ½ºÅ×ÀÌÅÍ½º Á¤º¸Ã¢ Prefab Null");
+                Utils.CreateLogMessage<UI_CharacterPopupController>("ìºë¦­í„° ìŠ¤í…Œì´í„°ìŠ¤ ì •ë³´ì°½ Prefab Null");
             }
             else
             {   
@@ -58,28 +58,28 @@ namespace JJORY.Controller.UI
                         GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),
                                                                                                           content_Rect);
                         StatusInfoItemVIew view = popup.GetComponent<StatusInfoItemVIew>();
-                        view.DataSetting("·¹º§", 1);
+                        view.DataSetting("ë ˆë²¨", 1);
                     }
                     else if (i == 1)
                     {
                         GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),
                                                                                                           content_Rect);
                         StatusInfoItemVIew view = popup.GetComponent<StatusInfoItemVIew>();
-                        view.DataSetting("Èû", 10);
+                        view.DataSetting("í˜", 10);
                     }
                     else if (i == 2)
                     {
                         GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),
                                                                                                           content_Rect);
                         StatusInfoItemVIew view = popup.GetComponent<StatusInfoItemVIew>();
-                        view.DataSetting("¹ÎÃ¸", 10);
+                        view.DataSetting("ë¯¼ì²©", 10);
                     }
                     else if (i == 3)
                     {
                         GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),
                                                                                                           content_Rect);
                         StatusInfoItemVIew view = popup.GetComponent<StatusInfoItemVIew>();
-                        view.DataSetting("Áö·Â", 10);
+                        view.DataSetting("ì§€ë ¥", 10);
                     }
                 }
                 //StatusInfoItemVIew view = statusInfoListItem_Prefab.GetComponent<StatusInfoItemVIew>();
@@ -88,19 +88,20 @@ namespace JJORY.Controller.UI
         }
 
         /// <summary>
-        /// »ı¼ºÇÏ±â ¹öÆ° Å¬¸¯ ÀÌº¥Æ®
+        /// ìƒì„±í•˜ê¸° ë²„íŠ¼ í´ë¦­ ì´ë²¤íŠ¸
         /// </summary>
         private void OnClickedCreateButton()
         {
-            Utils.CreateLogMessage<UI_CharacterPopupController>("»ı¼ºÇÏ±â ¹öÆ° Å¬¸¯!");
+            Utils.CreateLogMessage<UI_CharacterPopupController>("ìƒì„±í•˜ê¸° ë²„íŠ¼ í´ë¦­!");
         }
 
         /// <summary>
-        /// ½ÃÀÛÇÏ±â ¹öÆ° Å¬¸¯ ÀÌº¥Æ®
+        /// ì‹œì‘í•˜ê¸° ë²„íŠ¼ í´ë¦­ ì´ë²¤íŠ¸
         /// </summary>
         private void OnClickedPlayButton()
         {
-            Utils.CreateLogMessage<UI_CharacterPopupController>("½ÃÀÛÇÏ±â ¹öÆ° Å¬¸¯!");
+            Destroy(gameObject);
+            Utils.CreateLogMessage<UI_CharacterPopupController>("ì‹œì‘í•˜ê¸° ë²„íŠ¼ í´ë¦­!");
         }
         #endregion
     }
