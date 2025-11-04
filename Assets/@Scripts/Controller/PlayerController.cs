@@ -53,20 +53,20 @@ public class PlayerController : MonoBehaviour
                 if (dir != Vector3.zero)
                 {
                     Rotate(horizontal, vertical);
-                    //animator.SetBool("isWalk", true);
-                    //animator.SetBool("isIdle", false);
+                    animator.SetBool("isWalk", true);
+                    animator.SetBool("isIdle", false);
                 }
                 else
                 {
-                    //animator.SetBool("isWalk", false);
-                    //animator.SetBool("isIdle", true);
+                    animator.SetBool("isWalk", false);
+                    animator.SetBool("isIdle", true);
                 }
             }
             else
             {
             }
 
-            //dir.y += Physics.gravity.y * Time.deltaTime;
+            dir.y += Physics.gravity.y * Time.deltaTime;
             controller.Move(dir * Time.deltaTime);
         }
     }
