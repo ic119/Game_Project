@@ -16,6 +16,16 @@ namespace JJORY.Scene.Dummy
             }
         }
 
+        class GameManage : Sequence
+        {
+            public IEnumerator Execute()
+            {
+                GameManager.Instance.Init();
+                Utils.CreateLogMessage<DummySceneController>("2. GameManager 모듈 로드 성공");
+                yield return null;
+            }
+        }
+
         class SceneModuleLoad : Sequence
         {
             public IEnumerator Execute()
@@ -30,7 +40,7 @@ namespace JJORY.Scene.Dummy
                 {
                     yield return null;
                 }
-                Utils.CreateLogMessage<DummySceneController>("2. SceneModule 모듈 로드 성공");
+                Utils.CreateLogMessage<DummySceneController>("3. SceneModule 모듈 로드 성공");
             }
         }
 
@@ -39,7 +49,7 @@ namespace JJORY.Scene.Dummy
             public IEnumerator Execute()
             {
                 UIController.Instance.CloseMask();
-                Utils.CreateLogMessage<DummySceneController>("3. Scene 로드 성공");
+                Utils.CreateLogMessage<DummySceneController>("4. Scene 로드 성공");
                 SceneLoadController.Instance.LoadSceneByTags("Login");
                 yield return null;
             }
@@ -49,20 +59,23 @@ namespace JJORY.Scene.Dummy
         {
             public IEnumerator Execute()
             {
-                Utils.CreateLogMessage<DummySceneController>("4. EventController 모듈 로드 성공");
+                Utils.CreateLogMessage<DummySceneController>("5. EventController 모듈 로드 성공");
                 yield return null;
             }
         }
+
 
         #region LifeCycle
         private void Start()
         {
             AddressableLoad addressableLoad = new AddressableLoad();
+            GameManage gameManage = new GameManage();
             SceneModuleLoad sceneModuleLoad = new SceneModuleLoad();
             MoveScene moveScene = new MoveScene();
             EventControl eventControl = new EventControl();
 
             SequenceActionUtils.Instance.Enqueue(addressableLoad);
+            SequenceActionUtils.Instance.Enqueue(gameManage);
             SequenceActionUtils.Instance.Enqueue(sceneModuleLoad);
             SequenceActionUtils.Instance.Enqueue(moveScene);
             SequenceActionUtils.Instance.Enqueue(eventControl);

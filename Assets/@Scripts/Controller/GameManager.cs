@@ -1,4 +1,4 @@
-using JJORY.Util;
+ï»¿using JJORY.Util;
 using UnityEngine;
 
 namespace JJORY.Module
@@ -6,14 +6,14 @@ namespace JJORY.Module
     public class GameManager : SingletonObject<GameManager>
     {
         #region Variable
-        [Header("À¯Àú °ÔÀÓ Á¤º¸ °ü·Ã")]
-        public bool isSaveData = false;
+        [Header("ìœ ì € ê²Œì„ ì •ë³´ ê´€ë ¨")]
+        public bool isUserData = false;
         #endregion
 
         #region Method
         public void Init() 
         {
-
+            CheckSaveData("UserData");
         }
 
         private void CheckSaveData(string _key)
@@ -23,16 +23,16 @@ namespace JJORY.Module
                 int value = PlayerPrefs.GetInt(_key);
                 if (value == 1)
                 {
-                    isSaveData = true;
+                    isUserData = true;
                 }
                 else
                 {
-                    isSaveData = false;
+                    isUserData = false;
                 }
             }
             else
             {
-                Utils.CreateLogMessage<GameManager>("ÀúÀåµÈ °ÔÀÓ Á¤º¸°¡ ¾ø½À´Ï´Ù.");
+                Utils.CreateLogMessage<GameManager>("ì €ì¥ëœ ê²Œì„ ì •ë³´ê°€ ì—†ìŠµë‹ˆë‹¤.");
             }
         }
         #endregion
