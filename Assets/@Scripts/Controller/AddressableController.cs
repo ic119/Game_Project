@@ -1,5 +1,6 @@
 ﻿using JJORY.Util;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using Unity.Collections;
 using UnityEngine;
@@ -143,6 +144,32 @@ namespace JJORY.Module
                 Addressables.Release(_handler);
                 key_Dictionary.Remove(_key);
             }
+        }
+
+        /// <summary>
+        /// Load Object에서 Key값으로 해당 오브젝트 생성
+        /// </summary>
+        /// <param name="_key"></param>
+        /// <param name="_parent"></param>
+        /// <returns></returns>
+        public IEnumerator InstantiateAsset(string _key, GameObject _parent)
+        {
+            AsyncOperationHandle handler;
+
+            while (!AddressableController.Instance.GetHandler(_key, out handler))
+            {
+                yield return null;
+            }
+
+            // 로딩 완료될 때까지 대기
+            while (!handler.IsDone)
+            {
+                yield return null;
+            }
+
+            GameObject prefab = handler.Result as GameObject;
+            GameObject go = AddressableController.Instance.InstantiatePrefab(_key, prefab);
+            go.transform.parent = _parent.transform;
         }
         #endregion
     }
