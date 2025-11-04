@@ -1,5 +1,4 @@
-﻿using JJORY.Controller.Base;
-using JJORY.Define;
+﻿using JJORY.Define;
 using JJORY.Module;
 using JJORY.Util;
 using TMPro;
@@ -9,7 +8,7 @@ using UnityEngine.UI;
 
 namespace JJORY.Controller.UI
 {
-    public class UI_LoginSceneController : BasePopupController
+    public class UI_LoginSceneController : MonoBehaviour
     {
         #region Variable
         [Header("UI 변수")]

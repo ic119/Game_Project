@@ -1,13 +1,10 @@
-﻿using JJORY.Controller.Base;
-using JJORY.Module;
+﻿using JJORY.Module;
 using JJORY.Util;
-using System.Collections;
 using UnityEngine;
-using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace JJORY.Scene.Login
 {
-    public class LoginSceneController : BaseSceneController
+    public class LoginSceneController : MonoBehaviour
     {
         #region Variable
         #endregion
@@ -23,7 +20,7 @@ namespace JJORY.Scene.Login
 
         private void Start()
         {
-            StartCoroutine(InstantiateAsset(AddressKey.UI_LoginScene.ToString(), gameObject));
+            StartCoroutine(AddressableController.Instance.InstantiateAsset(AddressKey.UI_LoginScene.ToString(), gameObject));
         }
 
         private void OnDestroy() 
@@ -35,10 +32,6 @@ namespace JJORY.Scene.Login
         #endregion
 
         #region Method
-        protected override IEnumerator InstantiateAsset(string _key, GameObject _parent)
-        {
-            return base.InstantiateAsset(_key, _parent);
-        }
         #endregion
     }
 }

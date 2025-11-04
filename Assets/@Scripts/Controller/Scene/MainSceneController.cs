@@ -1,13 +1,10 @@
-using JJORY.Controller.Base;
 using JJORY.Module;
 using JJORY.Util;
-using System.Collections;
 using UnityEngine;
-using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace JJORY.Scene
 {
-    public class MainSceneController : BaseSceneController
+    public class MainSceneController : MonoBehaviour
     {
         #region Variable
         #endregion
@@ -17,15 +14,11 @@ namespace JJORY.Scene
         {
             Utils.CreateLogMessage<MainSceneController>("Main Scene Load Complete!");
 
-            StartCoroutine(InstantiateAsset(AddressKey.UI_CharacterInfoPopup.ToString(), gameObject));
+            StartCoroutine(AddressableController.Instance.InstantiateAsset(AddressKey.UI_CharacterInfoPopup.ToString(), gameObject));
         }
         #endregion
 
         #region Method
-        protected override IEnumerator InstantiateAsset(string _key, GameObject _parent)
-        {
-            return base.InstantiateAsset(_key, _parent);
-        }
         #endregion
     }
 }

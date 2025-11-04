@@ -1,8 +1,6 @@
 ﻿using JJORY.Module;
 using JJORY.Util;
 using JJORY.View.UI;
-using System.Runtime.ExceptionServices;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.UI;
 
