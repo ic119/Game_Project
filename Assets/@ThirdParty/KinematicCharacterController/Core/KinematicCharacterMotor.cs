@@ -27,8 +27,8 @@ namespace KinematicCharacterController
     }
 
     /// <summary>
-    /// Represents the entire state of a character motor that is pertinent for simulation.
-    /// Use this to save state or revert to past state
+    /// 시뮬레이션에 적합한 캐릭터 모터의 전체 상태 표출
+    /// 상태 저장 및 복원 처리 기능
     /// </summary>
     [System.Serializable]
     public struct KinematicCharacterMotorState
@@ -43,11 +43,11 @@ namespace KinematicCharacterController
         public CharacterTransientGroundingReport GroundingStatus;
 
         public Rigidbody AttachedRigidbody;
-        public Vector3 AttachedRigidbodyVelocity;
+        public Vector3 AttachedRigidbodyVelocity;   
     }
 
     /// <summary>
-    /// Describes an overlap between the character capsule and another collider
+    /// 캐릭터의 Collider를 사용하여 충돌체 탐지 처리
     /// </summary>
     public struct OverlapResult
     {
@@ -62,7 +62,7 @@ namespace KinematicCharacterController
     }
 
     /// <summary>
-    /// Contains all the information for the motor's grounding status
+    /// 해당 컴포넌트를 가진 게임오브젝트와 지면과의 상태 처리
     /// </summary>
     public struct CharacterGroundingReport
     {
@@ -91,7 +91,7 @@ namespace KinematicCharacterController
     }
 
     /// <summary>
-    /// Contains the simulation-relevant information for the motor's grounding status
+    /// 해당 컴포넌트를 가진 게임오브젝트와 지면과의 상태에 대한 시뮬레이션 정보 처리
     /// </summary>
     public struct CharacterTransientGroundingReport
     {
@@ -114,7 +114,7 @@ namespace KinematicCharacterController
     }
 
     /// <summary>
-    /// Contains all the information from a hit stability evaluation
+    /// 충돌에 대한 안정성 평가에 대한 정보 포함
     /// </summary>
     public struct HitStabilityReport
     {
@@ -138,7 +138,7 @@ namespace KinematicCharacterController
     }
 
     /// <summary>
-    /// Contains the information of hit rigidbodies during the movement phase, so they can be processed afterwards
+    /// 이동 단계에서 타격된 강체의 정보를 포함 및 추후에 처리 가능
     /// </summary>
     public struct RigidbodyProjectionHit
     {
@@ -150,7 +150,7 @@ namespace KinematicCharacterController
     }
 
     /// <summary>
-    /// Component that manages character collisions and movement solving
+    /// 캐릭터 충돌 및 움직임 처리
     /// </summary>
     [RequireComponent(typeof(CapsuleCollider))]
     public class KinematicCharacterMotor : MonoBehaviour

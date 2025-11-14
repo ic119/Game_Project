@@ -1,8 +1,6 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.ComponentModel;
 using UnityEngine;
-using KinematicCharacterController;
-using System;
 
 namespace KinematicCharacterController.Examples
 {
@@ -11,12 +9,18 @@ namespace KinematicCharacterController.Examples
         Default,
     }
 
+    /// <summary>
+    /// 캐릭터의 회전을 입력방향 or 카메라가 보는 방향 기준으로 처리
+    /// </summary>
     public enum OrientationMethod
     {
-        TowardsCamera,
-        TowardsMovement,
+        TowardsCamera,    // 카메라 방향에 따라 회전
+        TowardsMovement,  // 입력방향에 따라 회전
     }
 
+    /// <summary>
+    /// 플레이어 입력에 대한 구조체
+    /// </summary>
     public struct PlayerCharacterInputs
     {
         public float MoveAxisForward;
@@ -27,21 +31,28 @@ namespace KinematicCharacterController.Examples
         public bool CrouchUp;
     }
 
+
     public struct AICharacterInputs
     {
         public Vector3 MoveVector;
         public Vector3 LookVector;
     }
 
+    /// <summary>
+    /// 기본 회전에 추가로 중력을 부여하고 지면법선에 맞춰 캐릭터의 몸을 기울이는 열거형 변수
+    /// </summary>
     public enum BonusOrientationMethod
     {
         None,
-        TowardsGravity,
-        TowardsGroundSlopeAndGravity,
+        TowardsGravity,                 // 캐릭터의 Up방향을 중력 반대방향에 맞추어 기울임 처리
+        TowardsGroundSlopeAndGravity,   // 지면법선에 맞추어 기울임 처리
     }
 
     public class ExampleCharacterController : MonoBehaviour, ICharacterController
     {
+        /// <summary>
+        /// 실제로 물리, 충돌, 이동을 수행해주는 KinematicCharacterController 핵심 컴포넌트
+        /// </summary>
         public KinematicCharacterMotor Motor;
 
         [Header("Stable Movement")]
@@ -67,7 +78,13 @@ namespace KinematicCharacterController.Examples
         public BonusOrientationMethod BonusOrientationMethod = BonusOrientationMethod.None;
         public float BonusOrientationSharpness = 10f;
         public Vector3 Gravity = new Vector3(0, -30f, 0);
+        /// <summary>
+        /// Scale 조정이나 시각적 회전 & 기울기를 적용한 MeshRoot
+        /// </summary>
         public Transform MeshRoot;
+        /// <summary>
+        /// 카메라가 따라잡을 위치(ex : 시네머신 Follow Target)
+        /// </summary>
         public Transform CameraFollowPoint;
         public float CrouchedCapsuleHeight = 1f;
 
