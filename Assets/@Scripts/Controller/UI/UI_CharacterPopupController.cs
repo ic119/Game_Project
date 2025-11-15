@@ -14,26 +14,39 @@ namespace JJORY.Controller.UI
         [SerializeField] private RectTransform content_Rect;
 
         [Header("상호작용 버튼 변수")]
-        [SerializeField] private Button create_Button;
+        [SerializeField] private Button restart_Button;
         [SerializeField] private Button play_Button;
+
+        [Header("관련 팝업창 변수")]
+        [SerializeField] private GameObject ui_GenerateCharacterPopup;
         #endregion
 
         #region LifeCycle
         private void Start()
         {
+            if (EventController.Instance != null)
+            {
+                EventController.Instance.OnRequestGenerateCharacterPopup += CreateCharacterData;
+            }
+
             CreateStatusInfo();
         }
 
         private void OnEnable()
         {
-            create_Button.onClick.AddListener(OnClickedCreateButton);
+            restart_Button.onClick.AddListener(OnClickedCreateButton);
             play_Button.onClick.AddListener(OnClickedPlayButton);
         }
 
         private void OnDisable()
         {
-            create_Button.onClick.RemoveListener(OnClickedCreateButton);
+            restart_Button.onClick.RemoveListener(OnClickedCreateButton);
             play_Button.onClick.RemoveListener(OnClickedPlayButton);
+
+            if (EventController.Instance != null)
+            {
+                EventController.Instance.OnRequestGenerateCharacterPopup -= CreateCharacterData;
+            }
         }
         #endregion
 
@@ -53,45 +66,57 @@ namespace JJORY.Controller.UI
                 {
                     if (GameManager.Instance.isUserData == true)
                     {
-                        for (int i = 0; i < 4; i++)
-                        {
-                            if (i == 0)
-                            {
-                                GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),
-                                                                                                                  content_Rect);
-                                StatusInfoItemVIew view = popup.GetComponent<StatusInfoItemVIew>();
-                                view.DataSetting("레벨", 1);
-                            }
-                            else if (i == 1)
-                            {
-                                GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),
-                                                                                                                  content_Rect);
-                                StatusInfoItemVIew view = popup.GetComponent<StatusInfoItemVIew>();
-                                view.DataSetting("힘", 10);
-                            }
-                            else if (i == 2)
-                            {
-                                GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),
-                                                                                                                  content_Rect);
-                                StatusInfoItemVIew view = popup.GetComponent<StatusInfoItemVIew>();
-                                view.DataSetting("민첩", 10);
-                            }
-                            else if (i == 3)
-                            {
-                                GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),
-                                                                                                                  content_Rect);
-                                StatusInfoItemVIew view = popup.GetComponent<StatusInfoItemVIew>();
-                                view.DataSetting("지력", 10);
-                            }
-                        }
+                        
                     }
                     else
                     {
-
+                        Utils.CreateLogMessage<UI_CharacterPopupController>("저장된 캐릭터 정보 없음");
+                        if (ui_GenerateCharacterPopup.activeSelf == false)
+                        {
+                            ui_GenerateCharacterPopup.SetActive(true);
+                        }
                     }
                 }
                 //StatusInfoItemVIew view = statusInfoListItem_Prefab.GetComponent<StatusInfoItemVIew>();
                 //view.DataSetting(_title, _value);
+            }
+        }
+
+        /// <summary>
+        /// 캐릭터 기본 스테이터스 생성
+        /// </summary>
+        private void CreateCharacterData()
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                if (i == 0)
+                {
+                    GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),
+                                                                                                      content_Rect);
+                    StatusInfoItemVIew view = popup.GetComponent<StatusInfoItemVIew>();
+                    view.DataSetting("레벨", 1);
+                }
+                else if (i == 1)
+                {
+                    GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),
+                                                                                                      content_Rect);
+                    StatusInfoItemVIew view = popup.GetComponent<StatusInfoItemVIew>();
+                    view.DataSetting("힘", 10);
+                }
+                else if (i == 2)
+                {
+                    GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),
+                                                                                                      content_Rect);
+                    StatusInfoItemVIew view = popup.GetComponent<StatusInfoItemVIew>();
+                    view.DataSetting("민첩", 10);
+                }
+                else if (i == 3)
+                {
+                    GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),
+                                                                                                      content_Rect);
+                    StatusInfoItemVIew view = popup.GetComponent<StatusInfoItemVIew>();
+                    view.DataSetting("지력", 10);
+                }
             }
         }
 

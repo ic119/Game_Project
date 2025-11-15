@@ -38,7 +38,10 @@ namespace JJORY.Controller.UI
             {
                 if(GameManager.Instance.isUserData == false)
                 {
-
+                    if(EventController.Instance != null)
+                    {
+                        EventController.Instance.InvokeGenerateCharacterPopup();
+                    }
                 }
             }
             gameObject.SetActive(false);

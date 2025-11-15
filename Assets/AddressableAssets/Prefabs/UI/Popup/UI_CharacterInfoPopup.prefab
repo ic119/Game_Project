@@ -65,7 +65,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\uC0DD\uC131\uD558\uAE30"
+  m_text: "\uC0C8\uB85C\uD558\uAE30"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 435092aa425014743ba136d4f012f7fd, type: 2}
   m_sharedMaterial: {fileID: 1060900515451520460, guid: 435092aa425014743ba136d4f012f7fd, type: 2}
@@ -813,6 +813,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1955851090a3a248815766443f92c02, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  check_Button: {fileID: 7155388806305356358}
 --- !u!1 &2203045022541312151
 GameObject:
   m_ObjectHideFlags: 0
@@ -1256,7 +1257,7 @@ GameObject:
   - component: {fileID: 6432434507282333949}
   - component: {fileID: 6863812953885709611}
   m_Layer: 5
-  m_Name: Create_Button
+  m_Name: Restart_Button
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2090,8 +2091,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   statusInfoListItem_Prefab: {fileID: 8911072820886163248, guid: aa7d053aa9fc1784ea59f5e0e0bf054c, type: 3}
   content_Rect: {fileID: 8473379480498319301}
-  create_Button: {fileID: 6863812953885709611}
+  restart_Button: {fileID: 6863812953885709611}
   play_Button: {fileID: 7588903143662719574}
+  ui_GenerateCharacterPopup: {fileID: 1808993114887617950}
 --- !u!1 &8272032509957167536
 GameObject:
   m_ObjectHideFlags: 0
