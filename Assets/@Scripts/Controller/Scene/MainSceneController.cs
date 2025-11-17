@@ -10,14 +10,19 @@ namespace JJORY.Scene
         #region Variable
         [Header("Controller Container")]
         public GameObject examplePlayerModule;
+
         #endregion
 
         #region LifeCycle
         private void Start()
         {
             Utils.CreateLogMessage<MainSceneController>("Main Scene Load Complete!");
-
             StartCoroutine(AddressableController.Instance.InstantiateAsset(AddressKey.UI_CharacterInfoPopup.ToString(), gameObject));
+
+            if (GameManager.Instance != null )
+            {
+                GameManager.Instance.GenerateMaps(AddressKey.Beginner_Village.ToString(), gameObject);
+            }
         }
         #endregion
 
@@ -30,6 +35,8 @@ namespace JJORY.Scene
                 examplePlayerModule.GetComponent<ExamplePlayer>().CharacterCamera = _camera.GetComponent<ExampleCharacterCamera>();
             }
         }
+
+        
         #endregion
     }
 }

@@ -133,6 +133,8 @@ namespace JJORY.Controller.UI
             if (AddressableController.Instance != null)
             {
                 GameObject player = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.Player_Test.ToString());
+                player.transform.position = GameManager.Instance.spawn_Position.transform.position;
+
                 MainSceneController mainScene = GameObject.FindFirstObjectByType<MainSceneController>();
 
                 if (mainScene.examplePlayerModule.GetComponent<ExamplePlayer>() == null)
