@@ -8,6 +8,7 @@ namespace JJORY.Module
         #region Variable
         [Header("유저 게임 정보 관련")]
         public bool isUserData = false;
+        public GameObject player_Prefab;
         #endregion
 
         #region Method

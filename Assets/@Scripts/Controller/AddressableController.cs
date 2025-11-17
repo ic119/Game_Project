@@ -2,7 +2,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Unity.Collections;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
@@ -156,7 +155,7 @@ namespace JJORY.Module
         {
             AsyncOperationHandle handler;
 
-            while (!AddressableController.Instance.GetHandler(_key, out handler))
+            while (!GetHandler(_key, out handler))
             {
                 yield return null;
             }
@@ -168,7 +167,7 @@ namespace JJORY.Module
             }
 
             GameObject prefab = handler.Result as GameObject;
-            GameObject go = AddressableController.Instance.InstantiatePrefab(_key, prefab);
+            GameObject go = InstantiatePrefab(_key, prefab);
             go.transform.parent = _parent.transform;
         }
         #endregion
