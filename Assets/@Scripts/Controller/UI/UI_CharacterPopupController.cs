@@ -79,8 +79,6 @@ namespace JJORY.Controller.UI
                         }
                     }
                 }
-                //StatusInfoItemVIew view = statusInfoListItem_Prefab.GetComponent<StatusInfoItemVIew>();
-                //view.DataSetting(_title, _value);
             }
         }
 
@@ -93,29 +91,25 @@ namespace JJORY.Controller.UI
             {
                 if (i == 0)
                 {
-                    GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),
-                                                                                                      content_Rect);
+                    GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),content_Rect);
                     StatusInfoItemVIew view = popup.GetComponent<StatusInfoItemVIew>();
                     view.DataSetting("레벨", 1);
                 }
                 else if (i == 1)
                 {
-                    GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),
-                                                                                                      content_Rect);
+                    GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),content_Rect);
                     StatusInfoItemVIew view = popup.GetComponent<StatusInfoItemVIew>();
                     view.DataSetting("힘", 10);
                 }
                 else if (i == 2)
                 {
-                    GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),
-                                                                                                      content_Rect);
+                    GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),content_Rect);
                     StatusInfoItemVIew view = popup.GetComponent<StatusInfoItemVIew>();
                     view.DataSetting("민첩", 10);
                 }
                 else if (i == 3)
                 {
-                    GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),
-                                                                                                      content_Rect);
+                    GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.StatusInfoItem.ToString(),content_Rect);
                     StatusInfoItemVIew view = popup.GetComponent<StatusInfoItemVIew>();
                     view.DataSetting("지력", 10);
                 }
@@ -139,20 +133,21 @@ namespace JJORY.Controller.UI
             if (AddressableController.Instance != null)
             {
                 GameObject player = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.Player_Test.ToString());
-                MainSceneController mainScene = GetComponent<MainSceneController>();
-                if (mainScene != null)
+                MainSceneController mainScene = GameObject.FindFirstObjectByType<MainSceneController>();
+
+                if (mainScene.examplePlayerModule.GetComponent<ExamplePlayer>() == null)
                 {
-                    mainScene.playerControllerModule.SetActive(true);
-                    mainScene.playerControllerModule.GetComponent<ExamplePlayer>().Character = player.GetComponent<ExampleCharacterController>();
-                    
+                    mainScene.examplePlayerModule.AddComponent<ExamplePlayer>();
+                    ExamplePlayer examplePlayer = mainScene.examplePlayerModule.GetComponent<ExamplePlayer>();
+
+                    examplePlayer.Character = player.GetComponent<ExampleCharacterController>();
+                    examplePlayer.CharacterCamera = Camera.main.GetComponent<ExampleCharacterCamera>();
                 }
                 else
                 {
-                    Utils.CreateLogMessage<UI_CharacterPopupController>("MainSceneController is Null");
+                    Utils.CreateLogMessage<UI_CharacterPopupController>("ExamplePlayer is null");
                 }
             }
-
-
             Utils.CreateLogMessage<UI_CharacterPopupController>("시작하기 버튼 클릭!");
         }
         #endregion

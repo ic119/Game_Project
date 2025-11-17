@@ -1,6 +1,6 @@
-using JJORY.Module;
+﻿using JJORY.Module;
 using JJORY.Util;
-using System.Runtime.ExceptionServices;
+using KinematicCharacterController.Examples;
 using UnityEngine;
 
 namespace JJORY.Scene
@@ -9,7 +9,7 @@ namespace JJORY.Scene
     {
         #region Variable
         [Header("Controller Container")]
-        public GameObject playerControllerModule;
+        public GameObject examplePlayerModule;
         #endregion
 
         #region LifeCycle
@@ -22,6 +22,14 @@ namespace JJORY.Scene
         #endregion
 
         #region Method
+        public void ExamplePlayerSetting(Camera _camera, GameObject _player)
+        {
+            if (examplePlayerModule.GetComponent<ExamplePlayer>())
+            {
+                examplePlayerModule.GetComponent<ExamplePlayer>().Character = _player.GetComponent<ExampleCharacterController>();
+                examplePlayerModule.GetComponent<ExamplePlayer>().CharacterCamera = _camera.GetComponent<ExampleCharacterCamera>();
+            }
+        }
         #endregion
     }
 }

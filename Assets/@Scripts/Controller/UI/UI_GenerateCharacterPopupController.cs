@@ -1,4 +1,4 @@
-using JJORY.Module;
+ï»¿using JJORY.Module;
 using JJORY.Util;
 using UnityEngine;
 using UnityEngine.UI;
@@ -9,7 +9,7 @@ namespace JJORY.Controller.UI
     public class UI_GenerateCharacterPopupController : MonoBehaviour
     {
         #region Variable
-        [Header("UI º¯¼ö")]
+        [Header("UI ë³€ìˆ˜")]
         [SerializeField] private Button check_Button;
         #endregion
 
@@ -46,7 +46,7 @@ namespace JJORY.Controller.UI
             }
             gameObject.SetActive(false);
 
-            Utils.CreateLogMessage<UI_GenerateCharacterPopupController>("Ä³¸¯ÅÍ »ı¼º ÆË¾÷ ³» È®ÀÎ¹öÆ° Å¬¸¯");
+            Utils.CreateLogMessage<UI_GenerateCharacterPopupController>("ìºë¦­í„° ìƒì„± íŒì—… ë‚´ í™•ì¸ë²„íŠ¼ í´ë¦­");
         }
         #endregion
     }
