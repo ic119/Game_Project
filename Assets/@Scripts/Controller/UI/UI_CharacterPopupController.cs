@@ -1,6 +1,8 @@
 ﻿using JJORY.Module;
+using JJORY.Scene;
 using JJORY.Util;
 using JJORY.View.UI;
+using KinematicCharacterController.Examples;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -34,13 +36,13 @@ namespace JJORY.Controller.UI
 
         private void OnEnable()
         {
-            restart_Button.onClick.AddListener(OnClickedCreateButton);
+            restart_Button.onClick.AddListener(OnClickedRestartButton);
             play_Button.onClick.AddListener(OnClickedPlayButton);
         }
 
         private void OnDisable()
         {
-            restart_Button.onClick.RemoveListener(OnClickedCreateButton);
+            restart_Button.onClick.RemoveListener(OnClickedRestartButton);
             play_Button.onClick.RemoveListener(OnClickedPlayButton);
 
             if (EventController.Instance != null)
@@ -123,9 +125,9 @@ namespace JJORY.Controller.UI
         /// <summary>
         /// 생성하기 버튼 클릭 이벤트
         /// </summary>
-        private void OnClickedCreateButton()
+        private void OnClickedRestartButton()
         {
-            Utils.CreateLogMessage<UI_CharacterPopupController>("생성하기 버튼 클릭!");
+            Utils.CreateLogMessage<UI_CharacterPopupController>("새로하기 버튼 클릭!");
         }
 
         /// <summary>
@@ -133,7 +135,24 @@ namespace JJORY.Controller.UI
         /// </summary>
         private void OnClickedPlayButton()
         {
-            Destroy(gameObject);
+            gameObject.SetActive(false);
+            if (AddressableController.Instance != null)
+            {
+                GameObject player = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.Player_Test.ToString());
+                MainSceneController mainScene = GetComponent<MainSceneController>();
+                if (mainScene != null)
+                {
+                    mainScene.playerControllerModule.SetActive(true);
+                    mainScene.playerControllerModule.GetComponent<ExamplePlayer>().Character = player.GetComponent<ExampleCharacterController>();
+                    
+                }
+                else
+                {
+                    Utils.CreateLogMessage<UI_CharacterPopupController>("MainSceneController is Null");
+                }
+            }
+
+
             Utils.CreateLogMessage<UI_CharacterPopupController>("시작하기 버튼 클릭!");
         }
         #endregion

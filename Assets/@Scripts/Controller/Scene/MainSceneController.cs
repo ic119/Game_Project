@@ -1,5 +1,6 @@
 using JJORY.Module;
 using JJORY.Util;
+using System.Runtime.ExceptionServices;
 using UnityEngine;
 
 namespace JJORY.Scene
@@ -7,6 +8,8 @@ namespace JJORY.Scene
     public class MainSceneController : MonoBehaviour
     {
         #region Variable
+        [Header("Controller Container")]
+        public GameObject playerControllerModule;
         #endregion
 
         #region LifeCycle
