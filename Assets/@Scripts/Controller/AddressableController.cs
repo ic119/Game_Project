@@ -112,7 +112,8 @@ namespace JJORY.Module
                     return UnityEngine.Object.Instantiate(prefab) as T;
                 }
                 GameObject go = AddressableController.Instance.InstantiatePrefab(_key, prefab);
-                go.transform.parent = _parent.transform;
+                go.transform.SetParent(_parent.transform, false);
+                //go.transform.parent = _parent.transform;
                 //return UnityEngine.Object.Instantiate(prefab, _parent) as T;
                 return go as T;
             }
@@ -168,7 +169,7 @@ namespace JJORY.Module
 
             GameObject prefab = handler.Result as GameObject;
             GameObject go = InstantiatePrefab(_key, prefab);
-            go.transform.parent = _parent.transform;
+            go.transform.SetParent(_parent.transform, false);
         }
         #endregion
     }
