@@ -22,6 +22,7 @@ namespace JJORY.Scene.Login
 
         private void Start()
         {
+            //GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.UI_LoginScene.ToString(), gameObject.transform);
             StartCoroutine(AddressableController.Instance.InstantiateAsset(AddressKey.UI_LoginScene.ToString(), gameObject));
         }
 

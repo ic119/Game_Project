@@ -10,7 +10,6 @@ namespace JJORY.Scene
         #region Variable
         [Header("Controller Container")]
         public GameObject examplePlayerModule;
-
         #endregion
 
         #region LifeCycle
@@ -35,8 +34,6 @@ namespace JJORY.Scene
                 examplePlayerModule.GetComponent<ExamplePlayer>().CharacterCamera = _camera.GetComponent<ExampleCharacterCamera>();
             }
         }
-
-        
         #endregion
     }
 }

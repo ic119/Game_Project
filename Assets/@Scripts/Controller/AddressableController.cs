@@ -44,6 +44,7 @@ namespace JJORY.Module
                         else
                         {
                             Utils.CreateLogMessage<AddressableController>($"이미 {_address} 키가 존재합니다.");
+                            Addressables.Release(h);
                         }
                         _onLoad?.Invoke(h.Result);
 
@@ -64,7 +65,7 @@ namespace JJORY.Module
         /// <param name="_address">key 값</param>
         /// <param name="_type">제너릭 타입</param>
         /// <returns></returns>
-        public T InstantiatePrefab<T>(string _address, T _type) where T : UnityEngine.Object
+        public T InstantiatePrefab<T>(T _type) where T : UnityEngine.Object
         {
             if (_type is GameObject _go)
             {
@@ -111,10 +112,8 @@ namespace JJORY.Module
                 {
                     return UnityEngine.Object.Instantiate(prefab) as T;
                 }
-                GameObject go = AddressableController.Instance.InstantiatePrefab(_key, prefab);
+                GameObject go = AddressableController.Instance.InstantiatePrefab(prefab);
                 go.transform.SetParent(_parent.transform, false);
-                //go.transform.parent = _parent.transform;
-                //return UnityEngine.Object.Instantiate(prefab, _parent) as T;
                 return go as T;
             }
 
@@ -168,7 +167,7 @@ namespace JJORY.Module
             }
 
             GameObject prefab = handler.Result as GameObject;
-            GameObject go = InstantiatePrefab(_key, prefab);
+            GameObject go = InstantiatePrefab(prefab);
             go.transform.SetParent(_parent.transform, false);
         }
         #endregion
