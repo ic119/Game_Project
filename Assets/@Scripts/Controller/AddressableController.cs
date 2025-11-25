@@ -69,11 +69,11 @@ namespace JJORY.Module
         {
             if (_type is GameObject _go)
             {
-                Debug.Log($">>>>> Get Type : {typeof(T)}");
+                Utils.CreateLogMessage<AddressableController>($"Get Type : {typeof(T)}");
                 return GameObject.Instantiate(_go) as T;
             }
 
-            Debug.Log($">>>>> Get Type : {typeof(T)}");
+            Utils.CreateLogMessage<AddressableController>($"Get Type : {typeof(T)}");
             return _type;
         }
 
@@ -112,7 +112,7 @@ namespace JJORY.Module
                 {
                     return UnityEngine.Object.Instantiate(prefab) as T;
                 }
-                GameObject go = AddressableController.Instance.InstantiatePrefab(prefab);
+                GameObject go = InstantiatePrefab(prefab);
                 go.transform.SetParent(_parent.transform, false);
                 return go as T;
             }

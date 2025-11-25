@@ -137,9 +137,8 @@ namespace JJORY.Controller.UI
 
                 MainSceneController mainScene = GameObject.FindFirstObjectByType<MainSceneController>();
 
-                if (mainScene.examplePlayerModule.GetComponent<ExamplePlayer>() == null)
+                if (mainScene.examplePlayerModule.GetComponent<ExamplePlayer>() != null)
                 {
-                    mainScene.examplePlayerModule.AddComponent<ExamplePlayer>();
                     ExamplePlayer examplePlayer = mainScene.examplePlayerModule.GetComponent<ExamplePlayer>();
 
                     examplePlayer.Character = player.GetComponent<ExampleCharacterController>();
