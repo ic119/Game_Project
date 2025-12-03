@@ -42,6 +42,11 @@ namespace JJORY.Module
             }
         }
 
+        /// <summary>
+        /// 월드 맵 생성 로직
+        /// </summary>
+        /// <param name="_key"></param>
+        /// <param name="_go"></param>
         public void GenerateMaps(string _key, GameObject _go)
         {
             cur_Map = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(_key, _go.transform);
