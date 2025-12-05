@@ -8,7 +8,7 @@ namespace JJORY.Module
         #region Variable
         [Header("유저 게임 정보 관련")]
         public bool isUserData = false;
-        public GameObject player_Prefab;
+        public GameObject player;
 
         [Header("Map")]
         public GameObject cur_Map;
@@ -52,7 +52,6 @@ namespace JJORY.Module
             cur_Map = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(_key, _go.transform);
             Utils.CreateLogMessage<GameManager>($"Generated Map Object {_key}");
 
-
             if (cur_Map != null)
             {
                 foreach (Transform tr in cur_Map.transform)
@@ -60,6 +59,7 @@ namespace JJORY.Module
                    if (tr.gameObject.tag.Equals("Spawn"))
                     {
                         spawn_Position = tr.gameObject;
+                        Utils.CreateLogMessage<GameManager>($"플레이어 캐릭터 스폰 위치 세팅완료");
                     }
                 }
             }
