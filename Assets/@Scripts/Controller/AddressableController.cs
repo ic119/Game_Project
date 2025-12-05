@@ -59,7 +59,7 @@ namespace JJORY.Module
         }
 
         /// <summary>
-        /// Address를 통해 Load되어진 Asset을 Instantiate
+        /// Address없이 참조된 prefab 자체를 GameObject형태로 Instantiate 처리
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="_address">key 값</param>
@@ -78,7 +78,7 @@ namespace JJORY.Module
         }
 
         /// <summary>
-        /// Instantiate 헬퍼 함수
+        /// Address를 통해 Handler Check 후 해당 GameObject를 Instantiate 진행 후 위치 선정
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="_key"></param>
@@ -146,7 +146,7 @@ namespace JJORY.Module
         }
 
         /// <summary>
-        /// Load Object에서 Key값으로 해당 오브젝트 생성
+        /// Load Object에서 Key값으로 해당 오브젝트 생성_Coroutine 함수용
         /// </summary>
         /// <param name="_key"></param>
         /// <param name="_parent"></param>

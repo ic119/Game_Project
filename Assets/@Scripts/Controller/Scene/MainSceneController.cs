@@ -26,14 +26,7 @@ namespace JJORY.Scene
         #endregion
 
         #region Method
-        public void ExamplePlayerSetting(Camera _camera, GameObject _player)
-        {
-            if (examplePlayerModule.GetComponent<ExamplePlayer>())
-            {
-                examplePlayerModule.GetComponent<ExamplePlayer>().Character = _player.GetComponent<ExampleCharacterController>();
-                examplePlayerModule.GetComponent<ExamplePlayer>().CharacterCamera = _camera.GetComponent<ExampleCharacterCamera>();
-            }
-        }
+        
         #endregion
     }
 }
