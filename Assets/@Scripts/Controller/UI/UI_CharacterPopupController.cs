@@ -49,6 +49,12 @@ namespace JJORY.Controller.UI
             {
                 EventController.Instance.OnRequestGenerateCharacterPopup -= CreateCharacterData;
             }
+
+            if (GameManager.Instance != null && AddressableController.Instance != null)
+            {
+                GameManager.Instance.player = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.Player_Male.ToString());
+                GameManager.Instance.player.transform.position = GameManager.Instance.spawn_Position.transform.position;
+            }
         }
         #endregion
 
@@ -130,25 +136,6 @@ namespace JJORY.Controller.UI
         private void OnClickedPlayButton()
         {
             gameObject.SetActive(false);
-            if (AddressableController.Instance != null)
-            {
-                GameObject player = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.Player_Test.ToString());
-                player.transform.position = GameManager.Instance.spawn_Position.transform.position;
-
-                MainSceneController mainScene = GameObject.FindFirstObjectByType<MainSceneController>();
-
-                if (mainScene.examplePlayerModule.GetComponent<ExamplePlayer>() != null)
-                {
-                    ExamplePlayer examplePlayer = mainScene.examplePlayerModule.GetComponent<ExamplePlayer>();
-
-                    examplePlayer.Character = player.GetComponent<ExampleCharacterController>();
-                    examplePlayer.CharacterCamera = Camera.main.GetComponent<ExampleCharacterCamera>();
-                }
-                else
-                {
-                    Utils.CreateLogMessage<UI_CharacterPopupController>("ExamplePlayer is null");
-                }
-            }
             Utils.CreateLogMessage<UI_CharacterPopupController>("시작하기 버튼 클릭!");
         }
         #endregion
