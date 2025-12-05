@@ -16,6 +16,7 @@ namespace JJORY.Scene.Login
             AddressableController.Instance.LoadPrefab<GameObject>(AddressKey.UI_AlarmPopup.ToString());
             AddressableController.Instance.LoadPrefab<GameObject>(AddressKey.UI_CharacterInfoPopup.ToString());
             AddressableController.Instance.LoadPrefab<GameObject>(AddressKey.StatusInfoItem.ToString());
+            AddressableController.Instance.LoadPrefab<GameObject>(AddressKey.Player_Male.ToString());
             AddressableController.Instance.LoadPrefab<GameObject>(AddressKey.Player_Test.ToString());
             AddressableController.Instance.LoadPrefab<GameObject>(AddressKey.Beginner_Village.ToString());
         }
