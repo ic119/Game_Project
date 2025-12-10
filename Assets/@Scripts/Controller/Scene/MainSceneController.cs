@@ -1,6 +1,5 @@
 ﻿using JJORY.Module;
 using JJORY.Util;
-using KinematicCharacterController.Examples;
 using UnityEngine;
 
 namespace JJORY.Scene

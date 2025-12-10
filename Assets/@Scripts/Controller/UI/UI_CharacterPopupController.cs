@@ -2,7 +2,6 @@
 using JJORY.Scene;
 using JJORY.Util;
 using JJORY.View.UI;
-using KinematicCharacterController.Examples;
 using UnityEngine;
 using UnityEngine.UI;
 
