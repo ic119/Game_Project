@@ -16,14 +16,12 @@ namespace JJORY.Scene.Login
             AddressableController.Instance.LoadPrefab<GameObject>(AddressKey.UI_AlarmPopup.ToString());
             AddressableController.Instance.LoadPrefab<GameObject>(AddressKey.UI_CharacterInfoPopup.ToString());
             AddressableController.Instance.LoadPrefab<GameObject>(AddressKey.StatusInfoItem.ToString());
-            AddressableController.Instance.LoadPrefab<GameObject>(AddressKey.Player_Male.ToString());
-            AddressableController.Instance.LoadPrefab<GameObject>(AddressKey.Player_Test.ToString());
+            AddressableController.Instance.LoadPrefab<GameObject>(AddressKey.Player_Admin.ToString());
             AddressableController.Instance.LoadPrefab<GameObject>(AddressKey.Beginner_Village.ToString());
         }
 
         private void Start()
         {
-            //GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.UI_LoginScene.ToString(), gameObject.transform);
             StartCoroutine(AddressableController.Instance.InstantiateAsset(AddressKey.UI_LoginScene.ToString(), gameObject));
         }
 
