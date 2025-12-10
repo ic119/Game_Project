@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: c3f2e9052ac014345902228fecfda963
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Prefabs/ButtonPanelChat.prefab
+  uploadId: 775568

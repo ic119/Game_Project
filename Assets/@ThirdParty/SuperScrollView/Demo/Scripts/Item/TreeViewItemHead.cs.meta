@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: 11a462dfee0b7d2449512e91160abe29
+timeCreated: 1508251234
+licenseType: Store
+MonoImporter:
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scripts/Item/TreeViewItemHead.cs
+  uploadId: 775568

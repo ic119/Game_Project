@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 194f2661803276146b3183634e583a99
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scenes/NestedView/NestedListViewLeftToRightDemo.unity
+  uploadId: 775568

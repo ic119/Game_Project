@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 50984d9e24b7a9244aba4035d480778b
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scenes/PageView/PageViewSimpleDemo.unity
+  uploadId: 775568

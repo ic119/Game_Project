@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: cf68aad9d0070994091921ea8ff78534
+timeCreated: 1554896970
+licenseType: Store
+DefaultImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scenes/GridView/GridViewDiagonalSelectDeleteDemo.unity
+  uploadId: 775568

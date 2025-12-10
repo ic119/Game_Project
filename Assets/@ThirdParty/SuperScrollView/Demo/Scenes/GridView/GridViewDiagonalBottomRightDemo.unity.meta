@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 0ff4a315f32fc894d9e245dd7d1b2ad9
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scenes/GridView/GridViewDiagonalBottomRightDemo.unity
+  uploadId: 775568

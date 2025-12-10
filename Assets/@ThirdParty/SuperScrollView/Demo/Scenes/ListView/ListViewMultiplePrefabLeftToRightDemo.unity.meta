@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: db02894b19505cf4aa9560bb843010f5
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scenes/ListView/ListViewMultiplePrefabLeftToRightDemo.unity
+  uploadId: 775568

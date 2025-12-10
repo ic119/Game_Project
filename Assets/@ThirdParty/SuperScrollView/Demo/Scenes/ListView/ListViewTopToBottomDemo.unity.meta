@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: f3a60495689fc9d47a9e8c6180587baa
+timeCreated: 1501569498
+licenseType: Store
+DefaultImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scenes/ListView/ListViewTopToBottomDemo.unity
+  uploadId: 775568

@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 8fd63436202374f48b75598c66ec1f84
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scripts/ButtonPanel/ButtonPanelTreeView.cs
+  uploadId: 775568

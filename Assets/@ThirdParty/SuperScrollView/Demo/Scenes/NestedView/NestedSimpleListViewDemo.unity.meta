@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: eb1770a95c0664544b74aebf3c90bd49
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scenes/NestedView/NestedSimpleListViewDemo.unity
+  uploadId: 775568

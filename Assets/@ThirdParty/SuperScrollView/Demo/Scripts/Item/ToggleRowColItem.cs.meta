@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: c5c1e584c68970840931a5129a915bf7
+timeCreated: 1554897999
+licenseType: Store
+MonoImporter:
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scripts/Item/ToggleRowColItem.cs
+  uploadId: 775568

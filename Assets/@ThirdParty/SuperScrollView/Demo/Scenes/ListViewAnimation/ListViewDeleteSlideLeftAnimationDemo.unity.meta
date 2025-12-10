@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: b20e986250e399045b3be78bbb6e9128
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scenes/ListViewAnimation/ListViewDeleteSlideLeftAnimationDemo.unity
+  uploadId: 775568

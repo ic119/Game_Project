@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 95ad5386def6541488318d85b6187550
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scenes/ListViewAnimation/ListViewDeleteFadeAnimationDemo.unity
+  uploadId: 775568

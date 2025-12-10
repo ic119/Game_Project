@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 036a8a77d5ed3d44bb3c97e356b420fd
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scripts/ViewDemo/NestedView/NestedGridViewLeftToRightDemoScript.cs
+  uploadId: 775568

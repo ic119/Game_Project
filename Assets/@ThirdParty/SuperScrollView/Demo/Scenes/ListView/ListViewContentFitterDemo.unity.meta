@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 567a4a1a7ba17524b9a0179f6de2d0ec
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scenes/ListView/ListViewContentFitterDemo.unity
+  uploadId: 775568

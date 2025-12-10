@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: f1df8752038e58b47ae78e3251109178
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scenes/SpecialGridView/SpecialGridViewPullUpLoadMoreDemo.unity
+  uploadId: 775568

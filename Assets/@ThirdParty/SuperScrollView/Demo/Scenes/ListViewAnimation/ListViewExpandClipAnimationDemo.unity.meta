@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: c917124494f8e19489c222d7efe0e3ad
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scenes/ListViewAnimation/ListViewExpandClipAnimationDemo.unity
+  uploadId: 775568

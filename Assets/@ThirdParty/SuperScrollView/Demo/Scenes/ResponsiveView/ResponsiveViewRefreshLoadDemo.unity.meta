@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: e18b1163fe8568a45b8fbb862f7db51d
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scenes/ResponsiveView/ResponsiveViewRefreshLoadDemo.unity
+  uploadId: 775568

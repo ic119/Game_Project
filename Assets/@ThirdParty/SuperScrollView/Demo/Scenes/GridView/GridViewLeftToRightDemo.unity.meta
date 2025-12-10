@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 139855b22cb4c16458a4eeb6b44a5f43
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scenes/GridView/GridViewLeftToRightDemo.unity
+  uploadId: 775568

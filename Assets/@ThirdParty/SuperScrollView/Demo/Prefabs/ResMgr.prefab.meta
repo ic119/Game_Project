@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 42738b2cecb0a6741b97843053af9d6b
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Prefabs/ResMgr.prefab
+  uploadId: 775568

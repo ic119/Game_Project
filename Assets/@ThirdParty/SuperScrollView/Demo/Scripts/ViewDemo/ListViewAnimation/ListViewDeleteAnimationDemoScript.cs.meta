@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 0ac518309e8b8ee47afb2b4ef68f5a38
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scripts/ViewDemo/ListViewAnimation/ListViewDeleteAnimationDemoScript.cs
+  uploadId: 775568

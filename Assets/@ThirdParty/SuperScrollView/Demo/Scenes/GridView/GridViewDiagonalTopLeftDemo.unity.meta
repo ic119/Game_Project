@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: b7aa6333dd21cc0489e016233f0746de
+timeCreated: 1554649188
+licenseType: Store
+DefaultImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scenes/GridView/GridViewDiagonalTopLeftDemo.unity
+  uploadId: 775568

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: d514bf058ea44214e9f9746ced3f77fa
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scenes/ListView/ListViewPullDownRefreshDemo.unity
+  uploadId: 775568

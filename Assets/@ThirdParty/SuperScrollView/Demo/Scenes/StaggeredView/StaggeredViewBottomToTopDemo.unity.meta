@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 5fc505a26834ce64d85de03cb16b5b5d
+timeCreated: 1534672908
+licenseType: Store
+DefaultImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scenes/StaggeredView/StaggeredViewBottomToTopDemo.unity
+  uploadId: 775568

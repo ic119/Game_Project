@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: b75d74578cd4e914287c30bae25fc6eb
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Prefabs/ButtonPanelHorizontal.prefab
+  uploadId: 775568

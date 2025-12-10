@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: c81570a2cb0e8f9459ee38e19db4c594
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scenes/ListViewAnimation/ListViewAddSlideRightAnimationDemo.unity
+  uploadId: 775568

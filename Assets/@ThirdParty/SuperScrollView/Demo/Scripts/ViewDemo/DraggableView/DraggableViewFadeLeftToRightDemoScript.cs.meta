@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 81804ad6933a781428360faa10388003
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scripts/ViewDemo/DraggableView/DraggableViewFadeLeftToRightDemoScript.cs
+  uploadId: 775568

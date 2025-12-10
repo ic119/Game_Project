@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 4fc615f5364f0314bb1fd0bc84b4fd77
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 86572
+  packageName: UGUI Super ScrollView
+  packageVersion: 2.5.5
+  assetPath: Assets/SuperScrollView/Demo/Scenes/SpinView/SpinTimePickerDemo.unity
+  uploadId: 775568
