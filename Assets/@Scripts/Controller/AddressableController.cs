@@ -4,7 +4,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.InputSystem;
 using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.UIElements;
 
 namespace JJORY.Module
 {
@@ -13,9 +15,48 @@ namespace JJORY.Module
         #region Variable
         [Header("Handler 관련")]
         public Dictionary<string, AsyncOperationHandle> key_Dictionary = new Dictionary<string, AsyncOperationHandle>();
+        public HashSet<string> key_HashSet = new HashSet<string>();
         #endregion
 
         #region Method
+        /// <summary>
+        /// Addressable Asset에서 Load하기 위한 Key 값을 중복 방지를 위해 HashSet에 추가 처리
+        /// </summary>
+        /// <param name="_key"></param>
+        public void AddKeyHashSet(string _key)
+        {
+            if (key_HashSet != null)
+            {
+                key_HashSet.Add(_key);
+                Utils.CreateLogMessage<AddressableController>($"키[{_key}]를 key_HashSet 추가 완료!");
+            }
+        }
+
+        public void RemoveKeyFromHashSet(string _key)
+        {
+            if (key_HashSet.Count > 0)
+            {
+                if (key_HashSet.Contains(_key))
+                {
+                    key_HashSet.Remove(_key);
+                    Utils.CreateLogMessage<AddressableController>($"키[{_key}]를 key_HashSet 제거 완료!");
+                }
+                else
+                {
+                    Utils.CreateLogMessage<AddressableController>($"키[{_key}] Key_HashSet에 존재하지 않음");
+                }
+            }
+        }
+
+        public void AllRemoveKeyHashSet()
+        {
+            if (key_HashSet != null && key_HashSet.Count > 0)
+            {
+                key_HashSet.Clear();
+                Utils.CreateLogMessage<AddressableController>("Key_HashSet 전체 제거 완료");
+            }
+        }
+
         /// <summary>
         /// address값을 통하여 Asset Load 처리
         /// </summary>
