@@ -52,7 +52,6 @@ namespace JJORY.Controller.UI
             if (GameManager.Instance != null && AddressableController.Instance != null)
             {
                 GameManager.Instance.player = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.Player_Male.ToString());
-                GameManager.Instance.player.transform.position = GameManager.Instance.spawn_Position.transform.position;
             }
         }
         #endregion
