@@ -533,7 +533,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   isUserData: 0
-  player_Prefab: {fileID: 0}
+  player: {fileID: 0}
+  cur_Map: {fileID: 0}
+  spawn_Position: {fileID: 0}
 --- !u!1 &1524053848
 GameObject:
   m_ObjectHideFlags: 0
