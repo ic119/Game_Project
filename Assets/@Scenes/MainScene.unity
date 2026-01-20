@@ -614,7 +614,7 @@ MonoBehaviour:
     LookAtTarget: {fileID: 0}
     CustomLookAtTarget: 0
   Lens:
-    FieldOfView: 60.000004
+    FieldOfView: 20
     OrthographicSize: 10
     NearClipPlane: 0.2
     FarClipPlane: 500
@@ -1685,7 +1685,7 @@ Camera:
     height: 1
   near clip plane: 0.2
   far clip plane: 500
-  field of view: 60.000004
+  field of view: 20
   orthographic: 0
   orthographic size: 10
   m_Depth: -1

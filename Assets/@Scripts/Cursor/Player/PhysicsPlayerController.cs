@@ -1,4 +1,4 @@
-﻿using JJORY.Util;
+using JJORY.Util;
 using UnityEngine;
 
 [RequireComponent(typeof(CharacterController))]
@@ -94,7 +94,8 @@ public class PhysicsPlayerController : MonoBehaviour
 
 		// 월드 기준 이동 방향 (필요 시 카메라 기준으로 변환 가능)
 		Vector3 moveDir = input;
-		if (moveDir.sqrMagnitude > 0.0001f)
+		bool hasInput = moveDir.sqrMagnitude > 0.0001f;
+		if (hasInput)
 		{
 			// Y 성분 제거 및 정규화
 			moveDir = new Vector3(moveDir.x, 0f, moveDir.z).normalized;
@@ -111,8 +112,18 @@ public class PhysicsPlayerController : MonoBehaviour
 		// 점프 입력
 		bool jumpPressed = Input.GetKeyDown(KeyCode.Space);
 
+		// 회전 중 슬라이딩 방지: 회전이 거의 완료될 때만 이동 허용
+		bool canMove = true;
+		if (hasInput && isGrounded)
+		{
+			// 현재 바라보는 방향과 목표 이동 방향의 각도 차이 계산
+			float angleDifference = Vector3.Angle(transform.forward, moveDir);
+			// 회전 각도 차이가 5도 이하일 때만 이동 허용
+			canMove = angleDifference <= 5f;
+		}
+
 		// 수평 속도 계산 (지상/공중 구분)
-		Vector3 desiredHorizontal = moveDir * moveSpeed;
+		Vector3 desiredHorizontal = (hasInput && canMove) ? moveDir * moveSpeed : Vector3.zero;
 		if (isGrounded)
 		{
 			// 착지 처리
@@ -122,8 +133,15 @@ public class PhysicsPlayerController : MonoBehaviour
 				verticalVelocity = groundedSnapSpeed;
 			}
 
-			// 지상에서는 입력대로 즉시 반응
-			currentHorizontalVelocity = desiredHorizontal;
+			// 지상에서는 입력이 있을 때만 즉시 반응, 없을 때는 즉시 정지
+			if (desiredHorizontal.sqrMagnitude > 0.0001f)
+			{
+				currentHorizontalVelocity = desiredHorizontal;
+			}
+			else
+			{
+				currentHorizontalVelocity = Vector3.zero;
+			}
 
 			// 더블점프 리셋
 			canDoubleJump = allowDoubleJump;
