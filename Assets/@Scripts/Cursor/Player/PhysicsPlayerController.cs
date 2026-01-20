@@ -1,0 +1,273 @@
+﻿using JJORY.Util;
+using UnityEngine;
+
+[RequireComponent(typeof(CharacterController))]
+[RequireComponent(typeof(Rigidbody))]
+public class PhysicsPlayerController : MonoBehaviour
+{
+	#region Variable
+	[Header("Components")]
+	[SerializeField] private CharacterController characterController;
+	[SerializeField] private Rigidbody rigidbodyComponent;
+
+	[Header("Movement")]
+	[SerializeField, Range(0.5f, 10f)] private float moveSpeed = 3.5f;
+	[SerializeField, Range(0f, 1080f)] private float rotateSpeed = 540f;
+
+	[Header("Jump")]
+	[SerializeField, Range(0.5f, 5f)] private float jumpHeight = 1.2f;
+	[SerializeField, Range(0.5f, 2f)] private float doubleJumpMultiplier = 0.9f;
+	[SerializeField, Range(0f, 2f)] private float jumpForwardMultiplier = 1.0f;
+	[SerializeField, Range(0f, 1f)] private float airControl = 0.5f;
+	[SerializeField] private bool allowDoubleJump = true;
+
+	[Header("Gravity")]
+	[SerializeField] private float gravity = -19.62f;
+	[SerializeField] private float groundedSnapSpeed = -2.0f;
+	private float verticalVelocity;
+
+	[Header("Ground Check")]
+	[SerializeField] private LayerMask groundMask = ~0;
+	[SerializeField] private float groundCheckRadius = 0.2f;
+	[SerializeField] private float groundCheckDistance = 0.3f;
+
+	[Header("Wall Check")]
+	[SerializeField] private LayerMask wallMask = ~0;
+	[SerializeField] private float wallCheckRadius = 0.3f;
+	[SerializeField] private float wallCheckDistance = 0.5f;
+
+	private Vector3 lastMoveDirection;
+	private Vector3 lastWallNormal;
+	private Vector3 currentHorizontalVelocity;
+	private bool canDoubleJump;
+	[SerializeField] private CinemachinePlayerFollowController followController;
+	#endregion
+
+	#region LifeCycle
+	private void Awake()
+	{
+		if (characterController == null)
+		{
+			characterController = GetComponent<CharacterController>();
+		}
+		if (rigidbodyComponent == null)
+		{
+			rigidbodyComponent = GetComponent<Rigidbody>();
+		}
+
+		// Rigidbody는 물리 시뮬레이션 충돌 감지 용도로만 사용하고 이동은 CharacterController로 수행
+		rigidbodyComponent.isKinematic = true;
+		rigidbodyComponent.useGravity = false;
+		rigidbodyComponent.constraints = RigidbodyConstraints.FreezeRotation;
+
+		currentHorizontalVelocity = Vector3.zero;
+		canDoubleJump = false;
+	}
+
+    private void Start()
+    {
+		if (followController == null)
+		{
+			followController = GameObject.FindFirstObjectByType<CinemachinePlayerFollowController>();
+		}
+
+		followController.target = gameObject.transform;
+    }
+
+    private void Update()
+	{
+		ProcessMovement();
+	}
+	#endregion
+
+	#region Method
+	/// <summary>
+	/// 이동 관련 처리
+	/// </summary>
+	private void ProcessMovement()
+	{
+		// 입력 처리
+		float h = Input.GetAxisRaw("Horizontal"); 
+		float v = Input.GetAxisRaw("Vertical");   
+		Vector3 input = new Vector3(h, 0f, v);
+		input = Vector3.ClampMagnitude(input, 1f);
+
+		// 월드 기준 이동 방향 (필요 시 카메라 기준으로 변환 가능)
+		Vector3 moveDir = input;
+		if (moveDir.sqrMagnitude > 0.0001f)
+		{
+			// Y 성분 제거 및 정규화
+			moveDir = new Vector3(moveDir.x, 0f, moveDir.z).normalized;
+			lastMoveDirection = moveDir;
+
+			// 회전
+			Quaternion targetRot = Quaternion.LookRotation(moveDir, Vector3.up);
+			transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRot, rotateSpeed * Time.deltaTime);
+		}
+
+		// Ground 체크
+		bool isGrounded = IsGrounded();
+
+		// 점프 입력
+		bool jumpPressed = Input.GetKeyDown(KeyCode.Space);
+
+		// 수평 속도 계산 (지상/공중 구분)
+		Vector3 desiredHorizontal = moveDir * moveSpeed;
+		if (isGrounded)
+		{
+			// 착지 처리
+			if (verticalVelocity < 0f)
+			{
+				// 지면 위에서 살짝 붙게 유지 (CharacterController 특성상 0보다 작은 값 권장)
+				verticalVelocity = groundedSnapSpeed;
+			}
+
+			// 지상에서는 입력대로 즉시 반응
+			currentHorizontalVelocity = desiredHorizontal;
+
+			// 더블점프 리셋
+			canDoubleJump = allowDoubleJump;
+
+			// 지상 점프
+			if (jumpPressed)
+			{
+				float initialVel = CalculateJumpVelocity(jumpHeight);
+				verticalVelocity = initialVel;
+
+				// 포물선 진행을 위한 초기 수평 추진 (입력 없을 때는 마지막 바라보는 방향 사용)
+				Vector3 forwardBasis = (moveDir.sqrMagnitude > 0.0001f)
+					? moveDir
+					: (lastMoveDirection.sqrMagnitude > 0.0001f ? lastMoveDirection : transform.forward);
+				if (jumpForwardMultiplier > 0f)
+				{
+					Vector3 jumpHorizontal = forwardBasis.normalized * (moveSpeed * jumpForwardMultiplier);
+					// 점프 순간에는 기존 속도와 합성하되, 입력이 약하면 보강
+					currentHorizontalVelocity = (desiredHorizontal.sqrMagnitude > 0.0001f)
+						? Vector3.Max(currentHorizontalVelocity, jumpHorizontal)
+						: jumpHorizontal;
+				}
+			}
+		}
+		else
+		{
+			// 공중에서는 중력 적용
+			verticalVelocity += gravity * Time.deltaTime;
+
+			// 공중 조작: 일정 비율로 원하는 속도에 수렴
+			if (desiredHorizontal.sqrMagnitude > 0.0001f)
+			{
+				currentHorizontalVelocity = Vector3.Lerp(currentHorizontalVelocity, desiredHorizontal, airControl * Time.deltaTime);
+			}
+
+			// 더블점프
+			if (jumpPressed && canDoubleJump)
+			{
+				canDoubleJump = false;
+				float initialVel = CalculateJumpVelocity(jumpHeight * doubleJumpMultiplier);
+				verticalVelocity = initialVel;
+
+				// 더블점프 시에도 수평 추진을 약간 부여
+				Vector3 forwardBasis = (moveDir.sqrMagnitude > 0.0001f)
+					? moveDir
+					: (lastMoveDirection.sqrMagnitude > 0.0001f ? lastMoveDirection : transform.forward);
+				if (jumpForwardMultiplier > 0f)
+				{
+					Vector3 jumpHorizontal = forwardBasis.normalized * (moveSpeed * jumpForwardMultiplier);
+					currentHorizontalVelocity = Vector3.Max(currentHorizontalVelocity, jumpHorizontal);
+				}
+			}
+		}
+
+		// 최종 이동 벡터
+		Vector3 horizontal = currentHorizontalVelocity;
+		Vector3 velocity = new Vector3(horizontal.x, verticalVelocity, horizontal.z);
+
+		// 이동
+		CollisionFlags flags = characterController.Move(velocity * Time.deltaTime);
+
+		// 벽 충돌 체크 (CharacterController 기준)
+		bool touchWallByFlags = (flags & CollisionFlags.Sides) != 0;
+		bool touchWallByCast = CheckWallWithSphereCast(moveDir);
+		bool isTouchingWall = touchWallByFlags || touchWallByCast;
+
+		// 머리 부딪힘 처리: 위쪽 충돌 시 상승 속도 제거
+		if ((flags & CollisionFlags.Above) != 0 && verticalVelocity > 0f)
+		{
+			verticalVelocity = 0f;
+		}
+
+		// 필요 시 로깅 (과다 로그 방지를 위해 조건부 사용 권장)
+		if (isTouchingWall) 
+		{
+			Utils.CreateLogError<PhysicsPlayerController>("벽 충돌 감지"); 
+		}
+	}
+
+	/// <summary>
+	/// 점프 시 속도 계산 처리
+	/// </summary>
+	/// <param name="height"></param>
+	/// <returns></returns>
+	private float CalculateJumpVelocity(float height)
+	{
+		// gravity는 음수 가정
+		height = Mathf.Max(0.0001f, height);
+		return Mathf.Sqrt(-2f * gravity * height);
+	}
+
+	private bool IsGrounded()
+	{
+		if (characterController.isGrounded)
+		{
+			return true;
+		}
+
+		// CharacterController의 바닥 근처에서 보조 체크 (SphereCast)
+		Vector3 origin = GetGroundCheckOrigin();
+		if (Physics.SphereCast(origin, groundCheckRadius, Vector3.down, out _, groundCheckDistance, groundMask, QueryTriggerInteraction.Ignore))
+		{
+			return true;
+		}
+
+		return false;
+	}
+
+	private Vector3 GetGroundCheckOrigin()
+	{
+		// CharacterController bounds를 사용해 바닥 부근에서 캐스트
+		Bounds b = characterController.bounds;
+		Vector3 origin = new Vector3(b.center.x, b.min.y + 0.05f, b.center.z);	
+		return origin;
+	}
+
+	private bool CheckWallWithSphereCast(Vector3 moveDir)
+	{
+		if (moveDir.sqrMagnitude < 0.0001f)
+		{
+			return false;
+		}
+
+		Vector3 origin = transform.position + Vector3.up * (characterController.height * 0.5f);
+		if (Physics.SphereCast(origin, wallCheckRadius, moveDir.normalized, out RaycastHit hit, wallCheckDistance, wallMask, QueryTriggerInteraction.Ignore))
+		{
+			lastWallNormal = hit.normal;
+			return true;
+		}
+		return false;
+	}
+
+	private void OnControllerColliderHit(ControllerColliderHit hit)
+	{
+		// CharacterController가 벽/장애물과 부딪힐 때 호출됨
+		// 마지막 벽 노멀 저장 (필요 시 반사/슬라이딩 처리에 활용)
+		if (hit.moveDirection.y <= 0.1f)
+		{
+			lastWallNormal = hit.normal;
+		}
+	}
+
+	// 외부 조회용 보조 API
+	public Vector3 GetLastWallNormal() => lastWallNormal;
+	public Vector3 GetLastMoveDirection() => lastMoveDirection;
+	#endregion
+}
