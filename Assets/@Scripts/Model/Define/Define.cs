@@ -7,5 +7,6 @@
     Player_Male,
     Player_Female,
     Player_Admin,
-    Beginner_Village   // 초보자 마을
+    Beginner_Village,   // 초보자 마을
+    Test_Map
 }

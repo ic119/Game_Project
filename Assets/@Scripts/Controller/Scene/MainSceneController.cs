@@ -15,10 +15,10 @@ namespace JJORY.Scene
             Utils.CreateLogMessage<MainSceneController>("Main Scene Load Complete!");
             StartCoroutine(AddressableController.Instance.InstantiateAsset(AddressKey.UI_CharacterInfoPopup.ToString(), gameObject));
 
-            //if (GameManager.Instance != null )
-            //{
-            //    GameManager.Instance.GenerateMaps(AddressKey.Beginner_Village.ToString(), gameObject);
-            //}
+            if (GameManager.Instance != null )
+            {
+                GameManager.Instance.GenerateMaps(AddressKey.Test_Map.ToString(), gameObject);
+            }
         }
         #endregion
 
