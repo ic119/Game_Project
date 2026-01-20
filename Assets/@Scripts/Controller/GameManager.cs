@@ -68,6 +68,11 @@ namespace JJORY.Module
                 Utils.CreateLogMessage<GameManager>("cur_Map is Null");
             }
         }
+
+        private void CharacterPositionSet()
+        {
+
+        }
         #endregion
     }
 }

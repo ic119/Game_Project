@@ -1,5 +1,4 @@
 ﻿using JJORY.Module;
-using JJORY.Scene;
 using JJORY.Util;
 using JJORY.View.UI;
 using UnityEngine;
