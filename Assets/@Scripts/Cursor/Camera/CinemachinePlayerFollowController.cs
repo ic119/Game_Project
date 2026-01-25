@@ -11,13 +11,13 @@ public class CinemachinePlayerFollowController : MonoBehaviour
 	public Transform target;
 
 	[Header("Follow Settings")]
-	[SerializeField] private Vector3 followOffset = new Vector3(0f, 6f, -8f);
+	[SerializeField] private Vector3 followOffset = new Vector3(0f, 4f, 1.5f);
 	[SerializeField, Range(0f, 5f)] private float positionDamping = 0.5f;
 	[SerializeField, Range(0f, 5f)] private float rotationDamping = 0.5f;
 
 	[SerializeField] private CinemachineCamera cmCamera;
 	[SerializeField] private CinemachinePositionComposer positionComposer;
-	[SerializeField] private CinemachineRotationComposer rotationComposer;
+	//[SerializeField] private CinemachineRotationComposer rotationComposer;
 	#endregion
 
 	#region LifeCycle
@@ -92,11 +92,11 @@ public class CinemachinePlayerFollowController : MonoBehaviour
 			positionComposer = cmCamera.gameObject.AddComponent<CinemachinePositionComposer>();
 		}
 
-		rotationComposer = cmCamera.GetComponent<CinemachineRotationComposer>();
-		if (rotationComposer == null)
-		{
-			rotationComposer = cmCamera.gameObject.AddComponent<CinemachineRotationComposer>();
-		}
+		//rotationComposer = cmCamera.GetComponent<CinemachineRotationComposer>();
+		//if (rotationComposer == null)
+		//{
+		//	rotationComposer = cmCamera.gameObject.AddComponent<CinemachineRotationComposer>();
+		//}
 	}
 
 	/// <summary>
@@ -110,10 +110,10 @@ public class CinemachinePlayerFollowController : MonoBehaviour
 			positionComposer.CameraDistance = Mathf.Max(0.1f, new Vector2(followOffset.x, followOffset.z).magnitude);
 			positionComposer.Damping = new Vector3(positionDamping, positionDamping, positionDamping);
 		}
-		if (rotationComposer != null)
-		{
-			rotationComposer.Damping = new Vector3(rotationDamping, rotationDamping, rotationDamping);
-		}
+		//if (rotationComposer != null)
+		//{
+		//	rotationComposer.Damping = new Vector3(rotationDamping, rotationDamping, rotationDamping);
+		//}
 	}
 
 	/// <param name="_target"></param>

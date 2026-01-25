@@ -1,4 +1,4 @@
-using JJORY.Util;
+﻿using JJORY.Util;
 using UnityEngine;
 
 [RequireComponent(typeof(CharacterController))]
@@ -41,6 +41,9 @@ public class PhysicsPlayerController : MonoBehaviour
 	private Vector3 currentHorizontalVelocity;
 	private bool canDoubleJump;
 	[SerializeField] private CinemachinePlayerFollowController followController;
+
+	[Header("Animator")]
+	[SerializeField] private Animator animator; 
 	#endregion
 
 	#region LifeCycle
@@ -53,6 +56,10 @@ public class PhysicsPlayerController : MonoBehaviour
 		if (rigidbodyComponent == null)
 		{
 			rigidbodyComponent = GetComponent<Rigidbody>();
+		}
+		if (animator == null)
+		{
+			animator = GetComponent<Animator>();
 		}
 
 		// Rigidbody는 물리 시뮬레이션 충돌 감지 용도로만 사용하고 이동은 CharacterController로 수행
@@ -287,5 +294,7 @@ public class PhysicsPlayerController : MonoBehaviour
 	// 외부 조회용 보조 API
 	public Vector3 GetLastWallNormal() => lastWallNormal;
 	public Vector3 GetLastMoveDirection() => lastMoveDirection;
+	public Vector3 GetCurrentHorizontalVelocity() => currentHorizontalVelocity;
+	public float GetCurrentHorizontalSpeed() => currentHorizontalVelocity.magnitude;
 	#endregion
 }

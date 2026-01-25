@@ -10,3 +10,16 @@
     Beginner_Village,   // 초보자 마을
     Test_Map
 }
+
+public enum PlayerMoveState
+{
+    Idle,
+    Walk,
+    Run
+}
+
+public enum PlayerAttackState
+{
+    Attack01,
+    Attack02
+}
