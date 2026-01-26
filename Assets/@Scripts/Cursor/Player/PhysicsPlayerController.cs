@@ -1,4 +1,5 @@
-﻿using JJORY.Util;
+﻿using JJORY.Controller.Player;
+using JJORY.Util;
 using UnityEngine;
 
 [RequireComponent(typeof(CharacterController))]
@@ -42,8 +43,8 @@ public class PhysicsPlayerController : MonoBehaviour
 	private bool canDoubleJump;
 	[SerializeField] private CinemachinePlayerFollowController followController;
 
-	[Header("Animator")]
-	[SerializeField] private Animator animator; 
+	[Header("Animator 관련")]
+	[SerializeField] private PlayerAnimationController animationController; 
 	#endregion
 
 	#region LifeCycle
@@ -57,9 +58,9 @@ public class PhysicsPlayerController : MonoBehaviour
 		{
 			rigidbodyComponent = GetComponent<Rigidbody>();
 		}
-		if (animator == null)
+		if (animationController == null)
 		{
-			animator = GetComponent<Animator>();
+            animationController = GetComponent<PlayerAnimationController>();
 		}
 
 		// Rigidbody는 물리 시뮬레이션 충돌 감지 용도로만 사용하고 이동은 CharacterController로 수행
@@ -104,14 +105,20 @@ public class PhysicsPlayerController : MonoBehaviour
 		bool hasInput = moveDir.sqrMagnitude > 0.0001f;
 		if (hasInput)
 		{
-			// Y 성분 제거 및 정규화
-			moveDir = new Vector3(moveDir.x, 0f, moveDir.z).normalized;
+			animationController.SetMoveState(PlayerMoveState.Walk);
+
+            // Y 성분 제거 및 정규화
+            moveDir = new Vector3(moveDir.x, 0f, moveDir.z).normalized;
 			lastMoveDirection = moveDir;
 
 			// 회전
 			Quaternion targetRot = Quaternion.LookRotation(moveDir, Vector3.up);
 			transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRot, rotateSpeed * Time.deltaTime);
 		}
+		else
+		{
+            animationController.SetMoveState(PlayerMoveState.Idle);
+        }
 
 		// Ground 체크
 		bool isGrounded = IsGrounded();
@@ -133,6 +140,7 @@ public class PhysicsPlayerController : MonoBehaviour
 		Vector3 desiredHorizontal = (hasInput && canMove) ? moveDir * moveSpeed : Vector3.zero;
 		if (isGrounded)
 		{
+			animationController.SetMoveState(PlayerMoveState.Jump);
 			// 착지 처리
 			if (verticalVelocity < 0f)
 			{
@@ -144,11 +152,13 @@ public class PhysicsPlayerController : MonoBehaviour
 			if (desiredHorizontal.sqrMagnitude > 0.0001f)
 			{
 				currentHorizontalVelocity = desiredHorizontal;
-			}
+                animationController.SetMoveState(PlayerMoveState.Walk);
+            }
 			else
 			{
 				currentHorizontalVelocity = Vector3.zero;
-			}
+                animationController.SetMoveState(PlayerMoveState.Idle);
+            }
 
 			// 더블점프 리셋
 			canDoubleJump = allowDoubleJump;

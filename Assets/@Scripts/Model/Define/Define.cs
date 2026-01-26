@@ -13,13 +13,14 @@
 
 public enum PlayerMoveState
 {
-    Idle,
+    Idle = 0,
     Walk,
-    Run
+    Run,
+    Jump
 }
 
 public enum PlayerAttackState
 {
-    Attack01,
-    Attack02
+    Attack01 = 10,
+    Attack02 = 11
 }
