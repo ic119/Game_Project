@@ -44,7 +44,8 @@ public class PhysicsPlayerController : MonoBehaviour
 	[SerializeField] private CinemachinePlayerFollowController followController;
 
 	[Header("Animator 관련")]
-	[SerializeField] private PlayerAnimationController animationController; 
+	[SerializeField] private Animator animator;
+	[SerializeField] private PlayerAnimationController animationController;
 	#endregion
 
 	#region LifeCycle
@@ -58,9 +59,13 @@ public class PhysicsPlayerController : MonoBehaviour
 		{
 			rigidbodyComponent = GetComponent<Rigidbody>();
 		}
+		if (animator == null)
+		{
+			animator = GetComponent<Animator>();
+		}
 		if (animationController == null)
 		{
-            animationController = GetComponent<PlayerAnimationController>();
+			animationController = GetComponent<PlayerAnimationController>();
 		}
 
 		// Rigidbody는 물리 시뮬레이션 충돌 감지 용도로만 사용하고 이동은 CharacterController로 수행
@@ -94,11 +99,22 @@ public class PhysicsPlayerController : MonoBehaviour
 	/// </summary>
 	private void ProcessMovement()
 	{
-		// 입력 처리
 		float h = Input.GetAxisRaw("Horizontal"); 
 		float v = Input.GetAxisRaw("Vertical");   
 		Vector3 input = new Vector3(h, 0f, v);
 		input = Vector3.ClampMagnitude(input, 1f);
+
+		// 달리기(Shift) 입력: 이동 속도를 2배로
+		bool isSprinting = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+        float currentMoveSpeed = moveSpeed * (isSprinting ? 2.5f : 1f);
+        if (isSprinting)
+		{
+            animationController.SetMoveState(PlayerMoveState.Run);
+        }
+		else
+		{
+            animationController.SetMoveState(PlayerMoveState.Walk);
+        }
 
 		// 월드 기준 이동 방향 (필요 시 카메라 기준으로 변환 가능)
 		Vector3 moveDir = input;
@@ -106,9 +122,8 @@ public class PhysicsPlayerController : MonoBehaviour
 		if (hasInput)
 		{
 			animationController.SetMoveState(PlayerMoveState.Walk);
-
-            // Y 성분 제거 및 정규화
-            moveDir = new Vector3(moveDir.x, 0f, moveDir.z).normalized;
+			// Y 성분 제거 및 정규화
+			moveDir = new Vector3(moveDir.x, 0f, moveDir.z).normalized;
 			lastMoveDirection = moveDir;
 
 			// 회전
@@ -137,12 +152,13 @@ public class PhysicsPlayerController : MonoBehaviour
 		}
 
 		// 수평 속도 계산 (지상/공중 구분)
-		Vector3 desiredHorizontal = (hasInput && canMove) ? moveDir * moveSpeed : Vector3.zero;
+		Vector3 desiredHorizontal = (hasInput && canMove) ? moveDir * currentMoveSpeed : Vector3.zero;
 		if (isGrounded)
 		{
-			animationController.SetMoveState(PlayerMoveState.Jump);
-			// 착지 처리
-			if (verticalVelocity < 0f)
+            animationController.SetMoveState(PlayerMoveState.Jump);
+
+            // 착지 처리
+            if (verticalVelocity < 0f)
 			{
 				// 지면 위에서 살짝 붙게 유지 (CharacterController 특성상 0보다 작은 값 권장)
 				verticalVelocity = groundedSnapSpeed;
@@ -157,8 +173,8 @@ public class PhysicsPlayerController : MonoBehaviour
 			else
 			{
 				currentHorizontalVelocity = Vector3.zero;
-                animationController.SetMoveState(PlayerMoveState.Idle);
-            }
+				animationController.SetMoveState(PlayerMoveState.Idle);
+			}
 
 			// 더블점프 리셋
 			canDoubleJump = allowDoubleJump;
@@ -175,7 +191,8 @@ public class PhysicsPlayerController : MonoBehaviour
 					: (lastMoveDirection.sqrMagnitude > 0.0001f ? lastMoveDirection : transform.forward);
 				if (jumpForwardMultiplier > 0f)
 				{
-					Vector3 jumpHorizontal = forwardBasis.normalized * (moveSpeed * jumpForwardMultiplier);
+					// 달리기 중이라면 더 빠른 수평 속도로 점프
+					Vector3 jumpHorizontal = forwardBasis.normalized * (currentMoveSpeed * jumpForwardMultiplier);
 					// 점프 순간에는 기존 속도와 합성하되, 입력이 약하면 보강
 					currentHorizontalVelocity = (desiredHorizontal.sqrMagnitude > 0.0001f)
 						? Vector3.Max(currentHorizontalVelocity, jumpHorizontal)
@@ -185,8 +202,11 @@ public class PhysicsPlayerController : MonoBehaviour
 		}
 		else
 		{
-			// 공중에서는 중력 적용
-			verticalVelocity += gravity * Time.deltaTime;
+
+            animationController.SetMoveState(PlayerMoveState.Idle);
+
+            // 공중에서는 중력 적용
+            verticalVelocity += gravity * Time.deltaTime;
 
 			// 공중 조작: 일정 비율로 원하는 속도에 수렴
 			if (desiredHorizontal.sqrMagnitude > 0.0001f)
@@ -207,7 +227,8 @@ public class PhysicsPlayerController : MonoBehaviour
 					: (lastMoveDirection.sqrMagnitude > 0.0001f ? lastMoveDirection : transform.forward);
 				if (jumpForwardMultiplier > 0f)
 				{
-					Vector3 jumpHorizontal = forwardBasis.normalized * (moveSpeed * jumpForwardMultiplier);
+					// 달리기 중이라면 더 빠른 수평 속도로 더블점프
+					Vector3 jumpHorizontal = forwardBasis.normalized * (currentMoveSpeed * jumpForwardMultiplier);
 					currentHorizontalVelocity = Vector3.Max(currentHorizontalVelocity, jumpHorizontal);
 				}
 			}
@@ -304,7 +325,5 @@ public class PhysicsPlayerController : MonoBehaviour
 	// 외부 조회용 보조 API
 	public Vector3 GetLastWallNormal() => lastWallNormal;
 	public Vector3 GetLastMoveDirection() => lastMoveDirection;
-	public Vector3 GetCurrentHorizontalVelocity() => currentHorizontalVelocity;
-	public float GetCurrentHorizontalSpeed() => currentHorizontalVelocity.magnitude;
 	#endregion
 }
