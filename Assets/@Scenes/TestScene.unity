@@ -283,7 +283,7 @@ Transform:
   m_GameObject: {fileID: 360908028}
   serializedVersion: 2
   m_LocalRotation: {x: 0.026492558, y: -0.021247882, z: 0.0023815003, w: 0.9994204}
-  m_LocalPosition: {x: 2.4054494, y: 1.1985561, z: -9.9769335}
+  m_LocalPosition: {x: 0.4234495, y: 0.7905561, z: -9.9769335}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -323,6 +323,7 @@ MonoBehaviour:
   wallCheckRadius: 0.3
   wallCheckDistance: 0.5
   followController: {fileID: 0}
+  animator: {fileID: 0}
   animationController: {fileID: 4878911023676858795}
 --- !u!54 &502053095
 Rigidbody:
@@ -447,7 +448,7 @@ Transform:
   m_GameObject: {fileID: 1081974876}
   serializedVersion: 2
   m_LocalRotation: {x: 0.026492558, y: -0.021247882, z: 0.0023815003, w: 0.9994204}
-  m_LocalPosition: {x: 2.4054494, y: 1.1985561, z: -9.9769335}
+  m_LocalPosition: {x: 0.4234495, y: 0.7905561, z: -9.9769335}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1009,7 +1010,7 @@ Transform:
   m_GameObject: {fileID: 919132149521679794}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.982, y: 0.668, z: 0}
+  m_LocalPosition: {x: 0, y: 0.26, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
