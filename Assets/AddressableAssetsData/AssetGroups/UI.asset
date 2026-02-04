@@ -25,11 +25,6 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: c5b443d488fb6d34399ddea3d8ea26f2
-    m_Address: UI_CharacterInfoPopup
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: e97f785830e0f5c418934a1f13345214
     m_Address: UI_AlarmPopup
     m_ReadOnly: 0
