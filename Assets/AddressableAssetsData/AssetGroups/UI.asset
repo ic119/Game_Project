@@ -20,11 +20,6 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: aa7d053aa9fc1784ea59f5e0e0bf054c
-    m_Address: StatusInfoItem
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: e97f785830e0f5c418934a1f13345214
     m_Address: UI_AlarmPopup
     m_ReadOnly: 0

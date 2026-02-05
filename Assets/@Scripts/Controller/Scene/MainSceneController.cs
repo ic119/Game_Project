@@ -13,7 +13,6 @@ namespace JJORY.Scene
         private void Start()
         {
             Utils.CreateLogMessage<MainSceneController>("Main Scene Load Complete!");
-            StartCoroutine(AddressableController.Instance.InstantiateAsset(AddressKey.UI_CharacterInfoPopup.ToString(), gameObject));
 
             if (GameManager.Instance != null )
             {

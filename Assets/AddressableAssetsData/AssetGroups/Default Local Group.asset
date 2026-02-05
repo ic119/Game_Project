@@ -20,16 +20,6 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: c5e5d26cdeb66d84990d0bfa1d590b7e
-    m_Address: Player_Male
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: ee85f2fb6b5748043916d16704d28651
-    m_Address: Player_Admin
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 7498f9b7ba6761c4bac2c1aab620b9b9, type: 2}
   m_SchemaSet:
