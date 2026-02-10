@@ -1,6 +1,8 @@
-﻿using JJORY.Define;
+﻿using DG.Tweening;
+using JJORY.Define;
 using JJORY.Module;
 using JJORY.Util;
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -25,37 +27,78 @@ namespace JJORY.Controller.UI
         [Header("키보드 액션")]
         [SerializeField] private TMP_InputField[] inputField_Arr;
         private int cur_Index = 0;
+
+        [Header("타이틀 관련 변수")]
+        [SerializeField] private TextMeshProUGUI infoTitle;
+        [SerializeField] private float duration = 0.3f; // 사라지는데 걸리는 시간
+        private Tween blinkTween;
         #endregion
 
         #region LifeCycle
         private void Awake()
         {
-            Init();
+            //Init();
 
-            login_Button.onClick.AddListener(OnClickLoginButton);
-            regist_Button.onClick.AddListener(OnClickRegistButton);
+            //login_Button.onClick.AddListener(OnClickLoginButton);
+            //regist_Button.onClick.AddListener(OnClickRegistButton);
+        }
+
+        private void OnEnable()
+        {
+            StartBlink();
         }
 
         private void Update()
         {
-            if (Input.GetKeyDown(KeyCode.Tab))
-            {
-                MoveToNextInputField();
-            }
-            else if(Input.GetKeyDown(KeyCode.Return))
-            {
-                OnClickLoginButton();
-            }
+            //if (Input.GetKeyDown(KeyCode.Tab))
+            //{
+            //    MoveToNextInputField();
+            //}
+            //else if(Input.GetKeyDown(KeyCode.Return))
+            //{
+            //    OnClickLoginButton();
+            //}
+        }
+
+        private void OnDisable()
+        {
+            StopBlink();
         }
 
         private void OnDestroy()
         {
-            login_Button.onClick.RemoveListener(OnClickLoginButton);
-            regist_Button.onClick.RemoveListener(OnClickRegistButton);
+            //login_Button.onClick.RemoveListener(OnClickLoginButton);
+            //regist_Button.onClick.RemoveListener(OnClickRegistButton);
         }
         #endregion
 
         #region Method
+        public void StartBlink()
+        {
+            if (infoTitle == null) return;
+
+            // 시작 알파 보정 (중요!)
+            infoTitle.alpha = 1f;
+
+            // 기존 트윈 제거(중복/충돌 방지)
+            blinkTween?.Kill();
+            infoTitle.DOKill();
+
+            blinkTween = infoTitle
+                .DOFade(0f, duration)
+                .SetEase(Ease.Linear)
+                .SetLoops(-1, LoopType.Yoyo); // 무한 깜빡임
+        }
+
+        public void StopBlink()
+        {
+            blinkTween?.Kill();
+            blinkTween = null;
+
+            if (infoTitle != null)
+                infoTitle.alpha = 1f; // 원상복구
+        }
+
         /// <summary>
         /// InputField 초기화
         /// </summary>
@@ -156,7 +199,7 @@ namespace JJORY.Controller.UI
         /// <summary>
         /// CloseMask 애니메이션 완료 후 MainScene으로 전환하는 코루틴
         /// </summary>
-        private System.Collections.IEnumerator LoadMainSceneAfterMask()
+        private IEnumerator LoadMainSceneAfterMask()
         {
             // CloseMask 애니메이션 완료까지 대기 (1초)
             yield return new WaitForSeconds(1.0f);
