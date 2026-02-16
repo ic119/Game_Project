@@ -64,7 +64,6 @@ namespace JJORY.Scene.Dummy
             }
         }
 
-
         #region LifeCycle
         private void Start()
         {

@@ -1,4 +1,4 @@
-﻿using JJORY.Module;
+using JJORY.Module;
 using JJORY.Util;
 using Unity.Cinemachine;
 using UnityEngine;
@@ -17,7 +17,17 @@ public class CinemachinePlayerFollowController : MonoBehaviour
 
 	[SerializeField] private CinemachineCamera cmCamera;
 	[SerializeField] private CinemachinePositionComposer positionComposer;
-	//[SerializeField] private CinemachineRotationComposer rotationComposer;
+
+	[Header("Orbit (Right Click)")]
+	[SerializeField] private float orbitSensitivityX = 3f;
+	[SerializeField] private float orbitSensitivityY = 2f;
+	[SerializeField, Range(-89f, 0f)] private float orbitPitchMin = -60f;
+	[SerializeField, Range(0f, 89f)] private float orbitPitchMax = 60f;
+
+	private Transform _orbitPivot;
+	private Transform _cameraSlot;
+	private float _orbitYaw;
+	private float _orbitPitch;
 	#endregion
 
 	#region LifeCycle
@@ -28,6 +38,19 @@ public class CinemachinePlayerFollowController : MonoBehaviour
 		SetupCinemachine();
 		ApplySettings();
 	}   
+
+	private void Update()
+	{
+		if (Input.GetMouseButton(1))
+		{
+			_orbitYaw += Input.GetAxis("Mouse X") * orbitSensitivityX;
+			_orbitPitch -= Input.GetAxis("Mouse Y") * orbitSensitivityY;
+			_orbitPitch = Mathf.Clamp(_orbitPitch, orbitPitchMin, orbitPitchMax);
+		}
+
+		if (_orbitPivot != null)
+			_orbitPivot.localRotation = Quaternion.Euler(_orbitPitch, _orbitYaw, 0f);
+	}
 
 	private void OnValidate()
 	{
@@ -83,20 +106,49 @@ public class CinemachinePlayerFollowController : MonoBehaviour
 			}
 		}
 
-		cmCamera.Follow = target;
-		cmCamera.LookAt = target;
-
 		positionComposer = cmCamera.GetComponent<CinemachinePositionComposer>();
 		if (positionComposer == null)
 		{
 			positionComposer = cmCamera.gameObject.AddComponent<CinemachinePositionComposer>();
 		}
 
-		//rotationComposer = cmCamera.GetComponent<CinemachineRotationComposer>();
-		//if (rotationComposer == null)
-		//{
-		//	rotationComposer = cmCamera.gameObject.AddComponent<CinemachineRotationComposer>();
-		//}
+		CreateOrbitRig();
+		cmCamera.Follow = _cameraSlot != null ? _cameraSlot : target;
+		cmCamera.LookAt = target;
+	}
+
+	/// <summary>
+	/// 우클릭 오빗 회전용 피벗/슬롯 생성
+	/// </summary>
+	private void CreateOrbitRig()
+	{
+		if (target == null) return;
+
+		if (_orbitPivot != null)
+		{
+			if (Application.isPlaying)
+				Destroy(_orbitPivot.gameObject);
+			else
+				DestroyImmediate(_orbitPivot.gameObject);
+			_orbitPivot = null;
+			_cameraSlot = null;
+		}
+
+		float distance = positionComposer != null && positionComposer.CameraDistance > 0.01f
+			? positionComposer.CameraDistance
+			: Mathf.Max(0.1f, new Vector2(followOffset.x, followOffset.z).magnitude);
+
+		var pivotGo = new GameObject("OrbitPivot");
+		pivotGo.transform.SetParent(target);
+		pivotGo.transform.localPosition = new Vector3(0f, followOffset.y, 0f);
+		pivotGo.transform.localRotation = Quaternion.identity;
+		_orbitPivot = pivotGo.transform;
+
+		var slotGo = new GameObject("CameraSlot");
+		slotGo.transform.SetParent(_orbitPivot);
+		slotGo.transform.localPosition = new Vector3(0f, 0f, -distance);
+		slotGo.transform.localRotation = Quaternion.identity;
+		_cameraSlot = slotGo.transform;
 	}
 
 	/// <summary>
@@ -110,10 +162,11 @@ public class CinemachinePlayerFollowController : MonoBehaviour
 			positionComposer.CameraDistance = Mathf.Max(0.1f, new Vector2(followOffset.x, followOffset.z).magnitude);
 			positionComposer.Damping = new Vector3(positionDamping, positionDamping, positionDamping);
 		}
-		//if (rotationComposer != null)
-		//{
-		//	rotationComposer.Damping = new Vector3(rotationDamping, rotationDamping, rotationDamping);
-		//}
+
+		if (_orbitPivot != null)
+			_orbitPivot.localPosition = new Vector3(0f, followOffset.y, 0f);
+		if (_cameraSlot != null && positionComposer != null)
+			_cameraSlot.localPosition = new Vector3(0f, 0f, -positionComposer.CameraDistance);
 	}
 
 	/// <param name="_target"></param>
