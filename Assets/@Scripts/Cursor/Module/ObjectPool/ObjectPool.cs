@@ -25,7 +25,7 @@ public class ObjectPool : MonoBehaviour
 		if (useAddressables && loadKeyOnAwake && !string.IsNullOrEmpty(addressKey) && AddressableController.Instance != null)
 		{
 			// 비동기 로드 요청
-			AddressableController.Instance.LoadPrefab<GameObject>(addressKey);
+			AddressableController.Instance.LoadPrefabAddress<GameObject>(addressKey);
 		}
 
 		if (!useAddressables)

@@ -1,12 +1,10 @@
-﻿using JJORY.Util;
+using JJORY.Util;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
-using UnityEngine.InputSystem;
 using UnityEngine.ResourceManagement.AsyncOperations;
-using UnityEngine.UIElements;
 
 namespace JJORY.Module
 {
@@ -57,39 +55,49 @@ namespace JJORY.Module
             }
         }
 
+        public void LoadPrefabAddressFromHashSet(Action<GameObject> _onLoad = null)
+        {
+            if (key_HashSet.Count > 0)
+            {
+                foreach(var key in key_HashSet)
+                {
+                    LoadPrefabAddress<GameObject>(key, _onLoad);
+                }
+            }
+        }
+
         /// <summary>
         /// address값을 통하여 Asset Load 처리
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="_address">Key 값</param>
         /// <param name="_onLoad">콜백함수</param>
-        public void LoadPrefab<T>(string _address, Action<T> _onLoad = null) where T : UnityEngine.Object
+        public void LoadPrefabAddress<T>(string _key, Action<T> _onLoad = null) where T : UnityEngine.Object
         {
-            if (GetHandler(_address, out var _handler))
+            if (GetHandler(_key, out var _handler))
             {
                 return;
             }
             else
             {
-                AsyncOperationHandle<T> handler = Addressables.LoadAssetAsync<T>(_address);
-                Debug.Log($">>>>> {_address} 로드 성공");
+                AsyncOperationHandle<T> handler = Addressables.LoadAssetAsync<T>(_key);
 
                 handler.Completed += h =>
                 {
                     if (h.Status == AsyncOperationStatus.Succeeded)
                     {
-                        if (key_Dictionary.ContainsKey(_address) == false)
+                        if (!key_Dictionary.ContainsKey(_key))
                         {
-                            key_Dictionary.Add(_address, h);
+                            key_Dictionary.Add(_key, h);
                         }
                         else
                         {
-                            Utils.CreateLogMessage<AddressableController>($"이미 {_address} 키가 존재합니다.");
-                            Addressables.Release(h);
+                            Utils.CreateLogMessage<AddressableController>($"이미 {_key} 키가 존재합니다.");
                         }
                         _onLoad?.Invoke(h.Result);
 
-                        Utils.CreateLogMessage<AddressableController>($"Current Key_Dictionary Count : {key_Dictionary.Count}");
+                        Utils.CreateLogMessage<AddressableController>($"{_key} Asset 로드 성공");
+                        Utils.CreateLogMessage<AddressableController>($"key_Dictionary Count  : {key_Dictionary.Count}");
                     }
                     else
                     {
@@ -110,11 +118,8 @@ namespace JJORY.Module
         {
             if (_type is GameObject _go)
             {
-                Utils.CreateLogMessage<AddressableController>($"Get Type : {typeof(T)}");
                 return GameObject.Instantiate(_go) as T;
             }
-
-            Utils.CreateLogMessage<AddressableController>($"Get Type : {typeof(T)}");
             return _type;
         }
 
@@ -129,13 +134,11 @@ namespace JJORY.Module
         {
             if (GetHandler(_key, out var _handler) == false)
             {
-                Utils.CreateLogMessage<AddressableController>($"{_key}는 아직 로드되지 않았습니다.");
                 return null;
             }
 
             if (_handler.IsValid() == false || _handler.Status != AsyncOperationStatus.Succeeded)
             {
-                Utils.CreateLogMessage<AddressableController>($"{_key}의 Handler가 유효하지 않거나 로드 실패했습니다.");
                 return null;
             }
 

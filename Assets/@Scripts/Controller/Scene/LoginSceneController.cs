@@ -12,15 +12,26 @@ namespace JJORY.Scene.Login
         #region LifeCycle
         private void Awake()
         {
-            AddressableController.Instance.LoadPrefab<GameObject>(AddressKey.UI_LoginScene.ToString());
-            AddressableController.Instance.LoadPrefab<GameObject>(AddressKey.UI_AlarmPopup.ToString());
-            AddressableController.Instance.LoadPrefab<GameObject>(AddressKey.Test_Map.ToString());
+            if (AddressableController.Instance != null)
+            {
+                AddressableController.Instance.AddKeyHashSet(AddressKey.UI_LoginScene.ToString());
+                AddressableController.Instance.AddKeyHashSet(AddressKey.UI_AlarmPopup.ToString());
+                AddressableController.Instance.AddKeyHashSet(AddressKey.Test_Map.ToString());
+            }
+
+            AddressableController.Instance.LoadPrefabAddressFromHashSet();
+            //AddressableController.Instance.LoadPrefabAddress<GameObject>(AddressKey.UI_LoginScene.ToString());
+            //AddressableController.Instance.LoadPrefabAddress<GameObject>(AddressKey.UI_AlarmPopup.ToString());
+            //AddressableController.Instance.LoadPrefabAddress<GameObject>(AddressKey.Test_Map.ToString());
 
         }
 
         private void Start()
         {
-            StartCoroutine(AddressableController.Instance.InstantiateAsset(AddressKey.UI_LoginScene.ToString(), gameObject));
+            if (AddressableController.Instance != null)
+            {
+                StartCoroutine(AddressableController.Instance.InstantiateAsset(AddressKey.UI_LoginScene.ToString(), gameObject));
+            }
         }
 
         private void OnDestroy() 
