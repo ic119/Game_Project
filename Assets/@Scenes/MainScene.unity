@@ -2609,6 +2609,7 @@ MonoBehaviour:
   animator: {fileID: 0}
   animationController: {fileID: 0}
   cameraFollowController: {fileID: 0}
+  cameraPlayerController: {fileID: 0}
 --- !u!54 &6664369856979816311
 Rigidbody:
   m_ObjectHideFlags: 0

@@ -56,10 +56,6 @@ namespace JJORY.Controller.Camera
                 _cachedTransform.position = desiredPosition;
             }
 
-            //_cachedTransform.position = positionSmoothTime > 0f
-            //    ? Vector3.SmoothDamp(_cachedTransform.position, desiredPosition, ref _currentVelocity, positionSmoothTime)
-            //    : desiredPosition;
-
             if (lookAtTarget)
             {
                 Vector3 lookPoint = target.position + lookAtOffset;
@@ -73,10 +69,6 @@ namespace JJORY.Controller.Camera
                 {
                     _cachedTransform.rotation = desiredRotation;
                 }
-
-                //_cachedTransform.rotation = rotationSmoothTime > 0f
-                //    ? Quaternion.Slerp(_cachedTransform.rotation, desiredRotation, Time.deltaTime / rotationSmoothTime)
-                //    : desiredRotation;
             }
         }
 
