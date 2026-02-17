@@ -1,4 +1,5 @@
-﻿using JJORY.Controller.Player;
+﻿using JJORY.Controller.Camera;
+using JJORY.Controller.Player;
 using JJORY.Util;
 using UnityEngine;
 
@@ -39,11 +40,13 @@ public class PhysicsPlayerController : MonoBehaviour
     private Vector3 lastMoveDirection;
     private Vector3 lastWallNormal;
     private Vector3 currentHorizontalVelocity;
-    [SerializeField] private CinemachinePlayerFollowController followController;
 
     [Header("Animator 관련")]
     [SerializeField] private Animator animator;
     [SerializeField] private PlayerAnimationController animationController;
+
+    [Header("카메라 관련")]
+    [SerializeField] private CameraFollowController cameraFollowController;
     #endregion
 
     #region LifeCycle
@@ -65,6 +68,12 @@ public class PhysicsPlayerController : MonoBehaviour
         {
             animationController = GetComponent<PlayerAnimationController>();
         }
+        if (cameraFollowController == null)
+        {
+            cameraFollowController = GameObject.FindFirstObjectByType<CameraFollowController>();
+        }
+
+        cameraFollowController.SetTarget(gameObject.transform);
 
         // Rigidbody는 물리 시뮬레이션 충돌 감지 용도로만 사용하고 이동은 CharacterController로 수행
         rigidbodyComponent.isKinematic = true;
@@ -72,16 +81,6 @@ public class PhysicsPlayerController : MonoBehaviour
         rigidbodyComponent.constraints = RigidbodyConstraints.FreezeRotation;
 
         currentHorizontalVelocity = Vector3.zero;
-    }
-
-    private void Start()
-    {
-        if (followController == null)
-        {
-            followController = GameObject.FindFirstObjectByType<CinemachinePlayerFollowController>();
-        }
-
-        followController.target = gameObject.transform;
     }
 
     private void Update()

@@ -2591,10 +2591,10 @@ MonoBehaviour:
   moveSpeed: 3.5
   rotateSpeed: 540
   groundAcceleration: 40
-  jumpHeight: 5
+  jumpHeight: 2.5
   jumpForwardMultiplier: 1
   airControl: 0.5
-  gravity: -19.62
+  gravity: -20
   groundedSnapSpeed: -2
   groundMask:
     serializedVersion: 2
@@ -2606,9 +2606,9 @@ MonoBehaviour:
     m_Bits: 4294967295
   wallCheckRadius: 0.3
   wallCheckDistance: 0.5
-  followController: {fileID: 0}
   animator: {fileID: 0}
   animationController: {fileID: 0}
+  cameraFollowController: {fileID: 0}
 --- !u!54 &6664369856979816311
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -3434,6 +3434,7 @@ GameObject:
   - component: {fileID: 8944336655558343644}
   - component: {fileID: 8944336655558343645}
   - component: {fileID: 1464226678001714434}
+  - component: {fileID: 8944336655558343647}
   m_Layer: 0
   m_Name: MainCamera
   m_TagString: MainCamera
@@ -3441,6 +3442,25 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!114 &8944336655558343647
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8944336655558343646}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 514c8cc9ff5ffbe408c02ece41fb98a8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  target: {fileID: 0}
+  positionOffset: {x: 0, y: 10, z: -14}
+  useWorldSpaceOffset: 1
+  positionSmoothTime: 0.2
+  rotationSmoothTime: 0.1
+  lookAtOffset: {x: 0, y: 1, z: 1}
+  lookAtTarget: 1
 --- !u!4 &9095496443829732418
 Transform:
   m_ObjectHideFlags: 0
