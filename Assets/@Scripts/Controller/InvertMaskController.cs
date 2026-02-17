@@ -1,4 +1,5 @@
-﻿using DG.Tweening;
+using System;
+using DG.Tweening;
 using JJORY.Util;
 using UnityEngine;
 using UnityEngine.Experimental.GlobalIllumination;
@@ -21,20 +22,25 @@ namespace JJORY.Module
         #endregion
 
         #region Method
-        public void DoClose(float _duration)
+        /// <summary>
+        /// 마스크 닫기 트윈 재생. 완료 후 onComplete 콜백 호출.
+        /// </summary>
+        public void DoClose(float _duration, Action onComplete = null)
         {
             DOTween.KillAll();
             DOTween.To(() => range, (value) => range = value, 0.0f, _duration)
-                   .onComplete += () => { 
-                       this.gameObject.SetActive(false);
-                   };
+                   .OnComplete(() =>
+                   {
+                       gameObject.SetActive(false);
+                       onComplete?.Invoke();
+                   });
         }
 
         public void DoOpen(float _duration)
         {
             DOTween.KillAll();
             DOTween.To(() => range, (value) => range = value, 1.0f, _duration)
-                   .onComplete += () => { this.gameObject.SetActive(false); };
+                   .OnComplete(() => { gameObject.SetActive(false); });
         }
         #endregion
     }

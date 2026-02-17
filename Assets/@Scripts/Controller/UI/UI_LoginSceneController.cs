@@ -2,7 +2,6 @@ using DG.Tweening;
 using JJORY.Define;
 using JJORY.Module;
 using JJORY.Util;
-using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -152,12 +151,14 @@ namespace JJORY.Controller.UI
         }
 
         /// <summary>
-        /// DummySceneController의 MoveScene과 동일한 연출: CloseMask 후 LoadSceneByTags 호출
+        /// CloseMask 트윈 재생 후 완료 시 Main 씬 로드
         /// </summary>
         private void LoadMainSceneWithMask()
         {
-            UIController.Instance.CloseMask();
-            SceneLoadController.Instance.LoadSceneByTags("Main");
+            UIController.Instance.CloseMask(() =>
+            {
+                SceneLoadController.Instance.LoadSceneByTags("Main");
+            });
         }
         #endregion
     }
