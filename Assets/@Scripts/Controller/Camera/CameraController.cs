@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace JJORY.Controller.Camera
 {
-    public class CameraFollowController : MonoBehaviour
+    public class CameraController : MonoBehaviour
     {
         #region Variable
         [Header("Follow Target")]
@@ -90,7 +90,7 @@ namespace JJORY.Controller.Camera
         public void SetTarget(Transform _target)
         {
             target = _target;
-            
+
             if (target != null && _currentVelocity != default)
             {
                 _currentVelocity = Vector3.zero;
@@ -122,7 +122,6 @@ namespace JJORY.Controller.Camera
                 rotationSmoothTime = Mathf.Max(0f, rotationSmooth);
             }
         }
-
         #endregion
     }
 }

@@ -1,0 +1,16 @@
+# EditorConfig: 프로젝트 기본 설정 (주석 등 UTF-8 사용)
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+
+[*.cs]
+charset = utf-8
+indent_style = space
+indent_size = 4
+
+[*.{json,yml,yaml}]
+charset = utf-8
+indent_size = 2
