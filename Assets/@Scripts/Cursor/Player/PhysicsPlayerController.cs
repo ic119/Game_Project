@@ -1,4 +1,4 @@
-﻿using JJORY.Controller.Camera;
+using JJORY.Controller.Camera;
 using JJORY.Controller.Player;
 using JJORY.Util;
 using UnityEngine;
@@ -46,7 +46,7 @@ public class PhysicsPlayerController : MonoBehaviour
     [SerializeField] private PlayerAnimationController animationController;
 
     [Header("카메라 관련")]
-    [SerializeField] private CameraFollowController cameraFollowController;
+    [SerializeField] private CameraController cameraController;
     #endregion
 
     #region LifeCycle
@@ -68,12 +68,12 @@ public class PhysicsPlayerController : MonoBehaviour
         {
             animationController = GetComponent<PlayerAnimationController>();
         }
-        if (cameraFollowController == null)
+        if (cameraController == null)
         {
-            cameraFollowController = GameObject.FindFirstObjectByType<CameraFollowController>();
+            cameraController = GameObject.FindFirstObjectByType<CameraController>();
         }
 
-        cameraFollowController.SetTarget(gameObject.transform);
+        cameraController.SetTarget(gameObject.transform);
 
         // Rigidbody는 물리 시뮬레이션 충돌 감지 용도로만 사용하고 이동은 CharacterController로 수행
         rigidbodyComponent.isKinematic = true;
@@ -158,12 +158,13 @@ public class PhysicsPlayerController : MonoBehaviour
             // 지상 점프
             if (jumpPressed)
             {
-                float initialVel = CalculateJumpVelocity(jumpHeight);
+                float initialVel = CalculateJumpVelocity(jumpHeight);   
                 verticalVelocity = initialVel;
                 isJumpThisFrame = true;
                 animationController.SetMoveState(PlayerMoveState.Jump);
 
                 // 포물선 진행을 위한 초기 수평 추진 (입력 없을 때는 마지막 바라보는 방향 사용)
+
                 Vector3 forwardBasis = (moveDir.sqrMagnitude > 0.0001f)
                     ? moveDir
                     : (lastMoveDirection.sqrMagnitude > 0.0001f ? lastMoveDirection : transform.forward);

@@ -5,7 +5,7 @@ namespace JJORY.Controller.Player
     public class PlayerAnimationController : MonoBehaviour
     {
         #region Variable
-        [Header("Animation °ü·Ã º¯¼ö")]
+        [Header("Animation ê´€ë ¨ ë³€ìˆ˜")]
         private string moveParameter = "MoveState";
         [SerializeField] private Animator animator;
         private int moveStatehash;
@@ -28,7 +28,7 @@ namespace JJORY.Controller.Player
         #region Method
 
         /// <summary>
-        /// PlayerMoveState °ª¿¡ µû¶ó ÇØ´ç ¾Ö´Ï¸ŞÀÌ¼Ç È£Ãâ
+        /// PlayerMoveState ê°’ì— ë”°ë¼ í•´ë‹¹ ì• ë‹ˆë©”ì´ì…˜ í˜¸ì¶œ
         /// </summary>
         /// <param name="_state"></param>
         public void SetMoveState(PlayerMoveState _state)
