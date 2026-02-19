@@ -1,4 +1,4 @@
-﻿using JJORY.Module;
+using JJORY.Module;
 using JJORY.Util;
 using UnityEngine;
 
@@ -20,9 +20,6 @@ namespace JJORY.Scene.Login
             }
 
             AddressableController.Instance.LoadPrefabAddressFromHashSet();
-            //AddressableController.Instance.LoadPrefabAddress<GameObject>(AddressKey.UI_LoginScene.ToString());
-            //AddressableController.Instance.LoadPrefabAddress<GameObject>(AddressKey.UI_AlarmPopup.ToString());
-            //AddressableController.Instance.LoadPrefabAddress<GameObject>(AddressKey.Test_Map.ToString());
 
         }
 
