@@ -5,11 +5,19 @@ namespace JJORY.Controller.Player
     public class PlayerAnimationController : MonoBehaviour
     {
         #region Variable
-        [Header("Animation 관련 변수")]
-        private string moveParameter = "MoveState";
+        [Header("Animator 변수")]
         [SerializeField] private Animator animator;
+
+        [Header("Move Animation 관련 변수")]
+        private string moveParameter = "MoveState";
         private int moveStatehash;
-        private PlayerMoveState currentState = PlayerMoveState.Idle;
+        private PlayerMoveState currentMoveState = PlayerMoveState.Idle;
+
+        [Header("Attack Animaton 관련 변수")]
+        private string attackParameter = "AttackState";
+        private int attackStatehash;
+        private PlayerAttackState currentAttackState = PlayerAttackState.Attack01;
+
         #endregion
 
         #region LifeCycle
@@ -21,7 +29,10 @@ namespace JJORY.Controller.Player
             }
 
             moveStatehash = Animator.StringToHash(moveParameter);
+            attackStatehash = Animator.StringToHash(attackParameter);
+
             SetMoveState(PlayerMoveState.Idle);
+            SetAttackState(PlayerAttackState.Attack01);
         }
         #endregion
 
@@ -33,12 +44,26 @@ namespace JJORY.Controller.Player
         /// <param name="_state"></param>
         public void SetMoveState(PlayerMoveState _state)
         {
-            if (currentState == _state)
+            if (currentMoveState == _state)
             {
                 return;
             }
-            currentState = _state;
+            currentMoveState = _state;
             animator.SetInteger(moveStatehash, (int)_state);
+        }
+
+        /// <summary>
+        /// PlayerAttackState 값에 따라 해당 애니메이션 호출
+        /// </summary>
+        /// <param name="_state"></param>
+        public void SetAttackState(PlayerAttackState _state)
+        {
+            if (currentAttackState == _state)
+            {
+                return;
+            }
+            currentAttackState = _state;
+            animator.SetInteger(attackStatehash, (int)_state);
         }
         #endregion
     }

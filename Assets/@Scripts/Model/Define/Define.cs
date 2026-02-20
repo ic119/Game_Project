@@ -24,7 +24,8 @@ public enum PlayerAttackState
 {
     Attack01 = 0,
     Attack02 = 1,
-    Attack03 = 2
+    Attack03 = 2,
+    AttackFinish = 3
 }
 
 /// <summary>
