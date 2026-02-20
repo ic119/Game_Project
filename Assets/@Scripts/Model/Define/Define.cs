@@ -6,6 +6,9 @@ public enum AddressKey
     Test_Map
 }
 
+/// <summary>
+/// 플레이어 이동 상태
+/// </summary>
 public enum PlayerMoveState
 {
     Idle = 0,
@@ -14,8 +17,23 @@ public enum PlayerMoveState
     Jump
 }
 
+/// <summary>
+/// 플레이어 공격 콤보
+/// </summary>
 public enum PlayerAttackState
 {
-    Attack01 = 10,
-    Attack02 = 11
+    Attack01 = 0,
+    Attack02 = 1,
+    Attack03 = 2
+}
+
+/// <summary>
+/// 플레이어 무기 타입
+/// </summary>
+public enum PlayerWeaponType
+{
+    Dagger,
+    DualDagger,
+    OneHandedSword,
+    TwoHandedSword
 }
