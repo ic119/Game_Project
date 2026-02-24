@@ -1,6 +1,4 @@
-using JJORY.Controller.Player;
 using UnityEngine;
-
 
 namespace JJORY.Controller.Player
 {
@@ -10,12 +8,11 @@ namespace JJORY.Controller.Player
         [Header("참조 컴포넌트")]
         [SerializeField] private PlayerAnimationController animationController;
 
-        [Header("무기 / 콤보 설정")]
-        [SerializeField] private PlayerWeaponType currentWeaponType = PlayerWeaponType.OneHandedSword;
-        [SerializeField, Min(0.05f)] private float comboResetTime = 1.0f;
-
-        private PlayerAttackState currentComboState = PlayerAttackState.Attack01;
-        private float lastAttackTime;
+        [Header("콤보 상태")]
+        [SerializeField] private int comboIndex = 0;        // 인스펙터에서 현재 몇 타까지 갔는지 확인용
+        [SerializeField] private bool isAttacking = false;  // 현재 공격 중인지
+        [SerializeField] private bool comboExist = false;   // 다음 콤보 입력이 들어왔는지
+        [SerializeField] private bool comboEnable = false;  // 현재 프레임이 콤보 입력 가능 구간인지
         #endregion
 
         #region LifeCycle
@@ -25,19 +22,25 @@ namespace JJORY.Controller.Player
             {
                 animationController = GetComponent<PlayerAnimationController>();
             }
+
+            // 시작 시에는 Idle 상태 유지
+            if (animationController != null)
+            {
+                animationController.ResetAttack();
+            }
         }
 
         private void Update()
         {
-            HandleAttackInput();
+            UpdateAttacking();
         }
         #endregion
 
         #region Method
         /// <summary>
-        /// 공격 입력(X 키) 처리
+        /// 공격 입력(X 키) 처리 및 콤보 진행 (블로그 로직 기반)
         /// </summary>
-        private void HandleAttackInput()
+        private void UpdateAttacking()
         {
             if (!Input.GetKeyDown(KeyCode.X))
             {
@@ -49,56 +52,72 @@ namespace JJORY.Controller.Player
                 return;
             }
 
-            float now = Time.time;
-
-            // 콤보 리셋 시간 초과 시 처음부터
-            if (now - lastAttackTime > comboResetTime)
+            // 콤보 입력 가능 구간일 때는 다음 콤보 예약만 걸어준다.
+            if (comboEnable)
             {
-                currentComboState = PlayerAttackState.Attack01;
-            }
-            else
-            {
-                currentComboState = GetNextAttackState(currentComboState, currentWeaponType);
+                comboEnable = false;
+                comboExist = true;
+                return;
             }
 
-            lastAttackTime = now;
-            animationController.SetAttackState(currentComboState);
+            // 이미 공격 중이면 입력 무시
+            if (isAttacking)
+            {
+                return;
+            }
+
+            // 첫 공격 시작
+            isAttacking = true;
+            comboIndex = 0;
+            animationController.SetIsAttacking(true);
         }
 
         /// <summary>
-        /// 무기 타입에 따라 다음 콤보 공격 상태 반환
+        /// 애니메이션 이벤트: 콤보 입력 가능 구간 시작
         /// </summary>
-        private PlayerAttackState GetNextAttackState(PlayerAttackState current, PlayerWeaponType weaponType)
+        public void Combo_Enable()
         {
-            int maxIndex = (int)PlayerAttackState.AttackFinish; // 기본: 4타(0~3)
+            comboEnable = true;
+        }
 
-            switch (weaponType)
+        /// <summary>
+        /// 애니메이션 이벤트: 콤보 입력 가능 구간 종료
+        /// </summary>
+        public void Combo_Disable()
+        {
+            comboEnable = false;
+        }
+
+        /// <summary>
+        /// 애니메이션 이벤트: 다음 콤보로 넘어갈지 여부 결정
+        /// </summary>
+        public void Combo_Exist()
+        {
+            if (!comboExist)
             {
-                case PlayerWeaponType.Dagger:
-                case PlayerWeaponType.DualDagger:
-                    // 단검/쌍단검: 4타 풀 콤보 사용
-                    maxIndex = (int)PlayerAttackState.AttackFinish;
-                    break;
-
-                case PlayerWeaponType.OneHandedSword:
-                    // 한손검: 3타까지 사용 (Attack03까지)
-                    maxIndex = (int)PlayerAttackState.Attack03;
-                    break;
-
-                case PlayerWeaponType.TwoHandedSword:
-                    // 양손검: 2타까지 사용 (Attack02까지)
-                    maxIndex = (int)PlayerAttackState.Attack02;
-                    break;
+                return;
             }
 
-            int currentIndex = (int)current;
+            comboExist = false;
+            comboIndex++;
+            animationController.TriggerNextCombo();
+        }
 
-            if (currentIndex >= maxIndex)
+        /// <summary>
+        /// 애니메이션 이벤트: 모든 공격 종료 (Idle 복귀)
+        /// </summary>
+        public void End_Attack()
+        {
+            isAttacking = false;
+            comboExist = false;
+            comboEnable = false;
+            comboIndex = 0;
+
+            if (animationController != null)
             {
-                return PlayerAttackState.Attack01;
+                animationController.SetIsAttacking(false);
+                animationController.ResetAttack();
             }
-
-            return (PlayerAttackState)(currentIndex + 1);
         }
         #endregion
     }
