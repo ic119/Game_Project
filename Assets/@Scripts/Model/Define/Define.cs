@@ -3,7 +3,7 @@ public enum AddressKey
     UI_LoginScene,
     UI_AlarmPopup,
     PlayerPrefab,
-    Test_Map
+    BeginnerVillage
 }
 
 /// <summary>

@@ -1,4 +1,4 @@
-﻿using JJORY.Model;
+using JJORY.Model;
 using JJORY.Model.SO;
 using JJORY.Util;
 using JJORY.Define;
@@ -79,9 +79,6 @@ namespace JJORY.Module
         /// <returns></returns>
         private IEnumerator SceneLoadRoutine(SceneModel _targetModel)
         {
-            // CloseMask는 이미 호출된 상태이므로 여기서는 생략
-            // UIController.Instance.CloseMask();
-            // yield return new WaitForSeconds(1.0f);
             cur_LoadProgress = 0.0f;
 
             // LoadingScene을 Single 모드로 로드 (기존 씬들을 모두 대체)
@@ -112,12 +109,52 @@ namespace JJORY.Module
                 cur_LoadProgress = (float)count / (float)sceneTarget.Count;
                 yield return new WaitForSeconds(1.0f);
             }
+            
+            // Main 씬으로 전환될 때, BeginnerVillage 맵과 PlayerPrefab을 Addressable로 생성
+            if (currentSceneModel != null && currentSceneModel.sceneTag == "Main")
+            {
+                // 1) 맵 Addressable 로드 시작
+                AddressableController.Instance.LoadPrefabAddress<GameObject>(AddressKey.BeginnerVillage.ToString());
+
+                // 맵이 붙을 부모 오브젝트 (예: "CurrentMap")
+                GameObject currentMap = GameObject.Find("CurrentMap");
+
+                // 2) 맵 Instantiate (부모가 없으면 월드 루트에 생성)
+                yield return AddressableController.Instance.InstantiateAsset(AddressKey.BeginnerVillage.ToString(), currentMap);
+
+                // 3) PlayerRespawn 오브젝트 찾기 (CurrentMap 아래 우선 검색)
+                GameObject playerRespawn = null;
+                if (currentMap != null)
+                {
+                    Transform respawnTr = currentMap.transform.Find("PlayerRespawn");
+                    if (respawnTr != null)
+                    {
+                        playerRespawn = respawnTr.gameObject;
+                    }
+                }
+                // 혹시 못 찾았을 경우 전체 씬에서 검색 (백업용)
+                if (playerRespawn == null)
+                {
+                    playerRespawn = GameObject.Find("PlayerRespawn");
+                }
+
+                // 4) 플레이어 프리팹 Addressable 로드 및 Instantiate
+                if (playerRespawn != null)
+                {
+                    AddressableController.Instance.LoadPrefabAddress<GameObject>(AddressKey.PlayerPrefab.ToString());
+                    yield return AddressableController.Instance.InstantiateAsset(AddressKey.PlayerPrefab.ToString(), playerRespawn);
+                }
+                else
+                {
+                    Utils.CreateLogMessage<SceneLoadController>($"PlayerRespawn 오브젝트를 찾지 못했습니다. PlayerPrefab을 생성하지 않습니다.");
+                }
+            }
+
+            // 맵 생성까지 완료되면 로딩 100% 처리 후 로딩 씬 언로드
+            cur_LoadProgress = 1.0f;
 
             AsyncOperation UnloadLoadingScene = SceneManager.UnloadSceneAsync(DEFINE.LOADING_SCENE);
             yield return new WaitUntil(() => UnloadLoadingScene.isDone);
-
-
-            cur_LoadProgress = 1.0f;
 
             UIController.Instance.OpenMask();
             yield return new WaitForSeconds(1.0f);

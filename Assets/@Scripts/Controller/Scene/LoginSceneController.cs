@@ -16,11 +16,12 @@ namespace JJORY.Scene.Login
             {
                 AddressableController.Instance.AddKeyHashSet(AddressKey.UI_LoginScene.ToString());
                 AddressableController.Instance.AddKeyHashSet(AddressKey.UI_AlarmPopup.ToString());
-                AddressableController.Instance.AddKeyHashSet(AddressKey.Test_Map.ToString());
+                AddressableController.Instance.AddKeyHashSet(AddressKey.BeginnerVillage.ToString());
+                AddressableController.Instance.AddKeyHashSet(AddressKey.PlayerPrefab.ToString());
+
             }
 
             AddressableController.Instance.LoadPrefabAddressFromHashSet();
-
         }
 
         private void Start()

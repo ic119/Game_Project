@@ -190,6 +190,17 @@ namespace JJORY.Module
 
         /// <summary>
         /// Load Object에서 Key값으로 해당 오브젝트 생성_Coroutine 함수용
+        /// (부모 객체가 필요 없을 경우 오버로드 사용)
+        /// </summary>
+        /// <param name="_key"></param>
+        /// <returns></returns>
+        public IEnumerator InstantiateAsset(string _key)
+        {
+            yield return InstantiateAsset(_key);
+        }
+
+        /// <summary>
+        /// Load Object에서 Key값으로 해당 오브젝트 생성_Coroutine 함수용
         /// </summary>
         /// <param name="_key"></param>
         /// <param name="_parent"></param>
@@ -211,7 +222,12 @@ namespace JJORY.Module
 
             GameObject prefab = handler.Result as GameObject;
             GameObject go = InstantiatePrefab(prefab);
-            go.transform.SetParent(_parent.transform, false);
+
+            // 부모가 지정되지 않은 경우 월드 루트에 생성
+            if (_parent != null)
+            {
+                go.transform.SetParent(_parent.transform, false);
+            }
         }
         #endregion
     }
