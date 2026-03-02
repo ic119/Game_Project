@@ -15,8 +15,18 @@ MonoBehaviour:
   m_GroupName: Default Local Group
   m_GUID: 0d0b5892a0daec74ea1897a39c18955c
   m_SerializeEntries:
+  - m_GUID: 0c1f47ab66987034684fc8f92e4ab675
+    m_Address: BeginnerVillage
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 50dbccc112421d748a96f7d323c426a4
     m_Address: Test_Map
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ba903f397bce85c429a1b6eacce6e7bf
+    m_Address: PlayerPrefab
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
