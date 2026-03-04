@@ -1,4 +1,4 @@
-﻿using JJORY.Module;
+using JJORY.Module;
 using JJORY.Util;
 using System.Collections;
 using UnityEngine;
@@ -20,7 +20,6 @@ namespace JJORY.Scene.Dummy
         {
             public IEnumerator Execute()
             {
-                GameManager.Instance.Init();
                 Utils.CreateLogMessage<DummySceneController>("2. GameManager 모듈 로드 성공");
                 yield return null;
             }
