@@ -110,39 +110,45 @@ namespace JJORY.Module
                 yield return new WaitForSeconds(1.0f);
             }
             
-            // Main 씬으로 전환될 때, BeginnerVillage 맵과 PlayerPrefab을 Addressable로 생성
+            // Main 씬으로 전환될 때, BeginnerVillage 맵 생성 후 PlayerRespawn 위치에 PlayerPrefab 생성
             if (currentSceneModel != null && currentSceneModel.sceneTag == "Main")
             {
-                // 1) 맵 Addressable 로드 시작
+                // 1) 맵 Addressable 로드 및 Instantiate
                 AddressableController.Instance.LoadPrefabAddress<GameObject>(AddressKey.BeginnerVillage.ToString());
-
-                // 맵이 붙을 부모 오브젝트 (예: "CurrentMap")
                 GameObject currentMap = GameObject.Find("CurrentMap");
-
-                // 2) 맵 Instantiate (부모가 없으면 월드 루트에 생성)
                 yield return AddressableController.Instance.InstantiateAsset(AddressKey.BeginnerVillage.ToString(), currentMap);
 
-                // 3) PlayerRespawn 오브젝트 찾기 (CurrentMap 아래 우선 검색)
-                GameObject playerRespawn = null;
-                if (currentMap != null)
+                // 2) 생성된 BeginnerVillage 맵 인스턴스 참조 (CurrentMap의 마지막 자식)
+                GameObject mapInstance = null;
+                if (currentMap != null && currentMap.transform.childCount > 0)
                 {
-                    Transform respawnTr = currentMap.transform.Find("PlayerRespawn");
-                    if (respawnTr != null)
-                    {
-                        playerRespawn = respawnTr.gameObject;
-                    }
-                }
-                // 혹시 못 찾았을 경우 전체 씬에서 검색 (백업용)
-                if (playerRespawn == null)
-                {
-                    playerRespawn = GameObject.Find("PlayerRespawn");
+                    mapInstance = currentMap.transform.GetChild(currentMap.transform.childCount - 1).gameObject;
                 }
 
-                // 4) 플레이어 프리팹 Addressable 로드 및 Instantiate
-                if (playerRespawn != null)
+                // 3) 맵의 자식인 PlayerRespawn 오브젝트 찾기 (계층 구조 내 검색)
+                Transform playerRespawnTr = null;
+                if (mapInstance != null)
+                {
+                    playerRespawnTr = FindInChildren(mapInstance.transform, "PlayerRespawn");
+                }
+                if (playerRespawnTr == null)
+                {
+                    GameObject findBackup = GameObject.Find("PlayerRespawn");
+                    if (findBackup != null) playerRespawnTr = findBackup.transform;
+                }
+
+                // 4) PlayerRespawn 위치에 PlayerPrefab 생성 및 배치
+                if (playerRespawnTr != null)
                 {
                     AddressableController.Instance.LoadPrefabAddress<GameObject>(AddressKey.PlayerPrefab.ToString());
-                    yield return AddressableController.Instance.InstantiateAsset(AddressKey.PlayerPrefab.ToString(), playerRespawn);
+                    yield return AddressableController.Instance.InstantiateAsset(AddressKey.PlayerPrefab.ToString(), currentMap);
+                    // 생성된 PlayerPrefab을 PlayerRespawn 위치·회전으로 설정 (CurrentMap의 마지막 자식이 플레이어)
+                    if (currentMap != null && currentMap.transform.childCount > 0)
+                    {
+                        Transform playerTr = currentMap.transform.GetChild(currentMap.transform.childCount - 1);
+                        playerTr.position = playerRespawnTr.position;
+                        playerTr.rotation = playerRespawnTr.rotation;
+                    }
                 }
                 else
                 {
@@ -158,6 +164,20 @@ namespace JJORY.Module
 
             UIController.Instance.OpenMask();
             yield return new WaitForSeconds(1.0f);
+        }
+
+        /// <summary>
+        /// 자식 계층에서 이름으로 Transform 검색
+        /// </summary>
+        private Transform FindInChildren(Transform _parent, string _name)
+        {
+            if (_parent.name == _name) return _parent;
+            for (int i = 0; i < _parent.childCount; i++)
+            {
+                Transform found = FindInChildren(_parent.GetChild(i), _name);
+                if (found != null) return found;
+            }
+            return null;
         }
         #endregion
     }
