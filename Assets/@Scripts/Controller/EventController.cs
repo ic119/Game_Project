@@ -1,4 +1,4 @@
-﻿using JJORY.Util;
+using JJORY.Util;
 using System;
 using UnityEngine;
 
@@ -15,7 +15,6 @@ namespace JJORY.Module
         private void OnDestroy()
         {
             OnRequestShowPopup = null;
-
             OnRequestGenerateCharacterPopup = null;
         }
         #endregion

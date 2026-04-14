@@ -1,3 +1,8 @@
+public enum CameraViewType
+{
+    IsoView,
+    TopView
+}
 public enum AddressKey
 {
     UI_LoginScene,

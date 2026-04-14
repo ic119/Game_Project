@@ -1,14 +1,13 @@
-﻿using UnityEngine;
+using UnityEngine;
 
-namespace JJORY.Util
+namespace DeltaX.Util
 {
     public class DontDestroyOnLoad : MonoBehaviour
     {
-        #region LifeCycle
-        private void Start()
+        void Start()
         {
             DontDestroyOnLoad(this.gameObject);
         }
-        #endregion
     }
 }
+
