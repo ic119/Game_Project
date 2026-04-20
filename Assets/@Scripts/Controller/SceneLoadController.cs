@@ -141,13 +141,27 @@ namespace JJORY.Module
                 if (playerRespawnTr != null)
                 {
                     AddressableController.Instance.LoadPrefabAddress<GameObject>(AddressKey.PlayerPrefab.ToString());
+                    int childCountBeforeSpawn = currentMap != null ? currentMap.transform.childCount : -1;
                     yield return AddressableController.Instance.InstantiateAsset(AddressKey.PlayerPrefab.ToString(), currentMap);
+
+                    // 생성 성공 여부 확인 (Instantiate 전후 자식 수 비교)
+                    bool isPlayerSpawnSuccess = currentMap != null &&
+                                                childCountBeforeSpawn >= 0 &&
+                                                currentMap.transform.childCount > childCountBeforeSpawn;
+
                     // 생성된 PlayerPrefab을 PlayerRespawn 위치·회전으로 설정 (CurrentMap의 마지막 자식이 플레이어)
-                    if (currentMap != null && currentMap.transform.childCount > 0)
+                    if (isPlayerSpawnSuccess)
                     {
                         Transform playerTr = currentMap.transform.GetChild(currentMap.transform.childCount - 1);
                         playerTr.position = playerRespawnTr.position;
                         playerTr.rotation = playerRespawnTr.rotation;
+
+                        // PlayerPrefab이 정상 생성된 경우에만 BeginnerVillage의 PlayerRespawn 제거
+                        Destroy(playerRespawnTr.gameObject);
+                    }
+                    else
+                    {
+                        Utils.CreateLogMessage<SceneLoadController>($"PlayerPrefab 생성에 실패하여 PlayerRespawn을 제거하지 않습니다.");
                     }
                 }
                 else
