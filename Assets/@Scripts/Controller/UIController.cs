@@ -19,7 +19,6 @@ public class UIController : SingletonObject<UIController>
         invertMaskController.gameObject.SetActive(true);
         invertMaskController.DoClose(1.1f, () =>
         {
-            Utils.CreateLogMessage<UIController>("CloseMask 완료");
             onComplete?.Invoke();
         });
     }
@@ -28,7 +27,6 @@ public class UIController : SingletonObject<UIController>
     {
         invertMaskController.gameObject.SetActive(true);
         invertMaskController.DoOpen(1.0f);
-        Utils.CreateLogMessage<UIController>("OpenMask 완료");
     }
     #endregion
 }
