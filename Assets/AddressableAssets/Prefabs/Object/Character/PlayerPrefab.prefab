@@ -1639,7 +1639,6 @@ GameObject:
   - component: {fileID: 5854185314256511421}
   - component: {fileID: 8981797908177973928}
   - component: {fileID: 2712066610629380867}
-  - component: {fileID: 7596789600235649329}
   m_Layer: 0
   m_Name: PlayerPrefab
   m_TagString: Untagged
@@ -1809,28 +1808,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 69d9ac87bfb9d0145832bb60445102ee, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!114 &7596789600235649329
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8770578912243947473}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6e79986aaeb5d9a47bd7f146c393ad4b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  target_Tr: {fileID: 3526755416826606513}
-  camera: {fileID: 0}
-  _distance: 10
-  _minDistance: 2
-  _maxDistance: 30
-  _zoomSpeed: 2
-  _orbitSpeedX: 200
-  _orbitSpeedY: 200
-  _minPitch: 0
-  _maxPitch: 80
 --- !u!1 &8770651182932856116
 GameObject:
   m_ObjectHideFlags: 0

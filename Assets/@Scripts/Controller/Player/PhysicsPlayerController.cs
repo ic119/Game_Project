@@ -15,6 +15,7 @@ public class PhysicsPlayerController : MonoBehaviour
     [Header("Movement")]
     [SerializeField, Range(0.5f, 10f)] private float moveSpeed = 3.5f;
     [SerializeField, Range(0f, 1080f)] private float rotateSpeed = 540f;
+    [SerializeField, Range(0.01f, 0.5f)] private float rotationSmoothTime = 0.08f;
     [SerializeField, Range(1f, 100f)] private float groundAcceleration = 40f;
 
     [Header("Jump")]
@@ -40,6 +41,7 @@ public class PhysicsPlayerController : MonoBehaviour
     private Vector3 lastMoveDirection;
     private Vector3 lastWallNormal;
     private Vector3 currentHorizontalVelocity;
+    private float rotationVelocity;
 
     [Header("Animator 관련")]
     [SerializeField] private Animator animator;
@@ -116,8 +118,15 @@ public class PhysicsPlayerController : MonoBehaviour
             lastMoveDirection = moveDir;
 
             // 회전
-            Quaternion targetRot = Quaternion.LookRotation(moveDir, Vector3.up);
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRot, rotateSpeed * Time.deltaTime);
+            float targetYaw = Mathf.Atan2(moveDir.x, moveDir.z) * Mathf.Rad2Deg;
+            float smoothYaw = Mathf.SmoothDampAngle(
+                transform.eulerAngles.y,
+                targetYaw,
+                ref rotationVelocity,
+                rotationSmoothTime,
+                rotateSpeed
+            );
+            transform.rotation = Quaternion.Euler(0f, smoothYaw, 0f);
         }
 
         // Ground 체크
@@ -126,18 +135,16 @@ public class PhysicsPlayerController : MonoBehaviour
         // 점프 입력
         bool jumpPressed = Input.GetKeyDown(KeyCode.Space);
 
-        // 회전 중 슬라이딩 방지: 회전이 거의 완료될 때만 이동 허용
-        bool canMove = true;
+        // 수평 속도 계산 (지상/공중 구분)
+        Vector3 desiredHorizontal = hasInput ? moveDir * currentMoveSpeed : Vector3.zero;
         if (hasInput && isGrounded)
         {
-            // 현재 바라보는 방향과 목표 이동 방향의 각도 차이 계산
+            // 회전 중에도 즉시 이동은 시작하되, 급격한 방향 전환 시 초기 가속을 살짝 완화한다.
             float angleDifference = Vector3.Angle(transform.forward, moveDir);
-            // 회전 각도 차이가 5도 이하일 때만 이동 허용
-            canMove = angleDifference <= 5f;
+            float movementScale = Mathf.InverseLerp(180f, 0f, angleDifference);
+            float minMovementScale = 0.35f;
+            desiredHorizontal *= Mathf.Lerp(minMovementScale, 1f, movementScale);
         }
-
-        // 수평 속도 계산 (지상/공중 구분)
-        Vector3 desiredHorizontal = (hasInput && canMove) ? moveDir * currentMoveSpeed : Vector3.zero;
         if (isGrounded)
         {
             // 착지 처리
