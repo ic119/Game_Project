@@ -18,7 +18,7 @@ namespace JJORY.Model.Player
         [SerializeField] private int healthy = 1;
 
         public int Strength { get { return strength; } }
-        public int Intellect { get { return intellect; } }
+        public int Intellect { get { return intellect; } }  
         public int Agility { get { return agility; } }
         public int Healthy { get { return healthy; } }
 

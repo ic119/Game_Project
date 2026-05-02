@@ -37,14 +37,11 @@ public class PhysicsPlayerController : MonoBehaviour
     [SerializeField] private LayerMask wallMask = ~0;
     [SerializeField] private float wallCheckRadius = 0.3f;
     [SerializeField] private float wallCheckDistance = 0.5f;
-    [SerializeField] private bool enableWallCollisionLog = false;
-    [SerializeField, Range(0.1f, 5f)] private float wallLogCooldown = 0.5f;
 
     private Vector3 lastMoveDirection;
     private Vector3 lastWallNormal;
     private Vector3 currentHorizontalVelocity;
     private float rotationVelocity;
-    private float lastWallLogTime = -999f;
 
     [Header("Animator 관련")]
     [SerializeField] private Animator animator;
@@ -78,14 +75,7 @@ public class PhysicsPlayerController : MonoBehaviour
             cameraController = GameObject.FindFirstObjectByType<CameraController>();
         }
 
-        if (cameraController != null)
-        {
-            cameraController.SetTarget(gameObject.transform);
-        }
-        else
-        {
-            Debug.LogWarning($"{nameof(PhysicsPlayerController)}: CameraController를 찾지 못했습니다.");
-        }
+        cameraController.SetTarget(gameObject.transform);
 
         // Rigidbody는 물리 시뮬레이션 충돌 감지 용도로만 사용하고 이동은 CharacterController로 수행
         rigidbodyComponent.isKinematic = true;
@@ -114,7 +104,7 @@ public class PhysicsPlayerController : MonoBehaviour
         Vector3 input = new Vector3(h, 0f, v);
         input = Vector3.ClampMagnitude(input, 1f);
 
-        // 달리기(Shift) 입력: 이동 속도를 1.5배로
+        // 달리기(Shift) 입력: 이동 속도를 2.5배로
         bool isSprinting = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
         float currentMoveSpeed = moveSpeed * (isSprinting ? 1.5f : 1f);
 
@@ -178,7 +168,7 @@ public class PhysicsPlayerController : MonoBehaviour
                 float initialVel = CalculateJumpVelocity(jumpHeight);   
                 verticalVelocity = initialVel;
                 isJumpThisFrame = true;
-                SetAnimationMoveState(PlayerMoveState.Jump);
+                animationController.SetMoveState(PlayerMoveState.Jump);
 
                 // 포물선 진행을 위한 초기 수평 추진 (입력 없을 때는 마지막 바라보는 방향 사용)
 
@@ -189,7 +179,10 @@ public class PhysicsPlayerController : MonoBehaviour
                 {
                     // 달리기 중이라면 더 빠른 수평 속도로 점프
                     Vector3 jumpHorizontal = forwardBasis.normalized * (currentMoveSpeed * jumpForwardMultiplier);
-                    currentHorizontalVelocity = ComposeJumpHorizontalVelocity(jumpHorizontal);
+                    // 점프 순간에는 기존 속도와 합성하되, 입력이 약하면 보강
+                    currentHorizontalVelocity = (desiredHorizontal.sqrMagnitude > 0.0001f)
+                        ? Vector3.Max(currentHorizontalVelocity, jumpHorizontal)
+                        : jumpHorizontal;
                 }
             }
         }
@@ -217,12 +210,17 @@ public class PhysicsPlayerController : MonoBehaviour
         bool touchWallByFlags = (flags & CollisionFlags.Sides) != 0;
         bool touchWallByCast = CheckWallWithSphereCast(moveDir);
         bool isTouchingWall = touchWallByFlags || touchWallByCast;
-        TryLogWallCollision(isTouchingWall);
 
         // 머리 부딪힘 처리: 위쪽 충돌 시 상승 속도 제거
         if ((flags & CollisionFlags.Above) != 0 && verticalVelocity > 0f)
         {
             verticalVelocity = 0f;
+        }
+
+        // 필요 시 로깅 (과다 로그 방지를 위해 조건부 사용 권장)
+        if (isTouchingWall)
+        {
+            Utils.CreateLogError<PhysicsPlayerController>("벽 충돌 감지");
         }
 
         // 애니메이션 상태 갱신 (점프 애니메이션이 우선)
@@ -232,17 +230,17 @@ public class PhysicsPlayerController : MonoBehaviour
             {
                 if (!hasInput)
                 {
-                    SetAnimationMoveState(PlayerMoveState.Idle);
+                    animationController.SetMoveState(PlayerMoveState.Idle);
                 }
                 else
                 {
                     if (isSprinting)
                     {
-                        SetAnimationMoveState(PlayerMoveState.Run);
+                        animationController.SetMoveState(PlayerMoveState.Run);
                     }
                     else
                     {
-                        SetAnimationMoveState(PlayerMoveState.Walk);
+                        animationController.SetMoveState(PlayerMoveState.Walk);
                     }
                 }
             }
@@ -260,50 +258,6 @@ public class PhysicsPlayerController : MonoBehaviour
         // gravity는 음수 가정
         height = Mathf.Max(0.0001f, height);
         return Mathf.Sqrt(-2f * gravity * height);
-    }
-
-    private Vector3 ComposeJumpHorizontalVelocity(Vector3 jumpHorizontal)
-    {
-        // 현재 수평 이동 방향 성분은 보존하고, 점프 방향 성분이 부족할 때만 보강한다.
-        if (currentHorizontalVelocity.sqrMagnitude < 0.0001f)
-        {
-            return jumpHorizontal;
-        }
-
-        Vector3 jumpDir = jumpHorizontal.normalized;
-        float currentAlongJump = Vector3.Dot(currentHorizontalVelocity, jumpDir);
-        float targetAlongJump = jumpHorizontal.magnitude;
-        float requiredBoost = targetAlongJump - currentAlongJump;
-        if (requiredBoost <= 0f)
-        {
-            return currentHorizontalVelocity;
-        }
-
-        return currentHorizontalVelocity + jumpDir * requiredBoost;
-    }
-
-    private void SetAnimationMoveState(PlayerMoveState state)
-    {
-        if (animationController == null)
-        {
-            return;
-        }
-        animationController.SetMoveState(state);
-    }
-
-    private void TryLogWallCollision(bool isTouchingWall)
-    {
-        if (!isTouchingWall || !enableWallCollisionLog)
-        {
-            return;
-        }
-        if (Time.time - lastWallLogTime < wallLogCooldown)
-        {
-            return;
-        }
-
-        lastWallLogTime = Time.time;
-        Utils.CreateLogError<PhysicsPlayerController>("벽 충돌 감지");
     }
 
     private bool IsGrounded()

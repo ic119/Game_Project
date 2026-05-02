@@ -26,34 +26,39 @@ namespace JJORY.Controller.UI
         [Header("키보드 액션")]
         [SerializeField] private TMP_InputField[] inputField_Arr;
         private int cur_Index = 0;
-
-        [Header("타이틀 관련 변수")]
-        [SerializeField] private TextMeshProUGUI infoTitle;
-        [SerializeField] private float duration = 0.3f; // 사라지는데 걸리는 시간
-        private Tween blinkTween;
         #endregion
 
         #region LifeCycle
         private void Awake()
         {
-            //Init();
+            Init();
 
-            //login_Button.onClick.AddListener(OnClickLoginButton);
-            //regist_Button.onClick.AddListener(OnClickRegistButton);
+            login_Button.onClick.AddListener(OnClickLoginButton);
+            regist_Button.onClick.AddListener(OnClickRegistButton);
         }
 
         private void Update()
         {
-            if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+            if (Input.GetKeyDown(KeyCode.Tab))
             {
-                LoadMainSceneWithMask();
+                MoveToNextInputField();
             }
+
+            if (Input.GetKeyDown(KeyCode.KeypadEnter))
+            {
+                OnClickLoginButton();
+            }
+
+            //if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
+            //{
+            //    LoadMainSceneWithMask();
+            //}
         }
 
         private void OnDestroy()
         {
-            //login_Button.onClick.RemoveListener(OnClickLoginButton);
-            //regist_Button.onClick.RemoveListener(OnClickRegistButton);
+            login_Button.onClick.RemoveListener(OnClickLoginButton);
+            regist_Button.onClick.RemoveListener(OnClickRegistButton);
         }
         #endregion
 
@@ -85,12 +90,22 @@ namespace JJORY.Controller.UI
             if (string.IsNullOrEmpty(account_InputField_Value))
             {
                 Utils.CreateLogMessage<UI_LoginSceneController>("아이디를 입력해주세요!");
+                GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.UI_AlarmPopup.ToString(),
+                                                                                                      gameObject.transform);
+                Utils.CreateLogMessage<UI_RegistPopupController>($"transform : {gameObject.name}");
+                UI_AlarmPopupController controller = popup.GetComponent<UI_AlarmPopupController>();
+                EventController.Instance.InvokeShowPopup("계정 입력 오류", "올바른 계정을 입력해주세요!");
                 return;
             }
 
             if (string.IsNullOrEmpty(password_InputField_Value))
             {
                 Utils.CreateLogMessage<UI_LoginSceneController>("패스워드를 입력해주세요!");
+                GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.UI_AlarmPopup.ToString(),
+                                                                                                      gameObject.transform);
+                Utils.CreateLogMessage<UI_RegistPopupController>($"transform : {gameObject.name}");
+                UI_AlarmPopupController controller = popup.GetComponent<UI_AlarmPopupController>();
+                EventController.Instance.InvokeShowPopup("계정 입력 오류", "올바른 계정을 입력해주세요!");
                 return;
             }
 
