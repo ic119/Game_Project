@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: a0ea49878332d2841806b849f52c31a7
+ComputeShaderImporter:
+  externalObjects: {}
+  currentAPIMask: 4
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/Editor/Resources/Materials/Picking/UModelerX_PickUVFace.compute
+  uploadId: 908910

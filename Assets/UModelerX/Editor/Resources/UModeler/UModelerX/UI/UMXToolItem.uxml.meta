@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: b651f88266bcdcf4b9c9825ac57d64ca
+ScriptedImporter:
+  internalIDToNameTable: []
+  externalObjects: {}
+  serializedVersion: 2
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+  script: {fileID: 13804, guid: 0000000000000000e000000000000000, type: 0}
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/Editor/Resources/UModeler/UModelerX/UI/UMXToolItem.uxml
+  uploadId: 908910

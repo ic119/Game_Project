@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 48411418674b52d4cac26788bd245337
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/Editor/Resources/Materials/UModeler_RulerGrid_Green_HDRP.mat
+  uploadId: 908910

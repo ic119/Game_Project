@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 8c229119b858f5c4788bd507e6ba76e7
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/PureCode/Editor/UMXDisplaySettingsToolbarButton.cs
+  uploadId: 908910

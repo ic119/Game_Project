@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 026b9e50439141343824c29cb916f568
+ComputeShaderImporter:
+  externalObjects: {}
+  currentAPIMask: 4
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/Editor/Resources/Materials/Picking/UModelerX_SoftSelection.compute
+  uploadId: 908910

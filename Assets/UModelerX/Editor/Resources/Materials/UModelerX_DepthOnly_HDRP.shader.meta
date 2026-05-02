@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: dd23309156115f84daf29fe9deed3fa5
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  preprocessorOverride: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/Editor/Resources/Materials/UModelerX_DepthOnly_HDRP.shader
+  uploadId: 908910

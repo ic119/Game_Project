@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: ac9db7752f3682c4d8cdcca1fb220d08
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/Editor/Resources/Materials/UModelerX_Gray_URP.mat
+  uploadId: 908910

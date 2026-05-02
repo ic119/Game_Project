@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: f12c4650ef6995c40b7ceb4cb70f4f37
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/Editor/Resources/Materials/UModelerX_TexturePainter_ShapeRect.shader
+  uploadId: 908910

@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: e41fe82d3515c084d96efb017b092805
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/Editor/Resources/Materials/ColorSpace_Shader.shader
+  uploadId: 908910

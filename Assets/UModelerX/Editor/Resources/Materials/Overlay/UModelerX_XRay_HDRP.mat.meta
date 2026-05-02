@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 09c54fe262ce0c54fba6ea14f114d36e
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/Editor/Resources/Materials/Overlay/UModelerX_XRay_HDRP.mat
+  uploadId: 908910

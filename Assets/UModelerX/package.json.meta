@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 6bdd57fcc79db496197914adeee6423a
+PackageManifestImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/package.json
+  uploadId: 908910

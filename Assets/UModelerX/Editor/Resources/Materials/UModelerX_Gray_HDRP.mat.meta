@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: de8f624accd370146b2d65482c00dc0c
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/Editor/Resources/Materials/UModelerX_Gray_HDRP.mat
+  uploadId: 908910

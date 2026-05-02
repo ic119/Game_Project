@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 93be5cc01b6320f4a9ffd9694fef906a
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/Editor/Resources/Materials/Overlay/UModelerX_RulerGrid.mat
+  uploadId: 908910

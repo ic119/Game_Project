@@ -1,0 +1,14 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
+    <ui:VisualElement name="scene-ai-complete-popup" class="scene-ai-popup scene-ai-complete-popup">
+
+        <!-- Header: 타이틀 + 닫기 버튼 -->
+        <ui:VisualElement class="popup-header">
+            <ui:Label text="Generation Complete!" class="popup-title complete-title" />
+            <ui:Button name="close-btn" class="popup-close" text="✕" />
+        </ui:VisualElement>
+
+        <!-- Import 버튼 -->
+        <ui:Button name="import-btn" class="generate-btn import-btn" text="Import to Scene" />
+
+    </ui:VisualElement>
+</ui:UXML>

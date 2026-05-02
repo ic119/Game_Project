@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 397e7797f93772241834a76ae4f311d1
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  preprocessorOverride: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/Editor/Resources/Materials/Picking/UModelerX_VertexGeometryId.shader
+  uploadId: 908910

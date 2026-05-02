@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: dc3599629fc62d24a8adfaf1f4a39a9f
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/Editor/Resources/Materials/UModelerX_TexturePainter_DilationPixel.shader
+  uploadId: 908910

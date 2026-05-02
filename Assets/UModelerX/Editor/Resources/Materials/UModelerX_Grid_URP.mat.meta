@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 67cf0b3c2d8e33d4c852d40a170f615e
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/Editor/Resources/Materials/UModelerX_Grid_URP.mat
+  uploadId: 908910

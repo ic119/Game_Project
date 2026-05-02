@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 8c0cffcf08f4d445eadc48dfc80d510b
+TextScriptImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/Editor/Resources/Tripolygon/UModelerX/Editor/Views/SceneViews/EditModeView.schema.json
+  uploadId: 908910

@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 076ead1aaf0b42240bfa052a4a45981b
+ScriptedImporter:
+  internalIDToNameTable: []
+  externalObjects: {}
+  serializedVersion: 2
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+  script: {fileID: 13804, guid: 0000000000000000e000000000000000, type: 0}
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/PureCode/Editor/Picoberry/UI/SignIn/SignInPopupWindow.uxml
+  uploadId: 908910

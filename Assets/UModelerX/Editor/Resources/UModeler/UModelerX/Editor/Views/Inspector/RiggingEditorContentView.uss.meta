@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: eb1c29ff6beb45a418b7b35e4a71a4af
+ScriptedImporter:
+  internalIDToNameTable: []
+  externalObjects: {}
+  serializedVersion: 2
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+  script: {fileID: 12385, guid: 0000000000000000e000000000000000, type: 0}
+  disableValidation: 0
+  unsupportedSelectorAction: 0
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/Editor/Resources/UModeler/UModelerX/Editor/Views/Inspector/RiggingEditorContentView.uss
+  uploadId: 908910

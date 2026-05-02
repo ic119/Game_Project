@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 77c1fd2fc26bec746bc09ea777b6acb6
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/PureCode/Editor/TextureProvider.cs
+  uploadId: 908910

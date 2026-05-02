@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 4c732300dd57c254f9cd725f3ddf6419
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/PureCode/Editor/DotNetCodes.cs
+  uploadId: 908910

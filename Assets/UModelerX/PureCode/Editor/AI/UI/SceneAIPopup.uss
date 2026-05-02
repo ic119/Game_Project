@@ -1,0 +1,312 @@
+/* ─── Scene AI Generation Popup Styles ─────────────────────────────────── */
+
+/* 팝업 루트 컨테이너 (테마 변수 사용) */
+.scene-ai-popup {
+    position: absolute;
+    width: 248px;
+    background-color: var(--ai-bg);
+    border-color: var(--ai-btn-border);
+    border-width: 1px;
+    border-radius: 7px;
+    padding: 10px;
+}
+
+/* ─── 헤더 ──────────────────────────────────────────────────────────────── */
+
+/* 팝업 헤더: 제목+닫기 양끝 배치 */
+.popup-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+/* 팝업 제목: 볼드체, 남은 공간 채움 */
+.popup-title {
+    font-size: 12px;
+    -unity-font-style: bold;
+    color: rgb(210, 210, 210);
+    flex-grow: 1;
+}
+
+/* 완료 상태 제목: 초록색 텍스트 */
+.complete-title {
+    color: rgb(100, 220, 120);
+}
+
+/* 닫기 버튼 (X) */
+.popup-close {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    padding: 0;
+    margin: 0;
+    background-color: rgba(0, 0, 0, 0);
+    border-color: rgba(0, 0, 0, 0);
+    border-width: 0;
+    border-radius: 4px;
+    color: rgb(160, 160, 160);
+    font-size: 12px;
+    -unity-font-style: bold;
+}
+
+/* 닫기 버튼 호버 상태 */
+.popup-close:hover {
+    background-color: var(--ai-active-btn-bg);
+    color: rgb(240, 240, 240);
+}
+
+/* 닫기 버튼 클릭 상태 */
+.popup-close:active {
+    background-color: var(--ai-generate-btn-bg);
+    color: var(--ai-generate-btn-label);
+}
+
+/* ─── Transform 섹션 ─────────────────────────────────────────────────────── */
+
+/* Transform 폴드아웃: 하단 구분선 포함 */
+.transform-foldout {
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(60, 60, 60);
+}
+
+/* Transform 폴드아웃 토글: 투명 배경, 볼드체 */
+.transform-foldout > Toggle {
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 0;
+    padding: 2px 0;
+    color: rgb(180, 180, 180);
+    font-size: 11px;
+    -unity-font-style: bold;
+}
+
+/* Transform 폴드아웃 토글 호버 상태 */
+.transform-foldout > Toggle:hover {
+    background-color: rgb(50, 50, 50);
+}
+
+/* Transform 필드: 세로 배치, 전체 너비 */
+.transform-field {
+    width: 100%;
+    margin-bottom: 3px;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+/* 레이블("Position" 등)을 위쪽 별도 행에 배치 */
+.transform-field > .unity-base-field__label {
+    width: 100%;
+    min-width: auto;
+    font-size: 11px;
+    color: rgb(180, 180, 180);
+    -unity-text-align: middle-left;
+    margin-bottom: 1px;
+    padding-left: 1px;
+}
+
+/* X/Y/Z 입력 컨테이너가 아래 행 전체 사용 */
+.transform-field .unity-composite-field__input {
+    flex-direction: row;
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+/* 각 float 입력창이 남은 너비를 균등 분배 */
+.transform-field .unity-composite-field__field {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+/* Transform 필드 기본 입력 스타일 */
+.transform-field .unity-base-field__input {
+    min-width: 0;
+    flex-shrink: 1;
+}
+
+/* ─── 모드 토글 행 ───────────────────────────────────────────────────────── */
+
+/* 모드 선택 행: Text/Image 모드 전환용 */
+.mode-row {
+    flex-direction: row;
+    background-color: var(--ai-inactive-btn-bg);
+    padding: 2px;
+    margin-bottom: 8px;
+    border-width: 1px;
+    border-color: rgb(60, 60, 60);
+    border-radius: 5px;
+}
+
+/* 모드 버튼: 투명 배경, 균등 분배 */
+.mode-btn {
+    flex-grow: 1;
+    height: 24px;
+    padding: 0;
+    border-width: 0;
+    border-radius: 4px;
+    background-color: rgba(0, 0, 0, 0);
+    color: var(--ai-inactive-btn-label);
+    font-size: 11px;
+}
+
+/* 모드 버튼 호버 상태 */
+.mode-btn:hover {
+    background-color: rgb(46, 46, 46);
+    color: rgb(200, 200, 200);
+}
+
+/* 모드 버튼 선택 상태: 강조색 배경, 볼드체 */
+.mode-btn--selected {
+    background-color: var(--ai-active-btn-bg);
+    color: var(--ai-active-btn-label);
+    border-width: 1px;
+    border-color: var(--ai-active-btn-border);
+    -unity-font-style: bold;
+}
+
+/* ─── Text 페이지: 프롬프트 필드 ─────────────────────────────────────────── */
+
+/* 프롬프트 입력 필드: 최소/최대 높이 제한 */
+.prompt-field {
+    min-height: 60px;
+    max-height: 100px;
+    margin-bottom: 8px;
+}
+
+/* 프롬프트 입력 필드 내부 스타일: 어두운 배경, 둥근 모서리 */
+.prompt-field > .unity-base-field__input {
+    background-color: rgb(26, 26, 26);
+    border-color: rgb(60, 60, 60);
+    border-radius: 5px;
+    color: rgb(210, 210, 210);
+    font-size: 11px;
+    padding: 4px 6px;
+    white-space: normal;
+}
+
+/* 프롬프트 입력 필드 포커스 상태: 파란색 테두리 */
+.prompt-field > .unity-base-field__input:focus {
+    border-color: rgb(80, 140, 200);
+}
+
+/* placeholder */
+/* 프롬프트 플레이스홀더 텍스트 색상 */
+.prompt-field .unity-text-element--inner-input-field-component:placeholder {
+    color: rgb(100, 100, 100);
+}
+
+/* ─── Image 페이지: 드롭존 ────────────────────────────────────────────────── */
+
+/* 요소 숨김 유틸리티 */
+.hidden {
+    display: none;
+}
+
+/* 이미지 드롭존: 점선 테두리, 세로 중앙 정렬 */
+.image-drop-zone {
+    min-height: 80px;
+    margin-bottom: 8px;
+    padding: 8px;
+    background-color: rgb(32, 32, 32);
+    border-color: rgb(80, 80, 80);
+    border-width: 2px;
+    border-radius: 7px;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+
+/* 이미지 드롭존 호버 상태: 파란 테두리 강조 */
+.image-drop-zone:hover {
+    border-color: rgb(80, 140, 200);
+    background-color: rgb(36, 42, 50);
+}
+
+/* 드롭존 아이콘: 사진 이미지 */
+.drop-icon {
+    width: 32px;
+    height: 32px;
+    background-image: resource("AI/photo");
+    -unity-background-image-tint-color: rgb(130, 130, 130);
+    margin-bottom: 4px;
+}
+
+/* 이미지 선택 후: 미리보기 크기로 교체 */
+.drop-icon--preview {
+    width: 64px;
+    height: 64px;
+    -unity-background-scale-mode: scale-to-fit;
+    -unity-background-image-tint-color: rgb(255, 255, 255);
+}
+
+/* 드롭 힌트 텍스트 */
+.drop-hint {
+    font-size: 11px;
+    color: rgb(150, 150, 150);
+    white-space: normal;
+    -unity-text-align: middle-center;
+}
+
+/* 드롭존 포맷 안내 텍스트 */
+.drop-format {
+    font-size: 10px;
+    color: rgb(100, 100, 100);
+    -unity-text-align: middle-center;
+}
+
+/* ─── Generate / Import 버튼 ─────────────────────────────────────────────── */
+
+/* 생성 버튼: 테마 색상, 볼드체 */
+.generate-btn {
+    height: 32px;
+    margin-top: 2px;
+    background-color: var(--ai-generate-btn-bg);
+    border-color: var(--ai-btn-border);
+    border-width: 1px;
+    border-radius: 7px;
+    color: var(--ai-generate-btn-label);
+    font-size: 13px;
+    -unity-font-style: bold;
+}
+
+/* 생성 버튼 호버 상태 */
+.generate-btn:hover {
+    background-color: var(--ai-generate-btn-hover);
+}
+
+/* 생성 버튼 클릭 상태 */
+.generate-btn:active {
+    background-color: rgb(50, 50, 50);
+}
+
+/* 생성 버튼 비활성 상태: 반투명 */
+.generate-btn:disabled {
+    background-color: rgb(50, 50, 50);
+    color: rgb(100, 100, 100);
+    opacity: 0.6;
+}
+
+/* 가져오기 버튼: 초록색 배경 */
+.import-btn {
+    background-color: rgb(40, 90, 60);
+    border-color: rgb(30, 70, 45);
+}
+
+/* 가져오기 버튼 호버 상태 */
+.import-btn:hover {
+    background-color: rgb(50, 110, 75);
+}
+
+/* 가져오기 버튼 클릭 상태 */
+.import-btn:active {
+    background-color: rgb(30, 70, 50);
+}
+
+/* ─── Complete 팝업 ──────────────────────────────────────────────────────── */
+
+/* 완료 팝업: 좁은 너비 */
+.scene-ai-complete-popup {
+    width: 200px;
+}

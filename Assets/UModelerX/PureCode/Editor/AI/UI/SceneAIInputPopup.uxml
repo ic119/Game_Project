@@ -1,0 +1,44 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
+    <ui:VisualElement name="scene-ai-popup" class="scene-ai-popup">
+
+        <!-- Header: 타이틀 + 닫기 버튼 -->
+        <ui:VisualElement class="popup-header">
+            <ui:Label text="PicoBerry AI" class="popup-title" />
+            <ui:Button name="close-btn" class="popup-close" text="✕" />
+        </ui:VisualElement>
+
+        <!-- Transform 섹션 (Unity Transform 컴포넌트처럼 최상단 배치) -->
+        <ui:Foldout name="transform-foldout" text="Transform" class="transform-foldout" value="false">
+            <uie:Vector3Field name="position-field" label="Position" class="transform-field" />
+            <uie:Vector3Field name="size-field"     label="Size"     class="transform-field" />
+            <uie:Vector3Field name="rotation-field" label="Rotation" class="transform-field" />
+        </ui:Foldout>
+
+        <!-- 모드 토글 행 -->
+        <ui:VisualElement class="mode-row">
+            <ui:Button name="text-mode-btn" class="mode-btn mode-btn--selected" text="Text" />
+            <ui:Button name="image-mode-btn" class="mode-btn" text="Image" />
+        </ui:VisualElement>
+
+        <!-- Text 페이지 -->
+        <ui:VisualElement name="text-page">
+            <ui:TextField name="prompt-field"
+                          multiline="true"
+                          class="prompt-field"
+                          placeholder-text="Describe the 3D model..." />
+        </ui:VisualElement>
+
+        <!-- Image 페이지 (기본 숨김) -->
+        <ui:VisualElement name="image-page" class="hidden">
+            <ui:Button name="image-drop-zone" class="image-drop-zone">
+                <ui:VisualElement name="drop-icon" class="drop-icon" />
+                <ui:Label name="drop-label" text="Click or drag image here" class="drop-hint" />
+                <ui:Label text="PNG, JPG, JPEG, WEBP" class="drop-format" />
+            </ui:Button>
+        </ui:VisualElement>
+
+        <!-- Generate 버튼 -->
+        <ui:Button name="generate-btn" class="generate-btn" text="Generate" />
+
+    </ui:VisualElement>
+</ui:UXML>

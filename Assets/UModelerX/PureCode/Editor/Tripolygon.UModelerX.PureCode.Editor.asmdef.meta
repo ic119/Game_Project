@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: a00598ac12c4af34e8d7e82506cd47a6
+AssemblyDefinitionImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/PureCode/Editor/Tripolygon.UModelerX.PureCode.Editor.asmdef
+  uploadId: 908910

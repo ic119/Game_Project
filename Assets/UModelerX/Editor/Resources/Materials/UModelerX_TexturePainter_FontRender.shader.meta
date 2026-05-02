@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: f654242a74f44c24eb699e5858c89df9
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/Editor/Resources/Materials/UModelerX_TexturePainter_FontRender.shader
+  uploadId: 908910

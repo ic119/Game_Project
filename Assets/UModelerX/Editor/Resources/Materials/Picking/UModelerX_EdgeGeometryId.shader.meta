@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 65954d379353b2c4a98203d8dff773e5
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  preprocessorOverride: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/Editor/Resources/Materials/Picking/UModelerX_EdgeGeometryId.shader
+  uploadId: 908910

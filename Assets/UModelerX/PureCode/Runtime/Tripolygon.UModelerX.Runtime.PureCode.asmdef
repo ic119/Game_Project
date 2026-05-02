@@ -1,0 +1,16 @@
+{
+    "name": "Tripolygon.UModelerX.Runtime.PureCode",
+    "rootNamespace": "",
+    "references": [
+        "GUID:355474d781e5561489e3595e39866770"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

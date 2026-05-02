@@ -1,0 +1,9 @@
+fileFormatVersion: 2
+guid: 5368878613271cd49bda022d8feaf32b
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/PureCode/Editor/Importers_GLTF/UMXGltfMeshBuilder.cs
+  uploadId: 908910

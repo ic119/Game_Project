@@ -1,0 +1,88 @@
+/* FaceTool 전용 툴 프로퍼티 USS */
+
+/* 스무딩 그룹 컨테이너 */
+.face-tool__smoothing-container {
+    margin-top: 4px;
+    flex-direction: column;
+}
+
+/* 프로퍼티 행 (라벨 + 입력 필드) */
+.face-tool__row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 2px;
+}
+
+/* 프로퍼티 라벨 (고정 너비) */
+.face-tool__label {
+    width: 90px;
+    -unity-text-align: middle-left;
+}
+
+/* 스무딩 그룹 번호 버튼 그리드 컨테이너 */
+.face-tool__smoothing-grid {
+    flex-direction: column;
+    margin-bottom: 2px;
+}
+
+/* 스무딩 그리드 한 행 */
+.face-tool__smoothing-row {
+    flex-direction: row;
+}
+
+/* 스무딩 그룹 번호 개별 버튼 */
+.face-tool__smoothing-button {
+    flex-grow: 1;
+    flex-basis: 0;
+    height: 18px;
+    margin-right: 2px;
+    margin-bottom: 2px;
+}
+
+/* Auto Smooth 행 (버튼 + Angle 슬라이더) */
+.face-tool__auto-smooth-row {
+    flex-direction: row;
+    align-items: center;
+    margin-top: 2px;
+    margin-bottom: 2px;
+}
+
+/* Auto Smooth 버튼 (50%) */
+.face-tool__auto-smooth-button {
+    flex-basis: 50%;
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+
+/* Angle 라벨 */
+.face-tool__angle-label {
+    -unity-text-align: middle-left;
+    margin-left: 4px;
+    flex-shrink: 0;
+}
+
+/* Angle 슬라이더 */
+.face-tool__angle-slider {
+    flex-grow: 1;
+    margin-left: 4px;
+    margin-right: 4px;
+}
+
+/* Angle 에디터 필드 */
+.face-tool__angle-field {
+    width: 50px;
+    flex-shrink: 0;
+}
+
+/* 하단 액션 버튼 행 */
+.face-tool__button-row {
+    flex-direction: row;
+    margin-top: 2px;
+}
+
+/* 하단: 할당된 스무딩 그룹 버튼 그리드 */
+.face-tool__selected-grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}

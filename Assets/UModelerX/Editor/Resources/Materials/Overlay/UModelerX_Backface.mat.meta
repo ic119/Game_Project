@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: c50f3779868da40b6904e8f8de3976b5
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 330215
+  packageName: UModeler X
+  packageVersion: UModeler X 1.2.0f1
+  assetPath: Assets/UModelerX/Editor/Resources/Materials/Overlay/UModelerX_Backface.mat
+  uploadId: 908910
