@@ -1,9 +1,0 @@
-fileFormatVersion: 2
-guid: da651f31298295b449f857dda2ea225b
-AssetOrigin:
-  serializedVersion: 1
-  productId: 330215
-  packageName: UModeler X
-  packageVersion: UModeler X 1.2.0f1
-  assetPath: Assets/UModelerX/PureCode/Editor/MeshOps/UMXMeshOpsResetXFormTool.cs
-  uploadId: 908910

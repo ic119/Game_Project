@@ -1,9 +1,0 @@
-fileFormatVersion: 2
-guid: 526e7f108ceee2846a3c190fe428f25c
-AssetOrigin:
-  serializedVersion: 1
-  productId: 330215
-  packageName: UModeler X
-  packageVersion: UModeler X 1.2.0f1
-  assetPath: Assets/UModelerX/PureCode/Editor/Importers_GLTF/UMXGltfSupportedSubset.cs
-  uploadId: 908910

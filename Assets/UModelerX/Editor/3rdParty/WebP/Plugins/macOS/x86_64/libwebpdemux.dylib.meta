@@ -1,9 +1,0 @@
-fileFormatVersion: 2
-guid: 0c9ab4c333b194c15aba6a38bd6623ec
-AssetOrigin:
-  serializedVersion: 1
-  productId: 330215
-  packageName: UModeler X
-  packageVersion: UModeler X 1.2.0f1
-  assetPath: Assets/UModelerX/Editor/3rdParty/WebP/Plugins/macOS/x86_64/libwebpdemux.dylib
-  uploadId: 908910

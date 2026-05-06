@@ -1,5 +1,0 @@
-{
-    "$schema": "./EditModeView.schema.json",
-    "IsEditMode.Description": "Is Edit Mode.Description",
-    "IsObjectMode.Description": "Is Object Mode.Description"
-}

@@ -1,9 +1,0 @@
-fileFormatVersion: 2
-guid: 4eb337519a5474bfeb2358863530d1f6
-AssetOrigin:
-  serializedVersion: 1
-  productId: 330215
-  packageName: UModeler X
-  packageVersion: UModeler X 1.2.0f1
-  assetPath: Assets/UModelerX/Editor/3rdParty/WebP/Plugins/macOS/arm64/libsharpyuv.dylib
-  uploadId: 908910
