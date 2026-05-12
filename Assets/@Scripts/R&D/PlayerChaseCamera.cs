@@ -1,10 +1,10 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 public class PlayerChaseCamera : MonoBehaviour
 {
     #region Variable
     [Header("추적 대상")]
-    [SerializeField] private Transform followTarget;
+    public Transform followTarget;
 
     [Header("거리")]
     [SerializeField] private float distance = 6f;
@@ -77,7 +77,7 @@ public class PlayerChaseCamera : MonoBehaviour
 
         // 월드 정면(+Z) 기준 수평 방향부터 시작 (플레이어 forward 미사용)
         Vector3 backDir = Quaternion.AngleAxis(yawOffsetDegrees, Vector3.up) * Vector3.back;
-
+        
         Vector3 pitchAxis = Vector3.Cross(Vector3.up, backDir);
         if (pitchAxis.sqrMagnitude > 1e-6f)
         {

@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 [RequireComponent(typeof(CharacterController))]
 public class PlayerCharacterControllor : MonoBehaviour
@@ -8,12 +8,26 @@ public class PlayerCharacterControllor : MonoBehaviour
     [SerializeField] private float dashValue = 2.0f;
     [SerializeField] private float rotationDegreesPerSecond = 540f;
 
+    [SerializeField] private AnimatorController animatorController;
+    [SerializeField] private PlayerChaseCamera playerChaseCamera;
+
     private CharacterController characterController;
     #endregion
 
     private void Awake()
     {
         characterController = GetComponent<CharacterController>();
+
+        if (animatorController == null)
+        {
+            animatorController = GetComponent<AnimatorController>();
+        }
+
+        if (playerChaseCamera == null)
+        {
+            playerChaseCamera = GameObject.FindAnyObjectByType<PlayerChaseCamera>();
+        }
+        playerChaseCamera.followTarget = gameObject.transform;
     }
 
     private void Update()
@@ -49,6 +63,11 @@ public class PlayerCharacterControllor : MonoBehaviour
 
         if (direction.sqrMagnitude < 0.0001f)
         {
+            if (animatorController != null)
+            {
+                animatorController.StopMoveAnimation();
+            }
+
             return;
         }
 
@@ -60,7 +79,16 @@ public class PlayerCharacterControllor : MonoBehaviour
                                                       rotationDegreesPerSecond * Time.deltaTime);
 
         bool isShiftPressed = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+
+        if (animatorController != null)
+        {
+            animatorController.SetMoveState(isShiftPressed
+                ? AnimatorController.MoveAnimationType.Dash
+                : AnimatorController.MoveAnimationType.Walk);
+        }
+
         float currentMoveSpeed = isShiftPressed ? moveSpeed * dashValue : moveSpeed;
+        
         Vector3 motion = direction * (currentMoveSpeed * Time.deltaTime);
 
         characterController.Move(motion);

@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 namespace JJORY.Util
 {
@@ -15,5 +15,3 @@ namespace JJORY.Util
         }
     }
 }
-
-
