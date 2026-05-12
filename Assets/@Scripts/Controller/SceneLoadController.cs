@@ -113,13 +113,13 @@ namespace JJORY.Module
             // Main 씬으로 전환될 때, BeginnerVillage 맵 생성 후 PlayerRespawn 위치에 PlayerPrefab 생성
             if (currentSceneModel != null && currentSceneModel.sceneTag == "Main")
             {
-                // 1) 맵 Addressable 로드 및 Instantiate
                 AddressableController.Instance.LoadPrefabAddress<GameObject>(AddressKey.BeginnerVillage.ToString());
                 GameObject currentMap = GameObject.Find("CurrentMap");
                 yield return AddressableController.Instance.InstantiateAsset(AddressKey.BeginnerVillage.ToString(), currentMap);
 
                 // 2) 생성된 BeginnerVillage 맵 인스턴스 참조 (CurrentMap의 마지막 자식)
                 GameObject mapInstance = null;
+
                 if (currentMap != null && currentMap.transform.childCount > 0)
                 {
                     mapInstance = currentMap.transform.GetChild(currentMap.transform.childCount - 1).gameObject;

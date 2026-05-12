@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using UnityEngine;
 
 public class AnimatorController : MonoBehaviour
@@ -142,8 +142,7 @@ public class AnimatorController : MonoBehaviour
     /// 일정 시간 후 자동으로 Idle 전환
     /// </summary>
     /// <param name="attackType">재생할 공격 종류</param>
-    /// <param name="resetToIdleAfterSeconds">이 시간이 지나면 <see cref="AttackAnimationType.Idle"/>로 복귀</param>
-    public void PlayAttackOneShot(AttackAnimationType attackType, float resetToIdleAfterSeconds)
+    public void PlayAttackOneShot(AttackAnimationType attackType)
     {
         if (animator == null || string.IsNullOrEmpty(attackParameter))
         {
@@ -155,10 +154,10 @@ public class AnimatorController : MonoBehaviour
             StopCoroutine(attackRoutine);
         }
 
-        attackRoutine = StartCoroutine(CoPlayAttackOneShot(attackType, resetToIdleAfterSeconds));
+        attackRoutine = StartCoroutine(CoPlayAttackOneShot(attackType));
     }
 
-    private IEnumerator CoPlayAttackOneShot(AttackAnimationType attackType, float resetToIdleAfterSeconds)
+    private IEnumerator CoPlayAttackOneShot(AttackAnimationType attackType)
     {
         animator.SetInteger(attackStateHash, (int)AttackAnimationType.Idle);
         currentAttackState = AttackAnimationType.Idle;
@@ -167,12 +166,12 @@ public class AnimatorController : MonoBehaviour
         animator.SetInteger(attackStateHash, (int)attackType);
         currentAttackState = attackType;
 
-        if (resetToIdleAfterSeconds > 0f)
-        {
-            yield return new WaitForSeconds(resetToIdleAfterSeconds);
-            animator.SetInteger(attackStateHash, (int)AttackAnimationType.Idle);
-            currentAttackState = AttackAnimationType.Idle;
-        }
+        //if (resetToIdleAfterSeconds > 0f)
+        //{
+        //    yield return new WaitForSeconds(resetToIdleAfterSeconds);
+        //    animator.SetInteger(attackStateHash, (int)AttackAnimationType.Idle);
+        //    currentAttackState = AttackAnimationType.Idle;
+        //}
 
         attackRoutine = null;
     }

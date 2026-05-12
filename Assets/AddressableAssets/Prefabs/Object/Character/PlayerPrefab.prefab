@@ -21895,6 +21895,7 @@ GameObject:
   - component: {fileID: 2934136049119171982}
   - component: {fileID: 3763846547352353141}
   - component: {fileID: -499344947967223137}
+  - component: {fileID: 2700251738596667074}
   m_Layer: 0
   m_Name: PlayerPrefab
   m_TagString: Untagged
@@ -22004,6 +22005,7 @@ MonoBehaviour:
   dashValue: 2
   rotationDegreesPerSecond: 540
   animatorController: {fileID: 3763846547352353141}
+  playerChaseCamera: {fileID: 0}
 --- !u!114 &3763846547352353141
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -22033,6 +22035,33 @@ MonoBehaviour:
   attackCooldown: 0.45
   attackStateResetDelay: 1
   comboInputTime: 0.5
+--- !u!54 &2700251738596667074
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9185789887274334576}
+  serializedVersion: 4
+  m_Mass: 1
+  m_Drag: 0
+  m_AngularDrag: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 0
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0
 --- !u!1 &9208958909432499515
 GameObject:
   m_ObjectHideFlags: 0
