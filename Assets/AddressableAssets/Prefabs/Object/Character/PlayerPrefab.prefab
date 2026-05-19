@@ -21892,10 +21892,11 @@ GameObject:
   - component: {fileID: 8961550743708710612}
   - component: {fileID: 7487849148942949780}
   - component: {fileID: 8983766716846545644}
+  - component: {fileID: 2700251738596667074}
   - component: {fileID: 2934136049119171982}
   - component: {fileID: 3763846547352353141}
   - component: {fileID: -499344947967223137}
-  - component: {fileID: 2700251738596667074}
+  - component: {fileID: -7354973215104875995}
   m_Layer: 0
   m_Name: PlayerPrefab
   m_TagString: Untagged
@@ -21989,52 +21990,6 @@ CharacterController:
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
   m_Center: {x: 0, y: 0.73, z: 0}
---- !u!114 &2934136049119171982
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9185789887274334576}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8f4a2c19e73b42d9a561ef803d12b7ac, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  moveSpeed: 5
-  dashValue: 2
-  rotationDegreesPerSecond: 540
-  animatorController: {fileID: 3763846547352353141}
-  playerChaseCamera: {fileID: 0}
---- !u!114 &3763846547352353141
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9185789887274334576}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 41d81bb596332e74c802d049de6afe14, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  animator: {fileID: 7487849148942949780}
---- !u!114 &-499344947967223137
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9185789887274334576}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a5da994732bf33a47bce2d7fd145ba8e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  animatorController: {fileID: 3763846547352353141}
-  attackCooldown: 0.45
-  attackStateResetDelay: 1
-  comboInputTime: 0.5
 --- !u!54 &2700251738596667074
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -22062,6 +22017,62 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!114 &2934136049119171982
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9185789887274334576}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8f4a2c19e73b42d9a561ef803d12b7ac, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerChaseCamera: {fileID: 0}
+  moveSpeed: 5
+  dashValue: 2
+  rotationDegreesPerSecond: 540
+  animatorController: {fileID: 3763846547352353141}
+--- !u!114 &3763846547352353141
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9185789887274334576}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 41d81bb596332e74c802d049de6afe14, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animator: {fileID: 7487849148942949780}
+--- !u!114 &-499344947967223137
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9185789887274334576}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a5da994732bf33a47bce2d7fd145ba8e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  animatorController: {fileID: 3763846547352353141}
+  attackToIdleDelay: 0.6
+--- !u!114 &-7354973215104875995
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9185789887274334576}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 69d9ac87bfb9d0145832bb60445102ee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &9208958909432499515
 GameObject:
   m_ObjectHideFlags: 0

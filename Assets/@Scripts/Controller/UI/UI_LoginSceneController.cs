@@ -111,6 +111,7 @@ namespace JJORY.Controller.UI
             if(account_InputField_Value.Equals(get_Account) && password_InputField_Value.Equals(get_Password))
             {
                 Utils.CreateLogMessage<UI_LoginSceneController>("로그인 성공!");
+                GameManager.SetLoggedInUserName(account_InputField_Value);
                 LoadMainSceneWithMask();
             }
             else if (account_InputField_Value.Equals(get_Account) == false)

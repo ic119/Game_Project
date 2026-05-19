@@ -14,9 +14,23 @@ namespace JJORY.Module
         // 씬에 생성된 플레이어 캐릭터(PlayerPrefab 인스턴스)를 보관하는 변수
         private PlayerModel currentPlayer;
         public PlayerModel CurrentPlayer => currentPlayer;
+
+        /// <summary>
+        /// 로그인 성공 시 저장되는 계정명. 씬 전환 후 PlayerPrefab 생성 시 사용한다.
+        /// </summary>
+        private static string loggedInUserName;
+        public static string LoggedInUserName => loggedInUserName;
         #endregion
 
         #region Method
+        /// <summary>
+        /// 로그인 UI에서 입력한 계정명을 씬 전환까지 보관한다.
+        /// </summary>
+        public static void SetLoggedInUserName(string _userName)
+        {
+            loggedInUserName = _userName ?? string.Empty;
+        }
+
         /// <summary>
         /// 게임 시작 시 유저 데이터 존재 여부를 확인하고,
         /// 첫 게임이면 플레이어 능력치를 초기화한다.

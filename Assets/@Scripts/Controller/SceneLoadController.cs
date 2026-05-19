@@ -1,4 +1,5 @@
 using JJORY.Model;
+using JJORY.Model.Player;
 using JJORY.Model.SO;
 using JJORY.Util;
 using JJORY.Define;
@@ -150,6 +151,8 @@ namespace JJORY.Module
                         playerTr.position = playerRespawnTr.position;
                         playerTr.rotation = playerRespawnTr.rotation;
 
+                        ApplyLoggedInUserToPlayer(playerTr);
+
                         Destroy(playerRespawnTr.gameObject);
                     }
                     else
@@ -170,6 +173,31 @@ namespace JJORY.Module
 
             UIController.Instance.OpenMask();
             yield return new WaitForSeconds(1.0f);
+        }
+
+        /// <summary>
+        /// 로그인 시 저장한 계정명을 PlayerPrefab 이름 및 PlayerModel.userName에 반영한다.
+        /// </summary>
+        private void ApplyLoggedInUserToPlayer(Transform _playerTr)
+        {
+            string userName = GameManager.LoggedInUserName;
+            if (string.IsNullOrEmpty(userName) || _playerTr == null)
+            {
+                return;
+            }
+
+            _playerTr.name = userName;
+
+            PlayerModel playerModel = _playerTr.GetComponent<PlayerModel>();
+            if (playerModel != null)
+            {
+                playerModel.SetUserName(userName);
+                Utils.CreateLogMessage<SceneLoadController>($"PlayerPrefab 생성 완료. userName={userName}");
+            }
+            else
+            {
+                Utils.CreateLogMessage<SceneLoadController>("PlayerPrefab에 PlayerModel 컴포넌트가 없습니다.");
+            }
         }
 
         /// <summary>
