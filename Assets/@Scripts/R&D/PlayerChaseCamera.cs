@@ -4,7 +4,7 @@ public class PlayerChaseCamera : MonoBehaviour
 {
     #region Variable
     [Header("추적 대상")]
-    public Transform followTarget;
+    [SerializeField] public Transform followTarget;
 
     [Header("거리")]
     [SerializeField] private float distance = 6f;

@@ -4,12 +4,12 @@ using UnityEngine;
 public class PlayerCharacterControllor : MonoBehaviour
 {
     #region Variable
+    [SerializeField] private PlayerChaseCamera playerChaseCamera;
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float dashValue = 2.0f;
     [SerializeField] private float rotationDegreesPerSecond = 540f;
 
     [SerializeField] private AnimatorController animatorController;
-    [SerializeField] private PlayerChaseCamera playerChaseCamera;
 
     private CharacterController characterController;
     #endregion
@@ -27,6 +27,7 @@ public class PlayerCharacterControllor : MonoBehaviour
         {
             playerChaseCamera = GameObject.FindAnyObjectByType<PlayerChaseCamera>();
         }
+
         playerChaseCamera.followTarget = gameObject.transform;
     }
 

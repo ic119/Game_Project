@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using UnityEngine;
 
 public class AnimatorController : MonoBehaviour
@@ -113,20 +113,20 @@ public class AnimatorController : MonoBehaviour
     /// <summary>
     /// <see cref="AttackAnimationType"/> 값에 따라 공격 애니메이션 파라미터 설정
     /// </summary>
-    public void SetAttackState(AttackAnimationType state)
+    public void SetAttackState(AttackAnimationType _state)
     {
         if (animator == null || string.IsNullOrEmpty(attackParameter))
         {
             return;
         }
 
-        if (currentAttackState == state)
+        if (currentAttackState == _state)
         {
             return;
         }
 
-        currentAttackState = state;
-        animator.SetInteger(attackStateHash, (int)state);
+        currentAttackState = _state;
+        animator.SetInteger(attackStateHash, (int)_state);
     }
 
     /// <summary>
@@ -141,8 +141,9 @@ public class AnimatorController : MonoBehaviour
     /// 동일 공격을 연속으로 넣을 때도 트랜지션이 다시 타도록 한 프레임 Idle을 끼운 뒤 공격 값을 적용하고,
     /// 일정 시간 후 자동으로 Idle 전환
     /// </summary>
-    /// <param name="attackType">재생할 공격 종류</param>
-    public void PlayAttackOneShot(AttackAnimationType attackType)
+    /// <param name="_attackType">재생할 공격 종류</param>
+    /// <param name="_resetToIdleAfterSeconds">이 시간이 지나면 <see cref="AttackAnimationType.Idle"/>로 복귀</param>
+    public void PlayAttackOneShot(AttackAnimationType _attackType, float _resetToIdleAfterSeconds)
     {
         if (animator == null || string.IsNullOrEmpty(attackParameter))
         {
@@ -154,24 +155,60 @@ public class AnimatorController : MonoBehaviour
             StopCoroutine(attackRoutine);
         }
 
-        attackRoutine = StartCoroutine(CoPlayAttackOneShot(attackType));
+        attackRoutine = StartCoroutine(CoPlayAttackOneShot(_attackType, _resetToIdleAfterSeconds));
     }
 
-    private IEnumerator CoPlayAttackOneShot(AttackAnimationType attackType)
+    private IEnumerator CoPlayAttackOneShot(AttackAnimationType _attackType, float _resetToIdleAfterSeconds)
     {
         animator.SetInteger(attackStateHash, (int)AttackAnimationType.Idle);
         currentAttackState = AttackAnimationType.Idle;
         yield return null;
 
-        animator.SetInteger(attackStateHash, (int)attackType);
-        currentAttackState = attackType;
+        animator.SetInteger(attackStateHash, (int)_attackType);
+        currentAttackState = _attackType;
 
-        //if (resetToIdleAfterSeconds > 0f)
-        //{
-        //    yield return new WaitForSeconds(resetToIdleAfterSeconds);
-        //    animator.SetInteger(attackStateHash, (int)AttackAnimationType.Idle);
-        //    currentAttackState = AttackAnimationType.Idle;
-        //}
+        if (_resetToIdleAfterSeconds > 0f)
+        {
+            yield return new WaitForSeconds(_resetToIdleAfterSeconds);
+            animator.SetInteger(attackStateHash, (int)AttackAnimationType.Idle);
+            currentAttackState = AttackAnimationType.Idle;
+        }
+
+        attackRoutine = null;
+    }
+
+    /// <summary>
+    /// Idle 삽입 없이 공격 상태를 바로 적용합니다. 콤보처럼 Attack01→Attack02가 Animator 블렌드로 이어지게 할 때 사용합니다.
+    /// <paramref name="_resetToIdleAfterSeconds"/>가 0보다 크면 해당 시간 후 AttackState를 Idle로 둡니다.
+    /// </summary>
+    /// <param name="_attackType">재생할 공격 종류</param>
+    /// <param name="_resetToIdleAfterSeconds">지연 후 Idle로 복귀할 시간(초). 0 이하면 Idle 자동 전환 없음</param>
+    public void PlayAttackCombo(AttackAnimationType _attackType, float _resetToIdleAfterSeconds)
+    {
+        if (animator == null || string.IsNullOrEmpty(attackParameter))
+        {
+            return;
+        }
+
+        if (attackRoutine != null)
+        {
+            StopCoroutine(attackRoutine);
+        }
+
+        attackRoutine = StartCoroutine(CoPlayAttackCombo(_attackType, _resetToIdleAfterSeconds));
+    }
+
+    private IEnumerator CoPlayAttackCombo(AttackAnimationType _attackType, float _resetToIdleAfterSeconds)
+    {
+        animator.SetInteger(attackStateHash, (int)_attackType);
+        currentAttackState = _attackType;
+
+        if (_resetToIdleAfterSeconds > 0f)
+        {
+            yield return new WaitForSeconds(_resetToIdleAfterSeconds);
+            animator.SetInteger(attackStateHash, (int)AttackAnimationType.Idle);
+            currentAttackState = AttackAnimationType.Idle;
+        }
 
         attackRoutine = null;
     }
