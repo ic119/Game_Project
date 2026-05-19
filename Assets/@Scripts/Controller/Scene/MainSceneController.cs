@@ -16,7 +16,7 @@ namespace JJORY.Scene
         #endregion
 
         #region Method
-        
+
         #endregion
     }
 }

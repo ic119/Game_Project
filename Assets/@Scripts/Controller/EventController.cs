@@ -9,6 +9,7 @@ namespace JJORY.Module
         #region Variable
         public event Action<string, string> OnRequestShowPopup;
         public event Action OnRequestGenerateCharacterPopup;
+
         #endregion
 
         #region LifeCycle
@@ -29,6 +30,7 @@ namespace JJORY.Module
         {
             OnRequestShowPopup?.Invoke(_title, _content);   
         }
+
 
         /// <summary>
         /// 캐릭터 생성 팝업창 표출 이벤트 함수

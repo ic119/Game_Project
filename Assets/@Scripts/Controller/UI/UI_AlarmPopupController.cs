@@ -1,4 +1,4 @@
-﻿using JJORY.Module;
+using JJORY.Module;
 using JJORY.View.UI;
 using UnityEngine;
 using UnityEngine.UI;

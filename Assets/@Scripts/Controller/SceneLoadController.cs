@@ -110,14 +110,12 @@ namespace JJORY.Module
                 yield return new WaitForSeconds(1.0f);
             }
             
-            // Main 씬으로 전환될 때, BeginnerVillage 맵 생성 후 PlayerRespawn 위치에 PlayerPrefab 생성
             if (currentSceneModel != null && currentSceneModel.sceneTag == "Main")
             {
                 AddressableController.Instance.LoadPrefabAddress<GameObject>(AddressKey.BeginnerVillage.ToString());
                 GameObject currentMap = GameObject.Find("CurrentMap");
                 yield return AddressableController.Instance.InstantiateAsset(AddressKey.BeginnerVillage.ToString(), currentMap);
 
-                // 2) 생성된 BeginnerVillage 맵 인스턴스 참조 (CurrentMap의 마지막 자식)
                 GameObject mapInstance = null;
 
                 if (currentMap != null && currentMap.transform.childCount > 0)
@@ -125,7 +123,6 @@ namespace JJORY.Module
                     mapInstance = currentMap.transform.GetChild(currentMap.transform.childCount - 1).gameObject;
                 }
 
-                // 3) 맵의 자식인 PlayerRespawn 오브젝트 찾기 (계층 구조 내 검색)
                 Transform playerRespawnTr = null;
                 if (mapInstance != null)
                 {
@@ -137,26 +134,22 @@ namespace JJORY.Module
                     if (findBackup != null) playerRespawnTr = findBackup.transform;
                 }
 
-                // 4) PlayerRespawn 위치에 PlayerPrefab 생성 및 배치
                 if (playerRespawnTr != null)
                 {
                     AddressableController.Instance.LoadPrefabAddress<GameObject>(AddressKey.PlayerPrefab.ToString());
                     int childCountBeforeSpawn = currentMap != null ? currentMap.transform.childCount : -1;
                     yield return AddressableController.Instance.InstantiateAsset(AddressKey.PlayerPrefab.ToString(), currentMap);
 
-                    // 생성 성공 여부 확인 (Instantiate 전후 자식 수 비교)
                     bool isPlayerSpawnSuccess = currentMap != null &&
                                                 childCountBeforeSpawn >= 0 &&
                                                 currentMap.transform.childCount > childCountBeforeSpawn;
 
-                    // 생성된 PlayerPrefab을 PlayerRespawn 위치·회전으로 설정 (CurrentMap의 마지막 자식이 플레이어)
                     if (isPlayerSpawnSuccess)
                     {
                         Transform playerTr = currentMap.transform.GetChild(currentMap.transform.childCount - 1);
                         playerTr.position = playerRespawnTr.position;
                         playerTr.rotation = playerRespawnTr.rotation;
 
-                        // PlayerPrefab이 정상 생성된 경우에만 BeginnerVillage의 PlayerRespawn 제거
                         Destroy(playerRespawnTr.gameObject);
                     }
                     else
@@ -170,7 +163,6 @@ namespace JJORY.Module
                 }
             }
 
-            // 맵 생성까지 완료되면 로딩 100% 처리 후 로딩 씬 언로드
             cur_LoadProgress = 1.0f;
 
             AsyncOperation UnloadLoadingScene = SceneManager.UnloadSceneAsync(DEFINE.LOADING_SCENE);

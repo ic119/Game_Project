@@ -37,22 +37,21 @@ namespace JJORY.Controller.UI
             regist_Button.onClick.AddListener(OnClickRegistButton);
         }
 
+        private void Start()
+        {
+            account_InputField.ActivateInputField();
+        }
+
         private void Update()
         {
             if (Input.GetKeyDown(KeyCode.Tab))
             {
                 MoveToNextInputField();
             }
-
-            if (Input.GetKeyDown(KeyCode.KeypadEnter))
+            else if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
             {
                 OnClickLoginButton();
             }
-
-            //if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
-            //{
-            //    LoadMainSceneWithMask();
-            //}
         }
 
         private void OnDestroy()
