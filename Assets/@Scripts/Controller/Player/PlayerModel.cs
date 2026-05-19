@@ -1,4 +1,6 @@
 using JJORY.Module;
+using Photon.Pun.UtilityScripts;
+using System;
 using UnityEngine;
 
 namespace JJORY.Model.Player
@@ -6,6 +8,7 @@ namespace JJORY.Model.Player
     /// <summary>
     /// Player의 능력치(= 스테이터스)에 대한 클래스 정의
     /// </summary>
+    [Serializable]
     public class PlayerStat
     {
         [Tooltip("Player 캐릭터의 물리 공격력에 대한 스테이터스")]
@@ -62,6 +65,7 @@ namespace JJORY.Model.Player
     /// <summary>
     /// 캐릭터의 특수 능력 (= 개성)에 대한 클래스 정의
     /// </summary>
+    [Serializable]
     public class PlayerIndividuality
     {
         [Header("캐릭터의 개성 여부")]
@@ -76,10 +80,19 @@ namespace JJORY.Model.Player
     /// <summary>
     /// Player의 게임 운영에 대한 정보 클래스
     /// </summary>
+    [Serializable]
     public class PlayerGameInfo
     {
         [Tooltip("현재 유저가 속한 Stage의 정보")]
         [SerializeField] private int curStage = 0;
+        [SerializeField] private string userName = "";
+
+        public string UserName { get { return userName; } }
+
+        public void SetUserName(string _name)
+        {
+            userName = _name ?? string.Empty;
+        }
 
         public int CurStage { get { return curStage; } }
     }
@@ -88,7 +101,7 @@ namespace JJORY.Model.Player
     {
         #region Variable
         public PlayerStat playerStat = new PlayerStat();
-        public PlayerGameInfo playerGameInfo = new PlayerGameInfo();
+        public PlayerGameInfo playerGameInfo = new PlayerGameInfo();    
         #endregion
 
         #region LifeCylce
@@ -100,7 +113,18 @@ namespace JJORY.Model.Player
         #endregion
 
         #region Method
+        /// <summary>
+        /// 로그인 계정명을 PlayerGameInfo에 저장한다.
+        /// </summary>
+        public void SetUserName(string _name)
+        {
+            if (playerGameInfo == null)
+            {
+                return;
+            }
 
+            playerGameInfo.SetUserName(_name);
+        }
         #endregion
     }
 }
