@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace JJORY.Controller.Camera
+namespace JJORY.Controller
 {
     public class CameraController : MonoBehaviour
     {
