@@ -1,0 +1,38 @@
+{
+  "asset": "6b096b2c26dbda74f96025a32fca2c95",
+  "fileName": "019e69e1-0ea0-7a05-acbe-1eee18121cd0.png",
+  "prompt": "Low poly style cute hamster warrior, full body head to toe, green hood, green cloak, blue scarf, brown leather armor with belts and pouches, holding a silver sword, standing pose, white background. Match the design and colors of the central character in the reference image. clean edges, game asset style.",
+  "negativePrompt": "",
+  "model": "gemini-3.1-flash",
+  "modelName": "Gemini 3.1 Nano Banana 2",
+  "customSeed": -1,
+  "w3CTraceId": "",
+  "feedback": 1,
+  "refinementMode": "Generation",
+  "pixelateTargetSize": 0,
+  "pixelateKeepImageSize": false,
+  "pixelatePixelBlockSize": 0,
+  "pixelatePixelGridSize": 0,
+  "pixelateMode": 0,
+  "pixelateOutlineThickness": 0,
+  "doodles": {
+    "m_Items": [
+      {
+        "doodleReferenceType": 7,
+        "doodle": [],
+        "label": "Image",
+        "strength": 0.25,
+        "invertStrength": false,
+        "assetReferenceGuid": "02ad3f520364ba143a0c39dfe6110e72",
+        "unlabeledIndex": -1
+      }
+    ]
+  },
+  "upscaleFactor": 0,
+  "dimensions": {
+    "width": 1024,
+    "height": 1024
+  },
+  "spriteSheet": false,
+  "duration": 0.0
+}

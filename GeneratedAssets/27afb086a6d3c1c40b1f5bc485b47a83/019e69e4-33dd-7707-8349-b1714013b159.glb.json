@@ -1,0 +1,23 @@
+{
+    "asset": "27afb086a6d3c1c40b1f5bc485b47a83",
+    "fileName": "019e69e4-33dd-7707-8349-b1714013b159.glb",
+    "prompt": "hamster warrior low poly",
+    "negativePrompt": "",
+    "model": "model3d-tripo-p1",
+    "modelName": "Tripo P1",
+    "customSeed": -1,
+    "w3CTraceId": "",
+    "feedback": 0,
+    "refinementMode": "Generation",
+    "promptImageReferenceGuid": "6b096b2c26dbda74f96025a32fca2c95",
+    "modelReferenceGuid": "",
+    "multiviewFrontGuid": "",
+    "multiviewBackGuid": "",
+    "multiviewLeftGuid": "",
+    "multiviewRightGuid": "",
+    "multiviewTopGuid": "",
+    "multiviewBottomGuid": "",
+    "multiviewLeftFrontGuid": "",
+    "multiviewRightFrontGuid": "",
+    "faceLimit": -1
+}

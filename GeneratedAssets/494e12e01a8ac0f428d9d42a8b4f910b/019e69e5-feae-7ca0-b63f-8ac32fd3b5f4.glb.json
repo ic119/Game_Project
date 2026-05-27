@@ -1,0 +1,23 @@
+{
+    "asset": "494e12e01a8ac0f428d9d42a8b4f910b",
+    "fileName": "019e69e5-feae-7ca0-b63f-8ac32fd3b5f4.glb",
+    "prompt": "A cute low-poly hamster warrior, wearing a green hood and cloak, brown leather armor, holding a sword, standing upright. Matching the colors and design of the reference image. Clean topology.",
+    "negativePrompt": "",
+    "model": "model3d-tripo-p1",
+    "modelName": "Tripo P1",
+    "customSeed": -1,
+    "w3CTraceId": "",
+    "feedback": 0,
+    "refinementMode": "Generation",
+    "promptImageReferenceGuid": "6b096b2c26dbda74f96025a32fca2c95",
+    "modelReferenceGuid": "",
+    "multiviewFrontGuid": "",
+    "multiviewBackGuid": "",
+    "multiviewLeftGuid": "",
+    "multiviewRightGuid": "",
+    "multiviewTopGuid": "",
+    "multiviewBottomGuid": "",
+    "multiviewLeftFrontGuid": "",
+    "multiviewRightFrontGuid": "",
+    "faceLimit": -1
+}
