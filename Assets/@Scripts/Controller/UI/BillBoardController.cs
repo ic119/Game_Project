@@ -1,121 +1,75 @@
-using JJORY.Model.Player;
-using TMPro;
 using UnityEngine;
-
+using TMPro;
+using JJORY.Model.Player;
 
 namespace JJORY.Controller.UI
 {
     public class BillBoardController : MonoBehaviour
     {
-        #region Variable
-        [Header("UI Variable")]
+        [Header("UI Reference")]
         [SerializeField] private Canvas canvas;
         [SerializeField] private TextMeshProUGUI nameLabel;
-
-        [Header("BillBoard Options")]
-        [SerializeField] private bool isUseDistanceScale = true;
-        [SerializeField] private float baseScale = 0.01f;
-        [SerializeField] private float scaleMultiplier = 0.002f;
-        [SerializeField] private float minScale = 0.01f;
-        [SerializeField] private float maxScale = 0.03f;
-
-        [Header("Visibility")]
-        [SerializeField] private bool isUseVisibleDistance = true;
-        [SerializeField] private float visibleDistance = 25f;
+        [SerializeField] private PlayerModel playerModel;
 
         private Transform targetCamera;
-        [SerializeField] private PlayerModel playerModel;
-        #endregion
+        private string cachedUserName = string.Empty;
 
-        #region LifeCycle
-        private void OnEnable()
+        private void Awake()
         {
             if (playerModel == null)
             {
-                playerModel = GetComponent<PlayerModel>();
+                playerModel = GetComponentInParent<PlayerModel>();
             }
+        }
 
-            Camera mainCamera = Camera.main;
-            if (targetCamera == null)
-            {
-
-                if (mainCamera == null)
-                {
-                    return;
-                }
-
-                targetCamera = mainCamera.transform;
-            }
-
-            Init(mainCamera, playerModel.playerGameInfo.UserName);
+        private void Start()
+        {
+            UpdateNameLabel();
         }
 
         private void LateUpdate()
         {
-            float distance = Vector3.Distance(transform.position, targetCamera.position);
+            UpdateNameLabel();
 
-            if (isUseVisibleDistance)
+            // 카메라 참조 확인
+            if (targetCamera == null)
             {
-                bool isVisible = distance <= visibleDistance;
-
-                if (canvas != null && canvas.enabled != isVisible)
-                {
-                    canvas.enabled = isVisible;
-                }
-
-                if (!isVisible)
-                {
+                if (Camera.main != null)
+                    targetCamera = Camera.main.transform;
+                else
                     return;
-                }
             }
 
-            LookAtCamera();
+            // 실시간 빌보드 처리: 카메라의 회전값을 그대로 따름 (항상 카메라 정면 응시)
+            Quaternion billboardRotation = targetCamera.rotation;
 
-            if (isUseDistanceScale)
+            if (canvas != null)
             {
-                ApplyDistanceScale(distance);
+                canvas.transform.rotation = billboardRotation;
             }
-        }
-        #endregion
-
-        #region Method
-        private void Init(Camera _camera, string _playerName)
-        {
-            if (_camera != null)
+            else if (nameLabel != null)
             {
-                targetCamera = _camera.transform;
+                nameLabel.transform.rotation = billboardRotation;
             }
-            else
+        }
+
+        private void UpdateNameLabel()
+        {
+            if (nameLabel == null || playerModel == null || playerModel.playerGameInfo == null)
             {
-                _camera = Camera.main;
-                targetCamera = _camera.transform;
+                return;
             }
 
-            SetPlayerName(_playerName);
-        }
+            string currentUserName = playerModel.playerGameInfo.UserName;
 
-        private void SetPlayerName(string _playerName)
-        {
-            if (nameLabel != null)
+            if (cachedUserName == currentUserName)
             {
-                nameLabel.text = _playerName;
+                return;
             }
-        }
 
-        private void LookAtCamera()
-        {
-            transform.rotation = Quaternion.LookRotation(transform.position - targetCamera.position);
+            cachedUserName = currentUserName;
+            nameLabel.text = currentUserName;
         }
-
-        private void ApplyDistanceScale(float distance)
-        {
-            float scale = Mathf.Clamp(baseScale + distance * scaleMultiplier,
-                                      minScale,
-                                      maxScale
-            );
-
-            transform.localScale = Vector3.one * scale;
-        }
-        #endregion
     }
 }
+

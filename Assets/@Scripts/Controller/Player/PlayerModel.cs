@@ -26,8 +26,19 @@ namespace JJORY.Model.Player
         public int Healthy { get { return healthy; } }
 
         /// <summary>
-        /// 처음 시작하거나 새 게임을 할 때 캐릭터의 능력치 초기화 처리
+        /// 외부(GameManager 등)에서 스탯을 한꺼번에 설정할 때 사용
         /// </summary>
+        public void SetStats(int str, int intel, int agi, int hp)
+        {
+            strength = str;
+            intellect = intel;
+            agility = agi;
+            healthy = hp;
+        }
+
+        /// <summary>
+        /// 처음 시작하거나 새 게임을 할 때 캐릭터의 능력치 초기화 처리
+/// </summary>
         public void Init()
         {
             strength = 1;
@@ -95,6 +106,11 @@ namespace JJORY.Model.Player
         }
 
         public int CurStage { get { return curStage; } }
+
+        public void SetStage(int stage)
+        {
+            curStage = stage;
+        }
     }
 
     public class PlayerModel : MonoBehaviour
