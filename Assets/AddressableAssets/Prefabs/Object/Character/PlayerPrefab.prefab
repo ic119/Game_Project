@@ -23207,15 +23207,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 65f186b21b9b87945a29da151f8a05be, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  canvas: {fileID: 3262305924517464150}
-  nameLabel: {fileID: 6041348244846954504}
-  isUseDistanceScale: 1
-  baseScale: 0.01
-  scaleMultiplier: 0.002
-  minScale: 0.01
-  maxScale: 0.03
-  isUseVisibleDistance: 1
-  visibleDistance: 25
+  mainCameraTr: {fileID: 0}
+  mainCamera: {fileID: 0}
+  nameLabel: {fileID: 2041994500114106578}
+  userNameLabelTMP: {fileID: 6041348244846954504}
   playerModel: {fileID: -7354973215104875995}
 --- !u!1 &9208958909432499515
 GameObject:

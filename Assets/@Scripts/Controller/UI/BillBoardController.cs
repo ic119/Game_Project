@@ -1,75 +1,49 @@
-using UnityEngine;
-using TMPro;
 using JJORY.Model.Player;
+using TMPro;
+using Unity.VisualScripting;
+using UnityEngine;
 
 namespace JJORY.Controller.UI
 {
     public class BillBoardController : MonoBehaviour
     {
-        [Header("UI Reference")]
-        [SerializeField] private Canvas canvas;
-        [SerializeField] private TextMeshProUGUI nameLabel;
+        #region Variable
+        [SerializeField] private Transform mainCameraTr;
+        [SerializeField] private Camera mainCamera;
+        [SerializeField] private GameObject nameLabel;
+        [SerializeField] private TextMeshProUGUI userNameLabelTMP;
         [SerializeField] private PlayerModel playerModel;
+        #endregion
 
-        private Transform targetCamera;
-        private string cachedUserName = string.Empty;
-
-        private void Awake()
+        #region LifeCycle
+        private void Start()
         {
             if (playerModel == null)
             {
-                playerModel = GetComponentInParent<PlayerModel>();
+                playerModel = GetComponent<PlayerModel>();
             }
-        }
 
-        private void Start()
-        {
-            UpdateNameLabel();
+            if (userNameLabelTMP != null)
+            {
+                userNameLabelTMP.text = $"{playerModel.playerGameInfo.UserName}";
+            }
         }
 
         private void LateUpdate()
         {
-            UpdateNameLabel();
-
-            // 카메라 참조 확인
-            if (targetCamera == null)
+            if (mainCamera == null)
             {
-                if (Camera.main != null)
-                    targetCamera = Camera.main.transform;
-                else
+                if (Camera.main == null)
+                {
                     return;
+                }
+
+                mainCamera = Camera.main;
+                mainCameraTr = mainCamera.transform;
             }
 
-            // 실시간 빌보드 처리: 카메라의 회전값을 그대로 따름 (항상 카메라 정면 응시)
-            Quaternion billboardRotation = targetCamera.rotation;
-
-            if (canvas != null)
-            {
-                canvas.transform.rotation = billboardRotation;
-            }
-            else if (nameLabel != null)
-            {
-                nameLabel.transform.rotation = billboardRotation;
-            }
+            nameLabel.transform.rotation = mainCameraTr.rotation;
         }
-
-        private void UpdateNameLabel()
-        {
-            if (nameLabel == null || playerModel == null || playerModel.playerGameInfo == null)
-            {
-                return;
-            }
-
-            string currentUserName = playerModel.playerGameInfo.UserName;
-
-            if (cachedUserName == currentUserName)
-            {
-                return;
-            }
-
-            cachedUserName = currentUserName;
-            nameLabel.text = currentUserName;
-        }
+        #endregion
     }
 }
-
