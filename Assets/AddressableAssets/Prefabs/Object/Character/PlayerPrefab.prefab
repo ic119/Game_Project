@@ -23010,6 +23010,7 @@ GameObject:
   - component: {fileID: -499344947967223137}
   - component: {fileID: -7354973215104875995}
   - component: {fileID: 3094446163343356355}
+  - component: {fileID: 4137293577614943992}
   m_Layer: 0
   m_Name: PlayerPrefab
   m_TagString: Untagged
@@ -23143,7 +23144,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8f4a2c19e73b42d9a561ef803d12b7ac, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playerChaseCamera: {fileID: 0}
   moveSpeed: 5
   dashValue: 2
   rotationDegreesPerSecond: 540
@@ -23212,6 +23212,18 @@ MonoBehaviour:
   nameLabel: {fileID: 2041994500114106578}
   userNameLabelTMP: {fileID: 6041348244846954504}
   playerModel: {fileID: -7354973215104875995}
+--- !u!114 &4137293577614943992
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9185789887274334576}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 47f7e14efdc9e1c43b28ea374c50aa8b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::KeyBoardController
 --- !u!1 &9208958909432499515
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,0 +1,38 @@
+{
+    "asset": "67f657bafc5a7584790bcb6c47c3d048",
+    "fileName": "019ea120-83b3-7c32-8032-9921cd31e45a.png",
+    "prompt": "A wide horizontal wooden RPG game UI panel banner. Ornate carved wood frame with rounded corners and small metal rivets/screws in the corners, a smooth light beige parchment surface filling the center, a small green leaf/sprout decoration at the top center edge. Casual fantasy cartoon mobile game art style, soft clean shading, warm colors. The interior is completely empty with no text and no icons. Transparent background outside the panel shape.",
+    "negativePrompt": "",
+    "model": "game-ui-essentials-2",
+    "modelName": "Game UI Essentials 2.0",
+    "customSeed": -1,
+    "w3CTraceId": "",
+    "feedback": 0,
+    "refinementMode": "Generation",
+    "pixelateTargetSize": 0,
+    "pixelateKeepImageSize": false,
+    "pixelatePixelBlockSize": 0,
+    "pixelatePixelGridSize": 0,
+    "pixelateMode": 0,
+    "pixelateOutlineThickness": 0,
+    "doodles": {
+        "m_Items": [
+            {
+                "doodleReferenceType": 7,
+                "doodle": [],
+                "label": "Image",
+                "strength": 0.25,
+                "invertStrength": false,
+                "assetReferenceGuid": "b3d8bab04a927db4c96a568733e221e3",
+                "unlabeledIndex": -1
+            }
+        ]
+    },
+    "upscaleFactor": 0,
+    "dimensions": {
+        "width": 4096,
+        "height": 1024
+    },
+    "spriteSheet": false,
+    "duration": 0.0
+}

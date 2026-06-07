@@ -1,0 +1,38 @@
+{
+    "asset": "e13bd1abe9471ff4ab1ac8728fdf1ed5",
+    "fileName": "019ea120-b09a-7ea1-adf6-8803a6c89d51.png",
+    "prompt": "A single movement speed stat icon: a pair of brown leather adventurer boots. Casual cartoon RPG game UI icon, bold saturated colors, soft clean shading, subtle outline, centered single object, plain flat background.",
+    "negativePrompt": "",
+    "model": "game-ui-essentials-2",
+    "modelName": "Game UI Essentials 2.0",
+    "customSeed": -1,
+    "w3CTraceId": "",
+    "feedback": 0,
+    "refinementMode": "Generation",
+    "pixelateTargetSize": 0,
+    "pixelateKeepImageSize": false,
+    "pixelatePixelBlockSize": 0,
+    "pixelatePixelGridSize": 0,
+    "pixelateMode": 0,
+    "pixelateOutlineThickness": 0,
+    "doodles": {
+        "m_Items": [
+            {
+                "doodleReferenceType": 7,
+                "doodle": [],
+                "label": "Image",
+                "strength": 0.25,
+                "invertStrength": false,
+                "assetReferenceGuid": "b3d8bab04a927db4c96a568733e221e3",
+                "unlabeledIndex": -1
+            }
+        ]
+    },
+    "upscaleFactor": 0,
+    "dimensions": {
+        "width": 1024,
+        "height": 1024
+    },
+    "spriteSheet": false,
+    "duration": 0.0
+}
