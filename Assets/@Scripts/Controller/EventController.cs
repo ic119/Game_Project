@@ -1,5 +1,6 @@
 using JJORY.Util;
 using System;
+using UnityEditorInternal;
 using UnityEngine;
 
 namespace JJORY.Module
@@ -10,6 +11,8 @@ namespace JJORY.Module
         public event Action<string, string> OnRequestShowPopup;
         public event Action OnRequestGenerateCharacterPopup;
 
+        public event Action<bool> OnRequestActiveCharacterStatPopup;
+
         #endregion
 
         #region LifeCycle
@@ -17,6 +20,8 @@ namespace JJORY.Module
         {
             OnRequestShowPopup = null;
             OnRequestGenerateCharacterPopup = null;
+
+            OnRequestActiveCharacterStatPopup = null;
         }
         #endregion
 
@@ -38,6 +43,11 @@ namespace JJORY.Module
         public void InvokeGenerateCharacterPopup()
         {
             OnRequestGenerateCharacterPopup?.Invoke();
+        }
+
+        public void InvokeActiveCharacterStatPopup(bool _active)
+        {
+            OnRequestActiveCharacterStatPopup?.Invoke(_active);
         }
         #endregion
     }
