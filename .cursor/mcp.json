@@ -1,15 +1,15 @@
 {
   "mcpServers": {
     "unity-mcp-gateway": {
-      "command": "E:\\Portfolio\\Game_Project\\Library\\PackageCache\\com.unity.ai.assistant@e1f49a972172\\RelayApp~\\relay_win.exe",
+      "command": "D:\\Portfolio\\Game_Project\\Library\\PackageCache\\com.unity.ai.assistant@d9bb465c57d1\\RelayApp~\\relay_win.exe",
       "args": [
         "--mcp",
         "--log-dir",
-        "E:\\Portfolio\\Game_Project\\Logs"
+        "D:\\Portfolio\\Game_Project\\Logs"
       ],
       "env": {
-        "UNITY_ACP_SESSION_TOKEN": "feb0fe2606422c749916e70b0a02e3d901a2a13d5224a58415e6c92ef01c7a69",
-        "UNITY_INSTANCE_ID": "18552"
+        "UNITY_ACP_SESSION_TOKEN": "73f3f69f57bcff3ed252beec054720db4ff8d5a6e802d70d3bf6a96d9aa410c6",
+        "UNITY_INSTANCE_ID": "8500"
       }
     }
   }
