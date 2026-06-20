@@ -8,7 +8,9 @@ public enum AddressKey
     UI_LoginScene,
     UI_AlarmPopup,
     PlayerPrefab,
-    BeginnerVillage
+    BeginnerVillage,
+    UI_InventoryViewPopup,
+    UI_CharacterInfoVIewPopup
 }
 
 /// <summary>
