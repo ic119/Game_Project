@@ -228,6 +228,8 @@ namespace JJORY.Module
             {
                 go.transform.SetParent(_parent.transform, false);
             }
+
+            go.name = prefab.name;
         }
         #endregion
     }

@@ -1,5 +1,6 @@
 using JJORY.Util;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 /// <summary>
 /// 게임 내 유저의 키보드 입력을 처리합니다.
@@ -7,9 +8,10 @@ using UnityEngine;
 public class KeyBoardController : MonoBehaviour
 {
     #region Variable
-    private bool isInventoryActive = false;
-    private bool isStatsActive = false;
     private bool isQuestActive = false;
+
+    private GameObject inventoryPopup;
+    private GameObject characterInfoPopup;
     #endregion
 
     #region LifeCycle
@@ -35,9 +37,21 @@ public class KeyBoardController : MonoBehaviour
     #region Method
     private void ToggleInventory()
     {
-        isInventoryActive = !isInventoryActive;
+        if (inventoryPopup == null)
+        {
+            inventoryPopup = FindInventoryPopup();
+        }
 
-        if (isInventoryActive)
+        if (inventoryPopup == null)
+        {
+            Utils.CreateLogMessage<KeyBoardController>("UI_InventoryViewPopup을 찾지 못했습니다.");
+            return;
+        }
+
+        bool isActive = !inventoryPopup.activeSelf;
+        inventoryPopup.SetActive(isActive);
+
+        if (isActive)
         {
             Utils.CreateLogMessage<KeyBoardController>("인벤토리 UI 활성화");
         }
@@ -49,9 +63,21 @@ public class KeyBoardController : MonoBehaviour
 
     private void ToggleStats()
     {
-        isStatsActive = !isStatsActive;
+        if (characterInfoPopup == null)
+        {
+            characterInfoPopup = FindCharacterInfoPopup();
+        }
 
-        if (isStatsActive)
+        if (characterInfoPopup == null)
+        {
+            Utils.CreateLogMessage<KeyBoardController>("UI_CharacterInfoVIewPopup을 찾지 못했습니다.");
+            return;
+        }
+
+        bool isActive = !characterInfoPopup.activeSelf;
+        characterInfoPopup.SetActive(isActive);
+
+        if (isActive)
         {
             Utils.CreateLogMessage<KeyBoardController>("스탯 UI 활성화");
         }
@@ -73,6 +99,86 @@ public class KeyBoardController : MonoBehaviour
         {
             Utils.CreateLogMessage<KeyBoardController>("퀘스트 UI 비활성화");
         }
+    }
+
+    private GameObject FindInventoryPopup()
+    {
+        UI_InventoryViewPopupController[] controllers = FindObjectsByType<UI_InventoryViewPopupController>(FindObjectsInactive.Include);
+
+        if (controllers.Length > 0)
+        {
+            return controllers[0].gameObject;
+        }
+
+        return FindUIPopupByName(AddressKey.UI_InventoryViewPopup.ToString());
+    }
+
+    private GameObject FindCharacterInfoPopup()
+    {
+        return FindUIPopupByName(AddressKey.UI_CharacterInfoVIewPopup.ToString());
+    }
+
+    private GameObject FindUIPopupByName(string _popupName)
+    {
+        GameObject mainSceneRoot = GameObject.Find("@MainScene");
+        if (mainSceneRoot != null)
+        {
+            Transform found = FindInChildren(mainSceneRoot.transform, _popupName);
+            if (found != null)
+            {
+                return found.gameObject;
+            }
+        }
+
+        for (int i = 0; i < SceneManager.sceneCount; i++)
+        {
+            Scene scene = SceneManager.GetSceneAt(i);
+            if (!scene.isLoaded)
+            {
+                continue;
+            }
+
+            GameObject[] rootObjects = scene.GetRootGameObjects();
+            for (int j = 0; j < rootObjects.Length; j++)
+            {
+                Transform found = FindInChildren(rootObjects[j].transform, _popupName);
+                if (found != null)
+                {
+                    return found.gameObject;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private bool IsNameMatch(string _objectName, string _targetName)
+    {
+        if (string.IsNullOrEmpty(_objectName) || string.IsNullOrEmpty(_targetName))
+        {
+            return false;
+        }
+
+        return _objectName == _targetName || _objectName.StartsWith($"{_targetName}(Clone)");
+    }
+
+    private Transform FindInChildren(Transform _parent, string _name)
+    {
+        if (IsNameMatch(_parent.name, _name))
+        {
+            return _parent;
+        }
+
+        for (int i = 0; i < _parent.childCount; i++)
+        {
+            Transform found = FindInChildren(_parent.GetChild(i), _name);
+            if (found != null)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
     #endregion
 }

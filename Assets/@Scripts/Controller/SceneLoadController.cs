@@ -164,6 +164,18 @@ namespace JJORY.Module
                 {
                     Utils.CreateLogMessage<SceneLoadController>($"PlayerRespawn 오브젝트를 찾지 못했습니다. PlayerPrefab을 생성하지 않습니다.");
                 }
+
+                GameObject mainSceneRoot = GameObject.Find("@MainScene");
+                if (mainSceneRoot != null)
+                {
+                    yield return LoadAndInstantiateAddressableUI(AddressKey.UI_MainScene.ToString(), mainSceneRoot);
+                    yield return LoadAndInstantiateAddressableUI(AddressKey.UI_InventoryViewPopup.ToString(), mainSceneRoot, false);
+                    yield return LoadAndInstantiateAddressableUI(AddressKey.UI_CharacterInfoVIewPopup.ToString(), mainSceneRoot, false);
+                }
+                else
+                {
+                    Utils.CreateLogMessage<SceneLoadController>("@MainScene 오브젝트를 찾지 못했습니다. Main UI를 생성하지 않습니다.");
+                }
             }
 
             cur_LoadProgress = 1.0f;
@@ -198,6 +210,23 @@ namespace JJORY.Module
             {
                 Utils.CreateLogMessage<SceneLoadController>("PlayerPrefab에 PlayerModel 컴포넌트가 없습니다.");
             }
+        }
+
+        /// <summary>
+        /// Addressable UI 프리팹을 로드한 뒤 지정 부모 하위에 생성한다.
+        /// </summary>
+        private IEnumerator LoadAndInstantiateAddressableUI(string _key, GameObject _parent, bool _active = true)
+        {
+            AddressableController.Instance.LoadPrefabAddress<GameObject>(_key);
+            yield return AddressableController.Instance.InstantiateAsset(_key, _parent);
+
+            Transform uiTransform = FindInChildren(_parent.transform, _key);
+            if (uiTransform != null)
+            {
+                uiTransform.gameObject.SetActive(_active);
+            }
+
+            Utils.CreateLogMessage<SceneLoadController>($"{_key} UI 생성 완료 (active={_active})");
         }
 
         /// <summary>

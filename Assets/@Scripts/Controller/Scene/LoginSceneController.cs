@@ -18,6 +18,9 @@ namespace JJORY.Scene.Login
                 AddressableController.Instance.AddKeyHashSet(AddressKey.UI_AlarmPopup.ToString());
                 AddressableController.Instance.AddKeyHashSet(AddressKey.BeginnerVillage.ToString());
                 AddressableController.Instance.AddKeyHashSet(AddressKey.PlayerPrefab.ToString());
+                AddressableController.Instance.AddKeyHashSet(AddressKey.UI_MainScene.ToString());
+                AddressableController.Instance.AddKeyHashSet(AddressKey.UI_InventoryViewPopup.ToString());
+                AddressableController.Instance.AddKeyHashSet(AddressKey.UI_CharacterInfoVIewPopup.ToString());
 
             }
 

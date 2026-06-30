@@ -10,7 +10,8 @@ public enum AddressKey
     PlayerPrefab,
     BeginnerVillage,
     UI_InventoryViewPopup,
-    UI_CharacterInfoVIewPopup
+    UI_CharacterInfoVIewPopup,
+    UI_MainScene
 }
 
 /// <summary>
