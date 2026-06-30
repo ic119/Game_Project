@@ -13,6 +13,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Unity.AI.Assistant.Editor:Unity.AI.Assistant.Editor:GatewayProjectSettings
   m_ProviderWorkingDirs:
-  - providerId: cursor
-    workingDir: '"C:\Program Files\cursor\resources\app\bin\cursor"'
+  - providerId: claude-code
+    workingDir: C:\Program Files\cursor\resources\app\bin\cursor
   m_IncludeDefaultAgentsMd: 1
