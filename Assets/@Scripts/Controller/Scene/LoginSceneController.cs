@@ -37,7 +37,6 @@ namespace JJORY.Scene.Login
 
         private void OnDestroy() 
         {
-            Utils.CreateLogMessage<LoginSceneController>("LoginScene 제거");
             AddressableController.Instance.ReleaseHandler(AddressKey.UI_LoginScene.ToString());
             AddressableController.Instance.ReleaseHandler(AddressKey.UI_AlarmPopup.ToString());
         }

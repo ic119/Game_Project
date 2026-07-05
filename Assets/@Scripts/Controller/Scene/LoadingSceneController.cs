@@ -1,4 +1,4 @@
-﻿using JJORY.Module;
+using JJORY.Module;
 using JJORY.Util;
 using TMPro;
 using UnityEngine;
@@ -12,10 +12,6 @@ namespace JJORY.Scene
         #endregion
 
         #region LifeCycle
-        private void Start()
-        {
-            Utils.CreateLogMessage<LoadingSceneController>("Loading Scene Load Complete!");
-        }
         private void Update()
         {
             float progress = SceneLoadController.Instance.cur_LoadProgress;

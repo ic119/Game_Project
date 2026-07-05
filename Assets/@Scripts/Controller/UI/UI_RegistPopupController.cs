@@ -1,4 +1,4 @@
-﻿using JJORY.Define;
+using JJORY.Define;
 using JJORY.Module;
 using JJORY.Util;
 using TMPro;
@@ -78,13 +78,10 @@ namespace JJORY.Controller.UI
         {
             if (string.IsNullOrEmpty(account_InputField.text))
             {
-                Utils.CreateLogMessage<UI_RegistPopupController>("아이디를 입력해주세요!");
-                
                 return;
             }
             if (string.IsNullOrEmpty(password_InputField.text))
             {
-                Utils.CreateLogMessage<UI_RegistPopupController>("패스워드를 입력해주세요!");
                 return;
             }
             if (string.IsNullOrEmpty(account_InputField.text) == false && string.IsNullOrEmpty(password_InputField.text) == false)
@@ -96,11 +93,8 @@ namespace JJORY.Controller.UI
                 PlayerPrefs.SetString(DEFINE.password_Key, password_Value);
                 PlayerPrefs.Save();
 
-                Utils.CreateLogMessage<UI_RegistPopupController>("회원가입 성공!");
-
                 GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.UI_AlarmPopup.ToString(),
                                                                                                       transform.parent.gameObject.transform);
-                Utils.CreateLogMessage<UI_RegistPopupController>($"transform : {transform.parent.gameObject.name}");
                 UI_AlarmPopupController controller = popup.GetComponent<UI_AlarmPopupController>();
                 EventController.Instance.InvokeShowPopup("계정 생성", "회원가입을 완료하였습니다.");
             }
@@ -111,7 +105,6 @@ namespace JJORY.Controller.UI
             account_InputField.text = "";
             password_InputField.text = "";
             gameObject.SetActive(false);
-            Utils.CreateLogMessage<UI_RegistPopupController>("취소 버튼 클릭");
         }
 
         private void OnClickCraeteButton()
@@ -119,7 +112,6 @@ namespace JJORY.Controller.UI
             RegistInfoSave();
 
             gameObject.SetActive(false);
-            Utils.CreateLogMessage<UI_RegistPopupController>("저장 버튼 클릭");
         }
 
         private void MoveToNextInputField()

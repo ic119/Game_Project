@@ -44,21 +44,12 @@ public class KeyBoardController : MonoBehaviour
 
         if (inventoryPopup == null)
         {
-            Utils.CreateLogMessage<KeyBoardController>("UI_InventoryViewPopup을 찾지 못했습니다.");
             return;
         }
 
         bool isActive = !inventoryPopup.activeSelf;
         inventoryPopup.SetActive(isActive);
 
-        if (isActive)
-        {
-            Utils.CreateLogMessage<KeyBoardController>("인벤토리 UI 활성화");
-        }
-        else
-        {
-            Utils.CreateLogMessage<KeyBoardController>("인벤토리 UI 비활성화");
-        }
     }
 
     private void ToggleStats()
@@ -70,35 +61,18 @@ public class KeyBoardController : MonoBehaviour
 
         if (characterInfoPopup == null)
         {
-            Utils.CreateLogMessage<KeyBoardController>("UI_CharacterInfoVIewPopup을 찾지 못했습니다.");
             return;
         }
 
         bool isActive = !characterInfoPopup.activeSelf;
         characterInfoPopup.SetActive(isActive);
 
-        if (isActive)
-        {
-            Utils.CreateLogMessage<KeyBoardController>("스탯 UI 활성화");
-        }
-        else
-        {
-            Utils.CreateLogMessage<KeyBoardController>("스탯 UI 비활성화");
-        }
     }
 
     private void ToggleQuest()
     {
         isQuestActive = !isQuestActive;
 
-        if (isQuestActive)
-        {
-            Utils.CreateLogMessage<KeyBoardController>("퀘스트 UI 활성화");
-        }
-        else
-        {
-            Utils.CreateLogMessage<KeyBoardController>("퀘스트 UI 비활성화");
-        }
     }
 
     private GameObject FindInventoryPopup()

@@ -84,14 +84,10 @@ namespace JJORY.Controller.UI
             string get_Account = PlayerPrefs.GetString(DEFINE.account_Key);
             string get_Password = PlayerPrefs.GetString(DEFINE.password_Key);
 
-            Utils.CreateLogMessage<UI_LoginSceneController>("로그인 버튼 클릭");
-
             if (string.IsNullOrEmpty(account_InputField_Value))
             {
-                Utils.CreateLogMessage<UI_LoginSceneController>("아이디를 입력해주세요!");
                 GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.UI_AlarmPopup.ToString(),
                                                                                                       gameObject.transform);
-                Utils.CreateLogMessage<UI_RegistPopupController>($"transform : {gameObject.name}");
                 UI_AlarmPopupController controller = popup.GetComponent<UI_AlarmPopupController>();
                 EventController.Instance.InvokeShowPopup("계정 입력 오류", "올바른 계정을 입력해주세요!");
                 return;
@@ -99,10 +95,8 @@ namespace JJORY.Controller.UI
 
             if (string.IsNullOrEmpty(password_InputField_Value))
             {
-                Utils.CreateLogMessage<UI_LoginSceneController>("패스워드를 입력해주세요!");
                 GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.UI_AlarmPopup.ToString(),
                                                                                                       gameObject.transform);
-                Utils.CreateLogMessage<UI_RegistPopupController>($"transform : {gameObject.name}");
                 UI_AlarmPopupController controller = popup.GetComponent<UI_AlarmPopupController>();
                 EventController.Instance.InvokeShowPopup("계정 입력 오류", "올바른 계정을 입력해주세요!");
                 return;
@@ -110,27 +104,20 @@ namespace JJORY.Controller.UI
 
             if(account_InputField_Value.Equals(get_Account) && password_InputField_Value.Equals(get_Password))
             {
-                Utils.CreateLogMessage<UI_LoginSceneController>("로그인 성공!");
                 GameManager.SetLoggedInUserName(account_InputField_Value);
                 LoadMainSceneWithMask();
             }
             else if (account_InputField_Value.Equals(get_Account) == false)
             {
-                Utils.CreateLogMessage<UI_LoginSceneController>("아이디를 올바르게 입력해주세요!");
-
                 GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.UI_AlarmPopup.ToString(),
                                                                                                       gameObject.transform);
-                Utils.CreateLogMessage<UI_RegistPopupController>($"transform : {gameObject.name}");
                 UI_AlarmPopupController controller = popup.GetComponent<UI_AlarmPopupController>();
                 EventController.Instance.InvokeShowPopup("계정 입력 오류", "올바른 계정을 입력해주세요!");
             }
             else if (password_InputField_Value.Equals(get_Password) == false)
             {
-                Utils.CreateLogMessage<UI_LoginSceneController>("패스워드를 올바르게 입력해주세요!");
-
                 GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.UI_AlarmPopup.ToString(),
                                                                                                       gameObject.transform);
-                Utils.CreateLogMessage<UI_RegistPopupController>($"transform : {gameObject.name}");
                 UI_AlarmPopupController controller = popup.GetComponent<UI_AlarmPopupController>();
                 EventController.Instance.InvokeShowPopup("패스워드 입력 오류", "올바른 패스워드를 입력해주세요!");
             }
@@ -141,7 +128,6 @@ namespace JJORY.Controller.UI
             if (ui_RegistPopup != null && ui_RegistPopup.activeSelf == false)
             {
                 ui_RegistPopup.SetActive(true);
-                Utils.CreateLogMessage<UI_LoginSceneController>("계정생성 버튼 클릭");
             }
         }
 

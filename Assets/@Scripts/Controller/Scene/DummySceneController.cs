@@ -11,7 +11,6 @@ namespace JJORY.Scene.Dummy
         {
             public IEnumerator Execute()
             {
-                Utils.CreateLogMessage<DummySceneController>("1. AddressableLoad 모듈 로드 성공");    
                 yield return null;
             }
         }
@@ -20,7 +19,6 @@ namespace JJORY.Scene.Dummy
         {
             public IEnumerator Execute()
             {
-                Utils.CreateLogMessage<DummySceneController>("2. GameManager 모듈 로드 성공");
                 yield return null;
             }
         }
@@ -39,7 +37,6 @@ namespace JJORY.Scene.Dummy
                 {
                     yield return null;
                 }
-                Utils.CreateLogMessage<DummySceneController>("3. SceneModule 모듈 로드 성공");
             }
         }
 
@@ -48,7 +45,6 @@ namespace JJORY.Scene.Dummy
             public IEnumerator Execute()
             {
                 UIController.Instance.CloseMask();
-                Utils.CreateLogMessage<DummySceneController>("4. Scene 로드 성공");
                 SceneLoadController.Instance.LoadSceneByTags("Login");
                 yield return null;
             }
@@ -58,7 +54,6 @@ namespace JJORY.Scene.Dummy
         {
             public IEnumerator Execute()
             {
-                Utils.CreateLogMessage<DummySceneController>("5. EventController 모듈 로드 성공");
                 yield return null;
             }
         }
