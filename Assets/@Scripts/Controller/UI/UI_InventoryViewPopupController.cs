@@ -1,16 +1,18 @@
+using JJORY.Module;
 using UnityEngine;
 
 public class UI_InventoryViewPopupController : MonoBehaviour
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    private void Awake()
     {
-        
+        RuntimeObjectRegistry.Instance.Register(AddressKey.UI_InventoryViewPopup.ToString(), gameObject);
     }
 
-    // Update is called once per frame
-    void Update()
+    private void OnDestroy()
     {
-        
+        if (RuntimeObjectRegistry.Instance != null)
+        {
+            RuntimeObjectRegistry.Instance.Unregister(AddressKey.UI_InventoryViewPopup.ToString());
+        }
     }
 }

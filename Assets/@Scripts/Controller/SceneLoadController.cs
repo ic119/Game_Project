@@ -30,6 +30,13 @@ namespace JJORY.Module
         private int lastLoggedProgressPercent = -1;
         private string currentStepName = string.Empty;
 
+        private GameObject instantiatedMapInstance;
+        private GameObject instantiatedPlayerInstance;
+
+        public const string RegistryKey_CurrentMapRoot = "CurrentMap";
+        public const string RegistryKey_PlayerRespawn = "PlayerRespawn";
+        public const string RegistryKey_Player = "Player";
+
         /// <summary>
         /// SceneLoadController가 초기화되었는지 확인하는 프로퍼티
         /// </summary>
@@ -58,7 +65,6 @@ namespace JJORY.Module
 
         public void LoadSceneByTags(string _tag)
         {
-            // dicSceneModels가 null이거나 초기화되지 않은 경우 체크
             if (!IsInitialized)
             {
                 return;
@@ -71,23 +77,22 @@ namespace JJORY.Module
             else
             {
                 currentSceneModel = dicSceneModels[_tag];
-
                 StartCoroutine(SceneLoadRoutine(currentSceneModel));
             }
         }
 
-        /// <summary>
-        /// Scene 전환 코루틴 함수
-        /// </summary>
         private IEnumerator SceneLoadRoutine(SceneModel _targetModel)
         {
             bool isMainLoad = _targetModel.sceneTag == "Main";
             List<string> sceneTarget = _targetModel.loadScenes;
-            int mainAssetStepCount = isMainLoad ? 5 : 0; // Map, Player, UI x3
+            int mainAssetStepCount = isMainLoad ? 5 : 0;
+
+            RuntimeObjectRegistry.Instance.Clear();
+            instantiatedMapInstance = null;
+            instantiatedPlayerInstance = null;
 
             ResetLoadProgress(1 + sceneTarget.Count + mainAssetStepCount);
 
-            // Step 1. LoadingScene 로드
             BeginLoadStep("LoadingScene 로드");
             UpdateLoadProgress(0f);
             AsyncOperation asyncLoadingScene = SceneManager.LoadSceneAsync(DEFINE.LOADING_SCENE, LoadSceneMode.Single);
@@ -98,7 +103,6 @@ namespace JJORY.Module
             }
             CompleteLoadStep("LoadingScene 로드");
 
-            // Step 2. 대상 씬 Additive 로드
             UnityEngine.SceneManagement.Scene targetActiveScene = new UnityEngine.SceneManagement.Scene();
             for (int i = 0; i < sceneTarget.Count; i++)
             {
@@ -122,7 +126,6 @@ namespace JJORY.Module
                 CompleteLoadStep(sceneStepName);
             }
 
-            // Step 3~7. MainScene 전용 에셋 로드
             if (isMainLoad)
             {
                 yield return LoadMainMapStep();
@@ -132,7 +135,6 @@ namespace JJORY.Module
                 yield return LoadMainUIStep(AddressKey.UI_CharacterInfoVIewPopup.ToString(), false);
             }
 
-            // 100% 완료 후 LoadingScene 언로드 → MainScene(또는 대상 씬)으로 전환
             cur_LoadProgress = 1.0f;
             LogLoadProgress("모든 작업 완료 - LoadingScene 언로드 시작");
             yield return null;
@@ -195,82 +197,112 @@ namespace JJORY.Module
         {
             int progressPercent = Mathf.RoundToInt(cur_LoadProgress * 100f);
             int currentStep = Mathf.Clamp(loadCurrentStep + 1, 1, loadTotalSteps);
+            Utils.CreateLogMessage<SceneLoadController>($"[로딩 {progressPercent}%] ({currentStep}/{loadTotalSteps}) {_message}");
         }
 
-        /// <summary>
-        /// MainScene 맵(BeginnerVillage) 로드 단계
-        /// </summary>
         private IEnumerator LoadMainMapStep()
         {
             BeginLoadStep("BeginnerVillage 맵 로드");
             UpdateLoadProgress(0f);
 
-            AddressableController.Instance.LoadPrefabAddress<GameObject>(AddressKey.BeginnerVillage.ToString());
-            GameObject currentMap = GameObject.Find("CurrentMap");
-            yield return AddressableController.Instance.InstantiateAsset(AddressKey.BeginnerVillage.ToString(), currentMap);
+            GameObject currentMapRoot = GameObject.Find(RegistryKey_CurrentMapRoot);
+            if (currentMapRoot != null)
+            {
+                RuntimeObjectRegistry.Instance.Register(RegistryKey_CurrentMapRoot, currentMapRoot);
+            }
+
+            yield return AddressableController.Instance.InstantiateAsset(
+                AddressKey.BeginnerVillage.ToString(),
+                currentMapRoot,
+                OnMapInstantiated);
 
             CompleteLoadStep("BeginnerVillage 맵 로드");
         }
 
+        private void OnMapInstantiated(GameObject _mapInstance)
+        {
+            instantiatedMapInstance = _mapInstance;
+            if (_mapInstance == null)
+            {
+                Utils.CreateLogMessage<SceneLoadController>("BeginnerVillage 맵 생성에 실패했습니다.");
+                return;
+            }
+
+            RuntimeObjectRegistry.Instance.Register(AddressKey.BeginnerVillage.ToString(), _mapInstance);
+            EnsurePlayerRespawnRegistered(_mapInstance);
+        }
+
         /// <summary>
-        /// PlayerPrefab 생성 및 배치 단계
+        /// 맵 생성 시점에 PlayerRespawn을 마커/레지스트리에 등록한다.
         /// </summary>
+        private void EnsurePlayerRespawnRegistered(GameObject _mapInstance)
+        {
+            PlayerRespawnPoint respawnPoint = _mapInstance.GetComponentInChildren<PlayerRespawnPoint>(true);
+            if (respawnPoint == null)
+            {
+                Transform[] transforms = _mapInstance.GetComponentsInChildren<Transform>(true);
+                for (int i = 0; i < transforms.Length; i++)
+                {
+                    if (transforms[i].name == RegistryKey_PlayerRespawn)
+                    {
+                        respawnPoint = transforms[i].gameObject.AddComponent<PlayerRespawnPoint>();
+                        break;
+                    }
+                }
+            }
+
+            if (respawnPoint != null)
+            {
+                RuntimeObjectRegistry.Instance.Register(RegistryKey_PlayerRespawn, respawnPoint.gameObject);
+            }
+            else
+            {
+                Utils.CreateLogMessage<SceneLoadController>("PlayerRespawn을 맵에서 찾지 못했습니다.");
+            }
+        }
+
         private IEnumerator SpawnPlayerStep()
         {
             BeginLoadStep("PlayerPrefab 생성");
             UpdateLoadProgress(0f);
 
-            GameObject currentMap = GameObject.Find("CurrentMap");
-            GameObject mapInstance = null;
+            GameObject currentMapRoot = RuntimeObjectRegistry.Instance.Get(RegistryKey_CurrentMapRoot);
+            GameObject playerRespawnGo = RuntimeObjectRegistry.Instance.Get(RegistryKey_PlayerRespawn);
 
-            if (currentMap != null && currentMap.transform.childCount > 0)
+            if (playerRespawnGo != null)
             {
-                mapInstance = currentMap.transform.GetChild(currentMap.transform.childCount - 1).gameObject;
+                yield return AddressableController.Instance.InstantiateAsset(
+                    AddressKey.PlayerPrefab.ToString(),
+                    currentMapRoot,
+                    go => OnPlayerInstantiated(go, playerRespawnGo.transform));
             }
-
-            Transform playerRespawnTr = null;
-            if (mapInstance != null)
+            else
             {
-                playerRespawnTr = FindInChildren(mapInstance.transform, "PlayerRespawn");
-            }
-
-            if (playerRespawnTr == null)
-            {
-                GameObject findBackup = GameObject.Find("PlayerRespawn");
-                if (findBackup != null)
-                {
-                    playerRespawnTr = findBackup.transform;
-                }
-            }
-
-            if (playerRespawnTr != null)
-            {
-                AddressableController.Instance.LoadPrefabAddress<GameObject>(AddressKey.PlayerPrefab.ToString());
-                int childCountBeforeSpawn = currentMap != null ? currentMap.transform.childCount : -1;
-                yield return AddressableController.Instance.InstantiateAsset(AddressKey.PlayerPrefab.ToString(), currentMap);
-
-                bool isPlayerSpawnSuccess = currentMap != null &&
-                                            childCountBeforeSpawn >= 0 &&
-                                            currentMap.transform.childCount > childCountBeforeSpawn;
-
-                if (isPlayerSpawnSuccess)
-                {
-                    Transform playerTr = currentMap.transform.GetChild(currentMap.transform.childCount - 1);
-                    playerTr.position = playerRespawnTr.position;
-                    playerTr.rotation = playerRespawnTr.rotation;
-
-                    ApplyLoggedInUserToPlayer(playerTr);
-
-                    Destroy(playerRespawnTr.gameObject);
-                }
+                Utils.CreateLogMessage<SceneLoadController>("PlayerRespawn이 등록되지 않아 PlayerPrefab을 생성하지 않습니다.");
             }
 
             CompleteLoadStep("PlayerPrefab 생성");
         }
 
-        /// <summary>
-        /// MainScene UI 프리팹 로드 단계
-        /// </summary>
+        private void OnPlayerInstantiated(GameObject _playerGo, Transform _respawnTr)
+        {
+            instantiatedPlayerInstance = _playerGo;
+            if (_playerGo == null || _respawnTr == null)
+            {
+                Utils.CreateLogMessage<SceneLoadController>("PlayerPrefab 생성에 실패했습니다.");
+                return;
+            }
+
+            _playerGo.transform.position = _respawnTr.position;
+            _playerGo.transform.rotation = _respawnTr.rotation;
+
+            ApplyLoggedInUserToPlayer(_playerGo.transform);
+            RuntimeObjectRegistry.Instance.Register(RegistryKey_Player, _playerGo);
+            RuntimeObjectRegistry.Instance.Unregister(RegistryKey_PlayerRespawn);
+
+            Destroy(_respawnTr.gameObject);
+        }
+
         private IEnumerator LoadMainUIStep(string _uiKey, bool _active = true)
         {
             string stepName = $"{_uiKey} UI 로드";
@@ -282,13 +314,14 @@ namespace JJORY.Module
             {
                 yield return LoadAndInstantiateAddressableUI(_uiKey, mainSceneRoot, _active);
             }
+            else
+            {
+                Utils.CreateLogMessage<SceneLoadController>("@MainScene 오브젝트를 찾지 못했습니다. Main UI를 생성하지 않습니다.");
+            }
 
             CompleteLoadStep(stepName);
         }
 
-        /// <summary>
-        /// 로그인 시 저장한 계정명을 PlayerPrefab 이름 및 PlayerModel.userName에 반영한다.
-        /// </summary>
         private void ApplyLoggedInUserToPlayer(Transform _playerTr)
         {
             string userName = GameManager.LoggedInUserName;
@@ -307,32 +340,22 @@ namespace JJORY.Module
         }
 
         /// <summary>
-        /// Addressable UI 프리팹을 로드한 뒤 지정 부모 하위에 생성한다.
+        /// InstantiateAsync 콜백으로 인스턴스를 받아 활성 상태 설정 후 Registry에 등록한다.
         /// </summary>
         private IEnumerator LoadAndInstantiateAddressableUI(string _key, GameObject _parent, bool _active = true)
         {
-            AddressableController.Instance.LoadPrefabAddress<GameObject>(_key);
-            yield return AddressableController.Instance.InstantiateAsset(_key, _parent);
+            GameObject created = null;
+            yield return AddressableController.Instance.InstantiateAsset(_key, _parent, go => created = go);
 
-            Transform uiTransform = FindInChildren(_parent.transform, _key);
-            if (uiTransform != null)
+            if (created == null)
             {
-                uiTransform.gameObject.SetActive(_active);
+                Utils.CreateLogMessage<SceneLoadController>($"{_key} UI 생성에 실패했습니다.");
+                yield break;
             }
-        }
 
-        /// <summary>
-        /// 자식 계층에서 이름으로 Transform 검색
-        /// </summary>
-        private Transform FindInChildren(Transform _parent, string _name)
-        {
-            if (_parent.name == _name) return _parent;
-            for (int i = 0; i < _parent.childCount; i++)
-            {
-                Transform found = FindInChildren(_parent.GetChild(i), _name);
-                if (found != null) return found;
-            }
-            return null;
+            created.SetActive(_active);
+            RuntimeObjectRegistry.Instance.Register(_key, created);
+            Utils.CreateLogMessage<SceneLoadController>($"{_key} UI 생성 완료 (active={_active})");
         }
         #endregion
     }

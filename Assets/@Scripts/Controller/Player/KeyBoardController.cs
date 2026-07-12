@@ -1,6 +1,6 @@
+using JJORY.Module;
 using JJORY.Util;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 /// <summary>
 /// 게임 내 유저의 키보드 입력을 처리합니다.
@@ -39,120 +39,44 @@ public class KeyBoardController : MonoBehaviour
     {
         if (inventoryPopup == null)
         {
-            inventoryPopup = FindInventoryPopup();
+            inventoryPopup = RuntimeObjectRegistry.Instance.Get(AddressKey.UI_InventoryViewPopup.ToString());
         }
 
         if (inventoryPopup == null)
         {
+            Utils.CreateLogMessage<KeyBoardController>("UI_InventoryViewPopup이 Registry에 없습니다.");
             return;
         }
 
         bool isActive = !inventoryPopup.activeSelf;
         inventoryPopup.SetActive(isActive);
 
+        Utils.CreateLogMessage<KeyBoardController>(isActive ? "인벤토리 UI 활성화" : "인벤토리 UI 비활성화");
     }
 
     private void ToggleStats()
     {
         if (characterInfoPopup == null)
         {
-            characterInfoPopup = FindCharacterInfoPopup();
+            characterInfoPopup = RuntimeObjectRegistry.Instance.Get(AddressKey.UI_CharacterInfoVIewPopup.ToString());
         }
 
         if (characterInfoPopup == null)
         {
+            Utils.CreateLogMessage<KeyBoardController>("UI_CharacterInfoVIewPopup이 Registry에 없습니다.");
             return;
         }
 
         bool isActive = !characterInfoPopup.activeSelf;
         characterInfoPopup.SetActive(isActive);
 
+        Utils.CreateLogMessage<KeyBoardController>(isActive ? "스탯 UI 활성화" : "스탯 UI 비활성화");
     }
 
     private void ToggleQuest()
     {
         isQuestActive = !isQuestActive;
-
-    }
-
-    private GameObject FindInventoryPopup()
-    {
-        UI_InventoryViewPopupController[] controllers = FindObjectsByType<UI_InventoryViewPopupController>(FindObjectsInactive.Include);
-
-        if (controllers.Length > 0)
-        {
-            return controllers[0].gameObject;
-        }
-
-        return FindUIPopupByName(AddressKey.UI_InventoryViewPopup.ToString());
-    }
-
-    private GameObject FindCharacterInfoPopup()
-    {
-        return FindUIPopupByName(AddressKey.UI_CharacterInfoVIewPopup.ToString());
-    }
-
-    private GameObject FindUIPopupByName(string _popupName)
-    {
-        GameObject mainSceneRoot = GameObject.Find("@MainScene");
-        if (mainSceneRoot != null)
-        {
-            Transform found = FindInChildren(mainSceneRoot.transform, _popupName);
-            if (found != null)
-            {
-                return found.gameObject;
-            }
-        }
-
-        for (int i = 0; i < SceneManager.sceneCount; i++)
-        {
-            Scene scene = SceneManager.GetSceneAt(i);
-            if (!scene.isLoaded)
-            {
-                continue;
-            }
-
-            GameObject[] rootObjects = scene.GetRootGameObjects();
-            for (int j = 0; j < rootObjects.Length; j++)
-            {
-                Transform found = FindInChildren(rootObjects[j].transform, _popupName);
-                if (found != null)
-                {
-                    return found.gameObject;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private bool IsNameMatch(string _objectName, string _targetName)
-    {
-        if (string.IsNullOrEmpty(_objectName) || string.IsNullOrEmpty(_targetName))
-        {
-            return false;
-        }
-
-        return _objectName == _targetName || _objectName.StartsWith($"{_targetName}(Clone)");
-    }
-
-    private Transform FindInChildren(Transform _parent, string _name)
-    {
-        if (IsNameMatch(_parent.name, _name))
-        {
-            return _parent;
-        }
-
-        for (int i = 0; i < _parent.childCount; i++)
-        {
-            Transform found = FindInChildren(_parent.GetChild(i), _name);
-            if (found != null)
-            {
-                return found;
-            }
-        }
-
-        return null;
+        Utils.CreateLogMessage<KeyBoardController>(isQuestActive ? "퀘스트 UI 활성화" : "퀘스트 UI 비활성화");
     }
     #endregion
 }
