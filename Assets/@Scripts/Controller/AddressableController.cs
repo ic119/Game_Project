@@ -182,7 +182,7 @@ namespace JJORY.Module
         /// <returns></returns>
         public IEnumerator InstantiateAsset(string _key)
         {
-            yield return InstantiateAsset(_key);
+            yield return InstantiateAsset(_key, null, null);
         }
 
         /// <summary>
@@ -193,29 +193,38 @@ namespace JJORY.Module
         /// <returns></returns>
         public IEnumerator InstantiateAsset(string _key, GameObject _parent)
         {
-            AsyncOperationHandle handler;
+            yield return InstantiateAsset(_key, _parent, null);
+        }
 
-            while (!GetHandler(_key, out handler))
+        /// <summary>
+        /// Load Object에서 Key값으로 해당 오브젝트 생성 및 콜백 반환_Coroutine 함수용
+        /// </summary>
+        /// <param name="_key"></param>
+        /// <param name="_parent"></param>
+        /// <param name="_onInstantiated"></param>
+        /// <returns></returns>
+        public IEnumerator InstantiateAsset(string _key, GameObject _parent, Action<GameObject> _onInstantiated)
+        {
+            Transform parentTr = _parent != null ? _parent.transform : null;
+            AsyncOperationHandle<GameObject> handle = Addressables.InstantiateAsync(_key, parentTr, false);
+
+            yield return handle;
+
+            if (handle.Status == AsyncOperationStatus.Succeeded)
             {
-                yield return null;
-            }
+                GameObject go = handle.Result;
+                
+                int index = _key.LastIndexOf('/');
+                string cleanName = index >= 0 ? _key.Substring(index + 1) : _key;
+                go.name = cleanName;
 
-            // 로딩 완료될 때까지 대기
-            while (!handler.IsDone)
+                _onInstantiated?.Invoke(go);
+            }
+            else
             {
-                yield return null;
+                Debug.LogError($"Failed to instantiate addressable asset with key: {_key}");
+                _onInstantiated?.Invoke(null);
             }
-
-            GameObject prefab = handler.Result as GameObject;
-            GameObject go = InstantiatePrefab(prefab);
-
-            // 부모가 지정되지 않은 경우 월드 루트에 생성
-            if (_parent != null)
-            {
-                go.transform.SetParent(_parent.transform, false);
-            }
-
-            go.name = prefab.name;
         }
         #endregion
     }
