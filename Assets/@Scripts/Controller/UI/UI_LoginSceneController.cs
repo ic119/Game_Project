@@ -1,7 +1,5 @@
-using DG.Tweening;
 using JJORY.Define;
 using JJORY.Module;
-using JJORY.Util;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -17,6 +15,7 @@ namespace JJORY.Controller.UI
         [SerializeField] private TMP_InputField password_InputField;
         [SerializeField] private Button regist_Button;
         [SerializeField] private Button login_Button;
+        [SerializeField] private Toggle loginInfoSaveToggle;
 
         [Header("계정 생성 관련")]
         [SerializeField] private string account_Value;
@@ -35,10 +34,12 @@ namespace JJORY.Controller.UI
 
             login_Button.onClick.AddListener(OnClickLoginButton);
             regist_Button.onClick.AddListener(OnClickRegistButton);
+            loginInfoSaveToggle.onValueChanged.AddListener(OnLoginInfoSaveToggleChanged);
         }
 
         private void Start()
         {
+            LoadSavedLoginInfo();
             account_InputField.ActivateInputField();
         }
 
@@ -58,6 +59,7 @@ namespace JJORY.Controller.UI
         {
             login_Button.onClick.RemoveListener(OnClickLoginButton);
             regist_Button.onClick.RemoveListener(OnClickRegistButton);
+            loginInfoSaveToggle.onValueChanged.RemoveListener(OnLoginInfoSaveToggleChanged);
         }
         #endregion
 
@@ -74,6 +76,55 @@ namespace JJORY.Controller.UI
             password_InputField.contentType = TMP_InputField.ContentType.Password;
 
             inputField_Arr = new TMP_InputField[] { account_InputField, password_InputField };
+        }
+
+        /// <summary>
+        /// PlayerPrefs에 저장된 로그인 정보 저장 토글 상태를 불러오고,
+        /// 체크되어 있는 경우에만 저장된 계정명을 account_InputField에 채운다.
+        /// </summary>
+        private void LoadSavedLoginInfo()
+        {
+            bool isSaveToggleOn = PlayerPrefs.GetInt(DEFINE.saveLoginInfoToggle_Key, 0) == 1;
+
+            // 초기화 시점에는 리스너를 타지 않도록 SetIsOnWithoutNotify 사용
+            loginInfoSaveToggle.SetIsOnWithoutNotify(isSaveToggleOn);
+
+            account_InputField.text = isSaveToggleOn
+                ? PlayerPrefs.GetString(DEFINE.savedLoginAccount_Key, string.Empty)
+                : string.Empty;
+        }
+
+        /// <summary>
+        /// 로그인 정보 저장 토글의 체크 여부를 PlayerPrefs에 즉시 반영한다.
+        /// 체크 해제 시에는 저장되어 있던 계정명도 함께 제거한다.
+        /// </summary>
+        private void OnLoginInfoSaveToggleChanged(bool _isOn)
+        {
+            PlayerPrefs.SetInt(DEFINE.saveLoginInfoToggle_Key, _isOn ? 1 : 0);
+
+            if (!_isOn)
+            {
+                PlayerPrefs.DeleteKey(DEFINE.savedLoginAccount_Key);
+            }
+
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>
+        /// 로그인 성공 시, 저장 토글이 체크된 경우에만 계정명을 저장한다.
+        /// </summary>
+        private void SaveLoginAccountIfNeeded(string _account)
+        {
+            if (loginInfoSaveToggle.isOn)
+            {
+                PlayerPrefs.SetString(DEFINE.savedLoginAccount_Key, _account);
+            }
+            else
+            {
+                PlayerPrefs.DeleteKey(DEFINE.savedLoginAccount_Key);
+            }
+
+            PlayerPrefs.Save();
         }
 
         private void OnClickLoginButton()
@@ -104,6 +155,7 @@ namespace JJORY.Controller.UI
 
             if(account_InputField_Value.Equals(get_Account) && password_InputField_Value.Equals(get_Password))
             {
+                SaveLoginAccountIfNeeded(account_InputField_Value);
                 GameManager.SetLoggedInUserName(account_InputField_Value);
                 LoadMainSceneWithMask();
             }
