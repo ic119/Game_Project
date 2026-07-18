@@ -1,6 +1,5 @@
 using JJORY.Util;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
@@ -177,28 +176,30 @@ namespace JJORY.Module
             }
         }
 
-        public IEnumerator InstantiateAsset(string _key)
+        public Awaitable InstantiateAsset(string _key)
         {
-            yield return InstantiateAsset(_key, null, null);
+            return InstantiateAsset(_key, null, null);
         }
 
-        public IEnumerator InstantiateAsset(string _key, GameObject _parent)
+        public Awaitable InstantiateAsset(string _key, GameObject _parent)
         {
-            yield return InstantiateAsset(_key, _parent, null);
+            return InstantiateAsset(_key, _parent, null);
         }
 
         /// <summary>
-        /// Addressables.InstantiateAsync로 생성한다. 로드+생성을 Addressables가 처리해 프레임 분산에 유리하다.
+        /// Addressables.InstantiateAsync로 생성하고 Awaitable로 완료를 기다린다.
         /// </summary>
-        public IEnumerator InstantiateAsset(string _key, GameObject _parent, Action<GameObject> _onInstantiated)
+        public async Awaitable InstantiateAsset(
+            string _key,
+            GameObject _parent,
+            Action<GameObject> _onInstantiated)
         {
             Transform parentTr = _parent != null ? _parent.transform : null;
             AsyncOperationHandle<GameObject> handle = Addressables.InstantiateAsync(_key, parentTr, false);
 
-            // 진행률이 있을 때 프레임을 나눠 대기
             while (!handle.IsDone)
             {
-                yield return null;
+                await Awaitable.NextFrameAsync();
             }
 
             if (handle.Status == AsyncOperationStatus.Succeeded)

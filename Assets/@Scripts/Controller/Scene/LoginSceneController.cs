@@ -1,5 +1,6 @@
 using JJORY.Module;
 using JJORY.Util;
+using System.Collections;
 using UnityEngine;
 
 namespace JJORY.Scene.Login
@@ -27,11 +28,13 @@ namespace JJORY.Scene.Login
             AddressableController.Instance.LoadPrefabAddressFromHashSet();
         }
 
-        private void Start()
+        private IEnumerator Start()
         {
             if (AddressableController.Instance != null)
             {
-                StartCoroutine(AddressableController.Instance.InstantiateAsset(AddressKey.UI_LoginScene.ToString(), gameObject));
+                yield return AddressableController.Instance.InstantiateAsset(
+                    AddressKey.UI_LoginScene.ToString(),
+                    gameObject);
             }
         }
 
