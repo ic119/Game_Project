@@ -152,7 +152,9 @@ namespace JJORY.Module
 
             LogLoadProgress("LoadingScene 언로드 완료 - 대상 씬 전환");
 
-            //UIController.Instance.OpenMask();
+            // 새 씬의 첫 Canvas/렌더링 갱신과 마스크 트윈 시작 프레임을 분리한다.
+            await Awaitable.NextFrameAsync();
+            UIController.Instance.OpenMask();
             await Awaitable.WaitForSecondsAsync(1.0f);
         }
 

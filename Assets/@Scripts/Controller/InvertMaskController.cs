@@ -1,23 +1,28 @@
 using System;
 using DG.Tweening;
-using JJORY.Util;
 using UnityEngine;
-using UnityEngine.Experimental.GlobalIllumination;
 
 namespace JJORY.Module
 {
-    [ExecuteInEditMode]
     public class InvertMaskController : MonoBehaviour
     {
         #region Variable
         [Header("변수")]
-        [Range(0, 1)][SerializeField] private float range;
+        [SerializeField] private Vector2 maxMaskSize = new Vector2(2200.0f, 2800.0f);
+
+        private RectTransform rectTransform;
+        private Tween maskTween;
         #endregion
 
         #region LifeCycle
-        private void Update()
+        private void Awake()
         {
-            GetComponent<RectTransform>().sizeDelta = Vector2.Lerp(Vector2.zero, new Vector2(2200, 2800), range);
+            rectTransform = GetComponent<RectTransform>();
+        }
+
+        private void OnDestroy()
+        {
+            KillMaskTween();
         }
         #endregion
 
@@ -27,20 +32,40 @@ namespace JJORY.Module
         /// </summary>
         public void DoClose(float _duration, Action onComplete = null)
         {
-            DOTween.KillAll();
-            DOTween.To(() => range, (value) => range = value, 0.0f, _duration)
-                   .OnComplete(() =>
-                   {
-                       gameObject.SetActive(false);
-                       onComplete?.Invoke();
-                   });
+            KillMaskTween();
+            maskTween = rectTransform.DOSizeDelta(Vector2.zero, _duration)
+                                     .SetEase(Ease.Linear)
+                                     .SetUpdate(true)
+                                     .OnComplete(() =>
+                                     {
+                                         maskTween = null;
+                                         gameObject.SetActive(false);
+                                         onComplete?.Invoke();
+                                     });
         }
 
         public void DoOpen(float _duration)
         {
-            DOTween.KillAll();
-            DOTween.To(() => range, (value) => range = value, 1.0f, _duration)
-                   .OnComplete(() => { gameObject.SetActive(false); });
+            KillMaskTween();
+            maskTween = rectTransform.DOSizeDelta(maxMaskSize, _duration)
+                                     .SetEase(Ease.Linear)
+                                     .SetUpdate(true)
+                                     .OnComplete(() =>
+                                     {
+                                         maskTween = null;
+                                         gameObject.SetActive(false);
+                                     });
+        }
+
+        private void KillMaskTween()
+        {
+            if (maskTween == null || maskTween.IsActive() == false)
+            {
+                return;
+            }
+
+            maskTween.Kill();
+            maskTween = null;
         }
         #endregion
     }
