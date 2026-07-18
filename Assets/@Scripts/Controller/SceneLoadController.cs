@@ -5,7 +5,6 @@ using JJORY.Util;
 using JJORY.Define;
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
@@ -63,25 +62,31 @@ namespace JJORY.Module
             };
         }
 
-        public void LoadSceneByTags(string _tag)
+        public async void LoadSceneByTags(string _tag)
         {
-            if (!IsInitialized)
+            try
             {
-                return;
-            }
+                if (!IsInitialized)
+                {
+                    return;
+                }
 
-            if (!dicSceneModels.ContainsKey(_tag))
-            {
-                Utils.CreateLogMessage<SceneLoadController>($"{_tag}는 존재하지 않습니다.");
-            }
-            else
-            {
+                if (!dicSceneModels.ContainsKey(_tag))
+                {
+                    Utils.CreateLogMessage<SceneLoadController>($"{_tag}는 존재하지 않습니다.");
+                    return;
+                }
+
                 currentSceneModel = dicSceneModels[_tag];
-                StartCoroutine(SceneLoadRoutine(currentSceneModel));
+                await SceneLoadAsync(currentSceneModel);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
             }
         }
 
-        private IEnumerator SceneLoadRoutine(SceneModel _targetModel)
+        private async Awaitable SceneLoadAsync(SceneModel _targetModel)
         {
             bool isMainLoad = _targetModel.sceneTag == "Main";
             List<string> sceneTarget = _targetModel.loadScenes;
@@ -99,7 +104,7 @@ namespace JJORY.Module
             while (!asyncLoadingScene.isDone)
             {
                 UpdateLoadProgress(asyncLoadingScene.progress / 0.9f);
-                yield return null;
+                await Awaitable.NextFrameAsync();
             }
             CompleteLoadStep("LoadingScene 로드");
 
@@ -114,7 +119,7 @@ namespace JJORY.Module
                 while (!async.isDone)
                 {
                     UpdateLoadProgress(async.progress / 0.9f);
-                    yield return null;
+                    await Awaitable.NextFrameAsync();
                 }
 
                 if (_targetModel.activeScene == sceneTarget[i])
@@ -128,24 +133,27 @@ namespace JJORY.Module
 
             if (isMainLoad)
             {
-                yield return LoadMainMapStep();
-                yield return SpawnPlayerStep();
-                yield return LoadMainUIStep(AddressKey.UI_MainScene.ToString());
-                yield return LoadMainUIStep(AddressKey.UI_InventoryViewPopup.ToString(), false);
-                yield return LoadMainUIStep(AddressKey.UI_CharacterInfoVIewPopup.ToString(), false);
+                await LoadMainMapStepAsync();
+                await SpawnPlayerStepAsync();
+                await LoadMainUIStepAsync(AddressKey.UI_MainScene.ToString());
+                await LoadMainUIStepAsync(AddressKey.UI_InventoryViewPopup.ToString(), false);
+                await LoadMainUIStepAsync(AddressKey.UI_CharacterInfoVIewPopup.ToString(), false);
             }
 
             cur_LoadProgress = 1.0f;
             LogLoadProgress("모든 작업 완료 - LoadingScene 언로드 시작");
-            yield return null;
+            await Awaitable.NextFrameAsync();
 
             AsyncOperation unloadLoadingScene = SceneManager.UnloadSceneAsync(DEFINE.LOADING_SCENE);
-            yield return new WaitUntil(() => unloadLoadingScene.isDone);
+            while (!unloadLoadingScene.isDone)
+            {
+                await Awaitable.NextFrameAsync();
+            }
 
             LogLoadProgress("LoadingScene 언로드 완료 - 대상 씬 전환");
 
             //UIController.Instance.OpenMask();
-            yield return new WaitForSeconds(1.0f);
+            await Awaitable.WaitForSecondsAsync(1.0f);
         }
 
         private void ResetLoadProgress(int _totalSteps)
@@ -200,7 +208,7 @@ namespace JJORY.Module
             //Utils.CreateLogMessage<SceneLoadController>($"[로딩 {progressPercent}%] ({currentStep}/{loadTotalSteps}) {_message}");
         }
 
-        private IEnumerator LoadMainMapStep()
+        private async Awaitable LoadMainMapStepAsync()
         {
             BeginLoadStep("BeginnerVillage 맵 로드");
             UpdateLoadProgress(0f);
@@ -211,7 +219,7 @@ namespace JJORY.Module
                 RuntimeObjectRegistry.Instance.Register(RegistryKey_CurrentMapRoot, currentMapRoot);
             }
 
-            yield return AddressableController.Instance.InstantiateAsset(
+            await AddressableController.Instance.InstantiateAsset(
                 AddressKey.BeginnerVillage.ToString(),
                 currentMapRoot,
                 OnMapInstantiated);
@@ -261,7 +269,7 @@ namespace JJORY.Module
             }
         }
 
-        private IEnumerator SpawnPlayerStep()
+        private async Awaitable SpawnPlayerStepAsync()
         {
             BeginLoadStep("PlayerPrefab 생성");
             UpdateLoadProgress(0f);
@@ -271,7 +279,7 @@ namespace JJORY.Module
 
             if (playerRespawnGo != null)
             {
-                yield return AddressableController.Instance.InstantiateAsset(
+                await AddressableController.Instance.InstantiateAsset(
                     AddressKey.PlayerPrefab.ToString(),
                     currentMapRoot,
                     go => OnPlayerInstantiated(go, playerRespawnGo.transform));
@@ -303,7 +311,7 @@ namespace JJORY.Module
             Destroy(_respawnTr.gameObject);
         }
 
-        private IEnumerator LoadMainUIStep(string _uiKey, bool _active = true)
+        private async Awaitable LoadMainUIStepAsync(string _uiKey, bool _active = true)
         {
             string stepName = $"{_uiKey} UI 로드";
             BeginLoadStep(stepName);
@@ -312,7 +320,7 @@ namespace JJORY.Module
             GameObject mainSceneRoot = GameObject.Find("@MainScene");
             if (mainSceneRoot != null)
             {
-                yield return LoadAndInstantiateAddressableUI(_uiKey, mainSceneRoot, _active);
+                await LoadAndInstantiateAddressableUIAsync(_uiKey, mainSceneRoot, _active);
             }
             else
             {
@@ -342,7 +350,10 @@ namespace JJORY.Module
         /// <summary>
         /// InstantiateAsync 콜백으로 인스턴스를 받아 활성 상태 설정 후 Registry에 등록한다.
         /// </summary>
-        private IEnumerator LoadAndInstantiateAddressableUI(string _key, GameObject _parent, bool _active = true)
+        private async Awaitable LoadAndInstantiateAddressableUIAsync(
+            string _key,
+            GameObject _parent,
+            bool _active = true)
         {
             GameObject created = null;
 
@@ -353,17 +364,19 @@ namespace JJORY.Module
                 created = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(
                     _key,
                     _parent.transform);
-                yield return null;
             }
             else
             {
-                yield return AddressableController.Instance.InstantiateAsset(_key, _parent, go => created = go);
+                await AddressableController.Instance.InstantiateAsset(
+                    _key,
+                    _parent,
+                    go => created = go);
             }
 
             if (created == null)
             {
                 Utils.CreateLogMessage<SceneLoadController>($"{_key} UI 생성에 실패했습니다.");
-                yield break;
+                return;
             }
 
             created.SetActive(_active);
