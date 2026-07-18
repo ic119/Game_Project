@@ -144,7 +144,7 @@ namespace JJORY.Module
 
             LogLoadProgress("LoadingScene 언로드 완료 - 대상 씬 전환");
 
-            UIController.Instance.OpenMask();
+            //UIController.Instance.OpenMask();
             yield return new WaitForSeconds(1.0f);
         }
 
@@ -197,7 +197,7 @@ namespace JJORY.Module
         {
             int progressPercent = Mathf.RoundToInt(cur_LoadProgress * 100f);
             int currentStep = Mathf.Clamp(loadCurrentStep + 1, 1, loadTotalSteps);
-            Utils.CreateLogMessage<SceneLoadController>($"[로딩 {progressPercent}%] ({currentStep}/{loadTotalSteps}) {_message}");
+            //Utils.CreateLogMessage<SceneLoadController>($"[로딩 {progressPercent}%] ({currentStep}/{loadTotalSteps}) {_message}");
         }
 
         private IEnumerator LoadMainMapStep()
@@ -345,7 +345,20 @@ namespace JJORY.Module
         private IEnumerator LoadAndInstantiateAddressableUI(string _key, GameObject _parent, bool _active = true)
         {
             GameObject created = null;
-            yield return AddressableController.Instance.InstantiateAsset(_key, _parent, go => created = go);
+
+            if (_key == AddressKey.UI_MainScene.ToString())
+            {
+                // 프리로드된 에셋 핸들은 유지하고 일반 복제본을 생성한다.
+                // 화면 전환 시 복제본은 Destroy되지만 Addressables.Release는 호출하지 않는다.
+                created = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(
+                    _key,
+                    _parent.transform);
+                yield return null;
+            }
+            else
+            {
+                yield return AddressableController.Instance.InstantiateAsset(_key, _parent, go => created = go);
+            }
 
             if (created == null)
             {
