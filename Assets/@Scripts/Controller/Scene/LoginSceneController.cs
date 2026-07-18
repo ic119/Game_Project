@@ -1,6 +1,6 @@
 using JJORY.Module;
 using JJORY.Util;
-using System.Collections;
+using System;
 using UnityEngine;
 
 namespace JJORY.Scene.Login
@@ -8,44 +8,81 @@ namespace JJORY.Scene.Login
     public class LoginSceneController : MonoBehaviour
     {
         #region Variable
+        private GameObject loginSceneInstance;
         #endregion
 
         #region LifeCycle
-        private void Awake()
+        private async void Start()
         {
-            if (AddressableController.Instance != null)
+            try
             {
-                AddressableController.Instance.AddKeyHashSet(AddressKey.UI_LoginScene.ToString());
-                AddressableController.Instance.AddKeyHashSet(AddressKey.UI_AlarmPopup.ToString());
-                AddressableController.Instance.AddKeyHashSet(AddressKey.BeginnerVillage.ToString());
-                AddressableController.Instance.AddKeyHashSet(AddressKey.PlayerPrefab.ToString());
-                AddressableController.Instance.AddKeyHashSet(AddressKey.UI_MainScene.ToString());
-                AddressableController.Instance.AddKeyHashSet(AddressKey.UI_InventoryViewPopup.ToString());
-                AddressableController.Instance.AddKeyHashSet(AddressKey.UI_CharacterInfoVIewPopup.ToString());
-
+                await InitializeAsync();
             }
-
-            AddressableController.Instance.LoadPrefabAddressFromHashSet();
-        }
-
-        private IEnumerator Start()
-        {
-            if (AddressableController.Instance != null)
+            catch (Exception exception)
             {
-                yield return AddressableController.Instance.InstantiateAsset(
-                    AddressKey.UI_LoginScene.ToString(),
-                    gameObject);
+                Debug.LogException(exception);
             }
         }
 
-        private void OnDestroy() 
+        private void OnDestroy()
         {
-            AddressableController.Instance.ReleaseHandler(AddressKey.UI_LoginScene.ToString());
-            AddressableController.Instance.ReleaseHandler(AddressKey.UI_AlarmPopup.ToString());
+            AddressableController addressableController = AddressableController.Instance;
+            if (addressableController == null)
+            {
+                return;
+            }
+
+            if (loginSceneInstance != null)
+            {
+                addressableController.ReleaseInstance(loginSceneInstance);
+                loginSceneInstance = null;
+            }
+
+            addressableController.ReleaseHandler(AddressKey.UI_LoginScene.ToString());
+            addressableController.ReleaseHandler(AddressKey.UI_AlarmPopup.ToString());
         }
         #endregion
 
         #region Method
+        private async Awaitable InitializeAsync()
+        {
+            AddressableController addressableController = AddressableController.Instance;
+            if (addressableController == null)
+            {
+                Utils.CreateLogMessage<LoginSceneController>("AddressableController를 찾을 수 없습니다.");
+                return;
+            }
+
+            RegisterAddressableKeys(addressableController);
+            addressableController.LoadPrefabAddressFromHashSet();
+
+            await addressableController.InstantiateAsset(
+                AddressKey.UI_LoginScene.ToString(),
+                gameObject,
+                OnLoginSceneInstantiated);
+        }
+
+        private void RegisterAddressableKeys(AddressableController _addressableController)
+        {
+            _addressableController.AddKeyHashSet(AddressKey.UI_LoginScene.ToString());
+            _addressableController.AddKeyHashSet(AddressKey.UI_AlarmPopup.ToString());
+            _addressableController.AddKeyHashSet(AddressKey.BeginnerVillage.ToString());
+            _addressableController.AddKeyHashSet(AddressKey.PlayerPrefab.ToString());
+            _addressableController.AddKeyHashSet(AddressKey.UI_MainScene.ToString());
+            _addressableController.AddKeyHashSet(AddressKey.UI_InventoryViewPopup.ToString());
+            _addressableController.AddKeyHashSet(AddressKey.UI_CharacterInfoVIewPopup.ToString());
+        }
+
+        private void OnLoginSceneInstantiated(GameObject _instance)
+        {
+            if (this == null)
+            {
+                AddressableController.Instance?.ReleaseInstance(_instance);
+                return;
+            }
+
+            loginSceneInstance = _instance;
+        }
         #endregion
     }
 }
