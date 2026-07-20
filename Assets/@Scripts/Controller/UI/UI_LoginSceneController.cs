@@ -1,5 +1,7 @@
 using JJORY.Define;
 using JJORY.Module;
+using JJORY.Util;
+using System.Threading;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -16,6 +18,11 @@ namespace JJORY.Controller.UI
         [SerializeField] private Button regist_Button;
         [SerializeField] private Button login_Button;
         [SerializeField] private Toggle loginInfoSaveToggle;
+
+        [SerializeField] private TextMeshProUGUI statusText;
+
+        [Header("로그인 인증 관련")]
+        private IAuthService authService;
 
         [Header("계정 생성 관련")]
         [SerializeField] private string account_Value;
@@ -212,6 +219,21 @@ namespace JJORY.Controller.UI
             {
                 SceneLoadController.Instance.LoadSceneByTags("Main");
             });
+        }
+        #endregion
+
+        #region Playfab
+        private void SetStatus(string _message)
+        {
+            Utils.CreateLogMessage<UI_LoginSceneController>(_message);
+        }
+
+        private void OnLoginComplete(AuthResult _result)
+        {
+            if (_result.Success)
+            {
+                SetStatus($"로그인 성공 : {_result.Play}");
+            }
         }
         #endregion
     }
