@@ -1,7 +1,7 @@
 using TMPro;
 using UnityEngine;
 
-namespace JJORY.View.UI
+namespace Incheol.View.UI
 {
     public class CharacterStatListItemView : MonoBehaviour
     {

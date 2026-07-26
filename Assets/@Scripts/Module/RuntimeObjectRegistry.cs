@@ -1,8 +1,8 @@
 using System.Collections.Generic;
-using JJORY.Util;
+using Incheol.Util;
 using UnityEngine;
 
-namespace JJORY.Module
+namespace Incheol.Module
 {
     /// <summary>
     /// Addressable 등으로 생성한 런타임 오브젝트를 키로 등록/조회한다.

@@ -1,9 +1,9 @@
-using JJORY.Module;
-using JJORY.Util;
+using Incheol.Module;
+using Incheol.Util;
 using TMPro;
 using UnityEngine;
 
-namespace JJORY.Scene
+namespace Incheol.Scene
 {
     public class LoadingSceneController : MonoBehaviour
     {

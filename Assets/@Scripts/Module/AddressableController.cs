@@ -1,11 +1,11 @@
-using JJORY.Util;
+using Incheol.Util;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 
-namespace JJORY.Module
+namespace Incheol.Module
 {
     public class AddressableController : SingletonObject<AddressableController>
     {

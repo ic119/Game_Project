@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace JJORY.Controller.UI
+namespace Incheol.Controller.UI
 {
     public class UI_CharacterStatInfoController : MonoBehaviour
     {

@@ -1,8 +1,8 @@
-using JJORY.Module;
-using JJORY.Util;
+using Incheol.Module;
+using Incheol.Util;
 using UnityEngine;
 
-namespace JJORY.Scene
+namespace Incheol.Scene
 {
     public class MainSceneController : MonoBehaviour
     {

@@ -1,8 +1,8 @@
-using JJORY.Model;
-using JJORY.Model.Player;
-using JJORY.Model.SO;
-using JJORY.Util;
-using JJORY.Define;
+using Incheol.Model;
+using Incheol.Model.Player;
+using Incheol.Model.SO;
+using Incheol.Util;
+using Incheol.Define;
 
 using System;
 using System.Collections.Generic;
@@ -10,10 +10,27 @@ using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.SceneManagement;
 
-namespace JJORY.Module
+namespace Incheol.Module
 {
     public class SceneLoadController : SingletonObject<SceneLoadController>
     {
+        #region Type
+        /// <summary>
+        /// 로딩 큐에 들어가는 개별 작업 단위. 완료되면 진행률이 갱신된다.
+        /// </summary>
+        private class LoadStep
+        {
+            public string Name { get; }
+            public Func<Awaitable> Action { get; }
+
+            public LoadStep(string _name, Func<Awaitable> _action)
+            {
+                Name = _name;
+                Action = _action;
+            }
+        }
+        #endregion
+
         #region Variable
         [Header("Current Scene Module")]
         [SerializeField] SceneModel currentSceneModel;
@@ -24,10 +41,13 @@ namespace JJORY.Module
         [Header("Current Load Progress")]
         public float cur_LoadProgress = 0.0f;
 
+        /// <summary>
+        /// 로딩 스텝이 하나 완료될 때마다 갱신된 진행률(0~1)과 함께 호출된다.
+        /// </summary>
+        public event Action<float> OnLoadProgressChanged;
+
         private int loadTotalSteps;
         private int loadCurrentStep;
-        private int lastLoggedProgressPercent = -1;
-        private string currentStepName = string.Empty;
 
         private GameObject instantiatedMapInstance;
         private GameObject instantiatedPlayerInstance;
@@ -62,6 +82,9 @@ namespace JJORY.Module
             };
         }
 
+        /// <summary>
+        /// LoadingScene을 경유하는 일반 씬 전환(Login ↔ Main 등)에서 사용한다.
+        /// </summary>
         public async void LoadSceneByTags(string _tag)
         {
             try
@@ -78,7 +101,7 @@ namespace JJORY.Module
                 }
 
                 currentSceneModel = dicSceneModels[_tag];
-                await SceneLoadAsync(currentSceneModel);
+                await SceneLoadCoreAsync(currentSceneModel, true, null);
             }
             catch (Exception exception)
             {
@@ -86,76 +109,98 @@ namespace JJORY.Module
             }
         }
 
-        private async Awaitable SceneLoadAsync(SceneModel _targetModel)
+        /// <summary>
+        /// 부트스트랩 씬(DummyScene 등)에서 직접 호출한다.
+        /// LoadingScene을 거치지 않고 대상 씬을 로드한 뒤, 호출 시점의 활성 씬을 언로드하여 전환한다.
+        /// 진행률은 OnLoadProgressChanged 이벤트로 스텝이 끝날 때마다 통지된다.
+        /// </summary>
+        public async Awaitable LoadInitialSceneAsync(string _tag)
+        {
+            try
+            {
+                if (!IsInitialized)
+                {
+                    return;
+                }
+
+                if (!dicSceneModels.ContainsKey(_tag))
+                {
+                    Utils.CreateLogMessage<SceneLoadController>($"{_tag}는 존재하지 않습니다.");
+                    return;
+                }
+
+                string bootstrapSceneName = SceneManager.GetActiveScene().name;
+                currentSceneModel = dicSceneModels[_tag];
+                await SceneLoadCoreAsync(currentSceneModel, false, bootstrapSceneName);
+            }
+            catch (Exception exception)
+            {
+                Debug.LogException(exception);
+            }
+        }
+
+        private async Awaitable SceneLoadCoreAsync(SceneModel _targetModel, bool _wrapWithLoadingScene, string _bootstrapSceneName)
         {
             bool isMainLoad = _targetModel.sceneTag == "Main";
             List<string> sceneTarget = _targetModel.loadScenes;
-            int mainAssetStepCount = isMainLoad ? 5 : 0;
 
             RuntimeObjectRegistry.Instance.Clear();
             instantiatedMapInstance = null;
             instantiatedPlayerInstance = null;
 
-            ResetLoadProgress(1 + sceneTarget.Count + mainAssetStepCount);
+            Queue<LoadStep> loadStepQueue = BuildLoadStepQueue(_targetModel, isMainLoad, sceneTarget, _wrapWithLoadingScene, _bootstrapSceneName);
+            ResetLoadProgress(loadStepQueue.Count);
 
-            BeginLoadStep("LoadingScene 로드");
-            UpdateLoadProgress(0f);
-            AsyncOperation asyncLoadingScene = SceneManager.LoadSceneAsync(DEFINE.LOADING_SCENE, LoadSceneMode.Single);
-            while (!asyncLoadingScene.isDone)
+            while (loadStepQueue.Count > 0)
             {
-                UpdateLoadProgress(asyncLoadingScene.progress / 0.9f);
-                await Awaitable.NextFrameAsync();
+                LoadStep step = loadStepQueue.Dequeue();
+                await step.Action();
+                CompleteLoadStep();
             }
-            CompleteLoadStep("LoadingScene 로드");
+        }
 
-            UnityEngine.SceneManagement.Scene targetActiveScene = new UnityEngine.SceneManagement.Scene();
-            for (int i = 0; i < sceneTarget.Count; i++)
+        /// <summary>
+        /// 이번 전환에서 처리할 로딩 스텝을 순서대로 Queue에 담는다.
+        /// </summary>
+        private Queue<LoadStep> BuildLoadStepQueue(
+            SceneModel _targetModel,
+            bool _isMainLoad,
+            List<string> _sceneTarget,
+            bool _wrapWithLoadingScene,
+            string _bootstrapSceneName)
+        {
+            Queue<LoadStep> stepQueue = new Queue<LoadStep>();
+
+            if (_wrapWithLoadingScene)
             {
-                string sceneStepName = $"{sceneTarget[i]} 씬 로드";
-                BeginLoadStep(sceneStepName);
-                UpdateLoadProgress(0f);
-                AsyncOperation async = SceneManager.LoadSceneAsync(sceneTarget[i], LoadSceneMode.Additive);
-
-                while (!async.isDone)
-                {
-                    UpdateLoadProgress(async.progress / 0.9f);
-                    await Awaitable.NextFrameAsync();
-                }
-
-                if (_targetModel.activeScene == sceneTarget[i])
-                {
-                    targetActiveScene = SceneManager.GetSceneByName(sceneTarget[i]);
-                    SceneManager.SetActiveScene(targetActiveScene);
-                }
-
-                CompleteLoadStep(sceneStepName);
+                stepQueue.Enqueue(new LoadStep("LoadingScene 로드", LoadLoadingSceneStepAsync));
             }
 
-            if (isMainLoad)
+            for (int i = 0; i < _sceneTarget.Count; i++)
             {
-                await LoadMainMapStepAsync();
-                await SpawnPlayerStepAsync();
-                await LoadMainUIStepAsync(AddressKey.UI_MainScene.ToString());
-                await LoadMainUIStepAsync(AddressKey.UI_InventoryViewPopup.ToString(), false);
-                await LoadMainUIStepAsync(AddressKey.UI_CharacterInfoVIewPopup.ToString(), false);
+                string sceneName = _sceneTarget[i];
+                stepQueue.Enqueue(new LoadStep($"{sceneName} 씬 로드", () => LoadAdditiveSceneStepAsync(sceneName, _targetModel)));
             }
 
-            cur_LoadProgress = 1.0f;
-            LogLoadProgress("모든 작업 완료 - LoadingScene 언로드 시작");
-            await Awaitable.NextFrameAsync();
-
-            AsyncOperation unloadLoadingScene = SceneManager.UnloadSceneAsync(DEFINE.LOADING_SCENE);
-            while (!unloadLoadingScene.isDone)
+            if (_isMainLoad)
             {
-                await Awaitable.NextFrameAsync();
+                stepQueue.Enqueue(new LoadStep("BeginnerVillage 맵 로드", LoadMainMapStepAsync));
+                stepQueue.Enqueue(new LoadStep("PlayerPrefab 생성", SpawnPlayerStepAsync));
+                stepQueue.Enqueue(new LoadStep($"{AddressKey.UI_MainScene} UI 로드", () => LoadMainUIStepAsync(AddressKey.UI_MainScene.ToString())));
+                stepQueue.Enqueue(new LoadStep($"{AddressKey.UI_InventoryViewPopup} UI 로드", () => LoadMainUIStepAsync(AddressKey.UI_InventoryViewPopup.ToString(), false)));
+                stepQueue.Enqueue(new LoadStep($"{AddressKey.UI_CharacterInfoVIewPopup} UI 로드", () => LoadMainUIStepAsync(AddressKey.UI_CharacterInfoVIewPopup.ToString(), false)));
             }
 
-            LogLoadProgress("LoadingScene 언로드 완료 - 대상 씬 전환");
+            if (_wrapWithLoadingScene)
+            {
+                stepQueue.Enqueue(new LoadStep("LoadingScene 언로드", UnloadLoadingSceneStepAsync));
+            }
+            else if (!string.IsNullOrEmpty(_bootstrapSceneName))
+            {
+                stepQueue.Enqueue(new LoadStep($"{_bootstrapSceneName} 언로드", () => UnloadSceneStepAsync(_bootstrapSceneName)));
+            }
 
-            // 새 씬의 첫 Canvas/렌더링 갱신과 마스크 트윈 시작 프레임을 분리한다.
-            await Awaitable.NextFrameAsync();
-            UIController.Instance.OpenMask();
-            await Awaitable.WaitForSecondsAsync(1.0f);
+            return stepQueue;
         }
 
         private void ResetLoadProgress(int _totalSteps)
@@ -163,58 +208,63 @@ namespace JJORY.Module
             loadTotalSteps = Mathf.Max(1, _totalSteps);
             loadCurrentStep = 0;
             cur_LoadProgress = 0f;
-            lastLoggedProgressPercent = -1;
-            currentStepName = "로딩 준비";
-
-            LogLoadProgress($"로딩 초기화 (총 {loadTotalSteps}단계)");
         }
 
-        private void BeginLoadStep(string _stepName)
-        {
-            currentStepName = _stepName;
-            LogLoadProgress($"시작 - {_stepName}");
-        }
-
-        private void UpdateLoadProgress(float _innerProgress = 0f)
-        {
-            float stepStart = (float)loadCurrentStep / loadTotalSteps;
-            float stepEnd = (float)(loadCurrentStep + 1) / loadTotalSteps;
-            cur_LoadProgress = Mathf.Clamp01(stepStart + (stepEnd - stepStart) * Mathf.Clamp01(_innerProgress));
-            LogLoadProgressIfChanged();
-        }
-
-        private void CompleteLoadStep(string _stepName)
+        /// <summary>
+        /// 스텝 하나가 완료될 때마다 호출되어 cur_LoadProgress를 갱신하고 구독자에게 통지한다.
+        /// </summary>
+        private void CompleteLoadStep()
         {
             loadCurrentStep++;
             cur_LoadProgress = Mathf.Clamp01((float)loadCurrentStep / loadTotalSteps);
-            lastLoggedProgressPercent = Mathf.RoundToInt(cur_LoadProgress * 100f);
-            LogLoadProgress($"완료 - {_stepName}");
+            OnLoadProgressChanged?.Invoke(cur_LoadProgress);
         }
 
-        private void LogLoadProgressIfChanged()
+        private async Awaitable LoadLoadingSceneStepAsync()
         {
-            int progressPercent = Mathf.RoundToInt(cur_LoadProgress * 100f);
-            if (progressPercent == lastLoggedProgressPercent)
+            AsyncOperation asyncLoadingScene = SceneManager.LoadSceneAsync(DEFINE.LOADING_SCENE, LoadSceneMode.Single);
+            while (!asyncLoadingScene.isDone)
+            {
+                await Awaitable.NextFrameAsync();
+            }
+        }
+
+        private async Awaitable LoadAdditiveSceneStepAsync(string _sceneName, SceneModel _targetModel)
+        {
+            AsyncOperation async = SceneManager.LoadSceneAsync(_sceneName, LoadSceneMode.Additive);
+            while (!async.isDone)
+            {
+                await Awaitable.NextFrameAsync();
+            }
+
+            if (_targetModel.activeScene == _sceneName)
+            {
+                UnityEngine.SceneManagement.Scene targetActiveScene = SceneManager.GetSceneByName(_sceneName);
+                SceneManager.SetActiveScene(targetActiveScene);
+            }
+        }
+
+        private Awaitable UnloadLoadingSceneStepAsync()
+        {
+            return UnloadSceneStepAsync(DEFINE.LOADING_SCENE);
+        }
+
+        private async Awaitable UnloadSceneStepAsync(string _sceneName)
+        {
+            AsyncOperation unloadOp = SceneManager.UnloadSceneAsync(_sceneName);
+            if (unloadOp == null)
             {
                 return;
             }
 
-            lastLoggedProgressPercent = progressPercent;
-            LogLoadProgress(currentStepName);
-        }
-
-        private void LogLoadProgress(string _message)
-        {
-            int progressPercent = Mathf.RoundToInt(cur_LoadProgress * 100f);
-            int currentStep = Mathf.Clamp(loadCurrentStep + 1, 1, loadTotalSteps);
-            //Utils.CreateLogMessage<SceneLoadController>($"[로딩 {progressPercent}%] ({currentStep}/{loadTotalSteps}) {_message}");
+            while (!unloadOp.isDone)
+            {
+                await Awaitable.NextFrameAsync();
+            }
         }
 
         private async Awaitable LoadMainMapStepAsync()
         {
-            BeginLoadStep("BeginnerVillage 맵 로드");
-            UpdateLoadProgress(0f);
-
             GameObject currentMapRoot = GameObject.Find(RegistryKey_CurrentMapRoot);
             if (currentMapRoot != null)
             {
@@ -225,8 +275,6 @@ namespace JJORY.Module
                 AddressKey.BeginnerVillage.ToString(),
                 currentMapRoot,
                 OnMapInstantiated);
-
-            CompleteLoadStep("BeginnerVillage 맵 로드");
         }
 
         private void OnMapInstantiated(GameObject _mapInstance)
@@ -273,9 +321,6 @@ namespace JJORY.Module
 
         private async Awaitable SpawnPlayerStepAsync()
         {
-            BeginLoadStep("PlayerPrefab 생성");
-            UpdateLoadProgress(0f);
-
             GameObject currentMapRoot = RuntimeObjectRegistry.Instance.Get(RegistryKey_CurrentMapRoot);
             GameObject playerRespawnGo = RuntimeObjectRegistry.Instance.Get(RegistryKey_PlayerRespawn);
 
@@ -290,8 +335,6 @@ namespace JJORY.Module
             {
                 Utils.CreateLogMessage<SceneLoadController>("PlayerRespawn이 등록되지 않아 PlayerPrefab을 생성하지 않습니다.");
             }
-
-            CompleteLoadStep("PlayerPrefab 생성");
         }
 
         private void OnPlayerInstantiated(GameObject _playerGo, Transform _respawnTr)
@@ -315,10 +358,6 @@ namespace JJORY.Module
 
         private async Awaitable LoadMainUIStepAsync(string _uiKey, bool _active = true)
         {
-            string stepName = $"{_uiKey} UI 로드";
-            BeginLoadStep(stepName);
-            UpdateLoadProgress(0f);
-
             GameObject mainSceneRoot = GameObject.Find("@MainScene");
             if (mainSceneRoot != null)
             {
@@ -328,8 +367,6 @@ namespace JJORY.Module
             {
                 Utils.CreateLogMessage<SceneLoadController>("@MainScene 오브젝트를 찾지 못했습니다. Main UI를 생성하지 않습니다.");
             }
-
-            CompleteLoadStep(stepName);
         }
 
         private void ApplyLoggedInUserToPlayer(Transform _playerTr)

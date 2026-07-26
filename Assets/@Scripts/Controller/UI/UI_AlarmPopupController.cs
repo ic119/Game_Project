@@ -1,9 +1,9 @@
-using JJORY.Module;
-using JJORY.View.UI;
+using Incheol.Module;
+using Incheol.View.UI;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace JJORY.Controller.UI
+namespace Incheol.Controller.UI
 {
     public class UI_AlarmPopupController : MonoBehaviour
     {

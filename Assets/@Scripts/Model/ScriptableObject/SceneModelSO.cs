@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace JJORY.Model.SO
+namespace Incheol.Model.SO
 {
     [CreateAssetMenu(fileName = "SceneModelSO", menuName = "ScriptableObjectAssets/SceneModelData")]
     public class SceneModelSO : ScriptableObject

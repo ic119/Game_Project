@@ -1,9 +1,9 @@
-using JJORY.Module;
-using JJORY.Util;
+using Incheol.Module;
+using Incheol.Util;
 using System;
 using UnityEngine;
 
-namespace JJORY.Scene.Login
+namespace Incheol.Scene.Login
 {
     public class LoginSceneController : MonoBehaviour
     {

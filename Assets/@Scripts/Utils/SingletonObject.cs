@@ -1,6 +1,6 @@
-﻿using UnityEngine;
+using UnityEngine;
 
-namespace JJORY.Util
+namespace Incheol.Util
 {
     public class SingletonObject<T> : MonoBehaviour where T : MonoBehaviour
     {

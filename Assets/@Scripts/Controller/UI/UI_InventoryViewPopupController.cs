@@ -1,4 +1,4 @@
-using JJORY.Module;
+using Incheol.Module;
 using UnityEngine;
 
 public class UI_InventoryViewPopupController : MonoBehaviour

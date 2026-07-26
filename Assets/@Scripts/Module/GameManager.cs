@@ -1,8 +1,8 @@
-using JJORY.Model.Player;
-using JJORY.Util;
+using Incheol.Model.Player;
+using Incheol.Util;
 using UnityEngine;
 
-namespace JJORY.Module
+namespace Incheol.Module
 {
     public class GameManager : SingletonObject<GameManager>
     {

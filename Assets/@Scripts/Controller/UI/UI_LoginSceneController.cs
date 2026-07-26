@@ -1,13 +1,13 @@
-using JJORY.Define;
-using JJORY.Module;
-using JJORY.Util;
+using Incheol.Define;
+using Incheol.Module;
+using Incheol.Util;
 using System.Threading;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 
-namespace JJORY.Controller.UI
+namespace Incheol.Controller.UI
 {
     public class UI_LoginSceneController : MonoBehaviour
     {
@@ -215,10 +215,7 @@ namespace JJORY.Controller.UI
         /// </summary>
         private void LoadMainSceneWithMask()
         {
-            UIController.Instance.CloseMask(() =>
-            {
-                SceneLoadController.Instance.LoadSceneByTags("Main");
-            });
+            SceneLoadController.Instance.LoadSceneByTags("Main");
         }
         #endregion
 
@@ -232,7 +229,6 @@ namespace JJORY.Controller.UI
         {
             if (_result.Success)
             {
-                SetStatus($"로그인 성공 : {_result.Play}");
             }
         }
         #endregion

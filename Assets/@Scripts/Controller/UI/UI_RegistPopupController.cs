@@ -1,11 +1,11 @@
-using JJORY.Define;
-using JJORY.Module;
-using JJORY.Util;
+using Incheol.Define;
+using Incheol.Module;
+using Incheol.Util;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace JJORY.Controller.UI
+namespace Incheol.Controller.UI
 {
     public class UI_RegistPopupController : MonoBehaviour
     {

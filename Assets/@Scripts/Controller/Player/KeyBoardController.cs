@@ -1,5 +1,5 @@
-using JJORY.Module;
-using JJORY.Util;
+using Incheol.Module;
+using Incheol.Util;
 using UnityEngine;
 
 /// <summary>

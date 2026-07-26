@@ -1,8 +1,8 @@
-using JJORY.Util;
+using Incheol.Util;
 using System;
 using UnityEngine;
 
-namespace JJORY.Module
+namespace Incheol.Module
 {
     public class EventController : SingletonObject<EventController>
     {

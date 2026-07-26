@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace JJORY.Model
+namespace Incheol.Model
 {
     /// <summary>
     /// SceneLoad에 대한 Model

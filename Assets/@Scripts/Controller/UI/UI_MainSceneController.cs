@@ -1,4 +1,4 @@
-using JJORY.Module;
+using Incheol.Module;
 using UnityEngine;
 
 public class UI_MainSceneController : MonoBehaviour
@@ -50,11 +50,8 @@ public class UI_MainSceneController : MonoBehaviour
         }
 
         isLoggingOut = true;
-        UIController.Instance.CloseMask(() =>
-        {
-            Destroy(gameObject);
-            SceneLoadController.Instance.LoadSceneByTags("Login");
-        });
+        Destroy(gameObject);
+        SceneLoadController.Instance.LoadSceneByTags("Login");
     }
     #endregion
 }

@@ -677,7 +677,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d1116c134d848fe43b57ea0fde8168d7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  progressBarView: {fileID: 385680203}
 --- !u!4 &1419911568
 Transform:
   m_ObjectHideFlags: 0

@@ -1,10 +1,10 @@
-﻿using JJORY.Module;
-using JJORY.Util;
+using Incheol.Module;
+using Incheol.Util;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace JJORY.Module
+namespace Incheol.Module
 {
     public interface Sequence
     {

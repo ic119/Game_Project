@@ -1,79 +1,57 @@
-using JJORY.Module;
-using JJORY.Util;
-using System.Collections;
+using Incheol.Module;
+using Incheol.View.UI;
 using UnityEngine;
 
-namespace JJORY.Scene.Dummy
+namespace Incheol.Scene.Dummy
 {
     public class DummySceneController : MonoBehaviour
     {
-        class AddressableLoad : Sequence
-        {
-            public IEnumerator Execute()
-            {
-                yield return null;
-            }
-        }
-
-        class GameManage : Sequence
-        {
-            public IEnumerator Execute()
-            {
-                yield return null;
-            }
-        }
-
-        class SceneModuleLoad : Sequence
-        {
-            public IEnumerator Execute()
-            {
-                bool isFlag = false;
-                SceneLoadController.Instance.Init(() =>
-                {
-                    isFlag = true;
-                });
-
-                while(!isFlag)
-                {
-                    yield return null;
-                }
-            }
-        }
-
-        class MoveScene : Sequence
-        {
-            public IEnumerator Execute()
-            {
-                UIController.Instance.CloseMask();
-                SceneLoadController.Instance.LoadSceneByTags("Login");
-                yield return null;
-            }
-        }
-
-        class EventControl : Sequence
-        {
-            public IEnumerator Execute()
-            {
-                yield return null;
-            }
-        }
+        #region Variable
+        [Header("UI 변수")]
+        [SerializeField] private UI_ProgressBarView progressBarView;
+        #endregion
 
         #region LifeCycle
-        private void Start()
+        private async void Start()
         {
-            AddressableLoad addressableLoad = new AddressableLoad();
-            GameManage gameManage = new GameManage();
-            SceneModuleLoad sceneModuleLoad = new SceneModuleLoad();
-            MoveScene moveScene = new MoveScene();
-            EventControl eventControl = new EventControl();
+            if (progressBarView != null)
+            {
+                progressBarView.SetTitle("Loading...");
+                progressBarView.SetProgress(0f);
+            }
 
-            SequenceActionUtils.Instance.Enqueue(addressableLoad);
-            SequenceActionUtils.Instance.Enqueue(gameManage);
-            SequenceActionUtils.Instance.Enqueue(sceneModuleLoad);
-            SequenceActionUtils.Instance.Enqueue(moveScene);
-            SequenceActionUtils.Instance.Enqueue(eventControl);
+            SceneLoadController.Instance.OnLoadProgressChanged += OnLoadProgressChanged;
 
-            SequenceActionUtils.Instance.DoSequenceAction();
+            try
+            {
+                bool isSceneModelLoaded = false;
+                SceneLoadController.Instance.Init(() =>
+                {
+                    isSceneModelLoaded = true;
+                });
+
+                while (!isSceneModelLoaded)
+                {
+                    await Awaitable.NextFrameAsync();
+                }
+
+                await SceneLoadController.Instance.LoadInitialSceneAsync("Login");
+            }
+            finally
+            {
+                SceneLoadController.Instance.OnLoadProgressChanged -= OnLoadProgressChanged;
+            }
+        }
+        #endregion
+
+        #region Method
+        /// <summary>
+        /// SceneLoadController의 로딩 스텝이 완료될 때마다 호출되어 ProgressBar를 갱신한다.
+        /// 100%가 되는 시점은 곧 대상 씬 로드와 DummyScene 언로드가 끝난 시점이다.
+        /// </summary>
+        private void OnLoadProgressChanged(float _progress)
+        {
+            progressBarView?.SetProgress(_progress);
         }
         #endregion
     }

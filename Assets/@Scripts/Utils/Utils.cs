@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace JJORY.Util
+namespace Incheol.Util
 {
     public class Utils
     {

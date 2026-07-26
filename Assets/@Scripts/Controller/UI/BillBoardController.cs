@@ -1,9 +1,9 @@
-using JJORY.Model.Player;
+using Incheol.Model.Player;
 using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
 
-namespace JJORY.Controller.UI
+namespace Incheol.Controller.UI
 {
     public class BillBoardController : MonoBehaviour
     {

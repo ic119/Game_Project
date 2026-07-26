@@ -1,5 +1,5 @@
-﻿
-namespace JJORY.Define
+
+namespace Incheol.Define
 {
     public partial class DEFINE 
     {

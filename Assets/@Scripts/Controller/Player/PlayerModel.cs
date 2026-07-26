@@ -1,9 +1,9 @@
-using JJORY.Module;
+using Incheol.Module;
 using Photon.Pun.UtilityScripts;
 using System;
 using UnityEngine;
 
-namespace JJORY.Model.Player
+namespace Incheol.Model.Player
 {
     /// <summary>
     /// Player의 능력치(= 스테이터스)에 대한 클래스 정의

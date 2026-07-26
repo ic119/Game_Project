@@ -16,8 +16,8 @@ MonoBehaviour:
   - sceneTag: Login
     loadScenes:
     - LoginScene
-    activeScene: Login
+    activeScene: LoginScene
   - sceneTag: Main
     loadScenes:
     - MainScene
-    activeScene: Main
+    activeScene: MainScene

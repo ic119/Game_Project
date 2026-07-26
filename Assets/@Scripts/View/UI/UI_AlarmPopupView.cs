@@ -1,8 +1,8 @@
-﻿using TMPro;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace JJORY.View.UI
+namespace Incheol.View.UI
 {
     public class UI_AlarmPopupView : MonoBehaviour
     {
