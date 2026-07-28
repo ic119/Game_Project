@@ -371,19 +371,19 @@ namespace Incheol.Module
 
         private void ApplyLoggedInUserToPlayer(Transform _playerTr)
         {
-            string userName = GameManager.LoggedInUserName;
-            if (string.IsNullOrEmpty(userName) || _playerTr == null)
-            {
-                return;
-            }
+            //string userName = GameManager.LoggedInUserName;
+            //if (string.IsNullOrEmpty(userName) || _playerTr == null)
+            //{
+            //    return;
+            //}
 
-            _playerTr.name = userName;
-
-            PlayerModel playerModel = _playerTr.GetComponent<PlayerModel>();
-            if (playerModel != null)
-            {
-                playerModel.SetUserName(userName);
-            }
+            //_playerTr.name = userName;
+            //
+            //PlayerModel playerModel = _playerTr.GetComponent<PlayerModel>();
+            //if (playerModel != null)
+            //{
+            //    playerModel.SetUserName(userName);
+            //}
         }
 
         /// <summary>
