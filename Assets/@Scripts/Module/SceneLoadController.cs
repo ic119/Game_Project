@@ -83,6 +83,20 @@ namespace Incheol.Module
         }
 
         /// <summary>
+        /// tag에 해당하는 SceneModel을 조회한다.
+        /// 부트스트랩 씬 등 외부에서 전환 대상 씬 구성(로드할 씬 목록/활성 씬)을 확인할 때 사용한다.
+        /// </summary>
+        public SceneModel GetSceneModel(string _tag)
+        {
+            if (!IsInitialized || !dicSceneModels.ContainsKey(_tag))
+            {
+                return null;
+            }
+
+            return dicSceneModels[_tag];
+        }
+
+        /// <summary>
         /// LoadingScene을 경유하는 일반 씬 전환(Login ↔ Main 등)에서 사용한다.
         /// </summary>
         public async void LoadSceneByTags(string _tag)
@@ -101,7 +115,7 @@ namespace Incheol.Module
                 }
 
                 currentSceneModel = dicSceneModels[_tag];
-                await SceneLoadCoreAsync(currentSceneModel, true, null);
+                await SceneLoadCoreAsync(currentSceneModel);
             }
             catch (Exception exception)
             {
@@ -110,45 +124,51 @@ namespace Incheol.Module
         }
 
         /// <summary>
-        /// 부트스트랩 씬(DummyScene 등)에서 직접 호출한다.
-        /// LoadingScene을 거치지 않고 대상 씬을 로드한 뒤, 호출 시점의 활성 씬을 언로드하여 전환한다.
-        /// 진행률은 OnLoadProgressChanged 이벤트로 스텝이 끝날 때마다 통지된다.
+        /// 순수 Scene 전환만 담당한다.
+        /// 전환 전 준비 작업(에셋 로딩 등)과 그 진행률 관리는 호출측(DummySceneController 등)이 책임진다.
+        /// 대상 씬들을 additive로 로드한 뒤 필요 시 활성 씬을 지정하고, 마지막으로 지정된 씬을 언로드한다.
         /// </summary>
-        public async Awaitable LoadInitialSceneAsync(string _tag)
+        public async Awaitable TransitionScenesAsync(List<string> _scenesToLoad, string _activeScene, string _sceneToUnload)
         {
-            try
+            ResetTransitionState();
+
+            for (int i = 0; i < _scenesToLoad.Count; i++)
             {
-                if (!IsInitialized)
+                string sceneName = _scenesToLoad[i];
+                AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Additive);
+                while (!asyncLoad.isDone)
                 {
-                    return;
+                    await Awaitable.NextFrameAsync();
                 }
 
-                if (!dicSceneModels.ContainsKey(_tag))
+                if (_activeScene == sceneName)
                 {
-                    Utils.CreateLogMessage<SceneLoadController>($"{_tag}는 존재하지 않습니다.");
-                    return;
+                    UnityEngine.SceneManagement.Scene targetActiveScene = SceneManager.GetSceneByName(sceneName);
+                    SceneManager.SetActiveScene(targetActiveScene);
                 }
-
-                string bootstrapSceneName = SceneManager.GetActiveScene().name;
-                currentSceneModel = dicSceneModels[_tag];
-                await SceneLoadCoreAsync(currentSceneModel, false, bootstrapSceneName);
             }
-            catch (Exception exception)
+
+            if (!string.IsNullOrEmpty(_sceneToUnload))
             {
-                Debug.LogException(exception);
+                await UnloadSceneStepAsync(_sceneToUnload);
             }
         }
 
-        private async Awaitable SceneLoadCoreAsync(SceneModel _targetModel, bool _wrapWithLoadingScene, string _bootstrapSceneName)
+        private void ResetTransitionState()
+        {
+            RuntimeObjectRegistry.Instance.Clear();
+            instantiatedMapInstance = null;
+            instantiatedPlayerInstance = null;
+        }
+
+        private async Awaitable SceneLoadCoreAsync(SceneModel _targetModel)
         {
             bool isMainLoad = _targetModel.sceneTag == "Main";
             List<string> sceneTarget = _targetModel.loadScenes;
 
-            RuntimeObjectRegistry.Instance.Clear();
-            instantiatedMapInstance = null;
-            instantiatedPlayerInstance = null;
+            ResetTransitionState();
 
-            Queue<LoadStep> loadStepQueue = BuildLoadStepQueue(_targetModel, isMainLoad, sceneTarget, _wrapWithLoadingScene, _bootstrapSceneName);
+            Queue<LoadStep> loadStepQueue = BuildLoadStepQueue(_targetModel, isMainLoad, sceneTarget);
             ResetLoadProgress(loadStepQueue.Count);
 
             while (loadStepQueue.Count > 0)
@@ -165,16 +185,11 @@ namespace Incheol.Module
         private Queue<LoadStep> BuildLoadStepQueue(
             SceneModel _targetModel,
             bool _isMainLoad,
-            List<string> _sceneTarget,
-            bool _wrapWithLoadingScene,
-            string _bootstrapSceneName)
+            List<string> _sceneTarget)
         {
             Queue<LoadStep> stepQueue = new Queue<LoadStep>();
 
-            if (_wrapWithLoadingScene)
-            {
-                stepQueue.Enqueue(new LoadStep("LoadingScene 로드", LoadLoadingSceneStepAsync));
-            }
+            stepQueue.Enqueue(new LoadStep("LoadingScene 로드", LoadLoadingSceneStepAsync));
 
             for (int i = 0; i < _sceneTarget.Count; i++)
             {
@@ -191,14 +206,7 @@ namespace Incheol.Module
                 stepQueue.Enqueue(new LoadStep($"{AddressKey.UI_CharacterInfoVIewPopup} UI 로드", () => LoadMainUIStepAsync(AddressKey.UI_CharacterInfoVIewPopup.ToString(), false)));
             }
 
-            if (_wrapWithLoadingScene)
-            {
-                stepQueue.Enqueue(new LoadStep("LoadingScene 언로드", UnloadLoadingSceneStepAsync));
-            }
-            else if (!string.IsNullOrEmpty(_bootstrapSceneName))
-            {
-                stepQueue.Enqueue(new LoadStep($"{_bootstrapSceneName} 언로드", () => UnloadSceneStepAsync(_bootstrapSceneName)));
-            }
+            stepQueue.Enqueue(new LoadStep("LoadingScene 언로드", UnloadLoadingSceneStepAsync));
 
             return stepQueue;
         }
