@@ -5,6 +5,12 @@ public interface IAuthService
     /// 기기 고유 ID로 게스트 로그인 (없으면 자동 계정 생성)
     void LoginWithDeviceId(Action<AuthResult> onComplete);
 
+    /// 계정(아이디)/비밀번호로 로그인
+    void LoginWithAccount(string username, string password, Action<AuthResult> onComplete);
+
+    /// 계정(아이디)/비밀번호/이메일로 신규 계정 생성
+    void RegisterAccount(string username, string password, string email, Action<AuthResult> onComplete);
+
     /// Google 로그인 (idToken은 Google Sign-In SDK에서 발급받은 값)
     void LoginWithGoogle(string idToken, Action<AuthResult> onComplete);
 

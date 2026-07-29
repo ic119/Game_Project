@@ -12,13 +12,15 @@ namespace Incheol.Controller.UI
         #region Variable
         [Header("UI 변수")]
         [SerializeField] private TMP_InputField account_InputField;
+        [SerializeField] private TMP_InputField email_InputField;
         [SerializeField] private TMP_InputField password_InputField;
         [SerializeField] private Button cancel_Button;
         [SerializeField] private Button craete_Button;
 
-        [Header("계정 정보 변수")]
-        private string account_Value;
-        private string password_Value;
+        [Header("로그인 인증 관련")]
+        [SerializeField] private PlayFabAuthService playFabAuthService;
+        private IAuthService authService;
+        private bool isRegisterInFlight;
 
         [Header("키보드 액션")]
         [SerializeField] private TMP_InputField[] inputField_Arr;
@@ -58,6 +60,7 @@ namespace Incheol.Controller.UI
             cancel_Button.onClick.RemoveListener(OnClickCancelButton);
             craete_Button.onClick.RemoveListener(OnClickCraeteButton);
             account_InputField.text = "";
+            email_InputField.text = "";
             password_InputField.text = "";
         }
         #endregion
@@ -68,50 +71,77 @@ namespace Incheol.Controller.UI
             account_InputField.inputType = TMP_InputField.InputType.Standard;
             account_InputField.contentType = TMP_InputField.ContentType.Standard;
 
+            email_InputField.inputType = TMP_InputField.InputType.Standard;
+            email_InputField.contentType = TMP_InputField.ContentType.EmailAddress;
+
             password_InputField.inputType = TMP_InputField.InputType.Password;
             password_InputField.contentType = TMP_InputField.ContentType.Password;  
 
-            inputField_Arr = new TMP_InputField[] { account_InputField, password_InputField };
+            inputField_Arr = new TMP_InputField[] { account_InputField, email_InputField, password_InputField };
+
+            authService = playFabAuthService != null
+                ? playFabAuthService
+                : (FindFirstObjectByType<PlayFabAuthService>() ?? gameObject.AddComponent<PlayFabAuthService>());
         }
-        
-        private void RegistInfoSave()
+
+        private void TryRegister()
         {
-            if (string.IsNullOrEmpty(account_InputField.text))
+            if (isRegisterInFlight)
             {
                 return;
             }
-            if (string.IsNullOrEmpty(password_InputField.text))
+
+            string account = account_InputField.text;
+            string email = email_InputField.text;
+            string password = password_InputField.text;
+
+            if (string.IsNullOrEmpty(account) || string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
             {
+                ShowAlarmPopup("계정 생성 오류", "아이디, 이메일, 비밀번호를 모두 입력해주세요.");
                 return;
             }
-            if (string.IsNullOrEmpty(account_InputField.text) == false && string.IsNullOrEmpty(password_InputField.text) == false)
+
+            isRegisterInFlight = true;
+            craete_Button.interactable = false;
+            authService.RegisterAccount(account, password, email, OnRegisterComplete);
+        }
+
+        private void OnRegisterComplete(AuthResult _result)
+        {
+            isRegisterInFlight = false;
+            craete_Button.interactable = true;
+
+            if (_result.Success)
             {
-                account_Value = account_InputField.text;
-                password_Value = password_InputField.text;
-
-                PlayerPrefs.SetString(DEFINE.account_Key, account_Value);
-                PlayerPrefs.SetString(DEFINE.password_Key, password_Value);
-                PlayerPrefs.Save();
-
-                GameObject popup = AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.UI_AlarmPopup.ToString(),
-                                                                                                      transform.parent.gameObject.transform);
-                UI_AlarmPopupController controller = popup.GetComponent<UI_AlarmPopupController>();
-                EventController.Instance.InvokeShowPopup("계정 생성", "회원가입을 완료하였습니다.");
+                ShowAlarmPopup("계정 생성", "회원가입을 완료하였습니다.");
+                gameObject.SetActive(false);
             }
+            else
+            {
+                ShowAlarmPopup("계정 생성 실패", string.IsNullOrEmpty(_result.ErrorMessage)
+                    ? "회원가입에 실패했습니다."
+                    : _result.ErrorMessage);
+            }
+        }
+
+        private void ShowAlarmPopup(string _title, string _message)
+        {
+            AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.UI_AlarmPopup.ToString(),
+                                                                                transform.parent.gameObject.transform);
+            EventController.Instance.InvokeShowPopup(_title, _message);
         }
 
         private void OnClickCancelButton()
         {
             account_InputField.text = "";
+            email_InputField.text = "";
             password_InputField.text = "";
             gameObject.SetActive(false);
         }
 
         private void OnClickCraeteButton()
         {
-            RegistInfoSave();
-
-            gameObject.SetActive(false);
+            TryRegister();
         }
 
         private void MoveToNextInputField()

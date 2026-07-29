@@ -345,6 +345,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BootstrapController
   bootstrapSceneView: {fileID: 8063387482700773941}
   preloadAddressKey_List: 0200000003000000
+  loginSceneName: LoginScene
 --- !u!1 &1500608274
 GameObject:
   m_ObjectHideFlags: 0
