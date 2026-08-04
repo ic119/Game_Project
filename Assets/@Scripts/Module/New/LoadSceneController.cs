@@ -1,5 +1,8 @@
 using Incheol.Util;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.ResourceManagement.ResourceProviders;
 using UnityEngine.SceneManagement;
 
 namespace Incheol.Module
@@ -29,6 +32,24 @@ namespace Incheol.Module
             while (!operation.isDone)
             {
                 await Awaitable.NextFrameAsync();
+            }
+        }
+
+        /// <summary>
+        /// Addressable Key(Tag)를 통해 Scene을 비동기로 Load한다.
+        /// </summary>
+        public async Awaitable LoadSceneByTags(AddressKey _key, LoadSceneMode _mode = LoadSceneMode.Single)
+        {
+            AsyncOperationHandle<SceneInstance> handle = Addressables.LoadSceneAsync(_key.ToString(), _mode);
+
+            while (!handle.IsDone)
+            {
+                await Awaitable.NextFrameAsync();
+            }
+
+            if (handle.Status != AsyncOperationStatus.Succeeded)
+            {
+                Utils.CreateLogError<LoadSceneController>($"LoadSceneByTags 실패: {_key}");
             }
         }
         #endregion

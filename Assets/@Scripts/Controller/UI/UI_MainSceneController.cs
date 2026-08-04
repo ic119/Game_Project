@@ -51,7 +51,7 @@ public class UI_MainSceneController : MonoBehaviour
 
         isLoggingOut = true;
         Destroy(gameObject);
-        SceneLoadController.Instance.LoadSceneByTags("Login");
+        LoadSceneController.Instance.LoadSceneByTags(AddressKey.UI_LoginScene);
     }
     #endregion
 }

@@ -1,4 +1,3 @@
-using Incheol.Define;
 using Incheol.Module;
 using Incheol.Util;
 using System.Threading;
@@ -151,7 +150,7 @@ namespace Incheol.Controller.UI
         /// </summary>
         private void LoadMainSceneWithMask()
         {
-            SceneLoadController.Instance.LoadSceneByTags("Main");
+            LoadSceneController.Instance.LoadSceneByTags(AddressKey.UI_MainScene);
         }
         #endregion
 
@@ -163,8 +162,7 @@ namespace Incheol.Controller.UI
 
         private void ShowAlarmPopup(string _title, string _message)
         {
-            AddressableController.Instance.InstantiatePrefabHelper<GameObject>(AddressKey.UI_AlarmPopup.ToString(),
-                                                                                gameObject.transform);
+            AddressableAssetController.Instance.Instantiate(AddressKey.UI_AlarmPopup, gameObject.transform);
             EventController.Instance.InvokeShowPopup(_title, _message);
         }
 
@@ -175,7 +173,6 @@ namespace Incheol.Controller.UI
 
             if (_result.Success)
             {
-                GameManager.SetLoggedInUserName(account_InputField.text);
                 LoadMainSceneWithMask();
             }
             else

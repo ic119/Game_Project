@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Incheol.Util
+namespace ModulePackage.Utils
 {
     public class SingletonObject<T> : MonoBehaviour where T : MonoBehaviour
     {

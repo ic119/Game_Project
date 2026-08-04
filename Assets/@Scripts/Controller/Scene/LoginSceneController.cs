@@ -26,7 +26,7 @@ namespace Incheol.Scene.Login
 
         private void OnDestroy()
         {
-            AddressableController addressableController = AddressableController.Instance;
+            AddressableAssetController addressableController = AddressableAssetController.Instance;
             if (addressableController == null)
             {
                 return;
@@ -38,50 +38,38 @@ namespace Incheol.Scene.Login
                 loginSceneInstance = null;
             }
 
-            addressableController.ReleaseHandler(AddressKey.UI_LoginScene.ToString());
-            addressableController.ReleaseHandler(AddressKey.UI_AlarmPopup.ToString());
+            addressableController.Release(AddressKey.UI_LoginScene);
+            addressableController.Release(AddressKey.UI_AlarmPopup);
         }
         #endregion
 
         #region Method
         private async Awaitable InitializeAsync()
         {
-            AddressableController addressableController = AddressableController.Instance;
+            AddressableAssetController addressableController = AddressableAssetController.Instance;
             if (addressableController == null)
             {
-                Utils.CreateLogMessage<LoginSceneController>("AddressableController를 찾을 수 없습니다.");
+                //Utils.CreateLogMessage<LoginSceneController>("AddressableController를 찾을 수 없습니다.");
                 return;
             }
 
-            RegisterAddressableKeys(addressableController);
-            addressableController.LoadPrefabAddressFromHashSet();
+            await PreloadAddressableKeysAsync(addressableController);
 
-            await addressableController.InstantiateAsset(
-                AddressKey.UI_LoginScene.ToString(),
-                gameObject,
-                OnLoginSceneInstantiated);
+            loginSceneInstance = addressableController.Instantiate(AddressKey.UI_LoginScene, gameObject.transform);
         }
 
-        private void RegisterAddressableKeys(AddressableController _addressableController)
+        /// <summary>
+        /// 로그인 씬 진입 시 필요한 Addressable Asset들을 미리 Load한다.
+        /// </summary>
+        private async Awaitable PreloadAddressableKeysAsync(AddressableAssetController _addressableController)
         {
-            _addressableController.AddKeyHashSet(AddressKey.UI_LoginScene.ToString());
-            _addressableController.AddKeyHashSet(AddressKey.UI_AlarmPopup.ToString());
-            _addressableController.AddKeyHashSet(AddressKey.BeginnerVillage.ToString());
-            _addressableController.AddKeyHashSet(AddressKey.PlayerPrefab.ToString());
-            _addressableController.AddKeyHashSet(AddressKey.UI_MainScene.ToString());
-            _addressableController.AddKeyHashSet(AddressKey.UI_InventoryViewPopup.ToString());
-            _addressableController.AddKeyHashSet(AddressKey.UI_CharacterInfoVIewPopup.ToString());
-        }
-
-        private void OnLoginSceneInstantiated(GameObject _instance)
-        {
-            if (this == null)
-            {
-                AddressableController.Instance?.ReleaseInstance(_instance);
-                return;
-            }
-
-            loginSceneInstance = _instance;
+            await _addressableController.LoadAsync<GameObject>(AddressKey.UI_LoginScene);
+            await _addressableController.LoadAsync<GameObject>(AddressKey.UI_AlarmPopup);
+            await _addressableController.LoadAsync<GameObject>(AddressKey.BeginnerVillage);
+            await _addressableController.LoadAsync<GameObject>(AddressKey.PlayerPrefab);
+            await _addressableController.LoadAsync<GameObject>(AddressKey.UI_MainScene);
+            await _addressableController.LoadAsync<GameObject>(AddressKey.UI_InventoryViewPopup);
+            await _addressableController.LoadAsync<GameObject>(AddressKey.UI_CharacterInfoVIewPopup);
         }
         #endregion
     }

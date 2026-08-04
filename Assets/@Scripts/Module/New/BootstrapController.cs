@@ -43,7 +43,6 @@ public class BootstrapController : MonoBehaviour
     private void EnqueueControllerTask()
     {
         task_Queue.Enqueue(CreateSingletonAsync<AddressableAssetController>);
-        task_Queue.Enqueue(CreateSingletonAsync<GameManager>);
         task_Queue.Enqueue(CreateSingletonAsync<EventController>);
         task_Queue.Enqueue(CreateSingletonAsync<LoadSceneController>);
     }

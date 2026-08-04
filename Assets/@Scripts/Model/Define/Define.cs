@@ -1,3 +1,10 @@
+public static class Define
+{
+    public static readonly string LOADING_SCENE = "LoadingScene";
+
+    public static readonly string[] ADDRESSABLE_LABEL = { "default" };
+}
+
 public enum CameraViewType
 {
     IsoView,
