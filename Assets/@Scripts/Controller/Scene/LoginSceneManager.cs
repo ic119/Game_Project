@@ -1,11 +1,10 @@
 using Incheol.Module;
-using Incheol.Util;
 using System;
 using UnityEngine;
 
-namespace Incheol.Scene.Login
+namespace Incheol.Controller.Scene
 {
-    public class LoginSceneController : MonoBehaviour
+    public class LoginSceneManager : MonoBehaviour
     {
         #region Variable
         private GameObject loginSceneInstance;
@@ -69,7 +68,7 @@ namespace Incheol.Scene.Login
             await _addressableController.LoadAsync<GameObject>(AddressKey.PlayerPrefab);
             await _addressableController.LoadAsync<GameObject>(AddressKey.UI_MainScene);
             await _addressableController.LoadAsync<GameObject>(AddressKey.UI_InventoryViewPopup);
-            await _addressableController.LoadAsync<GameObject>(AddressKey.UI_CharacterInfoVIewPopup);
+            await _addressableController.LoadAsync<GameObject>(AddressKey.UI_CharacterInfoViewPopup);
         }
         #endregion
     }

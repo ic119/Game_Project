@@ -17,8 +17,6 @@ namespace Incheol.Controller.UI
         [SerializeField] private Button regist_Button;
         [SerializeField] private Button login_Button;
 
-        [SerializeField] private TextMeshProUGUI statusText;
-
         [Header("로그인 인증 관련")]
         [SerializeField] private PlayFabAuthService playFabAuthService;
         private IAuthService authService;
