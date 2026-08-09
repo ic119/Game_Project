@@ -1,8 +1,8 @@
-using UnityEngine;
+﻿using UnityEngine;
 
-namespace Incheol.Util
+namespace Incheol.Utils
 {
-    public class SingletonObject<T> : MonoBehaviour where T : MonoBehaviour
+    public class SingletonObject<T> : MonoBehaviour where T: MonoBehaviour
     {
         private static T instance;
 

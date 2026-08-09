@@ -128,7 +128,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 67922537}
-  - component: {fileID: 67922538}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -151,18 +150,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 2128836194}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &67922538
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 67922536}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 03f02ba018618be42a3f27775d58bd66, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Incheol.Module.GameManager
 --- !u!1 &363360807
 GameObject:
   m_ObjectHideFlags: 0
@@ -174,6 +161,7 @@ GameObject:
   - component: {fileID: 363360810}
   - component: {fileID: 363360809}
   - component: {fileID: 363360808}
+  - component: {fileID: 363360811}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -255,6 +243,94 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &363360811
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 363360807}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalCameraData
+  m_RenderShadows: 1
+  m_RequiresDepthTextureOption: 2
+  m_RequiresOpaqueTextureOption: 2
+  m_CameraType: 0
+  m_Cameras: []
+  m_RendererIndex: -1
+  m_VolumeLayerMask:
+    serializedVersion: 2
+    m_Bits: 1
+  m_VolumeTrigger: {fileID: 0}
+  m_VolumeFrameworkUpdateModeOption: 2
+  m_RenderPostProcessing: 0
+  m_Antialiasing: 0
+  m_AntialiasingQuality: 2
+  m_StopNaN: 0
+  m_Dithering: 0
+  m_ClearDepth: 1
+  m_AllowXRRendering: 1
+  m_AllowHDROutput: 1
+  m_UseScreenCoordOverride: 0
+  m_ScreenSizeOverride: {x: 0, y: 0, z: 0, w: 0}
+  m_ScreenCoordScaleBias: {x: 0, y: 0, z: 0, w: 0}
+  m_RequiresDepthTexture: 0
+  m_RequiresColorTexture: 0
+  m_TaaSettings:
+    m_Quality: 3
+    m_FrameInfluence: 0.1
+    m_JitterScale: 1
+    m_MipBias: 0
+    m_VarianceClampScale: 0.9
+    m_ContrastAdaptiveSharpening: 0
+  m_Version: 2
+--- !u!1 &816903319
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 816903320}
+  - component: {fileID: 816903321}
+  m_Layer: 0
+  m_Name: ObjectPoolManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &816903320
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 816903319}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2128836194}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &816903321
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 816903319}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 07637dbec534b2144982ef014d8561d8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Incheol.Modules.ObjectPoolManager
 --- !u!1 &1189934650
 GameObject:
   m_ObjectHideFlags: 0
@@ -296,9 +372,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 1189934650}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2dce8a0d56f12614f81b8a2c9514cc6e, type: 3}
+  m_Script: {fileID: 11500000, guid: a191d8c34c34ae647ac66e4eac684ef9, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Incheol.Module.EventController
+  m_EditorClassIdentifier: Assembly-CSharp::Incheol.Modules.EventMethodManager
 --- !u!1 &1437467364
 GameObject:
   m_ObjectHideFlags: 0
@@ -310,7 +386,7 @@ GameObject:
   - component: {fileID: 1437467365}
   - component: {fileID: 1437467366}
   m_Layer: 0
-  m_Name: BootstarpController
+  m_Name: BootstarpManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -340,12 +416,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 1437467364}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3772ad1d4d45f90409e8b4bf79c9da22, type: 3}
+  m_Script: {fileID: 11500000, guid: 72328ed8203f694438f4af6dc5db5069, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BootstrapController
-  bootstrapSceneView: {fileID: 8063387482700773941}
-  preloadAddressKey_List: 0200000003000000
-  loginSceneName: LoginScene
+  m_EditorClassIdentifier: Assembly-CSharp::Incheol.Presenter.BootstrapSceneManager
 --- !u!1 &1500608274
 GameObject:
   m_ObjectHideFlags: 0
@@ -387,9 +460,54 @@ MonoBehaviour:
   m_GameObject: {fileID: 1500608274}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a45271b746f3f1d4bbdcdba05e367ece, type: 3}
+  m_Script: {fileID: 11500000, guid: ec952f78fabc17e46b98bed01773d12e, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Incheol.Module.AddressableAssetController
+  m_EditorClassIdentifier: Assembly-CSharp::Incheol.Modules.AddressableAssetManager
+--- !u!1 &1859750410
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1859750411}
+  - component: {fileID: 1859750412}
+  m_Layer: 0
+  m_Name: SoundManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1859750411
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1859750410}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2128836194}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1859750412
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1859750410}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e5051217fe265945aaace5d64b66e4e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Incheol.Modules.SoundManager
+  soundClips: []
 --- !u!1 &2128836193
 GameObject:
   m_ObjectHideFlags: 0
@@ -423,6 +541,8 @@ Transform:
   - {fileID: 1500608275}
   - {fileID: 67922537}
   - {fileID: 1189934651}
+  - {fileID: 816903320}
+  - {fileID: 1859750411}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2134927229

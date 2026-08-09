@@ -15,11 +15,15 @@ MonoBehaviour:
   m_GroupName: ScriptableObject
   m_GUID: e111d5283ab365045a0664990985679a
   m_SerializeEntries:
-  - m_GUID: a905c02c9db4b1a468605e8ffd18be2b
-    m_Address: SceneModelSO
+  - m_GUID: c93aa2ea7e4a08841b25866dda6bc37d
+    m_Address: SceneDataModelSO
     m_ReadOnly: 0
-    m_SerializedLabels:
-    - default
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d1ec4fc6e9a719f4cbcbeb1622c28b4c
+    m_Address: AddressableAssetModelSO
+    m_ReadOnly: 0
+    m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 7498f9b7ba6761c4bac2c1aab620b9b9, type: 2}
