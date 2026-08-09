@@ -160,7 +160,6 @@ GameObject:
   m_Component:
   - component: {fileID: 363360810}
   - component: {fileID: 363360809}
-  - component: {fileID: 363360808}
   - component: {fileID: 363360811}
   m_Layer: 0
   m_Name: Main Camera
@@ -169,14 +168,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!81 &363360808
-AudioListener:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 363360807}
-  m_Enabled: 1
 --- !u!20 &363360809
 Camera:
   m_ObjectHideFlags: 0
@@ -473,6 +464,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1859750411}
   - component: {fileID: 1859750412}
+  - component: {fileID: 1859750413}
   m_Layer: 0
   m_Name: SoundManager
   m_TagString: Untagged
@@ -508,6 +500,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.Modules.SoundManager
   soundClips: []
+--- !u!81 &1859750413
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1859750410}
+  m_Enabled: 1
 --- !u!1 &2128836193
 GameObject:
   m_ObjectHideFlags: 0
