@@ -131,7 +131,7 @@ GameObject:
   - component: {fileID: 41286456}
   - component: {fileID: 41286455}
   m_Layer: 5
-  m_Name: Image
+  m_Name: InitImage
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -238,6 +238,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b6d8bb1171d4174caf3b0cf5e8607cc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LoginSceneManager
+  initImageObject: {fileID: 41286453}
 --- !u!1 &1472234179
 GameObject:
   m_ObjectHideFlags: 0
@@ -256,7 +257,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1472234180
 MonoBehaviour:
   m_ObjectHideFlags: 0
