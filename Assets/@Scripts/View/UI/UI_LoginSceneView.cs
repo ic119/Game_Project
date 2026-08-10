@@ -11,6 +11,7 @@ namespace Incheol.View.UI
         [Header("회원가입 변수")]
         [SerializeField] private Button registButton;
         [SerializeField] private GameObject registContainer;
+        [SerializeField] private bool isRegistPopupActive = false;
 
         [Header("InputField 변수")]
         [SerializeField] private TMP_InputField accountInputField;
@@ -31,6 +32,7 @@ namespace Incheol.View.UI
 
             accountInputField.onSubmit.AddListener(_ => FocusNextInputField(accountInputField));
             passwordInputField.onSubmit.AddListener(_ => FocusNextInputField(passwordInputField));
+            registButton.onClick.AddListener(OnClickRegistButton);
         }
 
         private void Start()
@@ -103,8 +105,23 @@ namespace Incheol.View.UI
             }
 
             next.Select();
+
             next.ActivateInputField();
         }
+        private void OnClickRegistButton()
+        {
+            if (registContainer != null)
+            {
+                registContainer.SetActive(true);
+                isRegistPopupActive = true;
+            }
+        }
+        public void SetRegistPopupActive(bool _isActive)
+        {
+            isRegistPopupActive = _isActive;
+        }
+
+
         #endregion
     }
 }
