@@ -21,7 +21,6 @@ namespace MainServer.AuthServer.Services
             {
                 Username = request._userName,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(request._password),
-                Nickname = request._nickName,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };

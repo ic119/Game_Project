@@ -6,5 +6,5 @@ using System.Threading.Tasks;
 
 namespace MainServer.AuthServer.DTOs
 {
-    public record RegisterRequest(string _userName, string _password, string _nickName);
+    public record RegisterRequest(string _userName, string _password);
 }
