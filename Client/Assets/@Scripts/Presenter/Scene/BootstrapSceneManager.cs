@@ -87,6 +87,14 @@ namespace Incheol.Presenter
             }
         }
 
+        private class ServerConnectManage : ISequenceStep
+        {
+            public Awaitable<bool> Execute(CancellationToken _cancellationToken)
+            {
+                throw new System.NotImplementedException();
+            }
+        }
+
         #region LifeCycle
         private void Start()
         {
@@ -94,11 +102,13 @@ namespace Incheol.Presenter
             AddressableAssetManage addressableAssetManage = new AddressableAssetManage();
             SoundManage soundManage = new SoundManage();
             ChangeSceneManage changeSceneManage = new ChangeSceneManage();
+            ServerConnectManage serverConnectManage = new ServerConnectManage();
 
             SequenceManager.Instance.Enqueue(loadSceneManage);
             SequenceManager.Instance.Enqueue(addressableAssetManage);
             SequenceManager.Instance.Enqueue(soundManage);
             SequenceManager.Instance.Enqueue(changeSceneManage);
+            SequenceManager.Instance.Enqueue(serverConnectManage);
 
             SequenceManager.Instance.DoSequenceAction(OnBootstrapSequenceCompleted);
         }
