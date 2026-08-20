@@ -3,11 +3,19 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
+using Incheol.Modules;
+using Incheol.Utils;
+using System;
+
 namespace Incheol.View.UI
 {
     public class UI_LoginSceneView : MonoBehaviour
     {
         #region Variable
+
+        [Header("로그인 변수")]
+        [SerializeField] private Button loginButton;
+
         [Header("회원가입 변수")]
         [SerializeField] private Button registButton;
         [SerializeField] private GameObject registContainer;
@@ -26,18 +34,20 @@ namespace Incheol.View.UI
         #endregion
 
         #region LifeCycle
-        private void Awake()
+private void Awake()
         {
             inputFieldOrder = new[] { accountInputField, passwordInputField };
 
             accountInputField.onSubmit.AddListener(_ => FocusNextInputField(accountInputField));
             passwordInputField.onSubmit.AddListener(_ => FocusNextInputField(passwordInputField));
             registButton.onClick.AddListener(OnClickRegistButton);
-        }
+            loginButton.onClick.AddListener(OnClickLoginButton);
+            checkButton.onClick.AddListener(CloseAlarmPopup);
 
-        private void Start()
-        {
-            FocusAccountInputField();
+            if (alarmPopup != null)
+            {
+                alarmPopup.SetActive(false);
+            }
         }
 
         private void Update()
@@ -47,25 +57,16 @@ namespace Incheol.View.UI
         #endregion
 
         #region Method
-        private void FocusAccountInputField()
-        {
-            if (accountInputField == null)
-            {
-                Incheol.Utils.DebugLogManager.GenerateErrorMessage<UI_LoginSceneView>("accountInputField가 연결되어 있지 않습니다.");
-                return;
-            }
 
-            if (Application.isMobilePlatform)
-            {
-                return;
-            }
-
-            accountInputField.Select();
-            accountInputField.ActivateInputField();
-        }
+        public event Action LoginSucceeded;
 
         private void HandleTabNavigation()
         {
+            if (isRegistPopupActive)
+            {
+                return;
+            }
+
             if (Keyboard.current == null || !Keyboard.current.tabKey.wasPressedThisFrame)
             {
                 return;
@@ -121,6 +122,75 @@ namespace Incheol.View.UI
             isRegistPopupActive = _isActive;
         }
 
+
+        private void OnClickLoginButton()
+        {
+            if (isRegistPopupActive)
+            {
+                return;
+            }
+
+            if (string.IsNullOrEmpty(accountInputField.text) || string.IsNullOrEmpty(passwordInputField.text))
+            {
+                ShowAlarm("로그인 실패", "아이디와 비밀번호를 모두 입력해 주세요.");
+                return;
+            }
+
+            if (ServerConnectManager.Instance == null)
+            {
+                DebugLogManager.GenerateErrorMessage<UI_LoginSceneView>("ServerConnectManager.Instance가 null입니다.");
+                return;
+            }
+
+            SetLoginInteractable(false);
+            ServerConnectManager.Instance.Login(accountInputField.text, passwordInputField.text, OnLoginComplete);
+        }
+
+        private void OnLoginComplete(bool _success, string _error)
+        {
+            SetLoginInteractable(true);
+
+            if (!_success)
+            {
+                ShowAlarm("로그인 실패", _error);
+                return;
+            }
+
+            LoginSucceeded?.Invoke();
+        }
+
+        private void SetLoginInteractable(bool _interactable)
+        {
+            loginButton.interactable = _interactable;
+            accountInputField.interactable = _interactable;
+            passwordInputField.interactable = _interactable;
+        }
+
+        public void ShowAlarm(string _title, string _content)
+        {
+            if (alarmTitleText != null)
+            {
+                alarmTitleText.text = _title;
+            }
+
+            if (alarmContentText != null)
+            {
+                alarmContentText.text = _content;
+            }
+
+            if (alarmPopup != null)
+            {
+                alarmPopup.SetActive(true);
+            }
+        }
+
+        private void CloseAlarmPopup()
+        {
+            if (alarmPopup != null)
+            {
+                alarmPopup.SetActive(false);
+            }
+        }
 
         #endregion
     }

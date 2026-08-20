@@ -89,9 +89,17 @@ namespace Incheol.Presenter
 
         private class ServerConnectManage : ISequenceStep
         {
-            public Awaitable<bool> Execute(CancellationToken _cancellationToken)
+public async Awaitable<bool> Execute(CancellationToken _cancellationToken)
             {
-                throw new System.NotImplementedException();
+                if (ServerConnectManager.Instance == null)
+                {
+                    DebugLogManager.GenerateErrorMessage<BootstrapSceneManager>("ServerConnectManager.Instance가 null입니다.");
+                    return false;
+                }
+
+                await Awaitable.NextFrameAsync(_cancellationToken);
+
+                return true;
             }
         }
 

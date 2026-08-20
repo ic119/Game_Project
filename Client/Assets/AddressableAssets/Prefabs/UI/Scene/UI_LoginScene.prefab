@@ -55,6 +55,7 @@ MonoBehaviour:
   cancelButton: {fileID: 570623936344509749}
   loginSceneView: {fileID: 1397680279954169828}
   accountInputField: {fileID: 5181183997580992431}
+  nickNameInputField: {fileID: 7286471047878858797}
   passwordInputField: {fileID: 7185601499995478737}
   passwordCheckInputField: {fileID: 1824507262406414864}
 --- !u!1 &99432573235353263
@@ -698,7 +699,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1016387701124901048
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2513,7 +2514,7 @@ GameObject:
   - component: {fileID: 3770081320571105466}
   - component: {fileID: 7286471047878858797}
   m_Layer: 5
-  m_Name: UserNameInputField
+  m_Name: NickNameInputField
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6487,7 +6488,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: -549.95}
+  m_AnchoredPosition: {x: 0, y: -438.65}
   m_SizeDelta: {x: 510, y: 61.3}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &6795731471699559964
