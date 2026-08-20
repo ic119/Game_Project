@@ -17,6 +17,10 @@ MonoBehaviour:
     loadedSceneList:
     - LoginScene
     activeSceneName: LoginScene
+  - tags: LobbyScene
+    loadedSceneList:
+    - LobbyScene
+    activeSceneName: LobbyScene
   - tags: MainScene
     loadedSceneList:
     - MainScene

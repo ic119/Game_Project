@@ -15,5 +15,7 @@ MonoBehaviour:
   addressableAssetModels:
   - tags: LoginScene
     preloadAddressableKeys: 03000000
+  - tags: LobbyScene
+    preloadAddressableKeys: 
   - tags: MainScene
     preloadAddressableKeys: 
