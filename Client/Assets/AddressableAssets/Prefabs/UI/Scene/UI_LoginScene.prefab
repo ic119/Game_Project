@@ -6692,6 +6692,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 07ac4530caf8b76499e7752487896104, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UI_LoginSceneView
+  loginButton: {fileID: 6845673699834781552}
   registButton: {fileID: 6257958508933604910}
   registContainer: {fileID: 67939857594235216}
   isRegistPopupActive: 0
