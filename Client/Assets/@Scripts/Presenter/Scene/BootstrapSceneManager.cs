@@ -1,5 +1,6 @@
 using Incheol.Modules;
 using Incheol.Utils;
+using Incheol.View.UI;
 using System.Threading;
 using UnityEngine;
 
@@ -7,8 +8,14 @@ namespace Incheol.Presenter
 {
     public class BootstrapSceneManager : MonoBehaviour
     {
+        [SerializeField] private UI_BootstrapSceneView bootstrapSceneView;
+
+        private ISequenceStep[] bootstrapSteps;
+
         private class LoadSceneManage : ISequenceStep
         {
+            public string StepName => "씬 로드 매니저 초기화";
+
             public async Awaitable<bool> Execute(CancellationToken _cancellationToken)
             {
                 if (SceneLoadManager.Instance == null)
@@ -42,6 +49,8 @@ namespace Incheol.Presenter
 
         private class AddressableAssetManage : ISequenceStep
         {
+            public string StepName => "어드레서블 에셋 초기화";
+
             public async Awaitable<bool> Execute(CancellationToken _cancellationToken)
             {
                 if (AddressableAssetManager.Instance != null)
@@ -57,6 +66,8 @@ namespace Incheol.Presenter
 
         private class SoundManage : ISequenceStep
         {
+            public string StepName => "사운드 매니저 초기화";
+
             public async Awaitable<bool> Execute(CancellationToken _cancellationToken)
             {
                 // SoundController.Instance에 접근하는 것만으로 Awake()가 호출되어
@@ -71,6 +82,8 @@ namespace Incheol.Presenter
 
         private class ChangeSceneManage : ISequenceStep
         {
+            public string StepName => "메인 씬으로 전환 준비";
+
             public async Awaitable<bool> Execute(CancellationToken _cancellationToken)
             {
                 await Awaitable.NextFrameAsync(_cancellationToken);
@@ -89,7 +102,9 @@ namespace Incheol.Presenter
 
         private class ServerConnectManage : ISequenceStep
         {
-public async Awaitable<bool> Execute(CancellationToken _cancellationToken)
+            public string StepName => "서버 연결";
+
+            public async Awaitable<bool> Execute(CancellationToken _cancellationToken)
             {
                 if (ServerConnectManager.Instance == null)
                 {
@@ -106,11 +121,22 @@ public async Awaitable<bool> Execute(CancellationToken _cancellationToken)
         #region LifeCycle
         private void Start()
         {
+            bootstrapSceneView?.UpdateProgress(0f);
+
             LoadSceneManage loadSceneManage = new LoadSceneManage();
             AddressableAssetManage addressableAssetManage = new AddressableAssetManage();
             SoundManage soundManage = new SoundManage();
             ChangeSceneManage changeSceneManage = new ChangeSceneManage();
             ServerConnectManage serverConnectManage = new ServerConnectManage();
+
+            bootstrapSteps = new ISequenceStep[]
+            {
+                loadSceneManage,
+                addressableAssetManage,
+                soundManage,
+                changeSceneManage,
+                serverConnectManage,
+            };
 
             SequenceManager.Instance.Enqueue(loadSceneManage);
             SequenceManager.Instance.Enqueue(addressableAssetManage);
@@ -118,6 +144,7 @@ public async Awaitable<bool> Execute(CancellationToken _cancellationToken)
             SequenceManager.Instance.Enqueue(changeSceneManage);
             SequenceManager.Instance.Enqueue(serverConnectManage);
 
+            SequenceManager.Instance.OnStepCompleted += OnBootstrapStepCompleted;
             SequenceManager.Instance.DoSequenceAction(OnBootstrapSequenceCompleted);
         }
 
@@ -131,6 +158,36 @@ public async Awaitable<bool> Execute(CancellationToken _cancellationToken)
             if (!_isSuccess)
             {
                 DebugLogManager.GenerateErrorMessage<BootstrapSceneManager>("부트스트랩 시퀀스가 실패로 종료되었습니다. 게임을 재시작해야 할 수 있습니다.");
+            }
+        }
+
+        /// <summary>
+        /// SequenceManager의 단계가 하나 끝날 때마다 호출된다. sequenceQueue에 등록된 전체 단계 수로 100을 나눈 만큼씩
+        /// 진행률이 누적 증가하며, 이 값을 UI_BootstrapSceneView(progressBarView의 퍼센트 텍스트/게이지)에 실시간으로 반영한다.
+        /// 또한 방금 완료된 단계의 StepName을 progressBarView의 타이틀 텍스트로 표출한다.
+        /// </summary>
+        private void OnBootstrapStepCompleted(int _completedCount, int _totalCount)
+        {
+            if (bootstrapSceneView == null || _totalCount <= 0)
+            {
+                return;
+            }
+
+            float progress = (float)_completedCount / _totalCount;
+            bootstrapSceneView.UpdateProgress(progress);
+
+            int stepIndex = _completedCount - 1;
+            if (bootstrapSteps != null && stepIndex >= 0 && stepIndex < bootstrapSteps.Length)
+            {
+                bootstrapSceneView.UpdateTitle($"{bootstrapSteps[stepIndex].StepName} 완료");
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (SequenceManager.Instance != null)
+            {
+                SequenceManager.Instance.OnStepCompleted -= OnBootstrapStepCompleted;
             }
         }
         #endregion

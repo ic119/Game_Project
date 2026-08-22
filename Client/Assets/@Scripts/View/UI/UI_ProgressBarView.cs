@@ -10,20 +10,21 @@ namespace Incheol.View.UI
         [Header("UI 변수")]
         [SerializeField] private TextMeshProUGUI title_Text;
         [SerializeField] private TextMeshProUGUI percent_Text;
-        [SerializeField] private Image fill_Image;
+        [SerializeField] private Slider slider;
         #endregion
 
         #region Method
         /// <summary>
-        /// Progress 값을 0.0f에서 1.0f 사이로 설정하고 percent_Text와 fill_Image를 업데이트합니다.
+        /// Progress 값을 0.0f에서 1.0f 사이로 설정하고 percent_Text와 slider를 업데이트합니다.
         /// </summary>
         /// <param name="progress">0.0f ~ 1.0f 사이의 진행도</param>
-        public void SetProgress(float progress)
+public void SetProgress(float progress)
         {
             progress = Mathf.Clamp01(progress);
-            if (fill_Image != null)
+
+            if (slider != null)
             {
-                fill_Image.fillAmount = progress;
+                slider.normalizedValue = progress;
             }
 
             if (percent_Text != null)

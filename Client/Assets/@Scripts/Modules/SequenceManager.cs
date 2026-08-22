@@ -1,4 +1,4 @@
-﻿using Incheol.Utils;
+using Incheol.Utils;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -8,6 +8,7 @@ namespace Incheol.Modules
 {
     public interface ISequenceStep
     {
+        string StepName { get; }
         Awaitable<bool> Execute(CancellationToken _cancellationToken);
     }
     public class SequenceManager : SingletonObject<SequenceManager>
