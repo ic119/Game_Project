@@ -23,9 +23,9 @@ namespace Incheol.View.UI
         #endregion
 
         #region LifeCycle
-private void Awake()
+        private void Awake()
         {
-            inputFieldOrder = new[] { accountInputField, passwordInputField, passwordCheckInputField };
+            inputFieldOrder = new[] { accountInputField, nickNameInputField, passwordInputField, passwordCheckInputField };
 
             createButton.onClick.AddListener(OnClickCreateButton);
             cancelButton.onClick.AddListener(OnClickCancelButton);
@@ -33,6 +33,7 @@ private void Awake()
             passwordCheckInputField.onValueChanged.AddListener(OnPasswordValueChanged);
 
             accountInputField.onSubmit.AddListener(_ => FocusNextInputField(accountInputField));
+            nickNameInputField.onSubmit.AddListener(_ => FocusNextInputField(nickNameInputField));
             passwordInputField.onSubmit.AddListener(_ => FocusNextInputField(passwordInputField));
             passwordCheckInputField.onSubmit.AddListener(_ => FocusNextInputField(passwordCheckInputField));
 
@@ -52,7 +53,7 @@ private void Awake()
         #endregion
 
         #region Method
-private void Init()
+        private void Init()
         {
             accountInputField.text = null;
             nickNameInputField.text = null;
@@ -65,7 +66,7 @@ private void Init()
         {
             if (accountInputField == null)
             {
-                Incheol.Utils.DebugLogManager.GenerateErrorMessage<UI_RegistPopupView>("accountInputField가 연결되어 있지 않습니다.");
+                DebugLogManager.GenerateErrorMessage<UI_RegistPopupView>("accountInputField가 연결되어 있지 않습니다.");
                 return;
             }
 
@@ -123,7 +124,7 @@ private void Init()
         }
 
 
-private void OnClickCreateButton()
+        private void OnClickCreateButton()
         {
             if (string.IsNullOrEmpty(accountInputField.text) || string.IsNullOrEmpty(nickNameInputField.text))
             {
@@ -141,7 +142,7 @@ private void OnClickCreateButton()
             ServerConnectManager.Instance.Register(accountInputField.text, passwordInputField.text, nickNameInputField.text, OnRegisterComplete);
         }
 
-private void OnClickCancelButton()
+        private void OnClickCancelButton()
         {
             ClosePopup();
         }
