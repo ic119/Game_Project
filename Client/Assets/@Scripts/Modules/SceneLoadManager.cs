@@ -372,9 +372,14 @@ private async Awaitable SceneLoadAsync(Incheol.Models.SO.SceneDataModel _previou
 
                 List<string> targetSceneList = _target.loadedSceneList ?? new List<string>();
 
+                // SceneDataModel은 ScriptableObject가 아니라 [Serializable] class라서, Unity가 컴포넌트를
+                // 역직렬화할 때 _previous를 항상 (비어있더라도) 실제 인스턴스로 만들어버려 절대 null이 되지 않는다.
+                // 그래서 "이전 SceneDataModel이 없다(최초 전환, 예: BootstrapScene)"는 tags가 비어있는지로 판별해야 한다.
+                bool hasPreviousModel = _previous != null && !string.IsNullOrEmpty(_previous.tags);
+
                 // 이전 SceneDataModel이 없으면(최초 전환, 예: BootstrapScene) 현재 활성 씬을
                 // 정리 대상으로 간주해 diff에 포함시킨다.
-                List<string> previousSceneList = _previous != null
+                List<string> previousSceneList = hasPreviousModel
                     ? (_previous.loadedSceneList ?? new List<string>())
                     : new List<string> { SceneManager.GetActiveScene().name };
 

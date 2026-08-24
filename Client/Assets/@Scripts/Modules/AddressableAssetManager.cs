@@ -1,4 +1,4 @@
-﻿using Incheol.Utils;
+using Incheol.Utils;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -251,11 +251,11 @@ namespace Incheol.Modules
         /// Addressables에 캐시된 원본 참조를 그대로 반환한다. 호출자가 반환값을 변경하면 같은 Key를
         /// 캐시로 공유하는 다른 호출자에게도 영향을 주므로, GameObject가 아닌 타입은 읽기 전용으로만 사용해야 한다.
         /// </summary>
-        public T InstantiatePrefab<T>(T _type) where T : UnityEngine.Object
+public T InstantiatePrefab<T>(T _type, Transform _parent = null) where T : UnityEngine.Object
         {
             if (_type is GameObject go)
             {
-                return GameObject.Instantiate(go) as T;
+                return GameObject.Instantiate(go, _parent) as T;
             }
             return _type;
         }

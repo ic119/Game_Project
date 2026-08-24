@@ -15,6 +15,7 @@ namespace Incheol.Models.Define
         UI_LoginScene,
         UI_CharacterInfoViewPopup,
         UI_AlarmPopup,
-        UI_InventoryViewPopup
+        UI_InventoryViewPopup,
+        UI_LoadingBarView
     }
 }

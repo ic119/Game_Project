@@ -20,7 +20,7 @@ namespace Incheol.Presenter.Scene
         #endregion
 
         #region Method
-        private void CreateLoginUI()
+private void CreateLoginUI()
         {
             if (AddressableAssetManager.Instance == null)
             {
@@ -35,7 +35,7 @@ namespace Incheol.Presenter.Scene
                     return;
                 }
 
-                AddressableAssetManager.Instance.InstantiatePrefab(prefab);
+                AddressableAssetManager.Instance.InstantiatePrefab(prefab, transform);
             });
         }
         #endregion

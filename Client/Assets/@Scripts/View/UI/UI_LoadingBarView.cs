@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace Incheol.View.UI
 {
-    public class UI_BootstrapSceneView : MonoBehaviour
+    public class UI_LoadingBarView : MonoBehaviour
     {
         #region Variable
         [SerializeField] private UI_ProgressBarView progressBarView;
@@ -25,7 +25,7 @@ namespace Incheol.View.UI
             progressBarView.SetProgress(progress);
         }
 
-/// <summary>
+        /// <summary>
         /// 부트스트랩 단계가 무엇을 수행 중/완료했는지를 UI_ProgressBarView의 타이틀 텍스트로 표시한다.
         /// </summary>
         public void UpdateTitle(string title)

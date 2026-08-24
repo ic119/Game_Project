@@ -146,7 +146,7 @@ private void Awake()
             ServerConnectManager.Instance.Login(accountInputField.text, passwordInputField.text, OnLoginComplete);
         }
 
-private void OnLoginComplete(bool _success, string _error)
+        private void OnLoginComplete(bool _success, string _error)
         {
             SetLoginInteractable(true);
 
@@ -155,9 +155,6 @@ private void OnLoginComplete(bool _success, string _error)
                 ShowAlarm("로그인 실패", _error);
                 return;
             }
-
-            ServerConnectManager.UserInfo user = ServerConnectManager.Instance.CurrentUser;
-            DebugLogManager.GenerateLogMessage<UI_LoginSceneView>($"로그인 성공 - 계정: {user?._username}, 닉네임: {user?._nickname}");
 
             LoginSucceeded?.Invoke();
         }

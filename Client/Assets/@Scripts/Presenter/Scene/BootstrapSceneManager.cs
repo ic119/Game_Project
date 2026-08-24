@@ -8,7 +8,7 @@ namespace Incheol.Presenter
 {
     public class BootstrapSceneManager : MonoBehaviour
     {
-        [SerializeField] private UI_BootstrapSceneView bootstrapSceneView;
+        private UI_LoadingBarView loadingBarView;
 
         private ISequenceStep[] bootstrapSteps;
 
@@ -118,31 +118,78 @@ namespace Incheol.Presenter
             }
         }
 
-        #region LifeCycle
-        private void Start()
+        private class GameManage : ISequenceStep
         {
-            bootstrapSceneView?.UpdateProgress(0f);
+            private readonly BootstrapSceneManager owner;
 
+            public GameManage(BootstrapSceneManager _owner)
+            {
+                owner = _owner;
+            }
+
+            public string StepName => "GameManager 생성";
+
+public async Awaitable<bool> Execute(CancellationToken _cancellationToken)
+            {
+                if (GameManager.Instance == null)
+                {
+                    DebugLogManager.GenerateErrorMessage<BootstrapSceneManager>("GameManager.Instance가 null입니다.");
+                    return false;
+                }
+
+                bool isDone = false;
+                bool isSuccess = false;
+
+                GameManager.Instance.Init(success =>
+                {
+                    isSuccess = success;
+                    isDone = true;
+                });
+
+                while (!isDone)
+                {
+                    await Awaitable.NextFrameAsync(_cancellationToken);
+                }
+
+                if (!isSuccess)
+                {
+                    DebugLogManager.GenerateErrorMessage<BootstrapSceneManager>("GameManager Init 실패로 Bootstrap 시퀀스를 중단합니다.");
+                    return false;
+                }
+
+                owner.loadingBarView = GameManager.Instance.LoadingBarView;
+                owner.loadingBarView?.UpdateProgress(0f);
+
+                return true;
+            }
+        }
+
+        #region LifeCycle
+private void Start()
+        {
+            GameManage gameManage = new GameManage(this);
             LoadSceneManage loadSceneManage = new LoadSceneManage();
             AddressableAssetManage addressableAssetManage = new AddressableAssetManage();
             SoundManage soundManage = new SoundManage();
-            ChangeSceneManage changeSceneManage = new ChangeSceneManage();
             ServerConnectManage serverConnectManage = new ServerConnectManage();
+            ChangeSceneManage changeSceneManage = new ChangeSceneManage();
 
             bootstrapSteps = new ISequenceStep[]
             {
+                gameManage,
                 loadSceneManage,
                 addressableAssetManage,
                 soundManage,
-                changeSceneManage,
                 serverConnectManage,
+                changeSceneManage,
             };
 
+            SequenceManager.Instance.Enqueue(gameManage);
             SequenceManager.Instance.Enqueue(loadSceneManage);
             SequenceManager.Instance.Enqueue(addressableAssetManage);
             SequenceManager.Instance.Enqueue(soundManage);
-            SequenceManager.Instance.Enqueue(changeSceneManage);
             SequenceManager.Instance.Enqueue(serverConnectManage);
+            SequenceManager.Instance.Enqueue(changeSceneManage);
 
             SequenceManager.Instance.OnStepCompleted += OnBootstrapStepCompleted;
             SequenceManager.Instance.DoSequenceAction(OnBootstrapSequenceCompleted);
@@ -168,18 +215,18 @@ namespace Incheol.Presenter
         /// </summary>
         private void OnBootstrapStepCompleted(int _completedCount, int _totalCount)
         {
-            if (bootstrapSceneView == null || _totalCount <= 0)
+            if (loadingBarView == null || _totalCount <= 0)
             {
                 return;
             }
 
             float progress = (float)_completedCount / _totalCount;
-            bootstrapSceneView.UpdateProgress(progress);
+            loadingBarView.UpdateProgress(progress);
 
             int stepIndex = _completedCount - 1;
             if (bootstrapSteps != null && stepIndex >= 0 && stepIndex < bootstrapSteps.Length)
             {
-                bootstrapSceneView.UpdateTitle($"{bootstrapSteps[stepIndex].StepName} 완료");
+                loadingBarView.UpdateTitle($"{bootstrapSteps[stepIndex].StepName} 완료");
             }
         }
 
