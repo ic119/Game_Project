@@ -19,7 +19,7 @@ namespace Incheol.Presenter.Scene
         private void Start()
         {
             // LoginScene으로 전환이 완료된 시점이므로, 부트스트랩 단계에서 켜져 있던 로딩바를 풀로 반환한다.
-            ReleaseLoadingBarView();
+            GameManager.Instance?.HideLoadingBar();
             CreateLoginUI();
         }
 
@@ -33,22 +33,6 @@ namespace Incheol.Presenter.Scene
         #endregion
 
         #region Method
-        private void ReleaseLoadingBarView()
-        {
-            if (GameManager.Instance == null || GameManager.Instance.LoadingBarView == null)
-            {
-                return;
-            }
-
-            if (ObjectPoolManager.Instance == null)
-            {
-                DebugLogManager.GenerateErrorMessage<LoginSceneManager>("ObjectPoolManager.Instance가 null입니다.");
-                return;
-            }
-
-            ObjectPoolManager.Instance.Release(GameManager.Instance.LoadingBarView.gameObject);
-        }
-
         private void CreateLoginUI()
         {
             if (AddressableAssetManager.Instance == null)
@@ -73,17 +57,10 @@ namespace Incheol.Presenter.Scene
             });
         }
 
-private void OnLoginSucceeded()
+        private void OnLoginSucceeded()
         {
-            // 로그인 성공 후 LobbyScene으로 전환되는 동안 다시 보여줄 로딩바를 풀에서 대여한다.
-            if (ObjectPoolManager.Instance == null)
-            {
-                DebugLogManager.GenerateErrorMessage<LoginSceneManager>("ObjectPoolManager.Instance가 null입니다.");
-                return;
-            }
-
-            ObjectPoolManager.Instance.Get(AddressableAssetKey.UI_LoadingBarView.ToString());
-            GameManager.Instance?.LoadingBarView?.UpdateProgress(0f);
+            // 로그인 성공 후 LobbyScene으로 전환되는 동안 다시 보여줄 로딩바를 대여한다.
+            GameManager.Instance?.ShowLoadingBar();
 
             if (SceneLoadManager.Instance == null)
             {

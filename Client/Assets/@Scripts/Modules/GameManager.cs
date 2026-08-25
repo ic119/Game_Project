@@ -31,6 +31,69 @@ namespace Incheol.Modules
         }
 
         /// <summary>
+        /// 씬 진입 시 반복되는 패턴(로딩바 표시 → 태그별 Addressable 프리로드/진행률 표출 → 완료 시 로딩바 숨김)을
+        /// 하나로 묶은 헬퍼. 각 씬 Presenter는 Start()에서 이 함수 한 줄만 호출하면 된다.
+        /// 이전 씬에서 이미 로딩바를 대여해 보여주고 있었다면(예: 로그인 성공 직후) 중복으로 다시 대여하지 않고
+        /// 그대로 이어서 사용한다.
+        /// </summary>
+        public void EnterSceneWithLoadingBar(string _tag, Action<bool> _onComplete = null)
+        {
+            ShowLoadingBar();
+
+            LoadAndInstantiateByTag(_tag, OnProgress, isSuccess =>
+            {
+                HideLoadingBar();
+                _onComplete?.Invoke(isSuccess);
+            });
+
+            void OnProgress(int _completedCount, int _totalCount)
+            {
+                if (_totalCount <= 0)
+                {
+                    return;
+                }
+
+                LoadingBarView?.UpdateProgress((float)_completedCount / _totalCount);
+            }
+        }
+
+        /// <summary>
+        /// 로딩바가 이미 대여되어 활성 상태라면(예: 이전 씬에서 미리 Get해둔 경우) 그대로 두고,
+        /// 아니라면 ObjectPoolManager에서 다시 대여해 진행률을 0으로 리셋한다.
+        /// 여기서 활성 상태 여부를 확인하지 않고 매번 Get을 호출하면, 풀에 반환되지 않은 채
+        /// 이미 활성 중인 인스턴스가 있을 때 ObjectPoolManager.Get이 새 인스턴스를 중복 생성해버린다.
+        /// </summary>
+        public void ShowLoadingBar()
+        {
+            if (LoadingBarView != null && LoadingBarView.gameObject.activeInHierarchy)
+            {
+                return;
+            }
+
+            if (ObjectPoolManager.Instance == null)
+            {
+                DebugLogManager.GenerateErrorMessage<GameManager>("ObjectPoolManager.Instance가 null입니다.");
+                return;
+            }
+
+            ObjectPoolManager.Instance.Get(AddressableAssetKey.UI_LoadingBarView.ToString());
+            LoadingBarView?.UpdateProgress(0f);
+        }
+
+        /// <summary>
+        /// 대여 중인 로딩바를 ObjectPoolManager로 반환한다.
+        /// </summary>
+        public void HideLoadingBar()
+        {
+            if (LoadingBarView == null || ObjectPoolManager.Instance == null)
+            {
+                return;
+            }
+
+            ObjectPoolManager.Instance.Release(LoadingBarView.gameObject);
+        }
+
+        /// <summary>
         /// AddressableAssetModelSO에서 tags가 _tag인 항목의 preloadAddressableKeys를 로드하고 ObjectPoolManager를 통해 생성한다.
         /// 키 하나가 끝날 때마다(성공/실패 무관) (완료 수, 이번 호출에 등록된 전체 키 수)를 _onProgress로 알려준다.
         /// 로딩바 진행률("3/6 완료") 표시 등에 사용할 수 있다.
