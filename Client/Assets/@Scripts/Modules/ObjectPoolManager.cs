@@ -1,4 +1,4 @@
-﻿using Incheol.Utils;
+using Incheol.Utils;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -23,6 +23,11 @@ namespace Incheol.Modules
 
     public class ObjectPoolManager : SingletonObject<ObjectPoolManager>
     {
+        /// <summary>
+        /// 풀에 보관된 인스턴스는 씬 전환 후에도 계속 재사용해야 하므로, 이 매니저 자체가 씬 전환에도 파괴되지 않아야 한다.
+        /// </summary>
+        protected override bool PersistAcrossScenes => true;
+
         #region Variable
         /// <summary>
         /// Addressable Key -> 비활성 인스턴스 큐

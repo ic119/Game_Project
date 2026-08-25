@@ -42,6 +42,23 @@ namespace Incheol.Modules
         [Serializable] private class ErrorResponseBody { public string message; }
         #endregion
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        /// <summary>
+        /// 로컬 개발 서버(dotnet dev-certs https --trust)의 자체 서명 인증서를 신뢰하기 위한 우회 핸들러.
+        /// dotnet dev-certs가 신뢰시키는 곳은 OS 인증서 저장소뿐이라 UnityTls(UnityWebRequest의 검증 로직)는
+        /// 이 인증서를 여전히 모르는 CA로 취급해 SSL 핸드셰이크에서 실패한다(Curl error 60 / UnityTls error 7).
+        /// 실제 서버 인증서 검증을 완전히 생략하므로 UNITY_EDITOR/DEVELOPMENT_BUILD로 제한해 프로덕션 배포 빌드에는
+        /// 절대 포함되지 않게 한다.
+        /// </summary>
+        private class LocalDevCertificateHandler : CertificateHandler
+        {
+            protected override bool ValidateCertificate(byte[] _certificateData)
+            {
+                return true;
+            }
+        }
+#endif
+
         #region Method - Auth API
         /// <summary>
         /// 회원가입을 요청한다(POST /api/users/register). _onComplete는 (성공 여부, 실패 시 서버 메시지)로 호출된다.
@@ -182,6 +199,12 @@ namespace Incheol.Modules
             request.downloadHandler = new DownloadHandlerBuffer();
             request.SetRequestHeader("Content-Type", "application/json");
             request.timeout = Mathf.CeilToInt(requestTimeoutSeconds);
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            // 로컬 개발 서버의 자체 서명 인증서는 UnityTls의 루트 CA 목록에 없어 기본 검증으로는 항상 실패한다.
+            // 프로덕션 빌드에는 이 우회가 포함되지 않는다(위 LocalDevCertificateHandler 선언부 참고).
+            request.certificateHandler = new LocalDevCertificateHandler();
+#endif
 
             UnityWebRequestAsyncOperation operation = request.SendWebRequest();
 
