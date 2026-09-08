@@ -18,6 +18,6 @@ MonoBehaviour:
   - tags: LoginScene
     preloadAddressableKeys: 03000000
   - tags: LobbyScene
-    preloadAddressableKeys: 06000000
+    preloadAddressableKeys: 
   - tags: MainScene
     preloadAddressableKeys: 
