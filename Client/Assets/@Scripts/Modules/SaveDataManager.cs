@@ -102,6 +102,15 @@ namespace Incheol.Modules
             SaveAsync(current, _onComplete);
         }
 
+        /// <summary>
+        /// 서버의 캐릭터 세이브 데이터를 삭제(DELETE)하고, 성공했을 때만 로컬 캐시도 비운다.
+        /// 파괴적 작업이므로(생성과 달리) 낙관적으로 처리하지 않고 서버 확인 후에만 로컬 상태를 바꾼다.
+        /// </summary>
+        public void DeleteAsync(Action<bool> _onComplete = null)
+        {
+            _ = DeleteAsyncInternal(_onComplete);
+        }
+
         private async Awaitable FetchFromServerAsyncInternal(Action<bool> _onComplete)
         {
             if (ServerConnectManager.Instance == null)
@@ -161,10 +170,39 @@ namespace Incheol.Modules
             _onComplete?.Invoke(true);
         }
 
+        private async Awaitable DeleteAsyncInternal(Action<bool> _onComplete)
+        {
+            if (ServerConnectManager.Instance == null)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>("ServerConnectManager.Instance가 null입니다.");
+                _onComplete?.Invoke(false);
+                return;
+            }
+
+            (bool success, string _, string error) = await ServerConnectManager.Instance.SendAuthorizedJsonRequestAsync(CustomizationApiPath, "DELETE");
+
+            if (!success)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>($"세이브 데이터 삭제 실패 : {error}");
+                _onComplete?.Invoke(false);
+                return;
+            }
+
+            ClearLocalCache();
+            _onComplete?.Invoke(true);
+        }
+
         private void ApplyToLocalCache(UserSaveData _saveData)
         {
             cachedSaveData = _saveData;
             PlayerPrefs.SetString(SaveDataKey, JsonUtility.ToJson(_saveData));
+            PlayerPrefs.Save();
+        }
+
+        private void ClearLocalCache()
+        {
+            cachedSaveData = null;
+            PlayerPrefs.DeleteKey(SaveDataKey);
             PlayerPrefs.Save();
         }
     }

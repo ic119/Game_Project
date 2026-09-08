@@ -10,6 +10,7 @@ namespace Incheol.Presenter.Scene
     {
         #region Variable
         private const string lobbySceneTag = "LobbyScene";
+        private const string mainSceneTag = "MainScene";
 
         private UI_LobbySceneView lobbySceneView;
         private UI_CharacterCreatePopup characterCreatePopup;
@@ -34,6 +35,12 @@ namespace Incheol.Presenter.Scene
             if (characterCreatePopup != null)
             {
                 characterCreatePopup.OnCreateRequested = null;
+            }
+
+            if (lobbySceneView != null)
+            {
+                lobbySceneView.OnStartRequested -= OnStartRequested;
+                lobbySceneView.OnDeleteRequested -= OnDeleteRequested;
             }
         }
         #endregion
@@ -78,6 +85,12 @@ namespace Incheol.Presenter.Scene
                 GameObject instance = AddressableAssetManager.Instance.InstantiatePrefab(prefab, transform);
                 instance.TryGetComponent(out lobbySceneView);
 
+                if (lobbySceneView != null)
+                {
+                    lobbySceneView.OnStartRequested += OnStartRequested;
+                    lobbySceneView.OnDeleteRequested += OnDeleteRequested;
+                }
+
                 // CharacterCreateContainer(팝업)는 기본 비활성 상태이므로 GetComponentInChildren에 includeInactive를 반드시 켜야 한다.
                 characterCreatePopup = instance.GetComponentInChildren<UI_CharacterCreatePopup>(true);
                 WireCharacterCreatePopup();
@@ -110,6 +123,36 @@ namespace Incheol.Presenter.Scene
             }
 
             return SaveDataManager.Instance.CreateNew(_saveData);
+        }
+
+        /// <summary>
+        /// UI_LobbySceneView의 시작(이어하기) 버튼 클릭 시 호출된다. 저장된 캐릭터가 있을 때만 버튼이 보이므로
+        /// 여기서는 별도 검증 없이 바로 MainScene으로 전환한다.
+        /// </summary>
+        private void OnStartRequested()
+        {
+            if (SceneLoadManager.Instance == null)
+            {
+                DebugLogManager.GenerateErrorMessage<LobbySceneManager>("SceneLoadManager.Instance가 null입니다.");
+                return;
+            }
+
+            SceneLoadManager.Instance.LoadSceneByTags(mainSceneTag);
+        }
+
+        /// <summary>
+        /// UI_LobbySceneView의 삭제 버튼 클릭 시 호출된다. 서버 삭제가 확인된 뒤에만 로컬 캐시가 비워지므로,
+        /// 완료 콜백에서 성공 여부와 무관하게 최신 상태로 뷰를 다시 그린다.
+        /// </summary>
+        private void OnDeleteRequested()
+        {
+            if (SaveDataManager.Instance == null)
+            {
+                DebugLogManager.GenerateErrorMessage<LobbySceneManager>("SaveDataManager.Instance가 null입니다.");
+                return;
+            }
+
+            SaveDataManager.Instance.DeleteAsync(_ => lobbySceneView?.RefreshState());
         }
         #endregion
     }

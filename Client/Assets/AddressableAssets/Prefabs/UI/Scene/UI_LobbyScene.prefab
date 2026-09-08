@@ -2458,6 +2458,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f079a9ffec459894ba0aac930ecb217b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UI_LobbySceneView
+  maskImage: {fileID: 7300107751695329232}
+  startButton: {fileID: 463672967382705707}
+  createButton: {fileID: 1169426238200998852}
+  deleteButton: {fileID: 6302881228155747652}
+  selectedCharacterTitleText: {fileID: 947787555492572629}
+  characterCreatePopup: {fileID: 6169769108264908514}
 --- !u!1 &2013198111382750784
 GameObject:
   m_ObjectHideFlags: 0
