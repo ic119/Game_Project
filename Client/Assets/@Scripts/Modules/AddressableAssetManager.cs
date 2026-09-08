@@ -20,6 +20,7 @@ namespace Incheol.Modules
         private readonly HashSet<string> loadingKeyHashSet = new HashSet<string>();
         private readonly HashSet<string> failedKeyHashSet = new HashSet<string>();
 
+        private readonly Dictionary<string, List<Action>> loadingFailCallbackDictionary = new Dictionary<string, List<Action>>();
         private readonly Dictionary<string, AsyncOperationHandle> loadingHandleDictionary = new Dictionary<string, AsyncOperationHandle>();
         private readonly Dictionary<string, List<Action<UnityEngine.Object>>> loadingCallbackDictionary = new Dictionary<string, List<Action<UnityEngine.Object>>>();
 
@@ -52,7 +53,7 @@ namespace Incheol.Modules
             }
         }
 
-        public void LoadPrefabAddress<T>(string _key, Action<T> _onLoad = null) where T : UnityEngine.Object
+public void LoadPrefabAddress<T>(string _key, Action<T> _onLoad = null, Action _onFail = null) where T : UnityEngine.Object
         {
             if (string.IsNullOrEmpty(_key))
             {
@@ -78,6 +79,7 @@ namespace Incheol.Modules
             if (loadingHandleDictionary.ContainsKey(_key))
             {
                 RegisterLoadingCallback(_key, _onLoad);
+                RegisterFailCallback(_key, _onFail);
                 return;
             }
 
@@ -95,17 +97,20 @@ namespace Incheol.Modules
                 loadingKeyHashSet.Remove(_key);
                 failedKeyHashSet.Add(_key);
                 DebugLogManager.GenerateErrorMessage<AddressableAssetManager>($"Addressable 로드 실패(잘못된 Key) Key : {_key}, Exception : {exception}");
+                _onFail?.Invoke();
                 return;
             }
 
             loadingHandleDictionary[_key] = handler;
             RegisterLoadingCallback(_key, _onLoad);
+            RegisterFailCallback(_key, _onFail);
 
             handler.Completed += h =>
             {
                 bool _isCurrent = loadingHandleDictionary.TryGetValue(_key, out var _currentHandle) && _currentHandle.Equals(handler);
 
                 List<Action<UnityEngine.Object>> _callbacks = null;
+                List<Action> _failCallbacks = null;
 
                 if (_isCurrent)
                 {
@@ -113,6 +118,8 @@ namespace Incheol.Modules
                     loadingHandleDictionary.Remove(_key);
                     loadingCallbackDictionary.TryGetValue(_key, out _callbacks);
                     loadingCallbackDictionary.Remove(_key);
+                    loadingFailCallbackDictionary.TryGetValue(_key, out _failCallbacks);
+                    loadingFailCallbackDictionary.Remove(_key);
                 }
 
                 if (!_isCurrent)
@@ -152,6 +159,21 @@ namespace Incheol.Modules
                 {
                     failedKeyHashSet.Add(_key);
                     DebugLogManager.GenerateErrorMessage<AddressableAssetManager>($"Addressable 로드 실패 Key : {_key}, Status : {h.Status}, Exception : {h.OperationException}");
+
+                    if (_failCallbacks != null)
+                    {
+                        foreach (var _failCallback in _failCallbacks)
+                        {
+                            try
+                            {
+                                _failCallback();
+                            }
+                            catch (Exception exception)
+                            {
+                                DebugLogManager.GenerateErrorMessage<AddressableAssetManager>($"Addressable 로드 실패 콜백 처리 중 예외 발생 Key : {_key}, Exception : {exception}");
+                            }
+                        }
+                    }
                 }
             };
         }
@@ -181,6 +203,23 @@ namespace Incheol.Modules
                 }
             });
         }
+
+private void RegisterFailCallback(string _key, Action _onFail)
+        {
+            if (_onFail == null)
+            {
+                return;
+            }
+
+            if (!loadingFailCallbackDictionary.TryGetValue(_key, out var _callbackList))
+            {
+                _callbackList = new List<Action>();
+                loadingFailCallbackDictionary[_key] = _callbackList;
+            }
+
+            _callbackList.Add(_onFail);
+        }
+
 
         public bool IsLoading(string _key)
         {

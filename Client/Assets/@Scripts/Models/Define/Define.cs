@@ -15,3 +15,25 @@ namespace Incheol.Models.Define
         BasicCharacter = 7
     }
 }
+
+public enum PlayerMoveState
+{
+    IsIdle,
+    IsMove,
+    IsDash,
+    IsJump
+}
+
+/// <summary>
+/// 무기 오브젝트 이름 접두사와 매핑되는 무기 분류.
+/// OH(One-Handed) = 한손무기류, TH(Two-Handed) = 두손무기류, Shield = 방패류, Wand = 원드류, Spear = 창류.
+/// </summary>
+public enum WeaponType
+{
+    NoWeapon,
+    OneHanded,
+    TwoHanded,
+    Shield,
+    Wand,
+    Spear
+}

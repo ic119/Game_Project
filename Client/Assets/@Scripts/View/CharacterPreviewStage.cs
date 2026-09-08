@@ -38,6 +38,9 @@ public class CharacterPreviewStage : MonoBehaviour
     private float targetYaw = 180f;
     private bool isRequestingCharacterModel = false;
 
+    private bool isStageInitialized = false;
+
+
     private int desiredHairIndex = 0;
     private int desiredEyeIndex = 0;
     private int desiredMouthIndex = 0;
@@ -120,8 +123,11 @@ public class CharacterPreviewStage : MonoBehaviour
         return previewRenderTexture;
     }
 
-    public void InitializeStage()
+public void InitializeStage()
     {
+        if (isStageInitialized) return;
+        isStageInitialized = true;
+
         if (previewCamera == null)
         {
             var camGo = new GameObject("PreviewCamera");
@@ -151,7 +157,7 @@ public class CharacterPreviewStage : MonoBehaviour
         ApplyPreviewLayer(gameObject);
     }
 
-    private void EnsureCharacterModel()
+private void EnsureCharacterModel()
     {
         if (characterModelInstance != null)
         {
@@ -198,6 +204,13 @@ public class CharacterPreviewStage : MonoBehaviour
             {
                 InstantiateCharacterModel(prefab);
             }
+        },
+        // Addressable 로드 자체가 실패(잘못된 Key 등)하면 위 성공 콜백은 절대 호출되지 않으므로,
+        // 여기서 플래그를 반드시 리셋해줘야 한다. 그렇지 않으면 이후 Key를 바로잡아도
+        // isRequestingCharacterModel이 true로 고정되어 재시도가 영원히 막힌다.
+        () =>
+        {
+            isRequestingCharacterModel = false;
         });
     }
 
