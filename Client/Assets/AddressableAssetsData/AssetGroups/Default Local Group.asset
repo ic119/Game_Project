@@ -14,17 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_GroupName: Default Local Group
   m_GUID: 0d0b5892a0daec74ea1897a39c18955c
-  m_SerializeEntries:
-  - m_GUID: 0c1f47ab66987034684fc8f92e4ab675
-    m_Address: BeginnerVillage
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: baf996950139a554691f0bda4190fdf4
-    m_Address: PlayerPrefab
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
+  m_SerializeEntries: []
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 7498f9b7ba6761c4bac2c1aab620b9b9, type: 2}
   m_SchemaSet:

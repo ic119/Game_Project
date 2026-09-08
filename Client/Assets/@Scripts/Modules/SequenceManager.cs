@@ -13,6 +13,11 @@ namespace Incheol.Modules
     }
     public class SequenceManager : SingletonObject<SequenceManager>
     {
+        /// <summary>
+        /// 다른 씬의 부트스트랩/단계 실행도 이 매니저를 재사용할 수 있어야 하므로(GameManager/ObjectPoolManager처럼), 씬 전환에 파괴되지 않아야 한다.
+        /// </summary>
+        protected override bool PersistAcrossScenes => true;
+
         #region Variable
         [Tooltip("단계 하나가 허용되는 최대 실행 시간(초). 이 시간을 넘기면 실패로 간주하고 다음 처리로 넘어간다. " +
             "단, 각 ISequenceStep 구현체가 CancellationToken을 실제로 감시하고 있어야 타임아웃이 즉시 반영된다.")]

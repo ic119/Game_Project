@@ -390,6 +390,20 @@ namespace Incheol.Modules
         }
 
         /// <summary>
+        /// 현재 이 풀이 추적 중인(대여 중이거든 풀에 보관 중이거든) 모든 Addressable Key.
+        /// 씨 전환 시 Addressable 핸들을 일괄 정리하는 쓵에서, 여전히 사용 중인 프리팹은 보호하기 위해 사용한다.
+        /// </summary>
+        public HashSet<string> GetTrackedKeys()
+        {
+            HashSet<string> keys = new HashSet<string>(poolDictionary.Keys);
+            foreach (string key in instanceKeyDictionary.Values)
+            {
+                keys.Add(key);
+            }
+            return keys;
+        }
+
+        /// <summary>
         /// 특정 키의 풀이 보관할 수 있는 최대 비활성 인스턴스 수를 설정한다.
         /// Release()로 반환되는 인스턴스가 이 개수를 초과하면 큐에 쌓아두지 않고 즉시 파괴해,
         /// 대여/반환이 반복될 때 큐가 무한정 커지는 것을 막는다.

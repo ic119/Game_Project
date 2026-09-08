@@ -174,19 +174,21 @@ private void Start()
             ServerConnectManage serverConnectManage = new ServerConnectManage();
             ChangeSceneManage changeSceneManage = new ChangeSceneManage();
 
+            // addressableAssetManage(매니저 리셋)는 이 매니저를 실제로 사용해 프리팹을 로드하는 gameManage보다 앞에 와야 한다.
+            // 반대 순서일 경우 gameManage가 미리 로드해둔 UI_LoadingBarView 핸들이 이 리셋 단계에서 즉시 해제되는 버그가 있었다.
             bootstrapSteps = new ISequenceStep[]
             {
+                addressableAssetManage,
                 gameManage,
                 loadSceneManage,
-                addressableAssetManage,
                 soundManage,
                 serverConnectManage,
                 changeSceneManage,
             };
 
+            SequenceManager.Instance.Enqueue(addressableAssetManage);
             SequenceManager.Instance.Enqueue(gameManage);
             SequenceManager.Instance.Enqueue(loadSceneManage);
-            SequenceManager.Instance.Enqueue(addressableAssetManage);
             SequenceManager.Instance.Enqueue(soundManage);
             SequenceManager.Instance.Enqueue(serverConnectManage);
             SequenceManager.Instance.Enqueue(changeSceneManage);

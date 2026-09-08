@@ -362,7 +362,8 @@ private async Awaitable SceneLoadAsync(Incheol.Models.SO.SceneDataModel _previou
                 await Awaitable.WaitForSecondsAsync(0.2f);
 
                 // 이전 태그 세션에서 로드했던 Addressable 핸들 / 오브젝트 풀 정리 (최초 실행 시 keyDictionary가 비어 있어 no-op)
-                AddressableAssetManager.Instance.ReleaseAllHandler();
+                HashSet<string> keysToPreserve = ObjectPoolManager.Instance != null ? ObjectPoolManager.Instance.GetTrackedKeys() : null;
+                AddressableAssetManager.Instance.ReleaseAllHandler(keysToPreserve);
                 //ObjectPoolController.Instance.Init();
 
                 currentLoadProgressValue = 0.0f;

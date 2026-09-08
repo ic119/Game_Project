@@ -14,10 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.Models.SO.AddressableAssetModelSO
   addressableAssetModels:
   - tags: BootstrapScene
-    preloadAddressableKeys: 07000000
+    preloadAddressableKeys: 05000000
   - tags: LoginScene
     preloadAddressableKeys: 03000000
   - tags: LobbyScene
-    preloadAddressableKeys: 08000000
+    preloadAddressableKeys: 06000000
   - tags: MainScene
     preloadAddressableKeys: 
