@@ -55,6 +55,23 @@ namespace Incheol.Modules
         }
 
         /// <summary>
+        /// 캐릭터 최초 생성 시 호출한다. UI_CharacterCreatePopup.OnCreateRequested(Func&lt;UserSaveData, bool&gt;)가
+        /// 동기 반환을 요구하므로, 로컬 캐시에는 즉시 반영(낙관적 UI)하고 서버 저장은 백그라운드로 진행한다.
+        /// 백그라운드 저장이 실패해도 사용자에 노출되지는 않으며(SaveAsyncInternal이 에러만 남김), 다음 로그인 시 FetchFromServerAsync로 맞춘다.
+        /// </summary>
+        public bool CreateNew(UserSaveData _saveData)
+        {
+            if (_saveData == null)
+            {
+                return false;
+            }
+
+            ApplyToLocalCache(_saveData);
+            SaveAsync(_saveData);
+            return true;
+        }
+
+        /// <summary>
         /// 세이브 데이터를 서버에 저장(PUT)하고, 성공했을 때만 로컬 캐시를 갱신한다.
         /// 실패 시 로컬 캐시는 이전 상태를 유지해 서버와 클라이언트 상태가 어긋나지 않게 한다.
         /// </summary>
