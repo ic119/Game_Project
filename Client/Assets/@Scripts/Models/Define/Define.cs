@@ -11,6 +11,7 @@ namespace Incheol.Models.Define
         UI_AlarmPopup = 3,
         UI_InventoryViewPopup = 4,
         UI_LoadingBarView = 5,
-        UI_LobbyScene = 6
+        UI_LobbyScene = 6,
+        BasicCharacter = 7
     }
 }

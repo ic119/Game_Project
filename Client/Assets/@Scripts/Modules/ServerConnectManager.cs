@@ -1,4 +1,4 @@
-using Incheol.Utils;
+ using Incheol.Utils;
 using System;
 using System.Text;
 using UnityEngine;
@@ -23,6 +23,11 @@ namespace Incheol.Modules
         /// 로그인 세션(AccessToken/RefreshToken)은 씬이 전환되어도 유지되어야 하므로 파괴되지 않는다.
         /// </summary>
         protected override bool PersistAcrossScenes => true;
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        private const string MasterAccountUsername = "admin";
+        private const string MasterAccountPassword = "admin1234";
+#endif
         #endregion
 
         #region DTO
@@ -73,6 +78,14 @@ namespace Incheol.Modules
         /// </summary>
         public void Login(string _username, string _password, Action<bool, string> _onComplete = null)
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (_username == MasterAccountUsername && _password == MasterAccountPassword)
+            {
+                ApplyMasterLogin();
+                _onComplete?.Invoke(true, null);
+                return;
+            }
+#endif
             _ = LoginAsync(_username, _password, _onComplete);
         }
 
@@ -176,6 +189,22 @@ namespace Incheol.Modules
             CurrentUser = response._user;
             IsLoggedIn = true;
         }
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        private void ApplyMasterLogin()
+        {
+            AccessToken = "MASTER_DEV_ACCESS_TOKEN";
+            RefreshToken = "MASTER_DEV_REFRESH_TOKEN";
+            CurrentUser = new UserInfo
+            {
+                _id = -1,
+                _username = MasterAccountUsername,
+                _nickname = "Master",
+                _createdAt = DateTime.UtcNow.ToString("o")
+            };
+            IsLoggedIn = true;
+        }
+#endif
 
         private void ClearSession()
         {

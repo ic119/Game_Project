@@ -226,5 +226,7 @@ namespace Incheol.Modules
 
 
         public UI_LoadingBarView LoadingBarView { get; private set; }
+
+        public bool HasSaveData => SaveDataManager.Instance != null && SaveDataManager.Instance.HasSaveData;
     }
 }
