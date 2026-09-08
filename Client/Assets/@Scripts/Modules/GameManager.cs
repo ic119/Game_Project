@@ -3,6 +3,7 @@ using Incheol.Utils;
 using Incheol.Models.Define;
 using Incheol.Models.SO;
 
+using Incheol.Presenter.UI;
 using Incheol.View.UI;
 using System;
 using System.Collections.Generic;
@@ -91,6 +92,41 @@ namespace Incheol.Modules
             }
 
             ObjectPoolManager.Instance.Release(LoadingBarView.gameObject);
+        }
+
+        /// <summary>
+        /// UI_AlarmPopup은 BootstrapScene 단계에서 미리 로드/생성되어 ObjectPoolManager(PersistAcrossScenes)에 보관되므로,
+        /// 어떤 씬에서든 이 함수 호출만으로 알림을 띄울 수 있다. 이미 떠 있는 상태라면 텍스트만 갱신한다.
+        /// </summary>
+        public void ShowAlarmPopup(string _title, string _content)
+        {
+            if (AlarmPopup != null && AlarmPopup.gameObject.activeInHierarchy)
+            {
+                AlarmPopup.SetAlarmText(_title, _content);
+                return;
+            }
+
+            if (ObjectPoolManager.Instance == null)
+            {
+                DebugLogManager.GenerateErrorMessage<GameManager>("ObjectPoolManager.Instance가 null입니다.");
+                return;
+            }
+
+            ObjectPoolManager.Instance.Get(AddressableAssetKey.UI_AlarmPopup.ToString());
+            AlarmPopup?.SetAlarmText(_title, _content);
+        }
+
+        /// <summary>
+        /// 대여 중인 알림 팝업을 ObjectPoolManager로 반환한다.
+        /// </summary>
+        public void HideAlarmPopup()
+        {
+            if (AlarmPopup == null || ObjectPoolManager.Instance == null)
+            {
+                return;
+            }
+
+            ObjectPoolManager.Instance.Release(AlarmPopup.gameObject);
         }
 
         /// <summary>
@@ -199,6 +235,14 @@ namespace Incheol.Modules
                     {
                         LoadingBarView = loadingBarView;
                     }
+
+                    if (instance != null && instance.TryGetComponent(out UI_AlarmPopup alarmPopup))
+                    {
+                        AlarmPopup = alarmPopup;
+
+                        // 로딩바와 달리 알림 팝업은 미리 로드만 해두고 평소엔 숨겨진 상태여야 하므로, 참조 캐시 직후 즉시 반환한다.
+                        ObjectPoolManager.Instance.Release(instance);
+                    }
                 }
                 else
                 {
@@ -226,6 +270,8 @@ namespace Incheol.Modules
 
 
         public UI_LoadingBarView LoadingBarView { get; private set; }
+
+        public UI_AlarmPopup AlarmPopup { get; private set; }
 
         public bool HasSaveData => SaveDataManager.Instance != null && SaveDataManager.Instance.HasSaveData;
     }
