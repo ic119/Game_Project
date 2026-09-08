@@ -356,25 +356,28 @@ public class CharacterPreviewStage : MonoBehaviour
     /// 이미 생성된 캐릭터가 있을 때만 성공하며(최초 캐릭터 생성은 LobbySceneController가 별도로 처리),
     /// 생성 이후 외형을 다시 바꾸는 기능(예: 옷장/재커스터마이징 화면)에서 재사용하기 위한 진입점이다.
     /// </summary>
-    public bool SaveCurrentCustomization()
+    public void SaveCurrentCustomization(Action<bool> _onComplete = null)
     {
         EnsureCustomModelReference();
 
         if (customModel == null)
         {
             DebugLogManager.GenerateErrorMessage<CharacterPreviewStage>("customModel이 없어 외형을 저장할 수 없습니다.");
-            return false;
+            _onComplete?.Invoke(false);
+            return;
         }
 
         if (SaveDataManager.Instance == null)
         {
-            return false;
+            _onComplete?.Invoke(false);
+            return;
         }
 
-        return SaveDataManager.Instance.UpdateCharacterCustomization(
+        SaveDataManager.Instance.UpdateCharacterCustomization(
             customModel.CurrentHairIndex,
             customModel.CurrentEyeIndex,
-            customModel.CurrentMouthIndex);
+            customModel.CurrentMouthIndex,
+            _onComplete);
     }
 
     /// <summary>

@@ -104,6 +104,20 @@ namespace Incheol.Modules
         {
             _ = LogoutAsync(_onComplete);
         }
+        /// <summary>
+        /// 로그인 상태(AccessToken)가 필요한 API를 다른 매니저(예: SaveDataManager)가 호출할 때 사용하는 공용 헬퍼.
+        /// AccessToken이 없으면(비로그인 상태) 요청을 보내지 않고 즉시 실패를 반환한다.
+        /// </summary>
+        public async Awaitable<(bool success, string body, string error)> SendAuthorizedJsonRequestAsync(string _path, string _method, string _jsonBody = null)
+        {
+            if (string.IsNullOrEmpty(AccessToken))
+            {
+                return (false, null, "로그인이 필요합니다.");
+            }
+
+            return await SendJsonRequestAsync(_path, _method, _jsonBody, AccessToken);
+        }
+
         #endregion
 
         #region Method - Internal
@@ -219,7 +233,7 @@ namespace Incheol.Modules
         /// HTTP 상태 코드가 에러(4xx/5xx)이거나 네트워크 오류인 경우 success=false와 함께
         /// 서버가 { message: "..." } 형식으로 내려준 에러 메시지를 파싱해 반환한다.
         /// </summary>
-        private async Awaitable<(bool success, string body, string error)> SendJsonRequestAsync(string _path, string _method, string _jsonBody)
+        private async Awaitable<(bool success, string body, string error)> SendJsonRequestAsync(string _path, string _method, string _jsonBody, string _accessToken = null)
         {
             string url = serverBaseUrl.TrimEnd('/') + _path;
 
@@ -227,6 +241,11 @@ namespace Incheol.Modules
             request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(_jsonBody ?? string.Empty));
             request.downloadHandler = new DownloadHandlerBuffer();
             request.SetRequestHeader("Content-Type", "application/json");
+
+            if (!string.IsNullOrEmpty(_accessToken))
+            {
+                request.SetRequestHeader("Authorization", $"Bearer {_accessToken}");
+            }
             request.timeout = Mathf.CeilToInt(requestTimeoutSeconds);
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
