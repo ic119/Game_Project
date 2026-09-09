@@ -46,6 +46,7 @@ namespace Incheol.View.UI
         private readonly List<UI_CharacterListItem> spawnedListItems = new List<UI_CharacterListItem>();
         private bool isPreviewStageDynamicallyCreated;
         private long? previewedCharacterId;
+        private long? pendingPreviewCharacterId;
 
         public UI_CharacterCreatePopup CharacterCreatePopup => characterCreatePopup;
 
@@ -61,7 +62,7 @@ namespace Incheol.View.UI
         #endregion
 
         #region LifeCycle
-        private void Awake()
+private void Awake()
         {
             if (maskImage != null)
             {
@@ -71,6 +72,11 @@ namespace Incheol.View.UI
             if (characterCreatePopup == null)
             {
                 characterCreatePopup = GetComponentInChildren<UI_CharacterCreatePopup>(true);
+            }
+
+            if (characterCreatePopup != null)
+            {
+                characterCreatePopup.OnPopupClosed += OnCreatePopupClosed;
             }
 
             if (SaveDataManager.Instance != null)
@@ -86,11 +92,16 @@ namespace Incheol.View.UI
             RefreshCharacterList();
         }
 
-        private void OnDestroy()
+private void OnDestroy()
         {
             if (startButton != null) startButton.onClick.RemoveAllListeners();
             if (createButton != null) createButton.onClick.RemoveAllListeners();
             if (deleteButton != null) deleteButton.onClick.RemoveAllListeners();
+
+            if (characterCreatePopup != null)
+            {
+                characterCreatePopup.OnPopupClosed -= OnCreatePopupClosed;
+            }
 
             if (SaveDataManager.Instance != null)
             {
@@ -205,32 +216,46 @@ private void RefreshSelectedCharacterPreview()
             if (!selectedId.HasValue)
             {
                 previewedCharacterId = null;
+                pendingPreviewCharacterId = null;
                 ClearPreview();
                 return;
             }
 
-            if (selectedPreviewImage != null)
-            {
-                selectedPreviewImage.gameObject.SetActive(true);
-            }
-
             if (previewedCharacterId.HasValue && previewedCharacterId.Value == selectedId.Value)
             {
+                // 이미 이 캐릭터의 외형이 정확히 반영된 상태.
                 return;
             }
 
-            previewedCharacterId = selectedId;
+            if (pendingPreviewCharacterId.HasValue && pendingPreviewCharacterId.Value == selectedId.Value)
+            {
+                // 이미 같은 캐릭터를 상세 조회 중 - 중복 요청 방지.
+                return;
+            }
+
+            // 다른 캐릭터로 전환 중이다. 새 캐릭터의 외형(헤어/눈/입) 응답이 오기 전까지는
+            // 선택 해제된(이전) 캐릭터의 PreviewStage가 겹춐 보이지 않도록 즉시 비활성화해 숨긴다.
+            pendingPreviewCharacterId = selectedId;
+            previewedCharacterId = null;
+            ClearPreview();
+
             SaveDataManager.Instance.FetchCharacterDetailAsync(selectedId.Value, OnSelectedCharacterDetailFetched);
         }
 
-        private void OnSelectedCharacterDetailFetched(UserSaveData _data)
+private void OnSelectedCharacterDetailFetched(UserSaveData _data)
         {
             if (_data == null)
             {
                 return;
             }
 
-            // 응답이 오는 동안 다른 캐릭터로 선택이 바뀌었다면 낡은 응답이므로 무시한다.
+            if (pendingPreviewCharacterId.HasValue && pendingPreviewCharacterId.Value == _data.characterId)
+            {
+                pendingPreviewCharacterId = null;
+            }
+
+            // 응답이 오는 동안 다른 캐릭터로 선택이 바뀌었다면(낮은 응답) 프리뷰를 보여주지 않고 무시한다.
+            // 해당 선택은 별도의 RefreshSelectedCharacterPreview 호출로 이미 처리 중이다.
             if (SaveDataManager.Instance == null || SaveDataManager.Instance.SelectedCharacterId != _data.characterId)
             {
                 return;
@@ -242,13 +267,48 @@ private void RefreshSelectedCharacterPreview()
             {
                 previewStage.ApplyCustomization(_data.hairIndex, _data.eyeIndex, _data.mouthIndex);
             }
+
+            if (selectedPreviewImage != null)
+            {
+                selectedPreviewImage.gameObject.SetActive(true);
+            }
+
+            previewedCharacterId = _data.characterId;
         }
+
+private const string PreviewStageName = "LobbySelectedCharacterPreviewStage";
 
         private void EnsurePreviewStage()
         {
             if (previewStage == null)
             {
-                GameObject stageGo = new GameObject("LobbySelectedCharacterPreviewStage");
+                // 도메인 리로드/씨 재진입 등으로 previewStage 참조를 잃어버렸더라도, 새로 만들기 전에
+                // 씨에 이미 남아있는 동일 이름의 고아 스테이지가 있는지 먼저 찾아 재사용하고,
+                // 남아도는(이미 하나 재사용한 뒤의 나머지) 모두 파괴해 캐릭터가 겹쳐 보이는 상황을 방지한다.
+                CharacterPreviewStage[] existingStages = FindObjectsByType<CharacterPreviewStage>(FindObjectsSortMode.None);
+                for (int i = 0; i < existingStages.Length; i++)
+                {
+                    CharacterPreviewStage existing = existingStages[i];
+                    if (existing == null || existing.gameObject.name != PreviewStageName)
+                    {
+                        continue;
+                    }
+
+                    if (previewStage == null)
+                    {
+                        previewStage = existing;
+                        isPreviewStageDynamicallyCreated = true;
+                    }
+                    else if (existing != previewStage)
+                    {
+                        Destroy(existing.gameObject);
+                    }
+                }
+            }
+
+            if (previewStage == null)
+            {
+                GameObject stageGo = new GameObject(PreviewStageName);
                 stageGo.transform.position = dynamicStageSpawnPosition;
                 previewStage = stageGo.AddComponent<CharacterPreviewStage>();
                 isPreviewStageDynamicallyCreated = true;
@@ -275,10 +335,31 @@ private void ClearPreview()
             OnStartRequested?.Invoke();
         }
 
-        private void OnClickCreateButton()
+private void OnClickCreateButton()
         {
+            // 캐릭터 생성 팝업이 열려 있는 동안에는 로비의 선택된 캐릭터 프리뷰(별도 PreviewStage)가 배경에 계속 넌남아 있으면
+            // 팝업 자체의 프리뷰와 두 캐릭터 몸이 동시에 보이는 것처럼 보일 수 있어, 열려있는 동안은 명시적으로 숨긴다.
+            if (selectedPreviewImage != null)
+            {
+                selectedPreviewImage.gameObject.SetActive(false);
+            }
+
             characterCreatePopup?.Open();
         }
+
+
+        /// <summary>
+        /// 캐릭터 생성 팝업이 닫혔을 때 호출된다. OnClickCreateButton에서 숨겼던 로비 선택 프리뷰를,
+        /// 여전히 선택된 캐릭터가 있을 때만 다시 보여준다(그 사이 캐릭터가 삭제되어 선택 해제된 경우를 대비).
+        /// </summary>
+        private void OnCreatePopupClosed()
+        {
+            if (selectedPreviewImage != null && SaveDataManager.Instance != null && SaveDataManager.Instance.HasSelectedCharacter)
+            {
+                selectedPreviewImage.gameObject.SetActive(true);
+            }
+        }
+
 
         private void OnClickDeleteButton()
         {
