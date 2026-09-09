@@ -187,6 +187,28 @@ private void OnDestroy()
             spawnedListItems.Clear();
         }
 
+
+        /// <summary>
+        /// 특정 캐릭터 id에 해당하는 UI_CharacterListItem만 contentRect에서 찾아 Destroy한다.
+        /// 캐릭터 삭제 성공 직후, 전체 목록을 다시 서버에서 받아오는 대신 이 항목만 직접 제거하기 위해 사용한다.
+        /// </summary>
+        public void RemoveCharacterListItem(long _characterId)
+        {
+            for (int i = spawnedListItems.Count - 1; i >= 0; i--)
+            {
+                UI_CharacterListItem item = spawnedListItems[i];
+                if (item == null || item.Character == null || item.Character.id != _characterId)
+                {
+                    continue;
+                }
+
+                item.OnClicked -= OnCharacterItemClicked;
+                Destroy(item.gameObject);
+                spawnedListItems.RemoveAt(i);
+            }
+        }
+
+
         private void OnCharacterItemClicked(CharacterSummary _character)
         {
             if (SaveDataManager.Instance == null || _character == null)
@@ -273,6 +295,11 @@ private void OnSelectedCharacterDetailFetched(UserSaveData _data)
                 selectedPreviewImage.gameObject.SetActive(true);
             }
 
+            if (selectedCharacterTitleText != null)
+            {
+                selectedCharacterTitleText.gameObject.SetActive(true);
+            }
+
             previewedCharacterId = _data.characterId;
         }
 
@@ -328,6 +355,11 @@ private void ClearPreview()
                 selectedPreviewImage.texture = null;
                 selectedPreviewImage.gameObject.SetActive(false);
             }
+
+            if (selectedCharacterTitleText != null)
+            {
+                selectedCharacterTitleText.gameObject.SetActive(false);
+            }
         }
 
         private void OnClickStartButton()
@@ -337,11 +369,16 @@ private void ClearPreview()
 
 private void OnClickCreateButton()
         {
-            // 캐릭터 생성 팝업이 열려 있는 동안에는 로비의 선택된 캐릭터 프리뷰(별도 PreviewStage)가 배경에 계속 넌남아 있으면
+            // 캐릭터 생성 팝업이 열려 있는 동안에는 로비의 선택된 캐릭터 프리뷰(별도 PreviewStage)가 배경에 계속 남아 있으면
             // 팝업 자체의 프리뷰와 두 캐릭터 몸이 동시에 보이는 것처럼 보일 수 있어, 열려있는 동안은 명시적으로 숨긴다.
             if (selectedPreviewImage != null)
             {
                 selectedPreviewImage.gameObject.SetActive(false);
+            }
+
+            if (selectedCharacterTitleText != null)
+            {
+                selectedCharacterTitleText.gameObject.SetActive(false);
             }
 
             characterCreatePopup?.Open();
@@ -352,11 +389,18 @@ private void OnClickCreateButton()
         /// 캐릭터 생성 팝업이 닫혔을 때 호출된다. OnClickCreateButton에서 숨겼던 로비 선택 프리뷰를,
         /// 여전히 선택된 캐릭터가 있을 때만 다시 보여준다(그 사이 캐릭터가 삭제되어 선택 해제된 경우를 대비).
         /// </summary>
-        private void OnCreatePopupClosed()
+private void OnCreatePopupClosed()
         {
-            if (selectedPreviewImage != null && SaveDataManager.Instance != null && SaveDataManager.Instance.HasSelectedCharacter)
+            bool hasSelectedCharacter = SaveDataManager.Instance != null && SaveDataManager.Instance.HasSelectedCharacter;
+
+            if (selectedPreviewImage != null && hasSelectedCharacter)
             {
                 selectedPreviewImage.gameObject.SetActive(true);
+            }
+
+            if (selectedCharacterTitleText != null && hasSelectedCharacter)
+            {
+                selectedCharacterTitleText.gameObject.SetActive(true);
             }
         }
 

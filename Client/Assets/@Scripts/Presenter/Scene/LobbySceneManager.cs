@@ -152,7 +152,20 @@ private void OnDeleteRequested()
                 return;
             }
 
-            SaveDataManager.Instance.DeleteAsync(_ => lobbySceneView?.RefreshCharacterList());
+            // DeleteAsync가 성공하면 SelectedCharacterId가 곳바로 해제되므로, 삭제 대상 id를 미리 보관해둔다.
+            long? deletedCharacterId = SaveDataManager.Instance.SelectedCharacterId;
+
+            SaveDataManager.Instance.DeleteAsync(isSuccess =>
+            {
+                if (isSuccess && deletedCharacterId.HasValue)
+                {
+                    // 전체 목록을 서버에서 다시 받아오는 대신, 삭제된 캐릭터에 해당하는
+                    // UI_CharacterListItem만 contentRect에서 직접 제거한다.
+                    lobbySceneView?.RemoveCharacterListItem(deletedCharacterId.Value);
+                }
+
+                lobbySceneView?.RefreshState();
+            });
         }
         #endregion
     }

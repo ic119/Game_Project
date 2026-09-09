@@ -34,8 +34,8 @@ public class CharacterPreviewStage : MonoBehaviour
     private const string PreviewLayerName = "CharacterPreview";
 
     private RenderTexture previewRenderTexture;
-    private float currentYaw = 180f;
-    private float targetYaw = 180f;
+    private float currentYaw = 0f;
+    private float targetYaw = 0f;
     private bool isRequestingCharacterModel = false;
 
     private bool isStageInitialized = false;
@@ -413,11 +413,11 @@ private void EnsureCharacterModel()
 
     public void ResetRotation()
     {
-        targetYaw = 180f;
-        currentYaw = 180f;
+        targetYaw = 0f;
+        currentYaw = 0f;
         if (characterRoot != null)
         {
-            characterRoot.localRotation = Quaternion.Euler(0f, 180f, 0f);
+            characterRoot.localRotation = Quaternion.Euler(0f, 0f, 0f);
         }
     }
 
