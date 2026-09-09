@@ -4,6 +4,7 @@ using MainServer.AuthServer.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MainServer.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260909013057_AddCharacterSlots")]
+    partial class AddCharacterSlots
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -116,12 +119,6 @@ namespace MainServer.Migrations
                     b.Property<int>("Intel")
                         .HasColumnType("int");
 
-                    b.Property<DateTime?>("LastLoginAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("Level")
-                        .HasColumnType("int");
-
                     b.Property<int>("MouthIndex")
                         .HasColumnType("int");
 
@@ -176,8 +173,8 @@ namespace MainServer.Migrations
             modelBuilder.Entity("MainServer.CharacterServer.Entities.Character", b =>
                 {
                     b.HasOne("MainServer.AuthServer.Entities.User", "User")
-                        .WithMany("Characters")
-                        .HasForeignKey("UserId")
+                        .WithOne()
+                        .HasForeignKey("MainServer.CharacterServer.Entities.Character", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -187,19 +184,12 @@ namespace MainServer.Migrations
             modelBuilder.Entity("MainServer.CharacterServer.Entities.CharacterSlot", b =>
                 {
                     b.HasOne("MainServer.AuthServer.Entities.User", "User")
-                        .WithOne("CharacterSlot")
+                        .WithOne()
                         .HasForeignKey("MainServer.CharacterServer.Entities.CharacterSlot", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("MainServer.AuthServer.Entities.User", b =>
-                {
-                    b.Navigation("CharacterSlot");
-
-                    b.Navigation("Characters");
                 });
 #pragma warning restore 612, 618
         }

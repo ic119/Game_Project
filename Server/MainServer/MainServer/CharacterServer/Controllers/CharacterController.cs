@@ -50,6 +50,16 @@ namespace MainServer.CharacterServer.Controllers
                 : Ok(result); // 200
         }
 
+        // DELETE /api/characters/me → 캐릭터 삭제
+        [HttpDelete("me")]
+        public async Task<IActionResult> Delete()
+        {
+            bool deleted = await _characterService.DeleteMyCharacterAsync(GetUserId());
+            return deleted
+                ? NoContent() // 204
+                : NotFound(new { message = "생성된 캐릭터가 없습니다." }); // 404
+        }
+
         private long GetUserId() => long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     }
 }

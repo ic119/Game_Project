@@ -23,6 +23,12 @@ namespace MainServer.AuthServer.Services
             if (user is null || !BCrypt.Net.BCrypt.Verify(request._password, user.PasswordHash))
                 return null;
 
+            // 캐릭터별 "마지막 접속시간" 갱신. 캐릭터 선택 단계가 아직 없어 계정 로그인 시점을 기준으로 삼는다.
+            // SaveChangesAsync는 아래 IssueTokensAsync 내부(RefreshToken 저장 시)에서 함께 호출된다.
+            var character = await _db.Characters.FirstOrDefaultAsync(c => c.UserId == user.Id);
+            if (character is not null)
+                character.LastLoginAt = DateTime.UtcNow;
+
             return await IssueTokensAsync(user);
         }
 

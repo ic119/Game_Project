@@ -22,9 +22,9 @@ namespace MainServer.CharacterServer.Services
 
         public async Task<CharacterResponse> CreateAsync(long userId, CreateCharacterRequest request)
         {
-            bool exists = await _db.Characters.AnyAsync(c => c.UserId == userId);
-            if (exists)
-                throw new InvalidOperationException("이미 생성된 캐릭터가 있습니다.");
+            var slot = await GetOrCreateSlotAsync(userId);
+            if (slot.CurrentCount >= slot.MaxSlotCount)
+                throw new InvalidOperationException("보유 가능한 캐릭터 슬롯을 모두 사용했습니다.");
 
             var character = new Character
             {
@@ -41,6 +41,7 @@ namespace MainServer.CharacterServer.Services
             };
 
             _db.Characters.Add(character);
+            slot.CurrentCount++;
             await _db.SaveChangesAsync();
 
             return ToResponse(character);
@@ -62,6 +63,35 @@ namespace MainServer.CharacterServer.Services
             return ToResponse(character);
         }
 
+        public async Task<bool> DeleteMyCharacterAsync(long userId)
+        {
+            var character = await _db.Characters.FirstOrDefaultAsync(c => c.UserId == userId);
+            if (character is null)
+                return false;
+
+            _db.Characters.Remove(character);
+
+            var slot = await GetOrCreateSlotAsync(userId);
+            slot.CurrentCount = Math.Max(0, slot.CurrentCount - 1);
+
+            await _db.SaveChangesAsync();
+
+            return true;
+        }
+
+        // 슬롯 정보가 없는 계정(마이그레이션 이전 가입자 등)을 위해 최초 조회 시 기본값으로 지연 생성한다.
+        private async Task<CharacterSlot> GetOrCreateSlotAsync(long userId)
+        {
+            var slot = await _db.CharacterSlots.FirstOrDefaultAsync(s => s.UserId == userId);
+            if (slot is not null)
+                return slot;
+
+            slot = new CharacterSlot { UserId = userId };
+            _db.CharacterSlots.Add(slot);
+
+            return slot;
+        }
+
         private static CharacterResponse ToResponse(Character character) => new(
             character.Id,
             character.Nickname,
@@ -71,6 +101,8 @@ namespace MainServer.CharacterServer.Services
             character.Str,
             character.Agi,
             character.Intel,
+            character.Level,
+            character.LastLoginAt,
             character.CreatedAt);
     }
 }

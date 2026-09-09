@@ -11,6 +11,7 @@ namespace MainServer.AuthServer.Data
         public DbSet<User> Users => Set<User>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<Character> Characters => Set<Character>();
+        public DbSet<CharacterSlot> CharacterSlots => Set<CharacterSlot>();
 
         protected override void OnModelCreating(ModelBuilder _modelBuilder)
         {
@@ -33,10 +34,20 @@ namespace MainServer.AuthServer.Data
             _modelBuilder.Entity<Character>(entity =>
             {
                 entity.ToTable("characters");
-                entity.HasIndex(c => c.UserId).IsUnique(); // 계정당 캐릭터 1개
+                entity.HasIndex(c => c.UserId).IsUnique(); // 계정당 캐릭터 1개(CharacterSlot.MaxSlotCount로 향후 확장)
                 entity.HasOne(c => c.User)
-                      .WithOne()
-                      .HasForeignKey<Character>(c => c.UserId)
+                      .WithMany(u => u.Characters)
+                      .HasForeignKey(c => c.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            _modelBuilder.Entity<CharacterSlot>(entity =>
+            {
+                entity.ToTable("character_slots");
+                entity.HasKey(cs => cs.UserId);
+                entity.HasOne(cs => cs.User)
+                      .WithOne(u => u.CharacterSlot)
+                      .HasForeignKey<CharacterSlot>(cs => cs.UserId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
         }

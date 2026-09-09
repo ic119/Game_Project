@@ -9,5 +9,7 @@ namespace MainServer.CharacterServer.DTOs
         int _str,
         int _agi,
         int _intel,
+        int _level,
+        DateTime? _lastLoginAt,
         DateTime _createdAt);
 }
