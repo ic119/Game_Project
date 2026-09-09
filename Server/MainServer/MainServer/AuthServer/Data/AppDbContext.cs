@@ -34,7 +34,7 @@ namespace MainServer.AuthServer.Data
             _modelBuilder.Entity<Character>(entity =>
             {
                 entity.ToTable("characters");
-                entity.HasIndex(c => c.UserId).IsUnique(); // 계정당 캐릭터 1개(CharacterSlot.MaxSlotCount로 향후 확장)
+                entity.HasIndex(c => c.UserId); // 계정당 여러 캐릭터 허용(개수 제한은 CharacterSlot.MaxSlotCount가 담당), 조회 성능을 위한 비유니크 인덱스만 유지
                 entity.HasOne(c => c.User)
                       .WithMany(u => u.Characters)
                       .HasForeignKey(c => c.UserId)

@@ -14,9 +14,15 @@ namespace MainServer.CharacterServer.Services
 
         public CharacterService(AppDbContext db) => _db = db;
 
-        public async Task<CharacterResponse?> GetMyCharacterAsync(long userId)
+        public async Task<IReadOnlyList<CharacterResponse>> GetMyCharactersAsync(long userId)
         {
-            var character = await _db.Characters.FirstOrDefaultAsync(c => c.UserId == userId);
+            var characters = await _db.Characters.Where(c => c.UserId == userId).ToListAsync();
+            return characters.Select(ToResponse).ToList();
+        }
+
+        public async Task<CharacterResponse?> GetCharacterAsync(long userId, long characterId)
+        {
+            var character = await FindOwnedCharacterAsync(userId, characterId);
             return character is null ? null : ToResponse(character);
         }
 
@@ -47,9 +53,9 @@ namespace MainServer.CharacterServer.Services
             return ToResponse(character);
         }
 
-        public async Task<CharacterResponse?> UpdateCustomizationAsync(long userId, UpdateCharacterCustomizationRequest request)
+        public async Task<CharacterResponse?> UpdateCustomizationAsync(long userId, long characterId, UpdateCharacterCustomizationRequest request)
         {
-            var character = await _db.Characters.FirstOrDefaultAsync(c => c.UserId == userId);
+            var character = await FindOwnedCharacterAsync(userId, characterId);
             if (character is null)
                 return null;
 
@@ -63,9 +69,9 @@ namespace MainServer.CharacterServer.Services
             return ToResponse(character);
         }
 
-        public async Task<bool> DeleteMyCharacterAsync(long userId)
+        public async Task<bool> DeleteCharacterAsync(long userId, long characterId)
         {
-            var character = await _db.Characters.FirstOrDefaultAsync(c => c.UserId == userId);
+            var character = await FindOwnedCharacterAsync(userId, characterId);
             if (character is null)
                 return false;
 
@@ -78,6 +84,11 @@ namespace MainServer.CharacterServer.Services
 
             return true;
         }
+
+        // characterId가 실제로 이 계정(userId) 소유인지까지 함께 검증한다. 다중 캐릭터 환경에서
+        // 다른 계정의 캐릭터 ID를 넘겨 조회/수정/삭제하는 것을 막기 위한 필수 검증이다.
+        private async Task<Character?> FindOwnedCharacterAsync(long userId, long characterId) =>
+            await _db.Characters.FirstOrDefaultAsync(c => c.Id == characterId && c.UserId == userId);
 
         // 슬롯 정보가 없는 계정(마이그레이션 이전 가입자 등)을 위해 최초 조회 시 기본값으로 지연 생성한다.
         private async Task<CharacterSlot> GetOrCreateSlotAsync(long userId)

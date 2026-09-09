@@ -4,9 +4,10 @@ namespace MainServer.CharacterServer.Services
 {
     public interface ICharacterService
     {
-        Task<CharacterResponse?> GetMyCharacterAsync(long userId);
+        Task<IReadOnlyList<CharacterResponse>> GetMyCharactersAsync(long userId);
+        Task<CharacterResponse?> GetCharacterAsync(long userId, long characterId);
         Task<CharacterResponse> CreateAsync(long userId, CreateCharacterRequest request);
-        Task<CharacterResponse?> UpdateCustomizationAsync(long userId, UpdateCharacterCustomizationRequest request);
-        Task<bool> DeleteMyCharacterAsync(long userId);
+        Task<CharacterResponse?> UpdateCustomizationAsync(long userId, long characterId, UpdateCharacterCustomizationRequest request);
+        Task<bool> DeleteCharacterAsync(long userId, long characterId);
     }
 }
