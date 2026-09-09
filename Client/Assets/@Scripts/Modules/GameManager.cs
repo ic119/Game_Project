@@ -273,6 +273,6 @@ namespace Incheol.Modules
 
         public UI_AlarmPopup AlarmPopup { get; private set; }
 
-        public bool HasSaveData => SaveDataManager.Instance != null && SaveDataManager.Instance.HasSaveData;
+        public bool HasSaveData => SaveDataManager.Instance != null && SaveDataManager.Instance.HasSelectedCharacter;
     }
 }

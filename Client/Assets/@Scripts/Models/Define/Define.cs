@@ -12,7 +12,8 @@ namespace Incheol.Models.Define
         UI_InventoryViewPopup = 4,
         UI_LoadingBarView = 5,
         UI_LobbyScene = 6,
-        BasicCharacter = 7
+        BasicCharacter = 7,
+        UI_CharacterListItem = 8
     }
 }
 
@@ -30,7 +31,7 @@ public enum PlayerMoveState
 /// </summary>
 public enum WeaponType
 {
-    NoWeapon,
+    None,
     OneHanded,
     TwoHanded,
     Shield,

@@ -15,6 +15,11 @@ MonoBehaviour:
   m_GroupName: UI
   m_GUID: cb0cc0fd93725ac4d9bb2385d9e19138
   m_SerializeEntries:
+  - m_GUID: 1ba140822167b0a42b849e59aa103f4b
+    m_Address: UI_CharacterListItem
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 20b7ccbdf88b85542b96ee817b6a6107
     m_Address: UI_LoginScene
     m_ReadOnly: 0

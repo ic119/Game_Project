@@ -16,8 +16,8 @@ MonoBehaviour:
   - tags: BootstrapScene
     preloadAddressableKeys: 0500000003000000
   - tags: LoginScene
-    preloadAddressableKeys: 
+    preloadAddressableKeys: 01000000
   - tags: LobbyScene
-    preloadAddressableKeys: 
+    preloadAddressableKeys: 060000000700000008000000
   - tags: MainScene
     preloadAddressableKeys: 

@@ -1,183 +1,250 @@
 using Incheol.Utils;
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Incheol.Modules
 {
     /// <summary>
-    /// 유저의 캐릭터 세이브 데이터를 서버(POST /api/characters, GET/PUT/DELETE /api/characters/me)와 동기화하고,
-    /// PlayerPrefs를 오프라인/즉시 조회용 로컬 캐시로 사용하는 매니저.
+    /// 계정이 보유한 캐릭터 목록/개별 캐릭터를 서버(GET api/characters, GET/PUT/DELETE api/characters/{id},
+    /// POST api/characters)와 동기화하는 매니저. 로비에서 "선택된 캐릭터"(SelectedCharacterId)를 로컬 상태로 들고 있으며,
+    /// Update/Delete는 별도 id 인자 없이 이 선택 상태를 대상으로 동작한다.
     /// </summary>
     public class SaveDataManager : SingletonObject<SaveDataManager>
     {
-        private const string SaveDataKey = "UserSaveData";
         private const string CharacterApiPath = "/api/characters";
-        private const string CharacterMeApiPath = "/api/characters/me";
+        private const string SelectedCharacterIdKey = "SelectedCharacterId";
 
         protected override bool PersistAcrossScenes => true;
 
-        private UserSaveData cachedSaveData;
-        private const string CharacterCountKey = "UserCharacterCount";
-        private int? cachedCharacterCount;
+        private long? selectedCharacterId;
+        private CharacterSummary selectedCharacter;
 
         /// <summary>
-        /// 로컬에 캐시된, 이 계정이 보유한 캐릭터 총 개수(서버 응답이 있으면 그 값으로 동기화됨).
+        /// 캐릭터 생성 요청이 실제로 서버 응답을 받아 끝났을 때 발생(성공/실패 모두). UI가 낙관적 반환(CreateNew)이 아니라
+        /// 실제 완료 시점에 목록을 갱신하고 싶을 때 이 이벤트를 구독한다.
         /// </summary>
-        public int CharacterCount => GetCharacterCount();
-
-        private int GetCharacterCount()
-        {
-            if (!cachedCharacterCount.HasValue)
-            {
-                cachedCharacterCount = PlayerPrefs.GetInt(CharacterCountKey, 0);
-            }
-            return cachedCharacterCount.Value;
-        }
-
+        public event Action<bool> OnCharacterCreateResult;
 
         // 서버 DTO(MainServer.CharacterServer.DTOs)와 필드명을 맞춘 전송 전용 바디.
         // UserSaveData(클라이언트 내부 모델)와 서버 계약을 분리하기 위해 네트워크 경계에서만 사용한다.
         [Serializable] private class CreateCharacterRequestBody { public string _nickname; public int _hairIndex; public int _eyeIndex; public int _mouthIndex; }
         [Serializable] private class UpdateCustomizationRequestBody { public int _hairIndex; public int _eyeIndex; public int _mouthIndex; }
         [Serializable] private class CharacterResponseBody { public long _id; public string _nickname; public int _hairIndex; public int _eyeIndex; public int _mouthIndex; public int _str; public int _agi; public int _intel; public int _level; public string _lastLoginAt; public string _createdAt; }
+        [Serializable] private class JsonArrayWrapper<T> { public T[] items; }
 
         /// <summary>
-        /// 로컬 캐시(메모리 → PlayerPrefs 순) 기준으로 세이브 데이터가 있는지 즉시(동기) 반환한다.
-        /// 최신 서버 상태를 보장하려면 FetchFromServerAsync를 먼저 호출해 캐시를 갱신해야 한다.
+        /// 로비에서 선택된 캐릭터의 ID. 최초 접근 시 PlayerPrefs에서 지연 로드된다.
         /// </summary>
-        public bool HasSaveData => Load() != null;
+        public long? SelectedCharacterId => selectedCharacterId ??= LoadSelectedCharacterIdFromPrefs();
 
         /// <summary>
-        /// 로컬 캐시에서 즉시 조회한다. 네트워크 요청 없이 동기적으로 동작해야 하는
-        /// UI(예: '이어하기' 버튼 표시 여부)에서 사용한다.
+        /// 선택된 캐릭터의 목록 표시용 요약 데이터(메모리 캐시). 앱을 재시작한 직후처럼 아직 목록을 못 받아온 경우 null일 수 있다 -
+        /// 이 경우 FetchCharacterListAsync가 완료되면 SelectedCharacterId와 매칭해 자동으로 채워진다.
         /// </summary>
-        public UserSaveData Load()
+        public CharacterSummary SelectedCharacter => selectedCharacter;
+
+        public bool HasSelectedCharacter => SelectedCharacterId.HasValue;
+
+        /// <summary>
+        /// 로비 캐릭터 목록에서 캐릭터를 선택(클릭)했을 때 호출한다. 다음 세션에도 유지되도록 PlayerPrefs에 저장한다.
+        /// </summary>
+        public void SelectCharacter(CharacterSummary _character)
         {
-            if (cachedSaveData != null)
+            if (_character == null)
             {
-                return cachedSaveData;
+                return;
             }
 
-            if (!PlayerPrefs.HasKey(SaveDataKey))
-            {
-                return null;
-            }
+            selectedCharacterId = _character.id;
+            selectedCharacter = _character;
+            PlayerPrefs.SetString(SelectedCharacterIdKey, _character.id.ToString());
+            PlayerPrefs.Save();
+        }
 
-            string json = PlayerPrefs.GetString(SaveDataKey);
-            cachedSaveData = JsonUtility.FromJson<UserSaveData>(json);
-            return cachedSaveData;
+        public void ClearSelection()
+        {
+            selectedCharacterId = null;
+            selectedCharacter = null;
+            PlayerPrefs.DeleteKey(SelectedCharacterIdKey);
+            PlayerPrefs.Save();
+        }
+
+        private static long? LoadSelectedCharacterIdFromPrefs()
+        {
+            string raw = PlayerPrefs.GetString(SelectedCharacterIdKey, string.Empty);
+            return long.TryParse(raw, out long id) ? id : (long?)null;
         }
 
         /// <summary>
-        /// 서버에서 캐릭터 세이브 데이터를 조회해 로컬 캐시(메모리 + PlayerPrefs)에 반영한다.
-        /// 로그인 직후 한 번 호출해 최신 상태로 동기화하는 용도. 서버에 캐릭터가 아직 없는 신규 유저의 경우
-        /// 실패로 보고되며, 이 경우 로컬 캐시는 손대지 않고 그대로 둔다.
+        /// 계정이 보유한 캐릭터 전체 목록을 서버에서 조회한다(GET api/characters, 배열 응답).
+        /// 완료되면 SelectedCharacterId와 매칭되는 요약을 자동으로 캐시하고, 선택된 캐릭터가 목록에 없으면(다른 기기에서 삭제 등) 선택을 해제한다.
         /// </summary>
-        public void FetchFromServerAsync(Action<bool> _onComplete = null)
+        public void FetchCharacterListAsync(Action<List<CharacterSummary>> _onComplete)
         {
-            _ = FetchFromServerAsyncInternal(_onComplete);
+            _ = FetchCharacterListAsyncInternal(_onComplete);
         }
 
+
         /// <summary>
-        /// 캐릭터 최초 생성 시 호출한다(POST /api/characters). UI_CharacterCreatePopup.OnCreateRequested(Func&lt;UserSaveData, bool&gt;)가
-        /// 동기 반환을 요구하므로, 로컬 캐시에는 즉시 반영(낙관적 UI)하고 서버 저장은 백그라운드로 진행한다.
-        /// 백그라운드 저장이 실패해도 사용자에 노출되지는 않으며(CreateAsyncInternal이 에러만 남김), 다음 로그인 시 FetchFromServerAsync로 맞춘다.
+        /// 특정 캐릭터의 상세 데이터(헤어/눈/입 포함)를 서버에서 조회한다(GET api/characters/{characterId}).
+        /// 로비에서 선택된 캐릭터의 실제 외형을 미리보기(3D)에 적용할 때 사용한다.
         /// </summary>
-public bool CreateNew(UserSaveData _saveData)
+        public void FetchCharacterDetailAsync(long _characterId, Action<UserSaveData> _onComplete)
+        {
+            _ = FetchCharacterDetailAsyncInternal(_characterId, _onComplete);
+        }
+
+
+        /// <summary>
+        /// 캐릭터를 신규 생성한다(POST api/characters). UI_CharacterCreatePopup.OnCreateRequested(Func&lt;UserSaveData, bool&gt;)가
+        /// 동기 반환을 요구하므로 여기서는 요청 접수만 확인하고, 서버 저장은 백그라운드로 진행한다.
+        /// 실제 완료(성공/실패)는 OnCharacterCreateResult 이벤트로 알린다. 성공 시 새로 만든 캐릭터가 자동으로 선택된다.
+        /// </summary>
+        public bool CreateNew(UserSaveData _saveData)
         {
             if (_saveData == null)
             {
                 return false;
             }
 
-            // 이번 생성으로 이 계정이 보유하게 되는 캐릭터 총 개수를 계산해 요청 바디에 함께 실어 보낸다.
-            _saveData.characterCount = GetCharacterCount() + 1;
-
-            ApplyToLocalCache(_saveData);
-            SaveAsync(_saveData);
+            _ = CreateAsyncInternal(_saveData);
             return true;
         }
 
         /// <summary>
-        /// 이미 생성된 캐릭터의 외형(헤어/눈/입)을 서버에 저장(PUT /api/characters/me)하고, 성공했을 때만 로컬 캐시를 갱신한다.
-        /// 실패 시 로컬 캐시는 이전 상태를 유지해 서버와 클라이언트 상태가 어긋나지 않게 한다.
-        /// </summary>
-        public void SaveAsync(UserSaveData _saveData, Action<bool> _onComplete = null)
-        {
-            _ = SaveAsyncInternal(_saveData, _onComplete);
-        }
-
-        /// <summary>
-        /// 현재 캐시된 세이브 데이터를 기반으로 외형(헤어/눈/입)만 갱신해 서버에 저장한다.
-        /// 캐시된 세이브 데이터가 없으면(캐릭터 생성 전) 실패로 처리한다 - 최초 생성은 UI_CharacterCreatePopup의
-        /// OnCreateRequested 경로를 통해야 한다.
+        /// 선택된 캐릭터의 외형(헤어/눈/입)을 서버에 저장(PUT api/characters/{id})한다.
+        /// 선택된 캐릭터가 없으면 실패로 처리한다.
         /// </summary>
         public void UpdateCharacterCustomization(int _hairIndex, int _eyeIndex, int _mouthIndex, Action<bool> _onComplete = null)
         {
-            UserSaveData current = Load();
-            if (current == null)
+            if (!SelectedCharacterId.HasValue)
             {
-                DebugLogManager.GenerateErrorMessage<SaveDataManager>("저장된 세이브 데이터가 없어 외형만 갱신할 수 없습니다.");
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>("선택된 캐릭터가 없어 외형을 갱신할 수 없습니다.");
                 _onComplete?.Invoke(false);
                 return;
             }
 
-            current.hairIndex = _hairIndex;
-            current.eyeIndex = _eyeIndex;
-            current.mouthIndex = _mouthIndex;
-
-            SaveAsync(current, _onComplete);
+            _ = UpdateCustomizationAsyncInternal(SelectedCharacterId.Value, _hairIndex, _eyeIndex, _mouthIndex, _onComplete);
         }
 
         /// <summary>
-        /// 서버의 캐릭터 세이브 데이터를 삭제(DELETE)하고, 성공했을 때만 로컬 캐시도 비운다.
-        /// 파괴적 작업이므로(생성과 달리) 낙관적으로 처리하지 않고 서버 확인 후에만 로컬 상태를 바꾼다.
+        /// 선택된 캐릭터를 서버에서 삭제(DELETE api/characters/{id})하고, 성공했을 때만 선택 상태를 해제한다.
         /// </summary>
         public void DeleteAsync(Action<bool> _onComplete = null)
         {
-            _ = DeleteAsyncInternal(_onComplete);
+            if (!SelectedCharacterId.HasValue)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>("선택된 캐릭터가 없어 삭제할 수 없습니다.");
+                _onComplete?.Invoke(false);
+                return;
+            }
+
+            _ = DeleteAsyncInternal(SelectedCharacterId.Value, _onComplete);
         }
 
-        private async Awaitable FetchFromServerAsyncInternal(Action<bool> _onComplete)
+        private async Awaitable FetchCharacterListAsyncInternal(Action<List<CharacterSummary>> _onComplete)
         {
             if (ServerConnectManager.Instance == null)
             {
                 DebugLogManager.GenerateErrorMessage<SaveDataManager>("ServerConnectManager.Instance가 null입니다.");
-                _onComplete?.Invoke(false);
+                _onComplete?.Invoke(null);
                 return;
             }
 
-            (bool success, string body, string error) = await ServerConnectManager.Instance.SendAuthorizedJsonRequestAsync(CharacterMeApiPath, "GET");
+            (bool success, string body, string error) = await ServerConnectManager.Instance.SendAuthorizedJsonRequestAsync(CharacterApiPath, "GET");
 
             if (!success || string.IsNullOrEmpty(body))
             {
-                // 신규 유저(캐릭터 생성 전)는 서버가 404 등을 내려줄 수 있다 - 정상 상황이므로 로컬 캐시를 그대로 둔다.
-                _onComplete?.Invoke(false);
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>($"캐릭터 목록 조회 실패 : {error}");
+                _onComplete?.Invoke(null);
+                return;
+            }
+
+            CharacterResponseBody[] responses = ParseJsonArray<CharacterResponseBody>(body);
+            if (responses == null)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>($"캐릭터 목록 응답 파싱에 실패했습니다 : {body}");
+                _onComplete?.Invoke(null);
+                return;
+            }
+
+            List<CharacterSummary> summaries = new List<CharacterSummary>(responses.Length);
+            for (int i = 0; i < responses.Length; i++)
+            {
+                summaries.Add(ToSummary(responses[i]));
+            }
+
+            SyncSelectionWithFetchedList(summaries);
+
+            _onComplete?.Invoke(summaries);
+        }
+
+
+        private async Awaitable FetchCharacterDetailAsyncInternal(long _characterId, Action<UserSaveData> _onComplete)
+        {
+            if (ServerConnectManager.Instance == null)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>("ServerConnectManager.Instance가 null입니다.");
+                _onComplete?.Invoke(null);
+                return;
+            }
+
+            (bool success, string body, string error) = await ServerConnectManager.Instance.SendAuthorizedJsonRequestAsync($"{CharacterApiPath}/{_characterId}", "GET");
+
+            if (!success || string.IsNullOrEmpty(body))
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>($"캐릭터 상세 조회 실패 : {error}");
+                _onComplete?.Invoke(null);
                 return;
             }
 
             CharacterResponseBody response = JsonUtility.FromJson<CharacterResponseBody>(body);
-            if (response == null || string.IsNullOrEmpty(response._nickname))
+            if (response == null)
             {
-                DebugLogManager.GenerateErrorMessage<SaveDataManager>($"세이브 데이터 응답 파싱에 실패했습니다 : {body}");
-                _onComplete?.Invoke(false);
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>($"캐릭터 상세 응답 파싱에 실패했습니다 : {body}");
+                _onComplete?.Invoke(null);
                 return;
             }
 
-            UserSaveData serverData = UserSaveData.CreateDefault(response._nickname, response._hairIndex, response._eyeIndex, response._mouthIndex);
-            ApplyToLocalCache(serverData);
-            _onComplete?.Invoke(true);
+            _onComplete?.Invoke(new UserSaveData
+            {
+                characterId = response._id,
+                nickname = response._nickname,
+                hairIndex = response._hairIndex,
+                eyeIndex = response._eyeIndex,
+                mouthIndex = response._mouthIndex
+            });
+        }
+
+
+        private void SyncSelectionWithFetchedList(List<CharacterSummary> _summaries)
+        {
+            if (!SelectedCharacterId.HasValue)
+            {
+                return;
+            }
+
+            CharacterSummary match = _summaries.Find(c => c.id == SelectedCharacterId.Value);
+            if (match == null)
+            {
+                // 선택돼 있던 캐릭터가 서버 목록에 더 이상 없다(다른 기기에서 삭제 등) - 선택을 해제한다.
+                ClearSelection();
+                return;
+            }
+
+            selectedCharacter = match;
         }
 
         /// <summary>
-        /// 캐릭터를 최초 생성(POST /api/characters)한다. 이미 캐릭터가 있는 계정이면 서버가 409를 반환한다.
+        /// 캐릭터를 최초 생성(POST api/characters)한다. 이미 슬롯이 가득 찬 계정이면 서버가 409를 반환한다.
         /// </summary>
-        private async Awaitable CreateAsyncInternal(UserSaveData _saveData, Action<bool> _onComplete)
+        private async Awaitable CreateAsyncInternal(UserSaveData _saveData)
         {
             if (ServerConnectManager.Instance == null)
             {
                 DebugLogManager.GenerateErrorMessage<SaveDataManager>("ServerConnectManager.Instance가 null입니다.");
-                _onComplete?.Invoke(false);
+                OnCharacterCreateResult?.Invoke(false);
                 return;
             }
 
@@ -189,29 +256,33 @@ public bool CreateNew(UserSaveData _saveData)
                 _mouthIndex = _saveData.mouthIndex
             };
             string json = JsonUtility.ToJson(requestBody);
-            (bool success, string _, string error) = await ServerConnectManager.Instance.SendAuthorizedJsonRequestAsync(CharacterApiPath, "POST", json);
+            (bool success, string body, string error) = await ServerConnectManager.Instance.SendAuthorizedJsonRequestAsync(CharacterApiPath, "POST", json);
 
-            if (!success)
+            if (!success || string.IsNullOrEmpty(body))
             {
                 DebugLogManager.GenerateErrorMessage<SaveDataManager>($"캐릭터 생성 저장 실패 : {error}");
-                _onComplete?.Invoke(false);
+                OnCharacterCreateResult?.Invoke(false);
                 return;
             }
 
-            _onComplete?.Invoke(true);
+            CharacterResponseBody response = JsonUtility.FromJson<CharacterResponseBody>(body);
+            if (response == null)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>($"캐릭터 생성 응답 파싱에 실패했습니다 : {body}");
+                OnCharacterCreateResult?.Invoke(false);
+                return;
+            }
+
+            // 방금 생성한 캐릭터를 자동으로 선택 상태로 만든다.
+            SelectCharacter(ToSummary(response));
+            OnCharacterCreateResult?.Invoke(true);
         }
 
         /// <summary>
-        /// 이미 생성된 캐릭터의 외형을 수정(PUT /api/characters/me)한다. 닉네임은 생성 이후 변경 대상이 아니므로 전송하지 않는다.
+        /// 특정 캐릭터의 외형을 수정(PUT api/characters/{characterId})한다. 닉네임은 생성 이후 변경 대상이 아니므로 전송하지 않는다.
         /// </summary>
-        private async Awaitable SaveAsyncInternal(UserSaveData _saveData, Action<bool> _onComplete)
+        private async Awaitable UpdateCustomizationAsyncInternal(long _characterId, int _hairIndex, int _eyeIndex, int _mouthIndex, Action<bool> _onComplete)
         {
-            if (_saveData == null)
-            {
-                _onComplete?.Invoke(false);
-                return;
-            }
-
             if (ServerConnectManager.Instance == null)
             {
                 DebugLogManager.GenerateErrorMessage<SaveDataManager>("ServerConnectManager.Instance가 null입니다.");
@@ -221,25 +292,24 @@ public bool CreateNew(UserSaveData _saveData)
 
             var requestBody = new UpdateCustomizationRequestBody
             {
-                _hairIndex = _saveData.hairIndex,
-                _eyeIndex = _saveData.eyeIndex,
-                _mouthIndex = _saveData.mouthIndex
+                _hairIndex = _hairIndex,
+                _eyeIndex = _eyeIndex,
+                _mouthIndex = _mouthIndex
             };
             string json = JsonUtility.ToJson(requestBody);
-            (bool success, string _, string error) = await ServerConnectManager.Instance.SendAuthorizedJsonRequestAsync(CharacterMeApiPath, "PUT", json);
+            (bool success, string _, string error) = await ServerConnectManager.Instance.SendAuthorizedJsonRequestAsync($"{CharacterApiPath}/{_characterId}", "PUT", json);
 
             if (!success)
             {
-                DebugLogManager.GenerateErrorMessage<SaveDataManager>($"세이브 데이터 저장 실패 : {error}");
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>($"캐릭터 외형 저장 실패 : {error}");
                 _onComplete?.Invoke(false);
                 return;
             }
 
-            ApplyToLocalCache(_saveData);
             _onComplete?.Invoke(true);
         }
 
-        private async Awaitable DeleteAsyncInternal(Action<bool> _onComplete)
+        private async Awaitable DeleteAsyncInternal(long _characterId, Action<bool> _onComplete)
         {
             if (ServerConnectManager.Instance == null)
             {
@@ -248,42 +318,47 @@ public bool CreateNew(UserSaveData _saveData)
                 return;
             }
 
-            (bool success, string _, string error) = await ServerConnectManager.Instance.SendAuthorizedJsonRequestAsync(CharacterMeApiPath, "DELETE");
+            (bool success, string _, string error) = await ServerConnectManager.Instance.SendAuthorizedJsonRequestAsync($"{CharacterApiPath}/{_characterId}", "DELETE");
 
             if (!success)
             {
-                DebugLogManager.GenerateErrorMessage<SaveDataManager>($"세이브 데이터 삭제 실패 : {error}");
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>($"캐릭터 삭제 실패 : {error}");
                 _onComplete?.Invoke(false);
                 return;
             }
 
-            ClearLocalCache();
+            if (SelectedCharacterId.HasValue && SelectedCharacterId.Value == _characterId)
+            {
+                ClearSelection();
+            }
+
             _onComplete?.Invoke(true);
         }
 
-private void ApplyToLocalCache(UserSaveData _saveData)
+        private static CharacterSummary ToSummary(CharacterResponseBody _response)
         {
-            cachedSaveData = _saveData;
-            PlayerPrefs.SetString(SaveDataKey, JsonUtility.ToJson(_saveData));
-
-            // characterCount는 서버 응답(FetchFromServerAsync)이든 생성 시 계산값(CreateNew)이든 항상 이
-            // 세이브 데이터에 실린 값을 소스 오브 트루스로 삼아 로컬 카운터를 동기화한다.
-            cachedCharacterCount = _saveData.characterCount;
-            PlayerPrefs.SetInt(CharacterCountKey, _saveData.characterCount);
-
-            PlayerPrefs.Save();
+            return new CharacterSummary
+            {
+                id = _response._id,
+                nickname = _response._nickname,
+                level = _response._level,
+                lastLoginAt = _response._lastLoginAt
+            };
         }
 
-private void ClearLocalCache()
+        // JsonUtility는 최상위 JSON 배열을 직접 파싱하지 못하므로 래퍼 객체로 감싸서 처리한다.
+        private static T[] ParseJsonArray<T>(string _json)
         {
-            cachedSaveData = null;
-            PlayerPrefs.DeleteKey(SaveDataKey);
-
-            int remainingCount = Math.Max(0, GetCharacterCount() - 1);
-            cachedCharacterCount = remainingCount;
-            PlayerPrefs.SetInt(CharacterCountKey, remainingCount);
-
-            PlayerPrefs.Save();
+            try
+            {
+                string wrapped = "{\"items\":" + _json + "}";
+                JsonArrayWrapper<T> wrapper = JsonUtility.FromJson<JsonArrayWrapper<T>>(wrapped);
+                return wrapper?.items;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
         }
     }
 }

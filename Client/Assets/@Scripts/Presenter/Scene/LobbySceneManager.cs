@@ -144,7 +144,7 @@ namespace Incheol.Presenter.Scene
         /// UI_LobbySceneView의 삭제 버튼 클릭 시 호출된다. 서버 삭제가 확인된 뒤에만 로컬 캐시가 비워지므로,
         /// 완료 콜백에서 성공 여부와 무관하게 최신 상태로 뷰를 다시 그린다.
         /// </summary>
-        private void OnDeleteRequested()
+private void OnDeleteRequested()
         {
             if (SaveDataManager.Instance == null)
             {
@@ -152,7 +152,7 @@ namespace Incheol.Presenter.Scene
                 return;
             }
 
-            SaveDataManager.Instance.DeleteAsync(_ => lobbySceneView?.RefreshState());
+            SaveDataManager.Instance.DeleteAsync(_ => lobbySceneView?.RefreshCharacterList());
         }
         #endregion
     }

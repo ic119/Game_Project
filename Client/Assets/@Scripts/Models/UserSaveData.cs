@@ -6,6 +6,12 @@ using System;
 [Serializable]
 public class UserSaveData
 {
+    /// <summary>
+    /// 서버가 발급한 캐릭터 고유 ID. 생성 요청 시점에는 아직 알 수 없으므로 0이며,
+    /// 서버 응답을 받은 뒤(SaveDataManager)에 채워진다.
+    /// </summary>
+    public long characterId;
+
     public string nickname;
     public int hairIndex;
     public int eyeIndex;

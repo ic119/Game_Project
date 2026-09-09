@@ -57,14 +57,14 @@ namespace Incheol.Presenter.Scene
             });
         }
 
-        private void OnLoginSucceeded()
+private void OnLoginSucceeded()
         {
             // 로그인 성공 후 LobbyScene으로 전환되는 동안 다시 보여줄 로딩바를 대여한다.
             GameManager.Instance?.ShowLoadingBar();
 
-            // 로그인 직후 서버의 캐릭터 세이브 데이터를 한 번 동기화해 로컬 캐시(HasSaveData/Load)를 최신 상태로 맞춘다.
-            // 신규 유저(캐릭터 생성 전)는 서버가 없음을 응답할 수 있으며 이는 실패로 취급되지만, 씬 전환은 그대로 진행한다.
-            SaveDataManager.Instance?.FetchFromServerAsync(_ => TransitionToLobbyScene());
+            // 캐릭터 목록 조회는 LobbyScene의 UI_LobbySceneView.Awake()가 직접 처리하므로(FetchCharacterListAsync),
+            // 여기서는 미리 조회하지 않고 바로 전환한다.
+            TransitionToLobbyScene();
         }
 
         private void TransitionToLobbyScene()
