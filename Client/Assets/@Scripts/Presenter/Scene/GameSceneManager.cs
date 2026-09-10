@@ -2,6 +2,7 @@ using Incheol.Models.Define;
 using Incheol.Modules;
 using Incheol.Utils;
 using System.Collections.Generic;
+using Unity.Cinemachine;
 using UnityEngine;
 
 namespace Incheol.Presenter.Scene
@@ -151,7 +152,25 @@ namespace Incheol.Presenter.Scene
                 playerInstance.transform.localRotation = Quaternion.identity;
 
                 ApplySelectedCharacterCustomization(playerInstance);
+                AssignPlayerToFollowCamera(playerInstance.transform);
             });
+        }
+
+        /// <summary>
+        /// 씬의 CinemachineCamera(CM_PlayerFollowCamera)가 방금 스폰된 플레이어를 추적하도록 Follow 타깃을 연결한다.
+        /// Farm/RespawnPoint 등 씬 구성 에셋과 달리 카메라는 GameScene.unity에 이미 배치되어 있으므로 여기서는 찾아서 연결만 한다.
+        /// </summary>
+        private void AssignPlayerToFollowCamera(Transform _playerTransform)
+        {
+            CinemachineCamera followCamera = FindAnyObjectByType<CinemachineCamera>();
+
+            if (followCamera == null)
+            {
+                DebugLogManager.GenerateErrorMessage<GameSceneManager>("씬에서 CinemachineCamera를 찾을 수 없습니다.");
+                return;
+            }
+
+            followCamera.Follow = _playerTransform;
         }
 
         /// <summary>
