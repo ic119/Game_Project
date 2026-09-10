@@ -1,3 +1,4 @@
+using Incheol.Controller;
 using Incheol.Models.Define;
 using Incheol.Modules;
 using Incheol.Utils;
@@ -153,6 +154,10 @@ namespace Incheol.Presenter.Scene
 
                 ApplySelectedCharacterCustomization(playerInstance);
                 AssignPlayerToFollowCamera(playerInstance.transform);
+
+                // RequireComponent로 Rigidbody/CapsuleCollider가 함께 추가되어, 스폰 직후 중력을 받아 지면에 착지하고
+                // 화살표 키로 이동/회전할 수 있게 된다.
+                playerInstance.AddComponent<PlayerMoveController>();
             });
         }
 
@@ -170,6 +175,7 @@ namespace Incheol.Presenter.Scene
                 return;
             }
 
+            // 이동/전투 카메라는 ThirdPersonFollow가 Follow 대상의 회전을 그대로 카메라 방향으로 쓰므로 LookAt은 필요 없다.
             followCamera.Follow = _playerTransform;
         }
 
