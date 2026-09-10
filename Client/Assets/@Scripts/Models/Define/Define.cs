@@ -13,7 +13,9 @@ namespace Incheol.Models.Define
         UI_LoadingBarView = 5,
         UI_LobbyScene = 6,
         BasicCharacter = 7,
-        UI_CharacterListItem = 8
+        UI_CharacterListItem = 8,
+        UI_GameScene = 9,
+        Farm = 10
     }
 }
 

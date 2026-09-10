@@ -21,7 +21,7 @@ MonoBehaviour:
     loadedSceneList:
     - LobbyScene
     activeSceneName: LobbyScene
-  - tags: MainScene
+  - tags: GameScene
     loadedSceneList:
-    - MainScene
-    activeSceneName: MainScene
+    - GameScene
+    activeSceneName: GameScene

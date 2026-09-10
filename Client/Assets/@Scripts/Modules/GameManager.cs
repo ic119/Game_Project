@@ -153,7 +153,12 @@ namespace Incheol.Modules
             _onComplete?.Invoke(isSuccess);
         }
 
-        private async Awaitable<List<AddressableAssetKey>> LoadAddressableKeysByTagAsync(string _tag)
+        /// <summary>
+        /// AddressableAssetModelSO에서 tags가 _tag인 항목의 preloadAddressableKeys를 반환한다.
+        /// GameSceneManager처럼 ObjectPoolManager를 거치지 않고 직접 인스턴스화해야 하는 호출측에서도
+        /// 같은 조회 로직을 재사용할 수 있도록 public으로 공개한다.
+        /// </summary>
+        public async Awaitable<List<AddressableAssetKey>> LoadAddressableKeysByTagAsync(string _tag)
         {
             AsyncOperationHandle<AddressableAssetModelSO> handle;
 

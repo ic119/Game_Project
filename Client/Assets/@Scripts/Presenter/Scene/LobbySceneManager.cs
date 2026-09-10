@@ -10,7 +10,7 @@ namespace Incheol.Presenter.Scene
     {
         #region Variable
         private const string lobbySceneTag = "LobbyScene";
-        private const string mainSceneTag = "MainScene";
+        private const string gameSceneTag = "GameScene";
 
         private UI_LobbySceneView lobbySceneView;
         private UI_CharacterCreatePopup characterCreatePopup;
@@ -127,7 +127,7 @@ namespace Incheol.Presenter.Scene
 
         /// <summary>
         /// UI_LobbySceneView의 시작(이어하기) 버튼 클릭 시 호출된다. 저장된 캐릭터가 있을 때만 버튼이 보이므로
-        /// 여기서는 별도 검증 없이 바로 MainScene으로 전환한다.
+        /// 여기서는 별도 검증 없이 바로 GameScene으로 전환한다.
         /// </summary>
         private void OnStartRequested()
         {
@@ -137,7 +137,7 @@ namespace Incheol.Presenter.Scene
                 return;
             }
 
-            SceneLoadManager.Instance.LoadSceneByTags(mainSceneTag);
+            SceneLoadManager.Instance.LoadSceneByTags(gameSceneTag);
         }
 
         /// <summary>
