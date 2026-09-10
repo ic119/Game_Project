@@ -9,7 +9,7 @@ namespace Incheol.Controller
         [SerializeField] private Transform target;
 
         [Header("Follow Variable")]
-        [SerializeField] private Vector3 positionOffset = new Vector3(0f, 5f, -8f);
+        [SerializeField] private Vector3 positionOffset = new Vector3(0f, 5f, 8f);
         [SerializeField] private bool useWorldSpaceOffset = true;
         [Tooltip("0 = 즉시 따라감, 값이 클수록 부드럽게 따라감")]
         [SerializeField, Min(0f)] private float positionSmoothTime = 0.2f;
