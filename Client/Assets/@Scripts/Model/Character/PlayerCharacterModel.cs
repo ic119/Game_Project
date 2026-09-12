@@ -1,10 +1,14 @@
 using Incheol.Utils;
+using Incheol.View.UI;
 using UnityEngine;
 
 [RequireComponent(typeof(HealthComponent), typeof(CombatStatComponent))]
 public class PlayerCharacterModel : MonoBehaviour
 {
     #region Variable
+    [Header("유저 캐릭터 이름표 UI")]
+    [SerializeField] private UI_NameLabel nameLabel;
+
     [Header("유저 캐릭터 장비 컨테이너")]
     [SerializeField] private GameObject bodyEqiupment;
     [SerializeField] private GameObject backPackEqiupment;
@@ -34,6 +38,7 @@ public class PlayerCharacterModel : MonoBehaviour
     private HealthComponent healthComponent;
     private CombatStatComponent combatStatComponent;
 
+    public string Nickname => nameLabel != null ? nameLabel.Nickname : string.Empty;
     public WeaponType CurrentWeaponType => currentWeaponType;
     public int MaxHp => healthComponent.MaxHp;
     public int CurrentHp => healthComponent.CurrentHp;
@@ -48,6 +53,11 @@ public class PlayerCharacterModel : MonoBehaviour
         healthComponent = GetComponent<HealthComponent>();
         combatStatComponent = GetComponent<CombatStatComponent>();
 
+        if (nameLabel == null)
+        {
+            nameLabel = GetComponentInChildren<UI_NameLabel>(true);
+        }
+
         if (healthComponent == null || combatStatComponent == null)
         {
             DebugLogManager.GenerateErrorMessage<PlayerCharacterModel>("HealthComponent/CombatStatComponent가 없어 체력/공격력 계산이 동작하지 않습니다.");
@@ -58,6 +68,21 @@ public class PlayerCharacterModel : MonoBehaviour
     #endregion
 
     #region Method
+    /// <summary>
+    /// 캐릭터 머리 위 NameLabel에 닉네임을 설정한다.
+    /// </summary>
+    public void SetNickname(string nickname)
+    {
+        if (nameLabel == null)
+        {
+            nameLabel = GetComponentInChildren<UI_NameLabel>(true);
+        }
+
+        if (nameLabel != null)
+        {
+            nameLabel.SetNickname(nickname);
+        }
+    }
     /// <summary>
     /// _weaponType에 해당하는 무기 오브젝트만 활성화하고 나머지는 비활성화한다.
     /// 무기 프리팹을 새로 생성/파괴하는 대신, rightArmEqiupment 하위에 이미 배치된

@@ -204,6 +204,11 @@ namespace Incheol.Presenter.Scene
                 }
 
                 customModel.ApplyCustomization(userSaveData.hairIndex, userSaveData.eyeIndex, userSaveData.mouthIndex);
+
+                if (_playerInstance.TryGetComponent(out PlayerCharacterModel playerModel))
+                {
+                    playerModel.SetNickname(userSaveData.nickname);
+                }
             });
         }
         #endregion

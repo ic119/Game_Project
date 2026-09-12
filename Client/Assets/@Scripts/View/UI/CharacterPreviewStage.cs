@@ -234,6 +234,12 @@ private void EnsureCharacterModel()
         ApplyPreviewLayer(characterModelInstance);
         customModel?.ApplyCustomization(desiredHairIndex, desiredEyeIndex, desiredMouthIndex);
 
+        var nameLabel = characterModelInstance.GetComponentInChildren<Incheol.View.UI.UI_NameLabel>(true);
+        if (nameLabel != null && previewCamera != null)
+        {
+            nameLabel.SetTargetCamera(previewCamera);
+        }
+
         OnCharacterModelReady?.Invoke();
     }
 
