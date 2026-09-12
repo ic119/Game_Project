@@ -12,6 +12,10 @@ namespace Shared.Networking
         // 0x02XX = Game
         Game_MoveRequest = 0x0201,
         Game_MoveBroadcast = 0x0202,
+        Game_EnterRequest = 0x0203,
+        Game_EnterAck = 0x0204,
+        Game_PlayerJoined = 0x0205,
+        Game_PlayerLeft = 0x0206,
 
         // 0x03XX = Dungeon
     }

@@ -1,20 +1,32 @@
-using MessagePack;
-
 namespace Shared.Networking.Packets
 {
-    [MessagePackObject]
     public class S2CMoveBroadcast
     {
-        [Key(0)]
         public long PlayerId { get; set; }
-
-        [Key(1)]
         public float X { get; set; }
-
-        [Key(2)]
         public float Y { get; set; }
-
-        [Key(3)]
+        public float Z { get; set; }
+        public float RotationY { get; set; }
         public long Timestamp { get; set; }
+
+        public byte[] Encode() => BinaryPacket.Write(writer =>
+        {
+            writer.Write(PlayerId);
+            writer.Write(X);
+            writer.Write(Y);
+            writer.Write(Z);
+            writer.Write(RotationY);
+            writer.Write(Timestamp);
+        });
+
+        public static S2CMoveBroadcast Decode(byte[] body) => BinaryPacket.Read(body, reader => new S2CMoveBroadcast
+        {
+            PlayerId = reader.ReadInt64(),
+            X = reader.ReadSingle(),
+            Y = reader.ReadSingle(),
+            Z = reader.ReadSingle(),
+            RotationY = reader.ReadSingle(),
+            Timestamp = reader.ReadInt64()
+        });
     }
 }

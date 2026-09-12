@@ -6,8 +6,5 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="MessagePack" Version="3.1.8" />
-  </ItemGroup>
 
 </Project>
