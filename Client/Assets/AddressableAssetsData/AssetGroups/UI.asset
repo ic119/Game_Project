@@ -15,6 +15,11 @@ MonoBehaviour:
   m_GroupName: UI
   m_GUID: cb0cc0fd93725ac4d9bb2385d9e19138
   m_SerializeEntries:
+  - m_GUID: 0c553a13a64a54b4f8bb982f346655c7
+    m_Address: UI_Inventory
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 1ba140822167b0a42b849e59aa103f4b
     m_Address: UI_CharacterListItem
     m_ReadOnly: 0
@@ -35,8 +40,8 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 85597c89d7b5c714392619ca1973355c
-    m_Address: UI_CharacterInfoViewPopup
+  - m_GUID: 593f05477a80a5f4cb695e43e68be1ce
+    m_Address: UI_InventorySlot
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -47,11 +52,6 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: e97f785830e0f5c418934a1f13345214
     m_Address: UI_AlarmPopup
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: edb748f2ad82fbd47801b36ee65242ba
-    m_Address: UI_InventoryViewPopup
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0

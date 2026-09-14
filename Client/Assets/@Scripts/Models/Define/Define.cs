@@ -9,13 +9,14 @@ namespace Incheol.Models.Define
         UI_LoginScene = 1,
         UI_CharacterInfoViewPopup = 2,
         UI_AlarmPopup = 3,
-        UI_InventoryViewPopup = 4,
+        UI_Inventory = 4,
         UI_LoadingBarView = 5,
         UI_LobbyScene = 6,
         BasicCharacter = 7,
         UI_CharacterListItem = 8,
         UI_GameScene = 9,
-        Farm = 10
+        Farm = 10,
+        UI_InventorySlot = 11
     }
 }
 

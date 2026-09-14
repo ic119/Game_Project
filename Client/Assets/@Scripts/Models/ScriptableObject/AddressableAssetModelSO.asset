@@ -20,4 +20,4 @@ MonoBehaviour:
   - tags: LobbyScene
     preloadAddressableKeys: 06000000
   - tags: GameScene
-    preloadAddressableKeys: 090000000a000000
+    preloadAddressableKeys: 090000000a000000040000000b000000

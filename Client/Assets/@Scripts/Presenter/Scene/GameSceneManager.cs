@@ -16,12 +16,28 @@ namespace Incheol.Presenter.Scene
 
         private UI_GameSceneView gameSceneView;
         private PlayerCharacterModel spawnedPlayerModel;
+
+        private GameObject inventoryInstance;
+
+        /// <summary>
+        /// 인벤토리 UI(inventoryInstance)의 현재 활성화 여부를 들고 있는 상태값.
+        /// I키 토글 시 gameObject.activeSelf를 직접 확인하는 대신 이 값을 기준(source of truth)으로 판단한다.
+        /// </summary>
+        private bool isInventoryActive = false;
         #endregion
 
         #region LifeCycle
         private void Start()
         {
             LoadAndInstantiateGameSceneAssets();
+        }
+
+        private void Update()
+        {
+            if (Input.GetKeyDown(KeyCode.I))
+            {
+                ToggleInventory();
+            }
         }
 
         private void OnDestroy()
@@ -237,6 +253,9 @@ namespace Incheol.Presenter.Scene
                     TryBindPlayerInfo();
                 }
 
+                // 캐릭터 생성(외형/스탯 적용)이 성공적으로 끝난 시점에 인벤토리 UI를 비활성 상태로 미리 만들어둔다.
+                SpawnInventoryUI();
+
                 ConnectToGameServer(_playerInstance, userSaveData);
             });
         }
@@ -282,6 +301,60 @@ namespace Incheol.Presenter.Scene
             if (gameSceneView != null && spawnedPlayerModel != null)
             {
                 gameSceneView.BindPlayer(spawnedPlayerModel);
+            }
+        }
+
+        /// <summary>
+        /// UI_Inventory를 Addressable로 로드해 이 GameSceneManager(this.transform)의 자식으로 생성하되,
+        /// 처음에는 비활성 상태로 만들어둔다. 이후 I키 입력(Update → ToggleInventory)으로 켜고 끈다.
+        /// </summary>
+        private void SpawnInventoryUI()
+        {
+            if (AddressableAssetManager.Instance == null)
+            {
+                DebugLogManager.GenerateErrorMessage<GameSceneManager>("AddressableAssetManager.Instance가 null입니다.");
+                return;
+            }
+
+            AddressableAssetManager.Instance.LoadPrefabAddress<GameObject>(AddressableAssetKey.UI_Inventory.ToString(), prefab =>
+            {
+                if (this == null)
+                {
+                    return;
+                }
+
+                if (prefab == null)
+                {
+                    DebugLogManager.GenerateErrorMessage<GameSceneManager>($"인벤토리 UI 로드 실패 Key : {AddressableAssetKey.UI_Inventory}");
+                    return;
+                }
+
+                inventoryInstance = AddressableAssetManager.Instance.InstantiatePrefab(prefab, transform);
+                inventoryInstance.SetActive(false);
+                isInventoryActive = false;
+            });
+        }
+
+        /// <summary>
+        /// I키 입력 시 호출된다. isInventoryActive를 기준으로 판단해 꺼져 있으면 켜고, 켜져 있으면 끈다.
+        /// 인벤토리가 아직 생성되지 않았다면(SpawnInventoryUI 완료 전) 아무 것도 하지 않는다.
+        /// </summary>
+        private void ToggleInventory()
+        {
+            if (inventoryInstance == null)
+            {
+                return;
+            }
+
+            if (isInventoryActive)
+            {
+                inventoryInstance.SetActive(false);
+                isInventoryActive = false;
+            }
+            else
+            {
+                inventoryInstance.SetActive(true);
+                isInventoryActive = true;
             }
         }
 
