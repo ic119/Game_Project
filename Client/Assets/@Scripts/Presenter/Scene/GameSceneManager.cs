@@ -1,6 +1,7 @@
 using Incheol.Controller;
 using Incheol.Models.Define;
 using Incheol.Modules;
+using Incheol.Modules.Networking;
 using Incheol.Utils;
 using System.Collections.Generic;
 using Unity.Cinemachine;
@@ -19,6 +20,14 @@ namespace Incheol.Presenter.Scene
         {
             LoadAndInstantiateGameSceneAssets();
         }
+
+        private void OnDestroy()
+        {
+            // GameScene을 벗어나면(씬 전환) GameServer 접속을 종료한다 - PersistAcrossScenes로 유지되는
+            // GameServerConnectManager는 씬 전환만으로는 파괴되지 않으므로 명시적으로 끊어줘야 한다.
+            GameServerConnectManager.Instance?.Disconnect();
+        }
+
         #endregion
 
         #region Method
@@ -158,6 +167,9 @@ namespace Incheol.Presenter.Scene
                 // RequireComponent로 Rigidbody/CapsuleCollider가 함께 추가되어, 스폰 직후 중력을 받아 지면에 착지하고
                 // 화살표 키로 이동/회전할 수 있게 된다.
                 playerInstance.AddComponent<PlayerMoveController>();
+
+                // 일정 주기로 자신의 위치/회전을 GameServer(Game_MoveRequest)로 전송한다.
+                playerInstance.AddComponent<PlayerNetworkSender>();
             });
         }
 
@@ -209,8 +221,43 @@ namespace Incheol.Presenter.Scene
                 {
                     playerModel.SetNickname(userSaveData.nickname);
                 }
+
+                ConnectToGameServer(_playerInstance, userSaveData);
             });
         }
+
+        /// <summary>
+        /// 외형/닉네임이 확정된 시점(ApplySelectedCharacterCustomization 콜백)에 GameServer(TCP)에 접속해 자신의
+        /// 캐릭터를 입장시키고(Game_EnterRequest), 다른 접속자의 입장/퇴장/이동을 처리할 RemotePlayerManager를 활성화한다.
+        /// </summary>
+        private void ConnectToGameServer(GameObject _playerInstance, UserSaveData _userSaveData)
+        {
+            if (GameServerConnectManager.Instance == null)
+            {
+                DebugLogManager.GenerateErrorMessage<GameSceneManager>("GameServerConnectManager.Instance가 null입니다.");
+                return;
+            }
+
+            Vector3 position = _playerInstance.transform.position;
+            var localInfo = new GamePlayerInfo
+            {
+                PlayerId = _userSaveData.characterId,
+                Nickname = _userSaveData.nickname,
+                HairIndex = _userSaveData.hairIndex,
+                EyeIndex = _userSaveData.eyeIndex,
+                MouthIndex = _userSaveData.mouthIndex,
+                X = position.x,
+                Y = position.y,
+                Z = position.z,
+                RotationY = _playerInstance.transform.eulerAngles.y
+            };
+
+            GameServerConnectManager.Instance.ConnectAndEnter(localInfo);
+
+            // 다른 접속자의 입장/퇴장/이동 이벤트 구독을 시작한다(최초 접근 시 SingletonObject가 자동 생성된다).
+            _ = RemotePlayerManager.Instance;
+        }
+
         #endregion
     }
 }
