@@ -13,6 +13,9 @@ namespace Incheol.Presenter.Scene
     {
         #region Variable
         private const string gameSceneTag = "GameScene";
+
+        private UI_GameSceneView gameSceneView;
+        private PlayerCharacterModel spawnedPlayerModel;
         #endregion
 
         #region LifeCycle
@@ -87,6 +90,14 @@ namespace Incheol.Presenter.Scene
                     if (key == AddressableAssetKey.Farm)
                     {
                         SpawnPlayerAtRespawnPoint(instance);
+                    }
+
+                    // UI_GameScene과 플레이어(Farm 하위에서 비동기로 스폰됨)는 로드 완료 순서가 보장되지 않으므로,
+                    // 둘 다 준비된 시점에 TryBindPlayerInfo가 캐릭터 정보를 UI에 반영한다.
+                    if (key == AddressableAssetKey.UI_GameScene)
+                    {
+                        instance.TryGetComponent(out gameSceneView);
+                        TryBindPlayerInfo();
                     }
                 });
             }
@@ -219,7 +230,11 @@ namespace Incheol.Presenter.Scene
 
                 if (_playerInstance.TryGetComponent(out PlayerCharacterModel playerModel))
                 {
-                    playerModel.SetNickname(userSaveData.nickname);
+                    // 닉네임/레벨/체력/공격력·방어력을 세이브 데이터로 초기화한다(경험치는 서버 미지원으로 0에서 시작).
+                    playerModel.ApplyUserSaveData(userSaveData);
+
+                    spawnedPlayerModel = playerModel;
+                    TryBindPlayerInfo();
                 }
 
                 ConnectToGameServer(_playerInstance, userSaveData);
@@ -256,6 +271,18 @@ namespace Incheol.Presenter.Scene
 
             // 다른 접속자의 입장/퇴장/이동 이벤트 구독을 시작한다(최초 접근 시 SingletonObject가 자동 생성된다).
             _ = RemotePlayerManager.Instance;
+        }
+
+        /// <summary>
+        /// UI_GameScene 인스턴스화와 플레이어 스폰(둘 다 비동기)이 모두 끝난 시점에만
+        /// UI_GameSceneView.BindPlayer를 호출해 캐릭터 정보를 화면에 반영한다.
+        /// </summary>
+        private void TryBindPlayerInfo()
+        {
+            if (gameSceneView != null && spawnedPlayerModel != null)
+            {
+                gameSceneView.BindPlayer(spawnedPlayerModel);
+            }
         }
 
         #endregion

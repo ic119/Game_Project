@@ -43,6 +43,22 @@ public class HealthComponent : MonoBehaviour, IDamageable
     }
 
     /// <summary>
+    /// UserStats(agi)와 레벨로부터 최대 체력을 계산해 만피로 초기화한다(스폰 시 최초 1회).
+    /// agi 1당 체력 5, 레벨 1당 체력 10으로 잡은 임시 공식이며, CombatStatComponent.ApplyFromUserStats와
+    /// 같은 성격의 임시값이다 - 실제 밸런스 기획이 정해지면 이 메서드 하나만 바꾸면 된다.
+    /// </summary>
+    public void ApplyFromUserStats(UserStats userStats, int level)
+    {
+        if (userStats == null)
+        {
+            return;
+        }
+
+        int calculatedMaxHp = 100 + userStats.agi * 5 + Mathf.Max(0, level - 1) * 10;
+        ApplyHealth(calculatedMaxHp, calculatedMaxHp);
+    }
+
+    /// <summary>
     /// IDamageable 구현. damageInfo.Amount(방어력 적용 전 원본 데미지)에 자신의 defense를 적용해
     /// 최종 데미지만큼 체력을 깎는다. 이미 사망한 상태면 무시한다.
     /// </summary>

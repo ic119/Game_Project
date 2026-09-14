@@ -30,9 +30,8 @@ namespace Incheol.Controller
             sendTimer = 0f;
 
             float rotationY = transform.eulerAngles.y;
-            bool moved = !hasSentOnce
-                || Vector3.Distance(transform.position, lastSentPosition) > positionChangeThreshold
-                || Mathf.Abs(Mathf.DeltaAngle(lastSentRotationY, rotationY)) > rotationChangeThreshold;
+            bool moved = !hasSentOnce || Vector3.Distance(transform.position, lastSentPosition) > positionChangeThreshold
+                                      || Mathf.Abs(Mathf.DeltaAngle(lastSentRotationY, rotationY)) > rotationChangeThreshold;
 
             if (!moved)
             {

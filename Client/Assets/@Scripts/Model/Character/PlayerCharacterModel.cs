@@ -35,11 +35,13 @@ public class PlayerCharacterModel : MonoBehaviour
     /// UI_GameSceneView는 이 값을 계속 폴링해 슬라이더 연출에 사용한다.
     /// </summary>
     private float currentExp;
+    private int level = 1;
     private HealthComponent healthComponent;
     private CombatStatComponent combatStatComponent;
 
     public string Nickname => nameLabel != null ? nameLabel.Nickname : string.Empty;
     public WeaponType CurrentWeaponType => currentWeaponType;
+    public int Level => level;
     public int MaxHp => healthComponent.MaxHp;
     public int CurrentHp => healthComponent.CurrentHp;
     public float CurrentExp => currentExp;
@@ -104,6 +106,33 @@ public class PlayerCharacterModel : MonoBehaviour
     public void ApplyHealth(int newMaxHp, int newCurrentHp)
     {
         healthComponent.ApplyHealth(newMaxHp, newCurrentHp);
+    }
+
+    /// <summary>
+    /// 캐릭터 레벨을 설정한다. 1 미만으로는 내려가지 않는다.
+    /// </summary>
+    public void ApplyLevel(int newLevel)
+    {
+        level = Mathf.Max(1, newLevel);
+    }
+
+    /// <summary>
+    /// GameSceneManager가 캐릭터 스폰 직후(외형 적용과 함께) 한 번에 호출하는 진입점.
+    /// 닉네임/레벨/체력(스탯+레벨 기반 임시 공식)/공격력·방어력을 세이브 데이터로 초기화한다.
+    /// 경험치는 서버에 아직 저장되지 않으므로(추후 도입 예정) 항상 0에서 시작한다.
+    /// </summary>
+    public void ApplyUserSaveData(UserSaveData saveData)
+    {
+        if (saveData == null)
+        {
+            return;
+        }
+
+        SetNickname(saveData.nickname);
+        ApplyLevel(saveData.level);
+        healthComponent.ApplyFromUserStats(saveData.userStats, saveData.level);
+        combatStatComponent.ApplyFromUserStats(saveData.userStats);
+        ApplyExp(0f);
     }
 
     /// <summary>

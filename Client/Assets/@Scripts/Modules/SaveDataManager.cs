@@ -213,7 +213,9 @@ namespace Incheol.Modules
                 nickname = response._nickname,
                 hairIndex = response._hairIndex,
                 eyeIndex = response._eyeIndex,
-                mouthIndex = response._mouthIndex
+                mouthIndex = response._mouthIndex,
+                level = response._level,
+                userStats = new UserStats { str = response._str, agi = response._agi, intel = response._intel }
             });
         }
 

@@ -2,7 +2,9 @@ using Incheol.Models.Define;
 using Incheol.Modules;
 using Incheol.Utils;
 using Incheol.View.UI;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace Incheol.Presenter.Scene
 {
@@ -19,15 +21,7 @@ namespace Incheol.Presenter.Scene
         #region LifeCycle
         private void Start()
         {
-            if (GameManager.Instance == null)
-            {
-                DebugLogManager.GenerateErrorMessage<LobbySceneManager>("GameManager.Instance가 null입니다.");
-                return;
-            }
-
-            // 로딩바 표시 → LobbyScene 태그의 Addressable 프리로드/생성(진행률 표출) → 완료 시 로딩바 숨김까지
-            // GameManager.EnterSceneWithLoadingBar 한 번으로 처리된다.
-            GameManager.Instance.EnterSceneWithLoadingBar(lobbySceneTag, OnLobbyReady);
+            LoadAndInstantiateLobbySceneAssets();
         }
 
         private void OnDestroy()
@@ -46,55 +40,89 @@ namespace Incheol.Presenter.Scene
         #endregion
 
         #region Method
-        private void OnLobbyReady(bool _isSuccess)
-        {
-            if (!_isSuccess)
-            {
-                DebugLogManager.GenerateErrorMessage<LobbySceneManager>("LobbyScene Addressable 로드/생성 중 일부가 실패했습니다.");
-            }
-
-            CreateLobbyUI();
-        }
-
         /// <summary>
-        /// LobbyScene의 메인 UI(UI_LobbyScene)를 Addressable로 로드/인스턴스화한다.
-        /// LoginSceneManager.CreateLoginUI와 동일한 패턴 - 씬의 메인 UI는 범용 프리로드 태그가 아니라
-        /// 각 씬 Presenter가 직접 로드/생성한다.
+        /// AddressableAssetModelSO에서 tags가 "LobbyScene"인 항목(UI_LobbyScene)을 로드해 생성한다.
+        /// GameSceneManager.LoadAndInstantiateGameSceneAssets와 동일한 패턴 - 로딩바는 실제 UI_LobbyScene이
+        /// 인스턴스화될 때까지 대기한 뒤에만 숨긴다. 예전에는 LobbyScene의 프리로드 키 목록이 비어있어
+        /// EnterSceneWithLoadingBar가 UI 생성 전에 로딩바부터 숨겨버려, 화면에 UI_LobbyScene이 잠깐
+        /// 깜빡이는 문제가 있었다.
         /// </summary>
-        private void CreateLobbyUI()
+        private async void LoadAndInstantiateLobbySceneAssets()
         {
-            if (AddressableAssetManager.Instance == null)
+            if (GameManager.Instance == null)
             {
-                DebugLogManager.GenerateErrorMessage<LobbySceneManager>("AddressableAssetManager.Instance가 null입니다.");
+                DebugLogManager.GenerateErrorMessage<LobbySceneManager>("GameManager.Instance가 null입니다.");
                 return;
             }
 
-            AddressableAssetManager.Instance.LoadPrefabAddress<GameObject>(AddressableAssetKey.UI_LobbyScene.ToString(), prefab =>
+            GameManager.Instance.ShowLoadingBar();
+
+            List<AddressableAssetKey> keys = await GameManager.Instance.LoadAddressableKeysByTagAsync(lobbySceneTag);
+
+            if (keys == null || this == null)
             {
+                GameManager.Instance?.HideLoadingBar();
+                return;
+            }
+
+            if (AddressableAssetManager.Instance == null)
+            {
+                DebugLogManager.GenerateErrorMessage<LobbySceneManager>("AddressableAssetManager.Instance가 null입니다.");
+                GameManager.Instance.HideLoadingBar();
+                return;
+            }
+
+            foreach (AddressableAssetKey key in keys)
+            {
+                if (key == AddressableAssetKey.None)
+                {
+                    continue;
+                }
+
+                string keyString = key.ToString();
+
+                AddressableAssetManager.Instance.LoadPrefabAddress<GameObject>(keyString);
+                await AddressableAssetManager.Instance.WaitForLoadAsync(keyString);
+
                 if (this == null)
                 {
                     return;
                 }
 
-                if (prefab == null)
+                if (!AddressableAssetManager.Instance.GetHandler(keyString, out AsyncOperationHandle handle) ||
+                    handle.Result is not GameObject prefab)
                 {
-                    DebugLogManager.GenerateErrorMessage<LobbySceneManager>($"UI_LobbyScene 로드 실패 Key : {AddressableAssetKey.UI_LobbyScene}");
-                    return;
+                    DebugLogManager.GenerateErrorMessage<LobbySceneManager>($"LobbyScene Addressable 로드 실패 Key : {keyString}");
+                    continue;
                 }
 
                 GameObject instance = AddressableAssetManager.Instance.InstantiatePrefab(prefab, transform);
-                instance.TryGetComponent(out lobbySceneView);
 
-                if (lobbySceneView != null)
+                if (key == AddressableAssetKey.UI_LobbyScene)
                 {
-                    lobbySceneView.OnStartRequested += OnStartRequested;
-                    lobbySceneView.OnDeleteRequested += OnDeleteRequested;
+                    SetupLobbyUI(instance);
                 }
+            }
 
-                // CharacterCreateContainer(팝업)는 기본 비활성 상태이므로 GetComponentInChildren에 includeInactive를 반드시 켜야 한다.
-                characterCreatePopup = instance.GetComponentInChildren<UI_CharacterCreatePopup>(true);
-                WireCharacterCreatePopup();
-            });
+            GameManager.Instance?.HideLoadingBar();
+        }
+
+        /// <summary>
+        /// 생성된 UI_LobbyScene 인스턴스에서 뷰/팝업 참조를 얻고 이벤트를 연결한다.
+        /// </summary>
+        private void SetupLobbyUI(GameObject _instance)
+        {
+            _instance.TryGetComponent(out lobbySceneView);
+
+            if (lobbySceneView != null)
+            {
+                lobbySceneView.OnStartRequested += OnStartRequested;
+                lobbySceneView.OnDeleteRequested += OnDeleteRequested;
+            }
+
+            // CharacterCreateContainer(팝업)는 기본 비활성 상태이므로 GetComponentInChildren에 includeInactive를 반드시 켜야 한다.
+            characterCreatePopup = _instance.GetComponentInChildren<UI_CharacterCreatePopup>(true);
+            WireCharacterCreatePopup();
         }
 
         /// <summary>
@@ -144,7 +172,7 @@ namespace Incheol.Presenter.Scene
         /// UI_LobbySceneView의 삭제 버튼 클릭 시 호출된다. 서버 삭제가 확인된 뒤에만 로컬 캐시가 비워지므로,
         /// 완료 콜백에서 성공 여부와 무관하게 최신 상태로 뷰를 다시 그린다.
         /// </summary>
-private void OnDeleteRequested()
+        private void OnDeleteRequested()
         {
             if (SaveDataManager.Instance == null)
             {

@@ -17,6 +17,14 @@ public class UserSaveData
     public int eyeIndex;
     public int mouthIndex;
 
+    /// <summary>
+    /// 서버(CharacterResponse)가 함께 내려주는 레벨/능력치. 캐릭터 생성 팝업에서는 아직 알 수 없으므로
+    /// level은 1, userStats는 null인 채로 CreateDefault가 사용되고, 실제 값은 서버 응답을 받은 뒤
+    /// (SaveDataManager.FetchCharacterDetailAsync)에 채워진다.
+    /// </summary>
+    public int level = 1;
+    public UserStats userStats;
+
     public static UserSaveData CreateDefault(string nickname, int hairIndex, int eyeIndex, int mouthIndex)
     {
         return new UserSaveData
