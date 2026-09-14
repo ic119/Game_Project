@@ -48,3 +48,17 @@ public enum ItemType
     Potion,     // 물약 아이템
     General     // 기타 아이템
 }
+
+/// <summary>
+/// 장비 아이템(ItemType.Eqiupment)이 장착되는 슬롯 종류.
+/// UI_InventorySlot.InventorySlotType의 장비 관련 값(EquipmentWeapon 등)과 1:1로 대응한다.
+/// </summary>
+public enum EquipmentSlotType
+{
+    None,
+    Weapon,
+    Armor,
+    Helmet,
+    Boots,
+    Accessory
+}
