@@ -1,0 +1,46 @@
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-game_auth}
+      MYSQL_USER: ${MYSQL_USER:-game_server}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD를 .env에 설정하세요}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD를 .env에 설정하세요}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - backend
+
+  mainserver:
+    build:
+      context: .
+      dockerfile: MainServer/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - mysql
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Default: "Server=mysql;Port=3306;Database=${MYSQL_DATABASE:-game_auth};User=${MYSQL_USER:-game_server};Password=${MYSQL_PASSWORD};"
+      Jwt__Key: ${JWT_KEY:?JWT_KEY를 .env에 설정하세요}
+      Jwt__Issuer: GameAuthServer
+    ports:
+      - "8080:8080"
+    networks:
+      - backend
+
+  gameserver:
+    build:
+      context: .
+      dockerfile: GameServer/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    networks:
+      - backend
+
+networks:
+  backend:
+
+volumes:
+  mysql_data:

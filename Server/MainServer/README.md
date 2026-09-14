@@ -125,6 +125,22 @@ MainServer/                                솔루션 루트
 
 > **보안 유의사항**: DB 비밀번호와 JWT 서명 키가 평문으로 들어 있습니다. 저장소에 커밋하거나 배포할 경우 `.gitignore` 처리 또는 User Secrets/환경 변수로 분리하는 것을 권장합니다.
 
+## 로컬 개발 DB 계정 준비 (최초 1회, PC마다)
+
+`appsettings.json`의 `ConnectionStrings:Default`에는 로컬 개발 전용 계정(`game_server`)의 비밀번호가 이미 고정값으로 들어있다.
+이 계정은 **로컬 MariaDB에만 존재하며 외부에 노출되지 않으므로** 편의상 git에 커밋되어 있다 — 실제 서비스(배포) DB 비밀번호로는 절대 재사용하지 말 것.
+
+새 PC에서 처음 개발을 시작할 때는:
+
+1. `Server/MainServer/setup-local-db.sql`을 그대로(수정 없이) root 권한으로 로컬 MariaDB에 실행한다:
+   ```powershell
+   "C:\Program Files\MariaDB <버전>\bin\mysql.exe" -u root -p < setup-local-db.sql
+   ```
+   `appsettings.json`과 동일한 비밀번호로 `game_server` 계정과 `game_auth` 데이터베이스가 생성된다.
+2. 바로 `dotnet run`. 별도로 `appsettings.Development.json`을 만들 필요는 없다(계정 정보가 이미 `appsettings.json`에 있으므로).
+
+배포(Docker/클라우드) 환경은 이 계정을 쓰지 않고 `.env`로 별도 주입되는 계정을 쓴다 - "Docker로 배포" 절 참고.
+
 ## 빌드 & 실행
 
 ```powershell
@@ -141,6 +157,23 @@ dotnet run
 ```powershell
 dotnet dev-certs https --trust
 ```
+
+## Docker로 배포
+
+MainServer(HTTP)와 GameServer(TCP 9000)를 MySQL과 함께 한 번에 띄우는 `docker-compose.yml`이 `Server/MainServer/` 아래에 있다.
+
+```bash
+cd Server/MainServer
+cp .env.example .env      # MYSQL_PASSWORD / MYSQL_ROOT_PASSWORD / JWT_KEY를 실제 값으로 채운다
+docker compose up -d --build
+```
+
+- `mainserver`: 컨테이너 안에서는 8080 포트(HTTP)로만 수신한다. `ConnectionStrings:Default`/`Jwt:Key`는 appsettings.json이 아니라 `.env`(compose `environment:`)로 주입된다.
+- `gameserver`: 9000 포트(TCP)를 그대로 노출한다.
+- `mysql`: 컨테이너 간 내부 네트워크에서만 접근 가능하며 호스트에 포트를 열지 않는다.
+- 앱 시작 시 `Program.cs`에서 `Database.Migrate()`를 자동 실행하므로 최초 기동 시 별도로 `dotnet ef database update`를 실행할 필요가 없다.
+- 클라우드 VM 등 외부에서 접속하려면 방화벽/보안 그룹에서 `8080`, `9000` TCP를 열어주고, Unity 클라이언트의 `ServerConnectManager.serverBaseUrl`과 `GameServerConnectManager.host/port`를 해당 서버의 공인 IP(또는 도메인)로 바꿔야 한다.
+- 프로덕션에서는 `UseHttpsRedirection()`이 비활성화되어 있다(컨테이너가 HTTP만 수신하므로) — 실제 HTTPS가 필요하면 Nginx/Caddy 같은 리버스 프록시를 앞단에 두고 인증서(Let's Encrypt)를 붙이는 것을 권장한다.
 
 ## DB 마이그레이션
 
