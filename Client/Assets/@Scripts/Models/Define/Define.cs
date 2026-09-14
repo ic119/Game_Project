@@ -41,3 +41,10 @@ public enum WeaponType
     Wand,
     Spear
 }
+
+public enum ItemType
+{
+    Eqiupment,  // 장비 아이템
+    Potion,     // 물약 아이템
+    General     // 기타 아이템
+}
