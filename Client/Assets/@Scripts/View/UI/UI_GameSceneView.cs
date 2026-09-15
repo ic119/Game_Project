@@ -158,7 +158,7 @@ public class UI_GameSceneView : MonoBehaviour
         if (instance.TryGetComponent(out TextMeshProUGUI text))
         {
             text.richText = false;
-            text.text = string.IsNullOrEmpty(_nickname) ? _message : $"{_nickname}: {_message}";
+            text.text = string.IsNullOrEmpty(_nickname) ? _message : $"[{_nickname}]: {_message}";
         }
 
         chatMessageInstances.Enqueue(instance);
