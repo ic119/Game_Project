@@ -32,6 +32,22 @@ namespace Incheol.Presenter.Scene
             LoadAndInstantiateGameSceneAssets();
         }
 
+        private void OnEnable()
+        {
+            if (GameServerConnectManager.Instance != null)
+            {
+                GameServerConnectManager.Instance.OnChatReceived += HandleChatReceived;
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (GameServerConnectManager.Instance != null)
+            {
+                GameServerConnectManager.Instance.OnChatReceived -= HandleChatReceived;
+            }
+        }
+
         private void Update()
         {
             if (Input.GetKeyDown(KeyCode.I))
@@ -42,6 +58,11 @@ namespace Incheol.Presenter.Scene
 
         private void OnDestroy()
         {
+            if (gameSceneView != null)
+            {
+                gameSceneView.ChatMessageSubmitted -= HandleChatMessageSubmitted;
+            }
+
             // GameScene을 벗어나면(씬 전환) GameServer 접속을 종료한다 - PersistAcrossScenes로 유지되는
             // GameServerConnectManager는 씬 전환만으로는 파괴되지 않으므로 명시적으로 끊어줘야 한다.
             GameServerConnectManager.Instance?.Disconnect();
@@ -113,6 +134,12 @@ namespace Incheol.Presenter.Scene
                     if (key == AddressableAssetKey.UI_GameScene)
                     {
                         instance.TryGetComponent(out gameSceneView);
+
+                        if (gameSceneView != null)
+                        {
+                            gameSceneView.ChatMessageSubmitted += HandleChatMessageSubmitted;
+                        }
+
                         TryBindPlayerInfo();
                     }
                 });
@@ -333,6 +360,24 @@ namespace Incheol.Presenter.Scene
                 inventoryInstance.SetActive(false);
                 isInventoryActive = false;
             });
+        }
+
+        /// <summary>
+        /// UI_GameSceneView(ChatContainer)에서 Enter로 전송한 메시지를 GameServer로 보낸다.
+        /// 내 화면에는 여기서 직접 추가하지 않고, 서버가 되돌려주는 Game_ChatBroadcast(HandleChatReceived)를
+        /// 통해 다른 접속자와 동일한 경로로 표시한다 - 메시지 순서/타임스탬프를 서버 기준으로 통일하기 위해서다.
+        /// </summary>
+        private void HandleChatMessageSubmitted(string message)
+        {
+            GameServerConnectManager.Instance?.SendChat(message);
+        }
+
+        /// <summary>
+        /// GameServer로부터 받은 채팅(Game_ChatBroadcast, 내 메시지 포함)을 ChatContainer에 표시한다.
+        /// </summary>
+        private void HandleChatReceived(GameChatBroadcastPacket packet)
+        {
+            gameSceneView?.AddChatMessage(packet.Nickname, packet.Message);
         }
 
         /// <summary>

@@ -11,6 +11,8 @@ namespace Incheol.Modules.Networking
         Game_EnterRequest = 0x0203,
         Game_EnterAck = 0x0204,
         Game_PlayerJoined = 0x0205,
-        Game_PlayerLeft = 0x0206
+        Game_PlayerLeft = 0x0206,
+        Game_ChatRequest = 0x0207,
+        Game_ChatBroadcast = 0x0208
     }
 }

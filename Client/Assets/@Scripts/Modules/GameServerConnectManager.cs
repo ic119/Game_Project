@@ -34,6 +34,7 @@ namespace Incheol.Modules
         public event Action<GamePlayerInfo> OnPlayerJoined;
         public event Action<long> OnPlayerLeft;
         public event Action<GameMoveBroadcastPacket> OnPlayerMoved;
+        public event Action<GameChatBroadcastPacket> OnChatReceived;
 
         #region LifeCycle
         private void Update()
@@ -111,6 +112,27 @@ namespace Incheol.Modules
             };
 
             _ = SendAsync(GameOpCode.Game_MoveRequest, request.Encode());
+        }
+
+        /// <summary>
+        /// 채팅 메시지를 GameServer에 보낸다(Game_ChatRequest). 닉네임은 서버가 룸 등록 정보로 채우므로 보내지 않는다.
+        /// 접속 전이거나 빈 문자열이면 아무 것도 하지 않는다.
+        /// </summary>
+        public void SendChat(string message)
+        {
+            if (!isConnected || string.IsNullOrWhiteSpace(message))
+            {
+                return;
+            }
+
+            var request = new GameChatRequestPacket
+            {
+                PlayerId = localPlayerId,
+                Message = message,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            };
+
+            _ = SendAsync(GameOpCode.Game_ChatRequest, request.Encode());
         }
 
         public void Disconnect()
@@ -194,6 +216,11 @@ namespace Incheol.Modules
                 case GameOpCode.Game_MoveBroadcast:
                     var move = GameMoveBroadcastPacket.Decode(body);
                     pendingActions.Enqueue(() => OnPlayerMoved?.Invoke(move));
+                    break;
+
+                case GameOpCode.Game_ChatBroadcast:
+                    var chat = GameChatBroadcastPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnChatReceived?.Invoke(chat));
                     break;
             }
         }
