@@ -58,6 +58,16 @@ namespace MainServer.CharacterServer.Controllers
                 : Ok(result); // 200
         }
 
+        // PUT /api/characters/{characterId}/last-login — 로그아웃 시점의 마지막 접속시간을 서버 시각 기준으로 기록(소유자 검증 포함)
+        [HttpPut("{characterId:long}/last-login")]
+        public async Task<IActionResult> TouchLastLogin(long characterId)
+        {
+            var result = await _characterService.TouchLastLoginAsync(GetUserId(), characterId);
+            return result is null
+                ? NotFound(new { message = "캐릭터를 찾을 수 없습니다." }) // 404
+                : Ok(result); // 200
+        }
+
         // DELETE /api/characters/{characterId} — 캐릭터 삭제(소유자 검증 포함)
         [HttpDelete("{characterId:long}")]
         public async Task<IActionResult> Delete(long characterId)

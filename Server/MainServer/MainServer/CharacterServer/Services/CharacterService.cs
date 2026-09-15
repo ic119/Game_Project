@@ -69,6 +69,19 @@ namespace MainServer.CharacterServer.Services
             return ToResponse(character);
         }
 
+        // 로그아웃 시점에 서버 시각(UtcNow) 기준으로 마지막 접속시간을 기록한다. 클라이언트 시각을 신뢰하지 않는다.
+        public async Task<CharacterResponse?> TouchLastLoginAsync(long userId, long characterId)
+        {
+            var character = await FindOwnedCharacterAsync(userId, characterId);
+            if (character is null)
+                return null;
+
+            character.LastLoginAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            return ToResponse(character);
+        }
+
         public async Task<bool> DeleteCharacterAsync(long userId, long characterId)
         {
             var character = await FindOwnedCharacterAsync(userId, characterId);
