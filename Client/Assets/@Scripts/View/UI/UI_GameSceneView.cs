@@ -18,6 +18,7 @@ public class UI_GameSceneView : MonoBehaviour
     [SerializeField] private Button optionButton;
     [SerializeField] private Button menuButton;
     [SerializeField] private Button logoutButton;
+    [SerializeField] private Button cancelButton;
 
     [Header("Chat UI")]
     [SerializeField] private TMP_InputField chatInputField;
@@ -49,6 +50,13 @@ public class UI_GameSceneView : MonoBehaviour
         menuButton.onClick.AddListener(OnClickMenuButton);
         logoutButton.onClick.AddListener(OnClickLogoutButton);
 
+        if (cancelButton != null)
+        {
+            cancelButton.onClick.AddListener(OnClickCancelButton);
+        }
+
+        SetMainPopupActive(false);
+
         if (chatInputField != null)
         {
             chatInputField.onSubmit.AddListener(OnChatInputSubmit);
@@ -59,6 +67,11 @@ public class UI_GameSceneView : MonoBehaviour
     {
         menuButton.onClick.RemoveListener(OnClickMenuButton);
         logoutButton.onClick.RemoveListener(OnClickLogoutButton);
+
+        if (cancelButton != null)
+        {
+            cancelButton.onClick.RemoveListener(OnClickCancelButton);
+        }
 
         if (chatInputField != null)
         {
@@ -132,12 +145,24 @@ public class UI_GameSceneView : MonoBehaviour
 
     private void OnClickMenuButton()
     {
+        SetMainPopupActive(true);
         MenuButtonClicked?.Invoke();
     }
 
     private void OnClickLogoutButton()
     {
         LogoutButtonClicked?.Invoke();
+    }
+
+    /// <summary>
+    /// mainPopup이 켜져 있을 때만 끈다(이미 꺼져 있으면 아무 것도 하지 않음).
+    /// </summary>
+    private void OnClickCancelButton()
+    {
+        if (IsMainPopupActive)
+        {
+            SetMainPopupActive(false);
+        }
     }
 
     /// <summary>
