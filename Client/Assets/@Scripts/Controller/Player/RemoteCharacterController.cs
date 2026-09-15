@@ -20,6 +20,12 @@ namespace Incheol.Controller
         private Quaternion targetRotation;
         private Animator animator;
 
+        /// <summary>
+        /// 이 원격 캐릭터가 나타내는 서버측 플레이어 id. RemotePlayerManager가 스폰 직후 SetPlayerId로 채운다.
+        /// 공격 대상 판정(PlayerAttackController)에서 콜라이더로부터 대상의 id를 즉시 얻는 데 쓴다.
+        /// </summary>
+        public long PlayerId { get; private set; }
+
         private static readonly int IsIdleHash = Animator.StringToHash("IsIdle");
         private static readonly int IsMoveHash = Animator.StringToHash("IsMove");
 
@@ -62,6 +68,11 @@ namespace Incheol.Controller
             targetRotation = Quaternion.Euler(0f, rotationY, 0f);
             transform.position = position;
             transform.rotation = targetRotation;
+        }
+
+        public void SetPlayerId(long playerId)
+        {
+            PlayerId = playerId;
         }
     }
 }

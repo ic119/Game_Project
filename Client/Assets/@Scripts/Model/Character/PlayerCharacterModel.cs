@@ -144,6 +144,26 @@ public class PlayerCharacterModel : MonoBehaviour
     }
 
     /// <summary>
+    /// 원격 플레이어 스폰 시(RemotePlayerManager.HandlePlayerJoined) 서버가 중계한 GamePlayerInfo의
+    /// 전투 스냅샷을 그대로 반영한다. 원격 캐릭터는 UserSaveData를 직접 조회할 수 없으므로,
+    /// 이미 계산되어 넘어온 값을 그대로 HealthComponent/CombatStatComponent에 채운다.
+    /// </summary>
+    public void ApplyRemoteCombatState(int maxHp, int currentHp, int attackPower, int defense)
+    {
+        healthComponent.ApplyHealth(maxHp, currentHp);
+        combatStatComponent.ApplyRaw(attackPower, defense);
+    }
+
+    /// <summary>
+    /// IDamageable(HealthComponent)로의 패스스루. Game_DamageBroadcast를 받은 쪽(로컬/원격 공용)이
+    /// PlayerCharacterModel만 알아도 데미지를 적용할 수 있도록 한다.
+    /// </summary>
+    public void TakeDamage(DamageInfo damageInfo)
+    {
+        healthComponent.TakeDamage(damageInfo);
+    }
+
+    /// <summary>
     /// 세이브 데이터의 경험치값을 캐릭터에 반영한다(스폰 시 최초 1회). 이후 경험치 획득은 GainExp를 사용한다.
     /// </summary>
     public void ApplyExp(float exp)

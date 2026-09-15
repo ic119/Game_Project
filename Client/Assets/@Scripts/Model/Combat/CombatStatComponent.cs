@@ -31,6 +31,14 @@ public class CombatStatComponent : MonoBehaviour
         baseDefense = userStats.agi / 2;
     }
 
+    // 원격 플레이어 동기화용. 서버가 중계한 GamePlayerInfo(AttackPower/Defense, Game_EnterRequest 시점
+    // 스냅샷)를 그대로 반영한다 - ApplyFromUserStats와 달리 UserStats 원본 없이 이미 계산된 값을 직접 받는다.
+    public void ApplyRaw(int attackPower, int defense)
+    {
+        baseAttackPower = attackPower;
+        baseDefense = defense;
+    }
+
     // 일시적인 공격력 보너스를 설정/해제한다. AttackPower에 그대로 더해지므로, 버프가 끝나면
     // 0을 넘겨 원래 수치로 되돌려야 한다(호출측이 타이머로 관리).
     public void SetBonusAttackPower(int amount)

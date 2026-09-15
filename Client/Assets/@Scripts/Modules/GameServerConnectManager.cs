@@ -35,6 +35,7 @@ namespace Incheol.Modules
         public event Action<long> OnPlayerLeft;
         public event Action<GameMoveBroadcastPacket> OnPlayerMoved;
         public event Action<GameChatBroadcastPacket> OnChatReceived;
+        public event Action<GameDamageBroadcastPacket> OnDamageReceived;
 
         #region LifeCycle
         private void Update()
@@ -135,6 +136,28 @@ namespace Incheol.Modules
             _ = SendAsync(GameOpCode.Game_ChatRequest, request.Encode());
         }
 
+        /// <summary>
+        /// 공격 의사를 GameServer에 보낸다(Game_AttackRequest). 데미지 수치는 보내지 않는다 - 서버가
+        /// Game_EnterRequest 때 등록된 자신의 AttackPower를 사용해 그대로 중계하고, 방어력 차감은
+        /// 각 클라이언트가 target의 로컬 Defense로 직접 계산한다.
+        /// </summary>
+        public void SendAttack(long targetId)
+        {
+            if (!isConnected)
+            {
+                return;
+            }
+
+            var request = new GameAttackRequestPacket
+            {
+                AttackerId = localPlayerId,
+                TargetId = targetId,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            };
+
+            _ = SendAsync(GameOpCode.Game_AttackRequest, request.Encode());
+        }
+
         public void Disconnect()
         {
             if (!isConnected)
@@ -221,6 +244,11 @@ namespace Incheol.Modules
                 case GameOpCode.Game_ChatBroadcast:
                     var chat = GameChatBroadcastPacket.Decode(body);
                     pendingActions.Enqueue(() => OnChatReceived?.Invoke(chat));
+                    break;
+
+                case GameOpCode.Game_DamageBroadcast:
+                    var damage = GameDamageBroadcastPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnDamageReceived?.Invoke(damage));
                     break;
             }
         }

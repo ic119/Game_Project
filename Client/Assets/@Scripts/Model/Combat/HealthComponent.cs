@@ -62,23 +62,23 @@ public class HealthComponent : MonoBehaviour, IDamageable
     /// IDamageable 구현. damageInfo.Amount(방어력 적용 전 원본 데미지)에 자신의 defense를 적용해
     /// 최종 데미지만큼 체력을 깎는다. 이미 사망한 상태면 무시한다.
     /// </summary>
-    //public void TakeDamage(DamageInfo damageInfo)
-    //{
-    //    if (IsDead)
-    //    {
-    //        return;
-    //    }
-    //
-    //    int defense = combatStat != null ? combatStat.Defense : 0;
-    //    int finalDamage = CombatCalculator.ApplyDefense(damageInfo.Amount, defense);
-    //
-    //    currentHp = Mathf.Clamp(currentHp - finalDamage, 0, maxHp);
-    //    OnHealthChanged?.Invoke(currentHp, maxHp);
-    //    OnDamaged?.Invoke();
-    //
-    //    if (currentHp <= 0)
-    //    {
-    //        OnDied?.Invoke();
-    //    }
-    //}
+    public void TakeDamage(DamageInfo damageInfo)
+    {
+        if (IsDead)
+        {
+            return;
+        }
+
+        int defense = combatStat != null ? combatStat.Defense : 0;
+        int finalDamage = CombatCalculator.ApplyDefense(damageInfo.Amount, defense);
+
+        currentHp = Mathf.Clamp(currentHp - finalDamage, 0, maxHp);
+        OnHealthChanged?.Invoke(currentHp, maxHp);
+        OnDamaged?.Invoke();
+
+        if (currentHp <= 0)
+        {
+            OnDied?.Invoke();
+        }
+    }
 }

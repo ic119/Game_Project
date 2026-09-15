@@ -17054,6 +17054,7 @@ GameObject:
   - component: {fileID: 7971303629064177966}
   - component: {fileID: 4702764603272719981}
   - component: {fileID: 8976286199448848791}
+  - component: {fileID: 7996449286846888370}
   m_Layer: 0
   m_Name: BasicCharacter
   m_TagString: Untagged
@@ -17200,6 +17201,29 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CombatStatComponent
   baseAttackPower: 5
   baseDefense: 0
+--- !u!136 &7996449286846888370
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6430947460933050228}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.4
+  m_Height: 1.8
+  m_Direction: 1
+  m_Center: {x: 0, y: 0.9, z: 0}
 --- !u!1 &6438463510138794830
 GameObject:
   m_ObjectHideFlags: 0

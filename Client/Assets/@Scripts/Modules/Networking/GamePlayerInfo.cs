@@ -18,6 +18,14 @@ namespace Incheol.Modules.Networking
         public float Z;
         public float RotationY;
 
+        // 전투 관련 값. Game_EnterRequest 시점에 자신의 PlayerCharacterModel(이미 ApplyUserSaveData로
+        // 초기화됨) 기준으로 채워 보낸다. 서버는 이 값을 그대로 신뢰/중계만 하고(Nickname과 동일한 신뢰 수준),
+        // 데미지의 방어력 차감은 각 클라이언트가 이 값(특히 Defense)으로 로컬 계산한다.
+        public int MaxHp;
+        public int CurrentHp;
+        public int AttackPower;
+        public int Defense;
+
         public void WriteTo(BinaryWriter writer)
         {
             writer.Write(PlayerId);
@@ -29,6 +37,10 @@ namespace Incheol.Modules.Networking
             writer.Write(Y);
             writer.Write(Z);
             writer.Write(RotationY);
+            writer.Write(MaxHp);
+            writer.Write(CurrentHp);
+            writer.Write(AttackPower);
+            writer.Write(Defense);
         }
 
         public static GamePlayerInfo ReadFrom(BinaryReader reader)
@@ -43,7 +55,11 @@ namespace Incheol.Modules.Networking
                 X = reader.ReadSingle(),
                 Y = reader.ReadSingle(),
                 Z = reader.ReadSingle(),
-                RotationY = reader.ReadSingle()
+                RotationY = reader.ReadSingle(),
+                MaxHp = reader.ReadInt32(),
+                CurrentHp = reader.ReadInt32(),
+                AttackPower = reader.ReadInt32(),
+                Defense = reader.ReadInt32()
             };
         }
 

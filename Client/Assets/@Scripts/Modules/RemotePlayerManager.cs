@@ -28,6 +28,7 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnPlayerJoined += HandlePlayerJoined;
             GameServerConnectManager.Instance.OnPlayerLeft += HandlePlayerLeft;
             GameServerConnectManager.Instance.OnPlayerMoved += HandlePlayerMoved;
+            GameServerConnectManager.Instance.OnDamageReceived += HandlePlayerDamaged;
         }
 
         private void OnDisable()
@@ -40,6 +41,7 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnPlayerJoined -= HandlePlayerJoined;
             GameServerConnectManager.Instance.OnPlayerLeft -= HandlePlayerLeft;
             GameServerConnectManager.Instance.OnPlayerMoved -= HandlePlayerMoved;
+            GameServerConnectManager.Instance.OnDamageReceived -= HandlePlayerDamaged;
         }
         #endregion
 
@@ -91,9 +93,11 @@ namespace Incheol.Modules
                 if (instance.TryGetComponent(out PlayerCharacterModel playerModel))
                 {
                     playerModel.SetNickname(info.Nickname);
+                    playerModel.ApplyRemoteCombatState(info.MaxHp, info.CurrentHp, info.AttackPower, info.Defense);
                 }
 
                 RemoteCharacterController controller = instance.AddComponent<RemoteCharacterController>();
+                controller.SetPlayerId(info.PlayerId);
                 controller.Warp(new Vector3(info.X, info.Y, info.Z), info.RotationY);
 
                 remotePlayers[info.PlayerId] = controller;
@@ -123,6 +127,24 @@ namespace Incheol.Modules
             }
 
             controller.SetTarget(new Vector3(move.X, move.Y, move.Z), move.RotationY);
+        }
+
+        /// <summary>
+        /// Game_DamageBroadcast는 전원에게 오지만, 여기서는 TargetId가 원격 플레이어인 경우만 처리한다
+        /// (로컬 플레이어가 맞은 경우는 GameSceneManager가 별도로 처리). Damage는 방어력 적용 전 원본값이라
+        /// PlayerCharacterModel.TakeDamage가 이 클라이언트가 들고 있는 target의 로컬 Defense로 직접 계산한다.
+        /// </summary>
+        private void HandlePlayerDamaged(GameDamageBroadcastPacket packet)
+        {
+            if (!remotePlayers.TryGetValue(packet.TargetId, out RemoteCharacterController controller) || controller == null)
+            {
+                return;
+            }
+
+            if (controller.TryGetComponent(out PlayerCharacterModel playerModel))
+            {
+                playerModel.TakeDamage(new DamageInfo(packet.AttackerId, packet.Damage));
+            }
         }
         #endregion
     }

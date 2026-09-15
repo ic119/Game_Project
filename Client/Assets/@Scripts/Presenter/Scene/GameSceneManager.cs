@@ -42,6 +42,7 @@ namespace Incheol.Presenter.Scene
             if (GameServerConnectManager.Instance != null)
             {
                 GameServerConnectManager.Instance.OnChatReceived += HandleChatReceived;
+                GameServerConnectManager.Instance.OnDamageReceived += HandleDamageReceived;
             }
         }
 
@@ -50,6 +51,7 @@ namespace Incheol.Presenter.Scene
             if (GameServerConnectManager.Instance != null)
             {
                 GameServerConnectManager.Instance.OnChatReceived -= HandleChatReceived;
+                GameServerConnectManager.Instance.OnDamageReceived -= HandleDamageReceived;
             }
         }
 
@@ -231,6 +233,9 @@ namespace Incheol.Presenter.Scene
 
                 // 일정 주기로 자신의 위치/회전을 GameServer(Game_MoveRequest)로 전송한다.
                 playerInstance.AddComponent<PlayerNetworkSender>();
+
+                // Space 입력으로 전방의 원격 플레이어를 공격(Game_AttackRequest)한다.
+                playerInstance.AddComponent<PlayerAttackController>();
             });
         }
 
@@ -317,7 +322,13 @@ namespace Incheol.Presenter.Scene
                 X = position.x,
                 Y = position.y,
                 Z = position.z,
-                RotationY = _playerInstance.transform.eulerAngles.y
+                RotationY = _playerInstance.transform.eulerAngles.y,
+                // ApplySelectedCharacterCustomization이 이미 ApplyUserSaveData를 호출해 spawnedPlayerModel의
+                // 체력/공격력/방어력이 채워진 뒤라 여기서 바로 읽어 보낼 수 있다.
+                MaxHp = spawnedPlayerModel != null ? spawnedPlayerModel.MaxHp : 0,
+                CurrentHp = spawnedPlayerModel != null ? spawnedPlayerModel.CurrentHp : 0,
+                AttackPower = spawnedPlayerModel != null ? spawnedPlayerModel.AttackPower : 0,
+                Defense = spawnedPlayerModel != null ? spawnedPlayerModel.Defense : 0
             };
 
             GameServerConnectManager.Instance.ConnectAndEnter(localInfo);
@@ -385,6 +396,26 @@ namespace Incheol.Presenter.Scene
         private void HandleChatReceived(GameChatBroadcastPacket packet)
         {
             gameSceneView?.AddChatMessage(packet.Nickname, packet.Message);
+        }
+
+        /// <summary>
+        /// Game_DamageBroadcast는 전원(공격자 포함)에게 오지만, 이 메서드는 내(로컬 플레이어)가 맞은
+        /// 경우만 처리한다. 다른 플레이어가 맞은 경우는 RemotePlayerManager가 별도로 구독해 처리한다.
+        /// Damage는 방어력 적용 전 원본값이므로 spawnedPlayerModel.TakeDamage가 로컬 Defense로 직접 계산한다.
+        /// </summary>
+        private void HandleDamageReceived(GameDamageBroadcastPacket packet)
+        {
+            if (spawnedPlayerModel == null || SaveDataManager.Instance == null)
+            {
+                return;
+            }
+
+            if (packet.TargetId != SaveDataManager.Instance.SelectedCharacterId)
+            {
+                return;
+            }
+
+            spawnedPlayerModel.TakeDamage(new DamageInfo(packet.AttackerId, packet.Damage));
         }
 
         /// <summary>
