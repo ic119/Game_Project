@@ -129,6 +129,22 @@ namespace Incheol.Modules
         }
 
         /// <summary>
+        /// 로그아웃 시점에 선택된 캐릭터의 마지막 접속시간을 서버 시각 기준으로 기록한다(PUT api/characters/{id}/last-login).
+        /// 클라이언트 시각을 보내지 않고 서버가 직접 DateTime.UtcNow로 채우므로 요청 바디가 없다.
+        /// 선택된 캐릭터가 없으면(로그인만 하고 캐릭터 선택 전 로그아웃 등) 아무 것도 하지 않고 실패로 처리한다.
+        /// </summary>
+        public void TouchLastLogin(Action<bool> _onComplete = null)
+        {
+            if (!SelectedCharacterId.HasValue)
+            {
+                _onComplete?.Invoke(false);
+                return;
+            }
+
+            _ = TouchLastLoginAsyncInternal(SelectedCharacterId.Value, _onComplete);
+        }
+
+        /// <summary>
         /// 선택된 캐릭터를 서버에서 삭제(DELETE api/characters/{id})하고, 성공했을 때만 선택 상태를 해제한다.
         /// </summary>
         public void DeleteAsync(Action<bool> _onComplete = null)
@@ -309,6 +325,25 @@ namespace Incheol.Modules
             }
 
             _onComplete?.Invoke(true);
+        }
+
+        private async Awaitable TouchLastLoginAsyncInternal(long _characterId, Action<bool> _onComplete)
+        {
+            if (ServerConnectManager.Instance == null)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>("ServerConnectManager.Instance가 null입니다.");
+                _onComplete?.Invoke(false);
+                return;
+            }
+
+            (bool success, string _, string error) = await ServerConnectManager.Instance.SendAuthorizedJsonRequestAsync($"{CharacterApiPath}/{_characterId}/last-login", "PUT");
+
+            if (!success)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>($"마지막 접속시간 저장 실패 : {error}");
+            }
+
+            _onComplete?.Invoke(success);
         }
 
         private async Awaitable DeleteAsyncInternal(long _characterId, Action<bool> _onComplete)

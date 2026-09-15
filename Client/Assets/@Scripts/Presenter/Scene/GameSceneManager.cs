@@ -24,6 +24,11 @@ namespace Incheol.Presenter.Scene
         /// I키 토글 시 gameObject.activeSelf를 직접 확인하는 대신 이 값을 기준(source of truth)으로 판단한다.
         /// </summary>
         private bool isInventoryActive = false;
+
+        /// <summary>
+        /// logoutButton 연타로 로그아웃 요청이 중복 전송되는 것을 막는 가드.
+        /// </summary>
+        private bool isLoggingOut = false;
         #endregion
 
         #region LifeCycle
@@ -61,6 +66,7 @@ namespace Incheol.Presenter.Scene
             if (gameSceneView != null)
             {
                 gameSceneView.ChatMessageSubmitted -= HandleChatMessageSubmitted;
+                gameSceneView.LogoutButtonClicked -= HandleLogoutButtonClicked;
             }
 
             // GameScene을 벗어나면(씬 전환) GameServer 접속을 종료한다 - PersistAcrossScenes로 유지되는
@@ -138,6 +144,7 @@ namespace Incheol.Presenter.Scene
                         if (gameSceneView != null)
                         {
                             gameSceneView.ChatMessageSubmitted += HandleChatMessageSubmitted;
+                            gameSceneView.LogoutButtonClicked += HandleLogoutButtonClicked;
                         }
 
                         TryBindPlayerInfo();
@@ -378,6 +385,56 @@ namespace Incheol.Presenter.Scene
         private void HandleChatReceived(GameChatBroadcastPacket packet)
         {
             gameSceneView?.AddChatMessage(packet.Nickname, packet.Message);
+        }
+
+        /// <summary>
+        /// logoutButton 클릭 시 호출된다. AccessToken이 아직 살아있는 동안 선택된 캐릭터의 마지막 접속시간부터
+        /// 기록한 뒤(SaveDataManager.TouchLastLogin), 계정 세션(ServerConnectManager, Access/RefreshToken)을
+        /// 종료하고 완료되면 LoginScene으로 전환한다. 순서를 바꿔 Logout을 먼저 하면 AccessToken이 지워져
+        /// TouchLastLogin 요청이 401로 실패한다. GameServer(TCP) 연결은 씬 전환으로 GameScene이 언로드될 때
+        /// OnDestroy에서 자동으로 끊기므로 여기서 별도로 처리하지 않는다.
+        /// </summary>
+        private void HandleLogoutButtonClicked()
+        {
+            if (isLoggingOut)
+            {
+                return;
+            }
+
+            if (ServerConnectManager.Instance == null)
+            {
+                DebugLogManager.GenerateErrorMessage<GameSceneManager>("ServerConnectManager.Instance가 null입니다.");
+                return;
+            }
+
+            isLoggingOut = true;
+
+            if (SaveDataManager.Instance != null && SaveDataManager.Instance.SelectedCharacterId.HasValue)
+            {
+                SaveDataManager.Instance.TouchLastLogin(_ => PerformLogout());
+            }
+            else
+            {
+                PerformLogout();
+            }
+        }
+
+        private void PerformLogout()
+        {
+            ServerConnectManager.Instance.Logout(_ => TransitionToLoginScene());
+        }
+
+        private void TransitionToLoginScene()
+        {
+            isLoggingOut = false;
+
+            if (SceneLoadManager.Instance == null)
+            {
+                DebugLogManager.GenerateErrorMessage<GameSceneManager>("SceneLoadManager.Instance가 null입니다.");
+                return;
+            }
+
+            SceneLoadManager.Instance.LoadSceneByTags("LoginScene");
         }
 
         /// <summary>
