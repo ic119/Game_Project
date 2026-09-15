@@ -22,12 +22,14 @@ namespace Incheol.Controller
         [Header("콤보 (BasicCharacterStance/Attack Layer 참고)")]
         [Tooltip("콤보 최대 타수. Attack Layer에 Attack1/Attack2 두 단계만 있어 2로 둔다.")]
         [SerializeField, Min(1)] private int maxComboStage = 2;
-        [Tooltip("각 콤보 단계 애니메이션 길이(초). Attack01/02_SingleSword 클립 길이(약 0.53초)에 맞춘 값.")]
-        [SerializeField, Min(0.05f)] private float comboStageDuration = 0.55f;
+        [Tooltip("각 콤보 단계 애니메이션 길이(초). Attack01/02_SingleSword 클립의 실제 길이(16프레임 / 30fps = 0.5333...초)와 정확히 일치시킨 값.")]
+        [SerializeField, Min(0.05f)] private float comboStageDuration = 16f / 30f;
         [Tooltip("각 단계 시작 후 이 시간이 지나야 다음 입력을 콤보 연계로 인정한다(스윙 시작 직후 캔슬 방지).")]
         [SerializeField, Min(0f)] private float comboInputGuard = 0.15f;
         [Tooltip("단계 종료 후 이 시간 안에 다음 입력이 없으면 콤보가 끊기고 Idle로 돌아간다.")]
         [SerializeField, Min(0f)] private float comboWindowGrace = 0.2f;
+        [Tooltip("마지막 타수(2콤보) 공격이 끝난 뒤 다음 공격을 다시 받아들이기까지의 딜레이(초). 공격 판정이 곧바로 겹치지 않도록 여유를 둔다.")]
+        [SerializeField, Min(0f)] private float comboFinishDelay = 0.25f;
 
         private const string AttackLayerName = "Attack Layer";
         private static readonly int ComboIndexHash = Animator.StringToHash("ComboIndex");
@@ -51,9 +53,14 @@ namespace Incheol.Controller
         private void Update()
         {
             // 단계 시간 + 유예시간이 지나도록 다음 입력이 없었다면 콤보가 끊긴 것으로 보고 Idle로 되돌린다.
-            if (comboStage > 0 && Time.time >= stageStartTime + comboStageDuration + comboWindowGrace)
+            // 마지막 타수는 도중에 끊긴 것이 아니라 콤보를 완료한 것이므로, 다음 공격과 겹치지 않도록 별도의 comboFinishDelay를 적용한다.
+            if (comboStage > 0)
             {
-                ResetCombo();
+                float graceDuration = comboStage >= maxComboStage ? comboFinishDelay : comboWindowGrace;
+                if (Time.time >= stageStartTime + comboStageDuration + graceDuration)
+                {
+                    ResetCombo();
+                }
             }
 
             if (!Input.GetKeyDown(attackKey))
