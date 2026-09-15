@@ -27,6 +27,8 @@ namespace Incheol.View.UI
         {
             inputFieldOrder = new[] { accountInputField, nickNameInputField, passwordInputField, passwordCheckInputField };
 
+            accountInputField.onValidateInput += InputFieldValidator.AllowEnglishAndDigitsOnly;
+
             createButton.onClick.AddListener(OnClickCreateButton);
             cancelButton.onClick.AddListener(OnClickCancelButton);
             passwordInputField.onValueChanged.AddListener(OnPasswordValueChanged);

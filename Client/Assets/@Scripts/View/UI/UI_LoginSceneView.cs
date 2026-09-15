@@ -43,6 +43,7 @@ private void Awake()
         {
             inputFieldOrder = new[] { accountInputField, passwordInputField };
 
+            accountInputField.onValidateInput += InputFieldValidator.AllowEnglishAndDigitsOnly;
             accountInputField.onSubmit.AddListener(_ => FocusNextInputField(accountInputField));
             passwordInputField.onSubmit.AddListener(_ => FocusNextInputField(passwordInputField));
             registButton.onClick.AddListener(OnClickRegistButton);
