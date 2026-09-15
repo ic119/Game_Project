@@ -13,8 +13,13 @@ namespace Incheol.View.UI
     {
         #region Variable
 
+        private const string SavedLoginAccountKey = "SavedLoginAccount";
+
         [Header("로그인 변수")]
         [SerializeField] private Button loginButton;
+
+        [Header("로그인 정보 저장")]
+        [SerializeField] private Toggle loginDataSaveToggle;
 
         [Header("회원가입 변수")]
         [SerializeField] private Button registButton;
@@ -47,6 +52,13 @@ private void Awake()
             if (alarmPopup != null)
             {
                 alarmPopup.SetActive(false);
+            }
+
+            LoadSavedLoginAccount();
+
+            if (loginDataSaveToggle != null)
+            {
+                loginDataSaveToggle.onValueChanged.AddListener(OnLoginDataSaveToggleChanged);
             }
         }
 
@@ -156,7 +168,58 @@ private void Awake()
                 return;
             }
 
+            SaveAccountIfEnabled();
             LoginSucceeded?.Invoke();
+        }
+
+        /// <summary>
+        /// loginDataSaveToggle이 켜져 있으면 로그인 성공 시점의 아이디(계정)만 PlayerPrefs에 저장한다.
+        /// 비밀번호는 평문으로 로컬에 남기면 안 되므로 저장 대상에서 제외한다.
+        /// </summary>
+        private void SaveAccountIfEnabled()
+        {
+            if (loginDataSaveToggle == null || !loginDataSaveToggle.isOn)
+            {
+                return;
+            }
+
+            PlayerPrefs.SetString(SavedLoginAccountKey, accountInputField.text ?? string.Empty);
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>
+        /// 저장된 아이디가 있으면 입력창에 채우고 토글도 켠 상태로 복원한다. 저장된 아이디가 없으면 토글은 꺼진 상태 그대로 둔다.
+        /// </summary>
+        private void LoadSavedLoginAccount()
+        {
+            string savedAccount = PlayerPrefs.GetString(SavedLoginAccountKey, string.Empty);
+            bool hasSavedAccount = !string.IsNullOrEmpty(savedAccount);
+
+            if (hasSavedAccount)
+            {
+                accountInputField.text = savedAccount;
+            }
+
+            if (loginDataSaveToggle != null)
+            {
+                loginDataSaveToggle.SetIsOnWithoutNotify(hasSavedAccount);
+            }
+        }
+
+        /// <summary>
+        /// 토글을 끄면 그 자리에서 즉시 저장된 아이디를 지운다(로그인을 다시 시도하지 않아도 "잊기"가 바로 반영되도록).
+        /// 토글을 켜면 지금 입력창에 있는 아이디를 바로 저장한다.
+        /// </summary>
+        private void OnLoginDataSaveToggleChanged(bool _isOn)
+        {
+            if (!_isOn)
+            {
+                PlayerPrefs.DeleteKey(SavedLoginAccountKey);
+                PlayerPrefs.Save();
+                return;
+            }
+
+            SaveAccountIfEnabled();
         }
 
         private void SetLoginInteractable(bool _interactable)
