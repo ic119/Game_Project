@@ -15,6 +15,13 @@ namespace Shared.Networking.Packets
         public float Z { get; set; }
         public float RotationY { get; set; }
 
+        // 전투 관련 값. 클라이언트가 Game_EnterRequest 시점에 자신의 세이브 데이터 기준으로 채워 보낸다
+        // (Nickname과 동일한 신뢰 수준 - GameServer는 DB 접근 권한이 없어 직접 검증하지 못한다).
+        public int MaxHp { get; set; }
+        public int CurrentHp { get; set; }
+        public int AttackPower { get; set; }
+        public int Defense { get; set; }
+
         public void WriteTo(BinaryWriter writer)
         {
             writer.Write(PlayerId);
@@ -26,6 +33,10 @@ namespace Shared.Networking.Packets
             writer.Write(Y);
             writer.Write(Z);
             writer.Write(RotationY);
+            writer.Write(MaxHp);
+            writer.Write(CurrentHp);
+            writer.Write(AttackPower);
+            writer.Write(Defense);
         }
 
         public static PlayerInfo ReadFrom(BinaryReader reader)
@@ -40,7 +51,11 @@ namespace Shared.Networking.Packets
                 X = reader.ReadSingle(),
                 Y = reader.ReadSingle(),
                 Z = reader.ReadSingle(),
-                RotationY = reader.ReadSingle()
+                RotationY = reader.ReadSingle(),
+                MaxHp = reader.ReadInt32(),
+                CurrentHp = reader.ReadInt32(),
+                AttackPower = reader.ReadInt32(),
+                Defense = reader.ReadInt32()
             };
         }
 

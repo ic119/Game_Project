@@ -68,6 +68,7 @@ namespace GameServer.Networking
                 OpCode.Game_EnterRequest => HandleEnterRequestAsync(body, ct),
                 OpCode.Game_MoveRequest => HandleMoveRequestAsync(body, ct),
                 OpCode.Game_ChatRequest => HandleChatRequestAsync(body, ct),
+                OpCode.Game_AttackRequest => HandleAttackRequestAsync(body, ct),
                 _ => LogUnhandledAsync(opCode)
             };
         }
@@ -148,6 +149,54 @@ namespace GameServer.Networking
             };
 
             await _room.BroadcastToAllAsync(OpCode.Game_ChatBroadcast, broadcast.Encode(), ct);
+        }
+
+        // Damage 자체(방어력 적용 전 원본 공격력)는 GameServer가 계산하지 않는다 - 각 클라이언트가
+        // 로컬로 들고 있는 target의 실제 Defense로 계산해야 모든 클라이언트가 일관된 결과를 얻는다
+        // (attacker/target의 스탯은 Game_EnterRequest 시점에 이미 전원에게 동기화되어 있음).
+        // 여기서는 위조된 공격자 신원 차단, 최소 공격 간격, 사거리만 검증하고 그대로 중계한다.
+        private const double MinAttackIntervalMs = 300;
+        private const float MaxAttackRangeSquared = 5f * 5f;
+        private DateTime _lastAttackAtUtc = DateTime.MinValue;
+
+        private async Task HandleAttackRequestAsync(byte[] body, CancellationToken ct)
+        {
+            var request = C2SAttackRequest.Decode(body);
+
+            if (_playerId is not { } playerId || request.AttackerId != playerId || request.TargetId == playerId)
+            {
+                return;
+            }
+
+            var now = DateTime.UtcNow;
+            if ((now - _lastAttackAtUtc).TotalMilliseconds < MinAttackIntervalMs)
+            {
+                return;
+            }
+            _lastAttackAtUtc = now;
+
+            if (!_room.TryGetInfo(playerId, out var attacker) || !_room.TryGetInfo(request.TargetId, out var target))
+            {
+                return;
+            }
+
+            float dx = attacker.X - target.X;
+            float dy = attacker.Y - target.Y;
+            float dz = attacker.Z - target.Z;
+            if (dx * dx + dy * dy + dz * dz > MaxAttackRangeSquared)
+            {
+                return;
+            }
+
+            var broadcast = new S2CDamageBroadcast
+            {
+                AttackerId = playerId,
+                TargetId = request.TargetId,
+                Damage = attacker.AttackPower,
+                Timestamp = request.Timestamp
+            };
+
+            await _room.BroadcastToAllAsync(OpCode.Game_DamageBroadcast, broadcast.Encode(), ct);
         }
 
         // 여러 세션이 동시에(다른 플레이어의 브로드캐스트로) 같은 스트림에 쓸 수 있으므로 직렬화한다.

@@ -18,6 +18,8 @@ namespace Shared.Networking
         Game_PlayerLeft = 0x0206,
         Game_ChatRequest = 0x0207,
         Game_ChatBroadcast = 0x0208,
+        Game_AttackRequest = 0x0209,
+        Game_DamageBroadcast = 0x020A,
 
         // 0x03XX = Dungeon
     }
