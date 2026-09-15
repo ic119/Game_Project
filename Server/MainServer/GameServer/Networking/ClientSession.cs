@@ -67,6 +67,7 @@ namespace GameServer.Networking
                 OpCode.System_Heartbeat => SendAsync(OpCode.System_Heartbeat, Array.Empty<byte>(), ct),
                 OpCode.Game_EnterRequest => HandleEnterRequestAsync(body, ct),
                 OpCode.Game_MoveRequest => HandleMoveRequestAsync(body, ct),
+                OpCode.Game_ChatRequest => HandleChatRequestAsync(body, ct),
                 _ => LogUnhandledAsync(opCode)
             };
         }
@@ -110,6 +111,43 @@ namespace GameServer.Networking
             };
 
             await _room.BroadcastAsync(OpCode.Game_MoveBroadcast, broadcast.Encode(), request.PlayerId, ct);
+        }
+
+        // Move와 달리 발신자 본인 화면에도 같은 메시지가 떠야 하므로 BroadcastToAllAsync를 쓴다.
+        // 닉네임은 클라이언트를 신뢰하지 않고 룸에 등록된(Game_EnterRequest 시점) 값을 서버가 직접 채운다.
+        private const int MaxChatMessageLength = 200;
+
+        private async Task HandleChatRequestAsync(byte[] body, CancellationToken ct)
+        {
+            var request = C2SChatRequest.Decode(body);
+
+            if (_playerId is not { } playerId || request.PlayerId != playerId)
+            {
+                return;
+            }
+
+            var message = request.Message?.Trim() ?? string.Empty;
+            if (message.Length == 0)
+            {
+                return;
+            }
+
+            if (message.Length > MaxChatMessageLength)
+            {
+                message = message[..MaxChatMessageLength];
+            }
+
+            var nickname = _room.TryGetInfo(playerId, out var info) ? info.Nickname : string.Empty;
+
+            var broadcast = new S2CChatBroadcast
+            {
+                PlayerId = playerId,
+                Nickname = nickname,
+                Message = message,
+                Timestamp = request.Timestamp
+            };
+
+            await _room.BroadcastToAllAsync(OpCode.Game_ChatBroadcast, broadcast.Encode(), ct);
         }
 
         // 여러 세션이 동시에(다른 플레이어의 브로드캐스트로) 같은 스트림에 쓸 수 있으므로 직렬화한다.

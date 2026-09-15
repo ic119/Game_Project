@@ -16,6 +16,8 @@ namespace Shared.Networking
         Game_EnterAck = 0x0204,
         Game_PlayerJoined = 0x0205,
         Game_PlayerLeft = 0x0206,
+        Game_ChatRequest = 0x0207,
+        Game_ChatBroadcast = 0x0208,
 
         // 0x03XX = Dungeon
     }

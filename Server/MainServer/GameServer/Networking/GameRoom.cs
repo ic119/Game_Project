@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using Shared.Networking;
 using Shared.Networking.Packets;
 
@@ -56,6 +57,27 @@ namespace GameServer.Networking
 
                 await session.SendAsync(opCode, body, ct);
             }
+        }
+
+        // 채팅처럼 발신자 본인에게도 동일한 메시지를 보여줘야 하는 이벤트용 (Move와 달리 제외 대상이 없다).
+        public async Task BroadcastToAllAsync(OpCode opCode, byte[] body, CancellationToken ct)
+        {
+            foreach (var (_, session) in _players.Values)
+            {
+                await session.SendAsync(opCode, body, ct);
+            }
+        }
+
+        public bool TryGetInfo(long playerId, [NotNullWhen(true)] out PlayerInfo? info)
+        {
+            if (_players.TryGetValue(playerId, out var entry))
+            {
+                info = entry.Info;
+                return true;
+            }
+
+            info = null;
+            return false;
         }
     }
 }
