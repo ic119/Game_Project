@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -12,6 +13,7 @@ namespace Incheol.View.UI
     public class UI_CharacterListItem : MonoBehaviour
     {
         private const string EmptyLastLoginDisplay = "-";
+        private const string LastLoginDisplayFormat = "yyyy-MM-dd HH:mm:ss";
 
         #region Variable
         [SerializeField] private Button selectButton;
@@ -72,8 +74,27 @@ namespace Incheol.View.UI
 
             if (lastLoginText != null)
             {
-                lastLoginText.text = string.IsNullOrEmpty(_character.lastLoginAt) ? EmptyLastLoginDisplay : _character.lastLoginAt;
+                lastLoginText.text = FormatLastLogin(_character.lastLoginAt);
             }
+        }
+
+        /// <summary>
+        /// 서버가 내려준 ISO 8601(UTC) 문자열을 "yyyy-MM-dd HH:mm:ss" 형태의 로컬 시각으로 바꾼다.
+        /// 값이 없거나 파싱에 실패하면(서버 미접속 이력 등) "-"로 표기한다.
+        /// </summary>
+        private static string FormatLastLogin(string _rawLastLoginAt)
+        {
+            if (string.IsNullOrEmpty(_rawLastLoginAt))
+            {
+                return EmptyLastLoginDisplay;
+            }
+
+            if (!DateTime.TryParse(_rawLastLoginAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out DateTime parsed))
+            {
+                return EmptyLastLoginDisplay;
+            }
+
+            return parsed.ToLocalTime().ToString(LastLoginDisplayFormat);
         }
 
         public void SetSelected(bool _isSelected)
