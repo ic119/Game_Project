@@ -10,7 +10,10 @@ using UnityEngine;
 [Serializable]
 public class ItemData
 {
-    [Tooltip("아이템 고유 식별자. UI_InventorySlot.ItemId, InventoryItemStack.itemId와 이 값으로 매칭된다.")]
+    [Tooltip("아이템 고유 식별자. \"카테고리 접두사_스네이크케이스\" 규칙으로 짓는다 - " +
+        "무기 weapon_, 방어구 armor_, 투구 helmet_, 신발 boots_, 장신구 accessory_, 물약 potion_, 재료/기타 material_. " +
+        "예) weapon_sword_iron, potion_health_small, material_stone. " +
+        "UI_InventorySlot.ItemId, InventoryItemStack.itemId와 이 값으로 매칭되므로 한 번 정하면 바꾸지 않는다.")]
     public string itemId;
 
     public string itemName;
