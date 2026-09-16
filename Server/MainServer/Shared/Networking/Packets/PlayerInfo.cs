@@ -7,6 +7,9 @@ namespace Shared.Networking.Packets
     {
         public long PlayerId { get; set; }
         public string Nickname { get; set; } = string.Empty;
+
+        // 이 플레이어가 현재 속한 맵(GameRoom 라우팅 키). GameRoom을 맵별로 분리하는 기준값이다.
+        public string MapId { get; set; } = string.Empty;
         public int HairIndex { get; set; }
         public int EyeIndex { get; set; }
         public int MouthIndex { get; set; }
@@ -26,6 +29,7 @@ namespace Shared.Networking.Packets
         {
             writer.Write(PlayerId);
             writer.Write(Nickname);
+            writer.Write(MapId);
             writer.Write(HairIndex);
             writer.Write(EyeIndex);
             writer.Write(MouthIndex);
@@ -45,6 +49,7 @@ namespace Shared.Networking.Packets
             {
                 PlayerId = reader.ReadInt64(),
                 Nickname = reader.ReadString(),
+                MapId = reader.ReadString(),
                 HairIndex = reader.ReadInt32(),
                 EyeIndex = reader.ReadInt32(),
                 MouthIndex = reader.ReadInt32(),

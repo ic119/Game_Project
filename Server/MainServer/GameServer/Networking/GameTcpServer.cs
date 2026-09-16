@@ -6,7 +6,7 @@ namespace GameServer.Networking
     public class GameTcpServer
     {
         private readonly TcpListener _listener;
-        private readonly GameRoom _room = new();
+        private readonly MapRoomRegistry _mapRooms = new();
 
         public GameTcpServer(int port)
         {
@@ -23,7 +23,7 @@ namespace GameServer.Networking
                 while (!ct.IsCancellationRequested)
                 {
                     var tcpClient = await _listener.AcceptTcpClientAsync(ct);
-                    var session = new ClientSession(tcpClient, _room);
+                    var session = new ClientSession(tcpClient, _mapRooms);
                     _ = session.RunAsync(ct);
                 }
             }

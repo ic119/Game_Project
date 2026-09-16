@@ -5,11 +5,14 @@ using Shared.Networking.Packets;
 
 namespace GameServer.Networking
 {
-    // AOI/룸 시스템이 없는 동안, 접속한 전원이 속하는 단일 글로벌 그룹.
+    // 하나의 맵(mapId)에 속한 접속자들의 그룹. MapRoomRegistry가 맵마다 이 인스턴스를 하나씩 관리한다.
     // 접속자 레지스트리 + "본인 제외 전원 브로드캐스트" 헬퍼를 제공한다.
     public class GameRoom
     {
         private readonly ConcurrentDictionary<long, (PlayerInfo Info, ClientSession Session)> _players = new();
+
+        // 방에 아무도 없으면 MapRoomRegistry가 이 방을 정리(제거)할 수 있도록 알려준다.
+        public bool IsEmpty => _players.IsEmpty;
 
         public void Add(PlayerInfo info, ClientSession session)
         {
