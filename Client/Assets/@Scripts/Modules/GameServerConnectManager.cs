@@ -3,6 +3,9 @@ using Incheol.Utils;
 using System;
 using System.Collections.Concurrent;
 using System.Net.Sockets;
+
+using System.Text;
+
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -37,6 +40,9 @@ namespace Incheol.Modules
         public event Action<GameChatBroadcastPacket> OnChatReceived;
         public event Action<GameDamageBroadcastPacket> OnDamageReceived;
 
+        public event Action<string> OnServerError;
+
+
         #region LifeCycle
         private void Update()
         {
@@ -64,11 +70,18 @@ namespace Incheol.Modules
             _ = ConnectAndEnterAsync(localInfo);
         }
 
-        private async Awaitable ConnectAndEnterAsync(GamePlayerInfo localInfo)
+private async Awaitable ConnectAndEnterAsync(GamePlayerInfo localInfo)
         {
             if (isConnected)
             {
                 DebugLogManager.GenerateErrorMessage<GameServerConnectManager>("이미 GameServer에 접속되어 있습니다.");
+                return;
+            }
+
+            string accessToken = ServerConnectManager.Instance != null ? ServerConnectManager.Instance.AccessToken : null;
+            if (string.IsNullOrEmpty(accessToken))
+            {
+                DebugLogManager.GenerateErrorMessage<GameServerConnectManager>("로그인 세션이 없어 GameServer에 접속할 수 없습니다.");
                 return;
             }
 
@@ -83,7 +96,10 @@ namespace Incheol.Modules
 
                 _ = ReadLoopAsync(cts.Token);
 
-                await SendAsync(GameOpCode.Game_EnterRequest, localInfo.Encode());
+                // AccessToken은 본인 인증에만 쓰이므로 다른 플레이어에게도 브로드캐스트되는 GamePlayerInfo가 아니라
+                // Game_EnterRequest 전용 래퍼(GameEnterRequestPacket)에만 담아 보낸다.
+                var enterRequest = new GameEnterRequestPacket { AccessToken = accessToken, Player = localInfo };
+                await SendAsync(GameOpCode.Game_EnterRequest, enterRequest.Encode());
             }
             catch (Exception exception)
             {
@@ -239,7 +255,7 @@ namespace Incheol.Modules
             }
         }
 
-        private void HandleFrame(ushort opCode, byte[] body)
+private void HandleFrame(ushort opCode, byte[] body)
         {
             switch ((GameOpCode)opCode)
             {
@@ -285,6 +301,12 @@ namespace Incheol.Modules
                 case GameOpCode.Game_DamageBroadcast:
                     var damage = GameDamageBroadcastPacket.Decode(body);
                     pendingActions.Enqueue(() => OnDamageReceived?.Invoke(damage));
+                    break;
+
+                // 서버가 Game_EnterRequest 인증 실패 등으로 연결을 끊기 직전에 보낸다(현재는 인증 실패 사유뿐).
+                case GameOpCode.System_Error:
+                    string errorMessage = Encoding.UTF8.GetString(body);
+                    pendingActions.Enqueue(() => OnServerError?.Invoke(errorMessage));
                     break;
             }
         }

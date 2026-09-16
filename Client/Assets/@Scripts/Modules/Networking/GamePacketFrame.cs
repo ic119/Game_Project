@@ -12,6 +12,11 @@ namespace Incheol.Modules.Networking
         private const int LengthFieldSize = 4;
         private const int OpCodeFieldSize = 2;
 
+        // 한 프레임의 최대 크기(OpCode + Body). Length 필드는 uint라 이론상 4GB까지 값이 올 수 있는데,
+        // 검증 없이 그 값으로 배열을 할당하면 서버가 보낸 손상된 프레임 하나로 메모리 고갈을 유발할 수 있다.
+        // 서버 Shared/Networking/PacketFrame.cs와 동일한 상한을 쓴다.
+        private const int MaxPayloadSize = 64 * 1024;
+
         public static byte[] Encode(ushort opCode, byte[] body)
         {
             int payloadLength = OpCodeFieldSize + body.Length;
@@ -33,6 +38,11 @@ namespace Incheol.Modules.Networking
             }
 
             uint payloadLength = BitConverter.ToUInt32(lengthBuffer, 0);
+            if (payloadLength > MaxPayloadSize)
+            {
+                return null;
+            }
+
             var payloadBuffer = new byte[payloadLength];
             if (!await ReadExactAsync(stream, payloadBuffer, ct))
             {

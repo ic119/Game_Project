@@ -1,4 +1,5 @@
 using System.Net.Sockets;
+using System.Text;
 using Shared.Networking;
 using Shared.Networking.Packets;
 
@@ -10,6 +11,7 @@ namespace GameServer.Networking
         private readonly TcpClient _tcpClient;
         private readonly NetworkStream _stream;
         private readonly MapRoomRegistry _mapRooms;
+        private readonly PlayerAuthValidator _authValidator;
         private readonly SemaphoreSlim _writeLock = new(1, 1);
 
         // 이 세션이 Game_EnterRequest로 등록한 플레이어 id. 등록 전이면 null.
@@ -20,11 +22,12 @@ namespace GameServer.Networking
         private GameRoom? _room;
         private string? _mapId;
 
-        public ClientSession(TcpClient tcpClient, MapRoomRegistry mapRooms)
+        public ClientSession(TcpClient tcpClient, MapRoomRegistry mapRooms, PlayerAuthValidator authValidator)
         {
             _tcpClient = tcpClient;
             _stream = tcpClient.GetStream();
             _mapRooms = mapRooms;
+            _authValidator = authValidator;
         }
 
         public async Task RunAsync(CancellationToken ct)
@@ -50,6 +53,10 @@ namespace GameServer.Networking
             catch (IOException)
             {
                 // 클라이언트 비정상 종료 (연결 끊김)
+            }
+            catch (EnterAuthFailedException)
+            {
+                // Game_EnterRequest 인증 실패로 HandleEnterRequestAsync가 의도적으로 연결을 종료한 경우.
             }
             finally
             {
@@ -88,9 +95,23 @@ namespace GameServer.Networking
 
         // mapId에 해당하는 GameRoom(없으면 새로 생성)에 자신을 등록하고, 본인에게는 그 방의 기존
         // 접속자 목록(Game_EnterAck)을, 나머지에게는 자신의 입장(Game_PlayerJoined)을 알린다.
+        // 등록 전에 AccessToken이 info.PlayerId(characterId)를 실제로 소유한 계정의 것인지 AuthServer에
+        // 확인한다 - 그렇지 않으면 누구나 임의의 PlayerId를 자칭해 접속/조작할 수 있기 때문이다.
         private async Task HandleEnterRequestAsync(byte[] body, CancellationToken ct)
         {
-            var info = PlayerInfo.Decode(body);
+            var request = C2SEnterRequest.Decode(body);
+            var info = request.Player;
+
+            if (!await _authValidator.OwnsCharacterAsync(request.AccessToken, info.PlayerId, ct))
+            {
+                Console.WriteLine($"[GameServer] Game_EnterRequest 인증 실패 (PlayerId={info.PlayerId}) - 연결을 종료합니다.");
+                byte[] errorBody = Encoding.UTF8.GetBytes("인증에 실패했습니다.");
+                await SendAsync(OpCode.System_Error, errorBody, ct);
+                // 소켓은 RunAsync의 finally에서 정리한다 - 여기서 직접 Close()하면 그 직후 루프가
+                // 다시 스트림을 읽으려 할 때 처리되지 않은 ObjectDisposedException이 발생한다.
+                throw new EnterAuthFailedException();
+            }
+
             _playerId = info.PlayerId;
 
             GameRoom room = _mapRooms.GetOrCreate(info.MapId);
@@ -274,6 +295,11 @@ namespace GameServer.Networking
             {
                 _writeLock.Release();
             }
+        }
+
+        // Game_EnterRequest 인증 실패를 RunAsync의 루프 종료 신호로 쓰기 위한 내부 전용 예외.
+        private sealed class EnterAuthFailedException : Exception
+        {
         }
     }
 }

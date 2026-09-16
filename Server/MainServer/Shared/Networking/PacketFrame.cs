@@ -8,6 +8,11 @@ namespace Shared.Networking
         private const int LengthFieldSize = 4;
         private const int OpCodeFieldSize = 2;
 
+        // 한 프레임의 최대 크기(OpCode + Body). Length 필드는 uint라 이론상 4GB까지 값이 올 수 있는데,
+        // 검증 없이 그 값으로 배열을 할당하면 손상되거나 조작된 프레임 하나로 메모리 고갈을 유발할 수 있다.
+        // 가장 큰 실사용 페이로드(채팅 200자 UTF-8 등)보다 넉넉히 잡은 상한이다.
+        private const int MaxPayloadSize = 64 * 1024;
+
         public static byte[] Encode(ushort opCode, byte[] messagePackBody)
         {
             int payloadLength = OpCodeFieldSize + messagePackBody.Length;
@@ -38,6 +43,9 @@ namespace Shared.Networking
                 return null;
 
             uint payloadLength = BitConverter.ToUInt32(lengthBuffer, 0);
+            if (payloadLength > MaxPayloadSize)
+                return null;
+
             var payloadBuffer = new byte[payloadLength];
             if (!await ReadExactAsync(stream, payloadBuffer, ct))
                 return null;

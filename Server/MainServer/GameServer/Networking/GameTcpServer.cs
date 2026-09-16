@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
+using Microsoft.Extensions.Configuration;
 
 namespace GameServer.Networking
 {
@@ -7,10 +8,12 @@ namespace GameServer.Networking
     {
         private readonly TcpListener _listener;
         private readonly MapRoomRegistry _mapRooms = new();
+        private readonly PlayerAuthValidator _authValidator;
 
-        public GameTcpServer(int port)
+        public GameTcpServer(int port, IConfiguration configuration)
         {
             _listener = new TcpListener(IPAddress.Any, port);
+            _authValidator = new PlayerAuthValidator(configuration);
         }
 
         public async Task RunAsync(CancellationToken ct)
@@ -23,7 +26,7 @@ namespace GameServer.Networking
                 while (!ct.IsCancellationRequested)
                 {
                     var tcpClient = await _listener.AcceptTcpClientAsync(ct);
-                    var session = new ClientSession(tcpClient, _mapRooms);
+                    var session = new ClientSession(tcpClient, _mapRooms, _authValidator);
                     _ = session.RunAsync(ct);
                 }
             }
