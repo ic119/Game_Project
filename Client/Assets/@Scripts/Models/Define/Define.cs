@@ -62,3 +62,16 @@ public enum EquipmentSlotType
     Boots,
     Accessory
 }
+
+// ItemDatabaseSO(ScriptableObject)에 아이템 데이터와 함께 정수값으로 직렬화되므로,
+// 선언 순서를 바꾸지 말고 새 등급은 항상 끝에 추가할 것.
+/// <summary>
+/// 아이템 등급. 인벤토리 슬롯의 GradeBorder 색상(ItemGradeUtils.GetGradeColor)이 이 값으로 결정된다.
+/// </summary>
+public enum ItemGrade
+{
+    Common = 0,     // 일반
+    Rare = 1,       // 희귀
+    Epic = 2,       // 영웅
+    Legendary = 3   // 전설
+}

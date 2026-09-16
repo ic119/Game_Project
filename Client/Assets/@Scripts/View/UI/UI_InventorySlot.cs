@@ -1,4 +1,5 @@
 using System;
+using Incheol.Utils;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -79,7 +80,7 @@ namespace Incheol.View.UI
             }
         }
 
-        public void SetItem(string _id, Sprite _icon, int _count, Color? _gradeColor = null)
+        public void SetItem(string _id, Sprite _icon, int _count, ItemGrade _itemGrade)
         {
             hasItem = true;
             itemId = _id;
@@ -104,9 +105,9 @@ namespace Incheol.View.UI
                 }
             }
 
-            if (gradeBorder != null && _gradeColor.HasValue)
+            if (gradeBorder != null)
             {
-                gradeBorder.color = _gradeColor.Value;
+                gradeBorder.color = _itemGrade.GetGradeColor();
                 gradeBorder.gameObject.SetActive(true);
             }
 

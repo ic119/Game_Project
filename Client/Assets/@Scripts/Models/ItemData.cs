@@ -28,8 +28,8 @@ public class ItemData
 
     public Sprite icon;
 
-    [Tooltip("슬롯 등급 테두리 색상.")]
-    public Color gradeColor = Color.white;
+    [Tooltip("아이템 등급. 인벤토리 슬롯의 GradeBorder 색상이 이 값에 따라 자동으로 정해진다(ItemGradeUtils.GetGradeColor).")]
+    public ItemGrade itemGrade = ItemGrade.Common;
 
     [Min(1)]
     [Tooltip("한 슬롯에 중첩 가능한 최대 개수. 장비류는 보통 1.")]
