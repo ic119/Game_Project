@@ -3,9 +3,7 @@ using Incheol.Utils;
 using System;
 using System.Collections.Concurrent;
 using System.Net.Sockets;
-
 using System.Text;
-
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -24,6 +22,10 @@ namespace Incheol.Modules
         [SerializeField] private string host = "localhost";
         [SerializeField] private int port = 9000;
 
+        [Header("하트비트(연결 생존 확인)")]
+        [SerializeField, Min(1f)] private float heartbeatInterval = 10f;
+        [SerializeField, Min(1f)] private float heartbeatTimeoutSeconds = 30f;
+
         protected override bool PersistAcrossScenes => true;
 
         private TcpClient tcpClient;
@@ -33,15 +35,19 @@ namespace Incheol.Modules
 
         private long localPlayerId;
         private bool isConnected;
+        private float heartbeatSendTimer;
+        private float timeSinceLastHeartbeatAck;
+
+        // 자발적으로 Disconnect()를 호출한 경우(씬 전환 등) OnDisconnected를 쓰지 않기 위한 구분값.
+        private bool intentionalDisconnect;
 
         public event Action<GamePlayerInfo> OnPlayerJoined;
         public event Action<long> OnPlayerLeft;
         public event Action<GameMoveBroadcastPacket> OnPlayerMoved;
         public event Action<GameChatBroadcastPacket> OnChatReceived;
         public event Action<GameDamageBroadcastPacket> OnDamageReceived;
-
+        public event Action OnDisconnected;
         public event Action<string> OnServerError;
-
 
         #region LifeCycle
         private void Update()
@@ -49,6 +55,27 @@ namespace Incheol.Modules
             while (pendingActions.TryDequeue(out Action action))
             {
                 action();
+            }
+
+            if (!isConnected)
+            {
+                return;
+            }
+
+            heartbeatSendTimer += Time.deltaTime;
+            timeSinceLastHeartbeatAck += Time.deltaTime;
+
+            if (timeSinceLastHeartbeatAck > heartbeatTimeoutSeconds)
+            {
+                DebugLogManager.GenerateErrorMessage<GameServerConnectManager>($"{heartbeatTimeoutSeconds}초 동안 GameServer 응답이 없어 연결을 끊습니다.");
+                CloseConnectionUnexpectedly();
+                return;
+            }
+
+            if (heartbeatSendTimer >= heartbeatInterval)
+            {
+                heartbeatSendTimer = 0f;
+                _ = SendAsync(GameOpCode.System_Heartbeat, Array.Empty<byte>());
             }
         }
 
@@ -70,7 +97,7 @@ namespace Incheol.Modules
             _ = ConnectAndEnterAsync(localInfo);
         }
 
-private async Awaitable ConnectAndEnterAsync(GamePlayerInfo localInfo)
+        private async Awaitable ConnectAndEnterAsync(GamePlayerInfo localInfo)
         {
             if (isConnected)
             {
@@ -93,6 +120,9 @@ private async Awaitable ConnectAndEnterAsync(GamePlayerInfo localInfo)
                 cts = new CancellationTokenSource();
                 localPlayerId = localInfo.PlayerId;
                 isConnected = true;
+                intentionalDisconnect = false;
+                heartbeatSendTimer = 0f;
+                timeSinceLastHeartbeatAck = 0f;
 
                 _ = ReadLoopAsync(cts.Token);
 
@@ -206,6 +236,17 @@ private async Awaitable ConnectAndEnterAsync(GamePlayerInfo localInfo)
                 return;
             }
 
+            intentionalDisconnect = true;
+            isConnected = false;
+            cts?.Cancel();
+            stream?.Close();
+            tcpClient?.Close();
+        }
+
+        // 하트비트 타임아웃 등 연결이 예기치 않게 끝났을 때 쓴다. Disconnect()와 달리
+        // intentionalDisconnect를 설정하지 않아서 ReadLoopAsync의 finally가 OnDisconnected를 발화하게 된다.
+        private void CloseConnectionUnexpectedly()
+        {
             isConnected = false;
             cts?.Cancel();
             stream?.Close();
@@ -224,9 +265,10 @@ private async Awaitable ConnectAndEnterAsync(GamePlayerInfo localInfo)
                 byte[] frame = GamePacketFrame.Encode((ushort)opCode, body);
                 await stream.WriteAsync(frame, cts.Token);
             }
-            catch (Exception)
+            catch (Exception exception)
             {
-                // 접속이 끊긴 상태에서의 전송 실패는 ReadLoopAsync 쪽에서 이미 처리(연결 종료)하므로 여기서는 무시한다.
+                // 접속이 끊긴 상태에서의 전송 실패는 ReadLoopAsync 쪽에서 이미 처리하지만, 디버깅을 위해 로그는 남겨둔다.
+                DebugLogManager.GenerateErrorMessage<GameServerConnectManager>($"GameServer 전송 실패 opCode={opCode} : {exception.Message}");
             }
         }
 
@@ -252,10 +294,15 @@ private async Awaitable ConnectAndEnterAsync(GamePlayerInfo localInfo)
             finally
             {
                 isConnected = false;
+
+                if (!intentionalDisconnect)
+                {
+                    pendingActions.Enqueue(() => OnDisconnected?.Invoke());
+                }
             }
         }
 
-private void HandleFrame(ushort opCode, byte[] body)
+        private void HandleFrame(ushort opCode, byte[] body)
         {
             switch ((GameOpCode)opCode)
             {
@@ -301,6 +348,11 @@ private void HandleFrame(ushort opCode, byte[] body)
                 case GameOpCode.Game_DamageBroadcast:
                     var damage = GameDamageBroadcastPacket.Decode(body);
                     pendingActions.Enqueue(() => OnDamageReceived?.Invoke(damage));
+                    break;
+
+                // 클라이언트가 주기적으로 보낸 System_Heartbeat에 대한 서버 응답이다 - 타임아웃 타이머를 초기화한다.
+                case GameOpCode.System_Heartbeat:
+                    pendingActions.Enqueue(() => timeSinceLastHeartbeatAck = 0f);
                     break;
 
                 // 서버가 Game_EnterRequest 인증 실패 등으로 연결을 끊기 직전에 보낸다(현재는 인증 실패 사유뿐).

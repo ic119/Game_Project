@@ -56,6 +56,8 @@ namespace Incheol.Presenter.Scene
             {
                 GameServerConnectManager.Instance.OnChatReceived += HandleChatReceived;
                 GameServerConnectManager.Instance.OnDamageReceived += HandleDamageReceived;
+                GameServerConnectManager.Instance.OnServerError += HandleGameServerError;
+                GameServerConnectManager.Instance.OnDisconnected += HandleGameServerDisconnected;
             }
         }
 
@@ -65,6 +67,8 @@ namespace Incheol.Presenter.Scene
             {
                 GameServerConnectManager.Instance.OnChatReceived -= HandleChatReceived;
                 GameServerConnectManager.Instance.OnDamageReceived -= HandleDamageReceived;
+                GameServerConnectManager.Instance.OnServerError -= HandleGameServerError;
+                GameServerConnectManager.Instance.OnDisconnected -= HandleGameServerDisconnected;
             }
         }
 
@@ -500,6 +504,23 @@ namespace Incheol.Presenter.Scene
             }
 
             spawnedPlayerModel.TakeDamage(new DamageInfo(packet.AttackerId, packet.Damage));
+        }
+
+        /// <summary>
+        /// GameServer가 Game_EnterRequest 인증 실패 등으로 연결을 끊기 직전에 보낸 사유(System_Error)를 알림 팝업으로 보여준다.
+        /// </summary>
+        private void HandleGameServerError(string message)
+        {
+            GameManager.Instance?.ShowAlarmPopup("서버 오류", message);
+        }
+
+        /// <summary>
+        /// 하트비트 타임아웃 등으로 GameServer 연결이 예기치 않게 끊어졌을 때(씬 전환 등으로 직접 Disconnect()를
+        /// 호출한 경우는 포함되지 않음) 알림 팝업으로 사용자에게 알린다.
+        /// </summary>
+        private void HandleGameServerDisconnected()
+        {
+            GameManager.Instance?.ShowAlarmPopup("연결 끊김", "게임 서버와의 연결이 끊어졌습니다.");
         }
 
         /// <summary>
