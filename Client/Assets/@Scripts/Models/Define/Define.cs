@@ -16,7 +16,8 @@ namespace Incheol.Models.Define
         UI_CharacterListItem = 8,
         UI_GameScene = 9,
         Farm = 10,
-        UI_InventorySlot = 11
+        UI_InventorySlot = 11,
+        Camp001 = 12
     }
 }
 
