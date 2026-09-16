@@ -1,5 +1,4 @@
 using Incheol.Models.Define;
-using Incheol.Modules;
 using Incheol.Presenter.Scene;
 using Incheol.Utils;
 using System.Collections;
@@ -8,29 +7,27 @@ using UnityEngine.Events;
 
 namespace Incheol.Controller.Interaction
 {
+    // ScriptableObject/프리팹에 정수값으로 직렬화되므로 기존 멤버의 번호는 유지한다(과거 SceneLoad=0은 폐기됨).
     public enum PortalTeleportType
     {
-        SceneLoad,         // 다른 씬으로 이동 (SceneLoadManager)
-        CoordinateTeleport, // 같은 씬 내의 다른 위치로 순간이동
-        MapSwap             // 씬은 유지한 채 맵 프리팹만 교체 (GameSceneManager.SwapMap, GameServer Game_MapChangeRequest 연동)
+        CoordinateTeleport = 1, // 같은 씬 내의 다른 위치로 순간이동
+        MapSwap = 2             // 씬은 유지한 채 맵 프리팹만 교체 (GameSceneManager.SwapMap, GameServer Game_MapChangeRequest 연동)
     }
 
     /// <summary>
     /// 맵 이동 및 순간이동을 지원하는 포털 컨트롤러 컴포넌트.
-    /// 플레이어가 포털 영역에 진입했을 때 씬 전환(SceneLoadManager), 같은 씬 내 좌표 이동, 또는 씬은 유지한 채
-    /// 맵 프리팹만 교체(GameSceneManager.SwapMap)하는 것 중 하나를 처리하며, 연한 파랑 계열의 빛 펄스,
+    /// 플레이어가 포털 영역에 진입했을 때 같은 씬 내 좌표 이동, 또는 씬은 유지한 채 맵 프리팹만
+    /// 교체(GameSceneManager.SwapMap)하는 것 중 하나를 처리하며, 연한 파랑 계열의 빛 펄스,
     /// 룬 링 회전, 파티클 상승 등의 시각 효과를 제어한다.
+    /// 다른 Scene(예: LobbyScene)으로의 전환은 맵 프리팹으로 표현할 수 없어 이 컨트롤러의 책임 밖이다.
     /// </summary>
     [RequireComponent(typeof(Collider))]
     public class MapPortalController : MonoBehaviour
     {
         #region Variable
         [Header("Teleport Settings")]
-        [Tooltip("포털 동작 방식: 씬 로드 또는 좌표 텔레포트")]
-        [SerializeField] private PortalTeleportType teleportType = PortalTeleportType.SceneLoad;
-
-        [Tooltip("SceneLoad 방식일 때 이동할 목표 씬의 태그(예: GameScene, LobbyScene 등)")]
-        [SerializeField] private string targetSceneTag = "LobbyScene";
+        [Tooltip("포털 동작 방식: 좌표 텔레포트 또는 맵 스왑")]
+        [SerializeField] private PortalTeleportType teleportType = PortalTeleportType.CoordinateTeleport;
 
         [Tooltip("MapSwap 방식일 때 로드할 맵의 Addressable 키. GameSceneManager.SwapMap으로 전달된다.")]
         [SerializeField] private AddressableAssetKey targetMapKey = AddressableAssetKey.None;
@@ -234,28 +231,12 @@ namespace Incheol.Controller.Interaction
         }
 
         /// <summary>
-        /// 실제 씬 이동 또는 좌표 이동을 수행한다.
+        /// 실제 좌표 이동 또는 맵 스왑을 수행한다.
         /// </summary>
         private void ExecuteTeleport(GameObject player)
         {
             switch (teleportType)
             {
-                case PortalTeleportType.SceneLoad:
-                    if (string.IsNullOrEmpty(targetSceneTag))
-                    {
-                        DebugLogManager.GenerateErrorMessage<MapPortalController>("목표 씬 태그(targetSceneTag)가 설정되어 있지 않습니다.");
-                        return;
-                    }
-
-                    if (SceneLoadManager.Instance == null)
-                    {
-                        DebugLogManager.GenerateErrorMessage<MapPortalController>("SceneLoadManager.Instance가 null입니다.");
-                        return;
-                    }
-
-                    SceneLoadManager.Instance.LoadSceneByTags(targetSceneTag);
-                    break;
-
                 case PortalTeleportType.CoordinateTeleport:
                     if (player != null)
                     {
@@ -305,15 +286,6 @@ namespace Incheol.Controller.Interaction
             isCoolingDown = true;
             yield return new WaitForSeconds(cooldownTime);
             isCoolingDown = false;
-        }
-
-        /// <summary>
-        /// 외부 스크립트에서 목적지 씬 태그를 동적으로 설정할 수 있는 편의 메서드.
-        /// </summary>
-        public void SetTargetSceneTag(string sceneTag)
-        {
-            targetSceneTag = sceneTag;
-            teleportType = PortalTeleportType.SceneLoad;
         }
 
         /// <summary>
