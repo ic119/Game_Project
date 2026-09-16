@@ -26,9 +26,7 @@ namespace Incheol.Controller
         [SerializeField, Min(0.05f)] private float comboStageDuration = 16f / 30f;
         [Tooltip("각 단계 시작 후 이 시간이 지나야 다음 입력을 콤보 연계로 인정한다(스윙 시작 직후 캔슬 방지).")]
         [SerializeField, Min(0f)] private float comboInputGuard = 0.15f;
-        [Tooltip("단계 종료 후 이 시간 안에 다음 입력이 없으면 콤보가 끊기고 Idle로 돌아간다.")]
-        [SerializeField, Min(0f)] private float comboWindowGrace = 0.2f;
-        [Tooltip("마지막 타수(2콤보) 공격이 끝난 뒤 다음 공격을 다시 받아들이기까지의 딜레이(초). 공격 판정이 곧바로 겹치지 않도록 여유를 둔다.")]
+        [Tooltip("마지막 타수(2콤보) 공격이 끝난 뒤 다음 공격을 다시 받아들이기까지의 딜레이(초). 애니메이션은 이 딜레이와 무관하게 공격 종료 즉시 Idle로 돌아가고, 이 값은 공격 판정(RequestAttack)이 곧바로 겹치지 않도록 입력만 잠근다.")]
         [SerializeField, Min(0f)] private float comboFinishDelay = 0.25f;
 
         private const string AttackLayerName = "Attack Layer";
@@ -40,6 +38,7 @@ namespace Incheol.Controller
 
         private int comboStage;
         private float stageStartTime;
+        private float nextAttackReadyTime;
 
         private void Awake()
         {
@@ -52,15 +51,11 @@ namespace Incheol.Controller
 
         private void Update()
         {
-            // 단계 시간 + 유예시간이 지나도록 다음 입력이 없었다면 콤보가 끊긴 것으로 보고 Idle로 되돌린다.
-            // 마지막 타수는 도중에 끊긴 것이 아니라 콤보를 완료한 것이므로, 다음 공격과 겹치지 않도록 별도의 comboFinishDelay를 적용한다.
-            if (comboStage > 0)
+            // 애니메이션 클립 길이(comboStageDuration)가 끝나는 즉시 Idle로 되돌린다.
+            // 클립이 끝난 뒤에도 자세를 유지하면 캐릭터가 공격 자세로 멈춰있는 것처럼 보이므로 유예 없이 바로 리셋한다.
+            if (comboStage > 0 && Time.time >= stageStartTime + comboStageDuration)
             {
-                float graceDuration = comboStage >= maxComboStage ? comboFinishDelay : comboWindowGrace;
-                if (Time.time >= stageStartTime + comboStageDuration + graceDuration)
-                {
-                    ResetCombo();
-                }
+                ResetCombo();
             }
 
             if (!Input.GetKeyDown(attackKey))
@@ -70,6 +65,12 @@ namespace Incheol.Controller
 
             if (comboStage == 0)
             {
+                // 마지막 타수(콤보 완료) 직후에는 comboFinishDelay가 지나기 전까지 새 공격을 받지 않는다.
+                if (Time.time < nextAttackReadyTime)
+                {
+                    return;
+                }
+
                 StartCombo();
             }
             else if (comboStage < maxComboStage && Time.time >= stageStartTime + comboInputGuard)
@@ -83,6 +84,7 @@ namespace Incheol.Controller
         {
             comboStage = 1;
             stageStartTime = Time.time;
+            UpdateNextAttackReadyTime();
 
             if (animator != null && attackLayerIndex >= 0)
             {
@@ -97,6 +99,7 @@ namespace Incheol.Controller
         {
             comboStage++;
             stageStartTime = Time.time;
+            UpdateNextAttackReadyTime();
 
             if (animator != null && attackLayerIndex >= 0)
             {
@@ -104,6 +107,14 @@ namespace Incheol.Controller
             }
 
             RequestAttack();
+        }
+
+        private void UpdateNextAttackReadyTime()
+        {
+            if (comboStage >= maxComboStage)
+            {
+                nextAttackReadyTime = stageStartTime + comboStageDuration + comboFinishDelay;
+            }
         }
 
         private void ResetCombo()
