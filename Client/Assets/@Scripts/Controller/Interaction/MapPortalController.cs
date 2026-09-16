@@ -1,4 +1,5 @@
 using Incheol.Modules;
+using Incheol.Presenter.Scene;
 using Incheol.Utils;
 using System.Collections;
 using UnityEngine;
@@ -9,13 +10,15 @@ namespace Incheol.Controller.Interaction
     public enum PortalTeleportType
     {
         SceneLoad,         // 다른 씬으로 이동 (SceneLoadManager)
-        CoordinateTeleport // 같은 씬 내의 다른 위치로 순간이동
+        CoordinateTeleport, // 같은 씬 내의 다른 위치로 순간이동
+        MapSwap             // 씬은 유지한 채 맵 프리팹만 교체 (GameSceneManager.SwapMap, GameServer Game_MapChangeRequest 연동)
     }
 
     /// <summary>
     /// 맵 이동 및 순간이동을 지원하는 포털 컨트롤러 컴포넌트.
-    /// 플레이어가 포털 영역에 진입했을 때 씬 전환(SceneLoadManager) 또는 좌표 이동을 처리하며,
-    /// 연한 파랑 계열의 빛 펄스, 룬 링 회전, 파티클 상승 등의 시각 효과를 제어한다.
+    /// 플레이어가 포털 영역에 진입했을 때 씬 전환(SceneLoadManager), 같은 씬 내 좌표 이동, 또는 씬은 유지한 채
+    /// 맵 프리팹만 교체(GameSceneManager.SwapMap)하는 것 중 하나를 처리하며, 연한 파랑 계열의 빛 펄스,
+    /// 룬 링 회전, 파티클 상승 등의 시각 효과를 제어한다.
     /// </summary>
     [RequireComponent(typeof(Collider))]
     public class MapPortalController : MonoBehaviour
@@ -27,6 +30,12 @@ namespace Incheol.Controller.Interaction
 
         [Tooltip("SceneLoad 방식일 때 이동할 목표 씬의 태그(예: GameScene, LobbyScene 등)")]
         [SerializeField] private string targetSceneTag = "LobbyScene";
+
+        [Tooltip("MapSwap 방식일 때 로드할 맵의 Addressable 키(예: Farm). GameSceneManager.SwapMap으로 전달된다.")]
+        [SerializeField] private string targetMapKey = string.Empty;
+
+        [Tooltip("MapSwap 방식일 때 새 맵 안에서 플레이어를 배치할 진입 지점 Transform의 이름")]
+        [SerializeField] private string targetMapEntryPointName = "RespawnPoint";
 
         [Tooltip("CoordinateTeleport 방식일 때 이동할 목표 Transform")]
         [SerializeField] private Transform targetDestination;
@@ -269,6 +278,24 @@ namespace Incheol.Controller.Interaction
                         onTeleportCompleted?.Invoke();
                     }
                     break;
+
+                case PortalTeleportType.MapSwap:
+                    if (string.IsNullOrEmpty(targetMapKey))
+                    {
+                        DebugLogManager.GenerateErrorMessage<MapPortalController>("목표 맵 키(targetMapKey)가 설정되어 있지 않습니다.");
+                        return;
+                    }
+
+                    GameSceneManager sceneManager = FindAnyObjectByType<GameSceneManager>();
+                    if (sceneManager == null)
+                    {
+                        DebugLogManager.GenerateErrorMessage<MapPortalController>("GameSceneManager를 찾을 수 없습니다.");
+                        return;
+                    }
+
+                    sceneManager.SwapMap(targetMapKey, targetMapEntryPointName);
+                    onTeleportCompleted?.Invoke();
+                    break;
             }
         }
 
@@ -286,6 +313,16 @@ namespace Incheol.Controller.Interaction
         {
             targetSceneTag = sceneTag;
             teleportType = PortalTeleportType.SceneLoad;
+        }
+
+        /// <summary>
+        /// 외부 스크립트에서 맵 스왑 목적지를 동적으로 설정할 수 있는 편의 메서드.
+        /// </summary>
+        public void SetTargetMap(string mapKey, string entryPointName = "RespawnPoint")
+        {
+            targetMapKey = mapKey;
+            targetMapEntryPointName = entryPointName;
+            teleportType = PortalTeleportType.MapSwap;
         }
 
         /// <summary>

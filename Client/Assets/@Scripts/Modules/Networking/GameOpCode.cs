@@ -15,6 +15,8 @@ namespace Incheol.Modules.Networking
         Game_ChatRequest = 0x0207,
         Game_ChatBroadcast = 0x0208,
         Game_AttackRequest = 0x0209,
-        Game_DamageBroadcast = 0x020A
+        Game_DamageBroadcast = 0x020A,
+        Game_MapChangeRequest = 0x020B,
+        Game_MapChangeAck = 0x020C
     }
 }

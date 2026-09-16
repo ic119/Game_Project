@@ -137,6 +137,31 @@ namespace Incheol.Modules
         }
 
         /// <summary>
+        /// 같은 접속을 유지한 채 다른 맵으로 이동했음을 GameServer에 알린다(Game_MapChangeRequest).
+        /// 서버는 이전 맵 방에서 빼고 새 맵 방에 등록한 뒤, 새 맵의 기존 접속자 목록을 Game_MapChangeAck로 돌려준다.
+        /// MapPortalController가 맵(프리팹) 교체를 마친 직후 호출해야 한다.
+        /// </summary>
+        public void SendMapChange(string mapId, float x, float y, float z, float rotationY)
+        {
+            if (!isConnected)
+            {
+                return;
+            }
+
+            var request = new GameMapChangeRequestPacket
+            {
+                PlayerId = localPlayerId,
+                MapId = mapId,
+                X = x,
+                Y = y,
+                Z = z,
+                RotationY = rotationY
+            };
+
+            _ = SendAsync(GameOpCode.Game_MapChangeRequest, request.Encode());
+        }
+
+        /// <summary>
         /// 공격 의사를 GameServer에 보낸다(Game_AttackRequest). 데미지 수치는 보내지 않는다 - 서버가
         /// Game_EnterRequest 때 등록된 자신의 AttackPower를 사용해 그대로 중계하고, 방어력 차감은
         /// 각 클라이언트가 target의 로컬 Defense로 직접 계산한다.
@@ -221,6 +246,17 @@ namespace Incheol.Modules
                 case GameOpCode.Game_EnterAck:
                     var ack = GameEnterAckPacket.Decode(body);
                     foreach (GamePlayerInfo player in ack.ExistingPlayers)
+                    {
+                        pendingActions.Enqueue(() => OnPlayerJoined?.Invoke(player));
+                    }
+                    break;
+
+                // 페이로드 구조가 Game_EnterAck과 동일하므로(새 맵의 기존 접속자 목록) 같은 디코더를 재사용한다.
+                // 이전 맵에서 스폰돼있던 원격 플레이어 정리는 서버 응답을 기다리지 않고 맵 전환을 시작한
+                // 클라이언트 쪽(RemotePlayerManager.ClearAll)에서 이미 처리했다는 전제다.
+                case GameOpCode.Game_MapChangeAck:
+                    var mapChangeAck = GameEnterAckPacket.Decode(body);
+                    foreach (GamePlayerInfo player in mapChangeAck.ExistingPlayers)
                     {
                         pendingActions.Enqueue(() => OnPlayerJoined?.Invoke(player));
                     }

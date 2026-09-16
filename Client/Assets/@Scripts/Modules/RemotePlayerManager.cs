@@ -104,6 +104,23 @@ namespace Incheol.Modules
             });
         }
 
+        /// <summary>
+        /// 맵 전환 시작 시 호출한다. 지금 스폰되어 있는 원격 플레이어는 전부 이전 맵 소속이므로,
+        /// 서버의 Game_MapChangeAck(새 맵 기존 접속자 목록)로 다시 채워지기 전에 미리 전부 비워야 한다.
+        /// </summary>
+        public void ClearAll()
+        {
+            foreach (RemoteCharacterController controller in remotePlayers.Values)
+            {
+                if (controller != null)
+                {
+                    Destroy(controller.gameObject);
+                }
+            }
+
+            remotePlayers.Clear();
+        }
+
         private void HandlePlayerLeft(long playerId)
         {
             if (!remotePlayers.TryGetValue(playerId, out RemoteCharacterController controller))

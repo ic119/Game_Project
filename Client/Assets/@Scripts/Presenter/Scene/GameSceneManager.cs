@@ -20,6 +20,19 @@ namespace Incheol.Presenter.Scene
         private GameObject inventoryInstance;
 
         /// <summary>
+        /// 현재 로드되어 있는 맵 프리팹 인스턴스와 그 Addressable 키.
+        /// MapPortalController(PortalTeleportType.MapSwap)가 SwapMap을 호출할 때 이전 맵을 정리하는 데 쓴다.
+        /// </summary>
+        private GameObject currentMapInstance;
+        private string currentMapId = nameof(AddressableAssetKey.Farm);
+
+        /// <summary>
+        /// 로컬 플레이어 인스턴스. SpawnPlayerCharacter에서 respawnPoint의 자식으로 생성되므로,
+        /// 맵 전환 시 맵 프리팹이 파괴되기 전에 분리(SetParent)해서 함께 파괴되지 않도록 해야 한다.
+        /// </summary>
+        private GameObject localPlayerInstance;
+
+        /// <summary>
         /// 인벤토리 UI(inventoryInstance)의 현재 활성화 여부를 들고 있는 상태값.
         /// I키 토글 시 gameObject.activeSelf를 직접 확인하는 대신 이 값을 기준(source of truth)으로 판단한다.
         /// </summary>
@@ -134,6 +147,8 @@ namespace Incheol.Presenter.Scene
                     // 생성 직후 맵 안의 RespawnPoint를 찾아 그 자리에 선택된 캐릭터를 스폰한다.
                     if (key == AddressableAssetKey.Farm)
                     {
+                        currentMapInstance = instance;
+                        currentMapId = keyString;
                         SpawnPlayerAtRespawnPoint(instance);
                     }
 
@@ -196,6 +211,71 @@ namespace Incheol.Presenter.Scene
         }
 
         /// <summary>
+        /// MapPortalController(PortalTeleportType.MapSwap)가 호출한다. Scene을 전환하지 않고 현재 맵 프리팹만
+        /// 제거한 뒤 새 맵을 로드해서, 그 안의 _entryPointName Transform으로 로컬 플레이어를 옮긴다.
+        /// GameSceneManager/UI_GameScene/GameServerConnectManager 접속은 그대로 유지된다.
+        /// </summary>
+        public void SwapMap(string _newMapKey, string _entryPointName = "RespawnPoint")
+        {
+            if (AddressableAssetManager.Instance == null || localPlayerInstance == null)
+            {
+                DebugLogManager.GenerateErrorMessage<GameSceneManager>("SwapMap을 수행할 수 없습니다 (AddressableAssetManager 또는 플레이어가 준비되지 않음).");
+                return;
+            }
+
+            // 맵 프리팹이 파괴되기 전에 플레이어를 먼저 분리한다 - RespawnPoint 하위에 있으므로 같이 파괴되는 걸 막는다.
+            localPlayerInstance.transform.SetParent(transform, true);
+
+            // 지금 스폰돼있는 원격 플레이어는 전부 이전 맵 소속이므로 미리 비운다.
+            // 새 맵 목록은 Game_MapChangeAck 응답으로 다시 채워진다.
+            RemotePlayerManager.Instance?.ClearAll();
+
+            if (currentMapInstance != null)
+            {
+                Destroy(currentMapInstance);
+                currentMapInstance = null;
+            }
+
+            AddressableAssetManager.Instance.LoadPrefabAddress<GameObject>(_newMapKey, prefab =>
+            {
+                if (this == null || localPlayerInstance == null)
+                {
+                    return;
+                }
+
+                if (prefab == null)
+                {
+                    DebugLogManager.GenerateErrorMessage<GameSceneManager>($"맵 로드 실패 Key : {_newMapKey}");
+                    return;
+                }
+
+                currentMapInstance = AddressableAssetManager.Instance.InstantiatePrefab(prefab, transform);
+                currentMapId = _newMapKey;
+
+                Transform entryPoint = FindChildRecursive(currentMapInstance.transform, _entryPointName);
+                if (entryPoint == null)
+                {
+                    DebugLogManager.GenerateErrorMessage<GameSceneManager>($"{_newMapKey} 맵에서 {_entryPointName}을 찾을 수 없습니다.");
+                    return;
+                }
+
+                if (localPlayerInstance.TryGetComponent(out Rigidbody rb))
+                {
+                    rb.linearVelocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                    rb.position = entryPoint.position;
+                    rb.rotation = entryPoint.rotation;
+                }
+                else
+                {
+                    localPlayerInstance.transform.SetPositionAndRotation(entryPoint.position, entryPoint.rotation);
+                }
+
+                GameServerConnectManager.Instance?.SendMapChange(_newMapKey, entryPoint.position.x, entryPoint.position.y, entryPoint.position.z, entryPoint.eulerAngles.y);
+            });
+        }
+
+        /// <summary>
         /// BasicCharacter를 Addressable로 로드해 _respawnPoint의 자식으로 생성하고,
         /// SaveDataManager에 저장된 선택 캐릭터의 외형(헤어/눈/입)을 적용한다.
         /// </summary>
@@ -223,6 +303,7 @@ namespace Incheol.Presenter.Scene
                 GameObject playerInstance = AddressableAssetManager.Instance.InstantiatePrefab(prefab, _respawnPoint);
                 playerInstance.transform.localPosition = Vector3.zero;
                 playerInstance.transform.localRotation = Quaternion.identity;
+                localPlayerInstance = playerInstance;
 
                 ApplySelectedCharacterCustomization(playerInstance);
                 AssignPlayerToFollowCamera(playerInstance.transform);
@@ -316,6 +397,7 @@ namespace Incheol.Presenter.Scene
             {
                 PlayerId = _userSaveData.characterId,
                 Nickname = _userSaveData.nickname,
+                MapId = currentMapId,
                 HairIndex = _userSaveData.hairIndex,
                 EyeIndex = _userSaveData.eyeIndex,
                 MouthIndex = _userSaveData.mouthIndex,

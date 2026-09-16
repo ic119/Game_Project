@@ -10,6 +10,9 @@ namespace Incheol.Modules.Networking
     {
         public long PlayerId;
         public string Nickname = string.Empty;
+
+        // 이 플레이어가 현재 속한 맵(서버 GameRoom 라우팅 키). MapPortalController가 맵을 옮길 때마다 갱신된다.
+        public string MapId = string.Empty;
         public int HairIndex;
         public int EyeIndex;
         public int MouthIndex;
@@ -30,6 +33,7 @@ namespace Incheol.Modules.Networking
         {
             writer.Write(PlayerId);
             writer.Write(Nickname);
+            writer.Write(MapId);
             writer.Write(HairIndex);
             writer.Write(EyeIndex);
             writer.Write(MouthIndex);
@@ -49,6 +53,7 @@ namespace Incheol.Modules.Networking
             {
                 PlayerId = reader.ReadInt64(),
                 Nickname = reader.ReadString(),
+                MapId = reader.ReadString(),
                 HairIndex = reader.ReadInt32(),
                 EyeIndex = reader.ReadInt32(),
                 MouthIndex = reader.ReadInt32(),
