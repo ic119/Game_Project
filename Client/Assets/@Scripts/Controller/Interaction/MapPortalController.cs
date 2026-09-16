@@ -1,3 +1,4 @@
+using Incheol.Models.Define;
 using Incheol.Modules;
 using Incheol.Presenter.Scene;
 using Incheol.Utils;
@@ -31,8 +32,8 @@ namespace Incheol.Controller.Interaction
         [Tooltip("SceneLoad 방식일 때 이동할 목표 씬의 태그(예: GameScene, LobbyScene 등)")]
         [SerializeField] private string targetSceneTag = "LobbyScene";
 
-        [Tooltip("MapSwap 방식일 때 로드할 맵의 Addressable 키(예: Farm). GameSceneManager.SwapMap으로 전달된다.")]
-        [SerializeField] private string targetMapKey = string.Empty;
+        [Tooltip("MapSwap 방식일 때 로드할 맵의 Addressable 키. GameSceneManager.SwapMap으로 전달된다.")]
+        [SerializeField] private AddressableAssetKey targetMapKey = AddressableAssetKey.None;
 
         [Tooltip("MapSwap 방식일 때 새 맵 안에서 플레이어를 배치할 진입 지점 Transform의 이름")]
         [SerializeField] private string targetMapEntryPointName = "RespawnPoint";
@@ -280,7 +281,7 @@ namespace Incheol.Controller.Interaction
                     break;
 
                 case PortalTeleportType.MapSwap:
-                    if (string.IsNullOrEmpty(targetMapKey))
+                    if (targetMapKey == AddressableAssetKey.None)
                     {
                         DebugLogManager.GenerateErrorMessage<MapPortalController>("목표 맵 키(targetMapKey)가 설정되어 있지 않습니다.");
                         return;
@@ -318,7 +319,7 @@ namespace Incheol.Controller.Interaction
         /// <summary>
         /// 외부 스크립트에서 맵 스왑 목적지를 동적으로 설정할 수 있는 편의 메서드.
         /// </summary>
-        public void SetTargetMap(string mapKey, string entryPointName = "RespawnPoint")
+        public void SetTargetMap(AddressableAssetKey mapKey, string entryPointName = "RespawnPoint")
         {
             targetMapKey = mapKey;
             targetMapEntryPointName = entryPointName;

@@ -215,13 +215,15 @@ namespace Incheol.Presenter.Scene
         /// 제거한 뒤 새 맵을 로드해서, 그 안의 _entryPointName Transform으로 로컬 플레이어를 옮긴다.
         /// GameSceneManager/UI_GameScene/GameServerConnectManager 접속은 그대로 유지된다.
         /// </summary>
-        public void SwapMap(string _newMapKey, string _entryPointName = "RespawnPoint")
+        public void SwapMap(AddressableAssetKey _newMapKey, string _entryPointName = "RespawnPoint")
         {
             if (AddressableAssetManager.Instance == null || localPlayerInstance == null)
             {
                 DebugLogManager.GenerateErrorMessage<GameSceneManager>("SwapMap을 수행할 수 없습니다 (AddressableAssetManager 또는 플레이어가 준비되지 않음).");
                 return;
             }
+
+            string newMapKeyString = _newMapKey.ToString();
 
             // 맵 프리팹이 파괴되기 전에 플레이어를 먼저 분리한다 - RespawnPoint 하위에 있으므로 같이 파괴되는 걸 막는다.
             localPlayerInstance.transform.SetParent(transform, true);
@@ -236,7 +238,7 @@ namespace Incheol.Presenter.Scene
                 currentMapInstance = null;
             }
 
-            AddressableAssetManager.Instance.LoadPrefabAddress<GameObject>(_newMapKey, prefab =>
+            AddressableAssetManager.Instance.LoadPrefabAddress<GameObject>(newMapKeyString, prefab =>
             {
                 if (this == null || localPlayerInstance == null)
                 {
@@ -245,17 +247,17 @@ namespace Incheol.Presenter.Scene
 
                 if (prefab == null)
                 {
-                    DebugLogManager.GenerateErrorMessage<GameSceneManager>($"맵 로드 실패 Key : {_newMapKey}");
+                    DebugLogManager.GenerateErrorMessage<GameSceneManager>($"맵 로드 실패 Key : {newMapKeyString}");
                     return;
                 }
 
                 currentMapInstance = AddressableAssetManager.Instance.InstantiatePrefab(prefab, transform);
-                currentMapId = _newMapKey;
+                currentMapId = newMapKeyString;
 
                 Transform entryPoint = FindChildRecursive(currentMapInstance.transform, _entryPointName);
                 if (entryPoint == null)
                 {
-                    DebugLogManager.GenerateErrorMessage<GameSceneManager>($"{_newMapKey} 맵에서 {_entryPointName}을 찾을 수 없습니다.");
+                    DebugLogManager.GenerateErrorMessage<GameSceneManager>($"{newMapKeyString} 맵에서 {_entryPointName}을 찾을 수 없습니다.");
                     return;
                 }
 
@@ -271,7 +273,7 @@ namespace Incheol.Presenter.Scene
                     localPlayerInstance.transform.SetPositionAndRotation(entryPoint.position, entryPoint.rotation);
                 }
 
-                GameServerConnectManager.Instance?.SendMapChange(_newMapKey, entryPoint.position.x, entryPoint.position.y, entryPoint.position.z, entryPoint.eulerAngles.y);
+                GameServerConnectManager.Instance?.SendMapChange(newMapKeyString, entryPoint.position.x, entryPoint.position.y, entryPoint.position.z, entryPoint.eulerAngles.y);
             });
         }
 
