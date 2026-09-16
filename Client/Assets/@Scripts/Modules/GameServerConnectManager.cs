@@ -34,7 +34,10 @@ namespace Incheol.Modules
         private readonly ConcurrentQueue<Action> pendingActions = new();
 
         private long localPlayerId;
-        private bool isConnected;
+
+        // ReadLoopAsync(백그라운드 스레드)와 Update/Disconnect(메인 스레드) 양쪽에서 읽고 쓰므로
+        // volatile로 가시성을 보장한다.
+        private volatile bool isConnected;
         private float heartbeatSendTimer;
         private float timeSinceLastHeartbeatAck;
 
@@ -50,6 +53,20 @@ namespace Incheol.Modules
         public event Action<string> OnServerError;
 
         #region LifeCycle
+        protected override void Awake()
+        {
+            base.Awake();
+
+#if !UNITY_EDITOR && !DEVELOPMENT_BUILD
+            // 릴리즈 빌드인데도 인스펙터 host 값이 기본값(localhost)이면 실서버 주소로 바꾸는 걸
+            // 잊었을 가능성이 크다 - 조용히 로컬에 접속 시도하다 실패하는 대신 눈에 띄게 알린다.
+            if (host == "localhost")
+            {
+                DebugLogManager.GenerateErrorMessage<GameServerConnectManager>("릴리즈 빌드인데 GameServer host가 기본값(localhost)입니다. 인스펙터에서 실제 서버 주소로 변경해야 합니다.");
+            }
+#endif
+        }
+
         private void Update()
         {
             while (pendingActions.TryDequeue(out Action action))

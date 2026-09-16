@@ -1,6 +1,3 @@
-using System.IO;
-using System.Text;
-
 namespace Incheol.Modules.Networking
 {
     // 서버 Shared/Networking/Packets/C2SMapChangeRequest.cs와 형식이 동일해야 한다.
@@ -13,18 +10,14 @@ namespace Incheol.Modules.Networking
         public float Z;
         public float RotationY;
 
-        public byte[] Encode()
+        public byte[] Encode() => GameBinaryPacket.Write(writer =>
         {
-            using var stream = new MemoryStream();
-            using var writer = new BinaryWriter(stream, Encoding.UTF8);
             writer.Write(PlayerId);
             writer.Write(MapId);
             writer.Write(X);
             writer.Write(Y);
             writer.Write(Z);
             writer.Write(RotationY);
-            writer.Flush();
-            return stream.ToArray();
-        }
+        });
     }
 }

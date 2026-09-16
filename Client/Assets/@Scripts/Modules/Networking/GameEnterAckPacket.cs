@@ -1,6 +1,4 @@
 using System.Collections.Generic;
-using System.IO;
-using System.Text;
 
 namespace Incheol.Modules.Networking
 {
@@ -9,11 +7,8 @@ namespace Incheol.Modules.Networking
     {
         public List<GamePlayerInfo> ExistingPlayers = new();
 
-        public static GameEnterAckPacket Decode(byte[] body)
+        public static GameEnterAckPacket Decode(byte[] body) => GameBinaryPacket.Read(body, reader =>
         {
-            using var stream = new MemoryStream(body);
-            using var reader = new BinaryReader(stream, Encoding.UTF8);
-
             int count = reader.ReadInt32();
             var players = new List<GamePlayerInfo>(count);
             for (int i = 0; i < count; i++)
@@ -22,6 +17,6 @@ namespace Incheol.Modules.Networking
             }
 
             return new GameEnterAckPacket { ExistingPlayers = players };
-        }
+        });
     }
 }

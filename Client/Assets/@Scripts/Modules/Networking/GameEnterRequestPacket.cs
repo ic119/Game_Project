@@ -1,6 +1,3 @@
-using System.IO;
-using System.Text;
-
 namespace Incheol.Modules.Networking
 {
     // 서버 Shared/Networking/Packets/C2SEnterRequest.cs와 바이트 단위로 동일해야 한다.
@@ -11,14 +8,10 @@ namespace Incheol.Modules.Networking
         public string AccessToken = string.Empty;
         public GamePlayerInfo Player = new();
 
-        public byte[] Encode()
+        public byte[] Encode() => GameBinaryPacket.Write(writer =>
         {
-            using var stream = new MemoryStream();
-            using var writer = new BinaryWriter(stream, Encoding.UTF8);
             writer.Write(AccessToken);
             Player.WriteTo(writer);
-            writer.Flush();
-            return stream.ToArray();
-        }
+        });
     }
 }

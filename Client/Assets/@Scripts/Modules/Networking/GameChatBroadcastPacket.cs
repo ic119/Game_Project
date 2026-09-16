@@ -1,6 +1,3 @@
-using System.IO;
-using System.Text;
-
 namespace Incheol.Modules.Networking
 {
     // 서버 Shared/Networking/Packets/S2CChatBroadcast.cs와 형식이 동일해야 한다.
@@ -11,17 +8,12 @@ namespace Incheol.Modules.Networking
         public string Message = string.Empty;
         public long Timestamp;
 
-        public static GameChatBroadcastPacket Decode(byte[] body)
+        public static GameChatBroadcastPacket Decode(byte[] body) => GameBinaryPacket.Read(body, reader => new GameChatBroadcastPacket
         {
-            using var stream = new MemoryStream(body);
-            using var reader = new BinaryReader(stream, Encoding.UTF8);
-            return new GameChatBroadcastPacket
-            {
-                PlayerId = reader.ReadInt64(),
-                Nickname = reader.ReadString(),
-                Message = reader.ReadString(),
-                Timestamp = reader.ReadInt64()
-            };
-        }
+            PlayerId = reader.ReadInt64(),
+            Nickname = reader.ReadString(),
+            Message = reader.ReadString(),
+            Timestamp = reader.ReadInt64()
+        });
     }
 }

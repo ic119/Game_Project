@@ -30,6 +30,22 @@ namespace Incheol.Modules
 #endif
         #endregion
 
+        #region LifeCycle
+        protected override void Awake()
+        {
+            base.Awake();
+
+#if !UNITY_EDITOR && !DEVELOPMENT_BUILD
+            // 릴리즈 빌드인데도 인스펙터 serverBaseUrl 값이 기본값(localhost)이면 실서버 주소로 바꾸는 걸
+            // 잊었을 가능성이 크다 - 조용히 로컬 서버로 요청을 보내다 실패하는 대신 눈에 띄게 알린다.
+            if (serverBaseUrl.Contains("localhost"))
+            {
+                DebugLogManager.GenerateErrorMessage<ServerConnectManager>("릴리즈 빌드인데 AuthServer serverBaseUrl이 기본값(localhost)입니다. 인스펙터에서 실제 서버 주소로 변경해야 합니다.");
+            }
+#endif
+        }
+        #endregion
+
         #region DTO
         [Serializable]
         public class UserInfo

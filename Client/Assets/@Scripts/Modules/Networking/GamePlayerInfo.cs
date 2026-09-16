@@ -1,6 +1,4 @@
-using System;
 using System.IO;
-using System.Text;
 
 namespace Incheol.Modules.Networking
 {
@@ -68,20 +66,8 @@ namespace Incheol.Modules.Networking
             };
         }
 
-        public byte[] Encode()
-        {
-            using var stream = new MemoryStream();
-            using var writer = new BinaryWriter(stream, Encoding.UTF8);
-            WriteTo(writer);
-            writer.Flush();
-            return stream.ToArray();
-        }
+        public byte[] Encode() => GameBinaryPacket.Write(WriteTo);
 
-        public static GamePlayerInfo Decode(byte[] body)
-        {
-            using var stream = new MemoryStream(body);
-            using var reader = new BinaryReader(stream, Encoding.UTF8);
-            return ReadFrom(reader);
-        }
+        public static GamePlayerInfo Decode(byte[] body) => GameBinaryPacket.Read(body, ReadFrom);
     }
 }

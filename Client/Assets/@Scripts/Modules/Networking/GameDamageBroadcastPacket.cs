@@ -1,6 +1,3 @@
-using System.IO;
-using System.Text;
-
 namespace Incheol.Modules.Networking
 {
     // 서버 Shared/Networking/Packets/S2CDamageBroadcast.cs와 형식이 동일해야 한다.
@@ -12,17 +9,12 @@ namespace Incheol.Modules.Networking
         public int Damage;
         public long Timestamp;
 
-        public static GameDamageBroadcastPacket Decode(byte[] body)
+        public static GameDamageBroadcastPacket Decode(byte[] body) => GameBinaryPacket.Read(body, reader => new GameDamageBroadcastPacket
         {
-            using var stream = new MemoryStream(body);
-            using var reader = new BinaryReader(stream, Encoding.UTF8);
-            return new GameDamageBroadcastPacket
-            {
-                AttackerId = reader.ReadInt64(),
-                TargetId = reader.ReadInt64(),
-                Damage = reader.ReadInt32(),
-                Timestamp = reader.ReadInt64()
-            };
-        }
+            AttackerId = reader.ReadInt64(),
+            TargetId = reader.ReadInt64(),
+            Damage = reader.ReadInt32(),
+            Timestamp = reader.ReadInt64()
+        });
     }
 }
