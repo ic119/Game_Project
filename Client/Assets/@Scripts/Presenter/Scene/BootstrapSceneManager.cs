@@ -80,6 +80,25 @@ namespace Incheol.Presenter
             }
         }
 
+        private class GameServerConnectManage : ISequenceStep
+        {
+            public string StepName => "게임 서버 접속 매니저 초기화";
+
+            public async Awaitable<bool> Execute(CancellationToken _cancellationToken)
+            {
+                // GameServerConnectManager.Instance에 접근하는 것만으로 Awake()가 호출되어 싱글턴이 미리 생성된다.
+                // 이걸 여기서 미리 만들어두지 않으면, GameSceneManager.OnEnable()(Start()보다 먼저 호출됨)이
+                // 최초 GameScene 진입 시점엔 아직 태어나지도 않은 이 싱글턴을 구독하려다 조용히 실패한다 -
+                // 그 결과 채팅/데미지/서버 에러/연결 끊김 이벤트가 앱을 새로 켠 뒤 첫 GameScene 세션에서는
+                // 전혀 동작하지 않는(재진입하면 정상 동작하는) 레이스가 있었다.
+                _ = GameServerConnectManager.Instance;
+
+                await Awaitable.NextFrameAsync(_cancellationToken);
+
+                return true;
+            }
+        }
+
         private class ChangeSceneManage : ISequenceStep
         {
             public string StepName => "메인 씬으로 전환 준비";
@@ -171,6 +190,7 @@ private void Start()
             LoadSceneManage loadSceneManage = new LoadSceneManage();
             AddressableAssetManage addressableAssetManage = new AddressableAssetManage();
             SoundManage soundManage = new SoundManage();
+            GameServerConnectManage gameServerConnectManage = new GameServerConnectManage();
             ServerConnectManage serverConnectManage = new ServerConnectManage();
             ChangeSceneManage changeSceneManage = new ChangeSceneManage();
 
@@ -182,6 +202,7 @@ private void Start()
                 gameManage,
                 loadSceneManage,
                 soundManage,
+                gameServerConnectManage,
                 serverConnectManage,
                 changeSceneManage,
             };
@@ -190,6 +211,7 @@ private void Start()
             SequenceManager.Instance.Enqueue(gameManage);
             SequenceManager.Instance.Enqueue(loadSceneManage);
             SequenceManager.Instance.Enqueue(soundManage);
+            SequenceManager.Instance.Enqueue(gameServerConnectManage);
             SequenceManager.Instance.Enqueue(serverConnectManage);
             SequenceManager.Instance.Enqueue(changeSceneManage);
 
