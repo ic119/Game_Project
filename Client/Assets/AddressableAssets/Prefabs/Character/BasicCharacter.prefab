@@ -17174,7 +17174,7 @@ MonoBehaviour:
   leftArmEqiupment: {fileID: 6951739140167240317}
   rightArmEqiupment: {fileID: 6105368201810433905}
   currentWeaponType: 1
-  singleSwordWeaponObject: {fileID: 4247283017307128051}
+  singleSwordWeaponObject: {fileID: 376230791627786470}
 --- !u!114 &4702764603272719981
 MonoBehaviour:
   m_ObjectHideFlags: 0

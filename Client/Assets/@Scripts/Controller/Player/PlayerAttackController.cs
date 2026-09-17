@@ -21,6 +21,13 @@ namespace Incheol.Controller
         [SerializeField, Min(0f)] private float attackRange = 1.5f;
         [SerializeField, Min(0f)] private float attackRadius = 1.0f;
 
+        [Header("이펙트")]
+        [Tooltip("스윙/임팩트 이펙트를 스폰할 때 기준 위치(캐릭터 발밑 기준 transform.position)에 더할 높이(초). " +
+            "캐릭터 원점이 발밑이라 0이면 이펙트가 바닥에 붙어 보이므로, 무기/상체 높이에 맞춰 올려준다.")]
+        [SerializeField, Min(0f)] private float effectHeight = 1f;
+        [Tooltip("이펙트 프리팹에 이미 적용된 크기(예: 0.7) 위에 추가로 곱해지는 배율. 1이면 프리팹 크기 그대로.")]
+        [SerializeField, Min(0.01f)] private float effectScale = 0.65f;
+
         [Header("콤보 (BasicCharacterStance/Attack Layer 참고)")]
         [Tooltip("콤보 최대 타수. Attack Layer에 Attack1/Attack2 두 단계만 있어 2로 둔다.")]
         [SerializeField, Min(1)] private int maxComboStage = 2;
@@ -170,6 +177,12 @@ namespace Incheol.Controller
             return transform.position + transform.forward * attackRange;
         }
 
+        // 이펙트 전용 높이 보정. 히트 판정(GetAttackOrigin)에는 영향을 주지 않도록 별도 헬퍼로 분리한다.
+        private Vector3 ApplyEffectHeight(Vector3 position)
+        {
+            return position + Vector3.up * effectHeight;
+        }
+
         /// <summary>
         /// 휘두르는 순간(명중 여부와 무관) 재생하는 이펙트. RequestAttack과 달리 대상을 못 찾아도(허공에 휘둘러도)
         /// 항상 재생해야 하므로, 콤보 타수마다(StartCombo/AdvanceCombo) 독립적으로 호출한다.
@@ -181,7 +194,7 @@ namespace Incheol.Controller
                 return;
             }
 
-            WeaponVfxManager.Instance.PlaySwingEffect(playerCharacterModel.CurrentWeaponType, GetAttackOrigin(), transform.rotation);
+            WeaponVfxManager.Instance.PlaySwingEffect(playerCharacterModel.CurrentWeaponType, ApplyEffectHeight(GetAttackOrigin()), transform.rotation, effectScale);
         }
 
         /// <summary>
@@ -206,7 +219,7 @@ namespace Incheol.Controller
                 return;
             }
 
-            WeaponVfxManager.Instance?.PlayImpactEffect(playerCharacterModel.CurrentWeaponType, target.transform.position, target.transform.rotation);
+            WeaponVfxManager.Instance?.PlayImpactEffect(playerCharacterModel.CurrentWeaponType, ApplyEffectHeight(target.transform.position), target.transform.rotation, effectScale);
         }
 
         private long? FindNearestTargetId(int hitCount)

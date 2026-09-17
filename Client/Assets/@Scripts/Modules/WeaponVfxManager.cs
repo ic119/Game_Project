@@ -32,17 +32,19 @@ namespace Incheol.Modules
         /// <summary>
         /// 무기를 휘두르는 순간 재생하는 이펙트. 명중 여부와 무관하게 콤보 타수마다 호출해야 한다.
         /// </summary>
-        public void PlaySwingEffect(WeaponType weaponType, Vector3 position, Quaternion rotation)
+        /// <param name="scale">프리팹에 이미 적용된 크기(예: 0.7) 위에 추가로 곱해지는 배율. 기본 1이면 프리팹 크기 그대로.</param>
+        public void PlaySwingEffect(WeaponType weaponType, Vector3 position, Quaternion rotation, float scale = 1f)
         {
-            PlayEffect(weaponType, position, rotation, useImpactEffect: false);
+            PlayEffect(weaponType, position, rotation, scale, useImpactEffect: false);
         }
 
         /// <summary>
         /// 공격이 실제로 명중했을 때(Game_DamageBroadcast 확인 시점) 대상 위치에 재생하는 이펙트.
         /// </summary>
-        public void PlayImpactEffect(WeaponType weaponType, Vector3 position, Quaternion rotation)
+        /// <param name="scale">프리팹에 이미 적용된 크기(예: 0.7) 위에 추가로 곱해지는 배율. 기본 1이면 프리팹 크기 그대로.</param>
+        public void PlayImpactEffect(WeaponType weaponType, Vector3 position, Quaternion rotation, float scale = 1f)
         {
-            PlayEffect(weaponType, position, rotation, useImpactEffect: true);
+            PlayEffect(weaponType, position, rotation, scale, useImpactEffect: true);
         }
 
         private void LoadDatabase()
@@ -71,7 +73,7 @@ namespace Incheol.Modules
             };
         }
 
-        private void PlayEffect(WeaponType weaponType, Vector3 position, Quaternion rotation, bool useImpactEffect)
+        private void PlayEffect(WeaponType weaponType, Vector3 position, Quaternion rotation, float scale, bool useImpactEffect)
         {
             // database가 아직 로드되지 않았거나(부트스트랩 직후 극초반) 해당 무기 타입에 등록된 이펙트가 없으면
             // 조용히 건너뛴다 - 이펙트는 연출일 뿐이므로 없다고 공격 자체를 막을 이유가 없다.
@@ -91,7 +93,14 @@ namespace Incheol.Modules
                 return;
             }
 
-            ObjectPoolManager.Instance.Get(key.ToString(), position, rotation);
+            GameObject instance = ObjectPoolManager.Instance.Get(key.ToString(), position, rotation);
+
+            // 풀에서 돌려받은 인스턴스는 프리팹 원본 크기(예: 0.7)로 초기화되어 있으므로, scale은 그 위에
+            // 곱해지는 배율이다. scale이 1이면(기본값) 굳이 건드리지 않는다.
+            if (instance != null && !Mathf.Approximately(scale, 1f))
+            {
+                instance.transform.localScale *= scale;
+            }
         }
     }
 }
