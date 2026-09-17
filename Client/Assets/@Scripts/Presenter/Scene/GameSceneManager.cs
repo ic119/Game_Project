@@ -258,6 +258,11 @@ namespace Incheol.Presenter.Scene
             isSwappingMap = true;
             GameManager.Instance?.ShowLoadingBar();
 
+            // LoadingBarView는 ObjectPoolManager가 씬 전환 없이 재사용하는 인스턴스라, BootstrapSceneManager가
+            // 마지막으로 남긴 타이틀("메인 씬으로 전환 준비 완료" 등)이 지워지지 않은 채 그대로 남아있다.
+            // 맵 전환에는 그 문구가 맞지 않으므로 빈 문자열로 지운다.
+            GameManager.Instance?.LoadingBarView?.UpdateTitle(string.Empty);
+
             try
             {
                 string newMapKeyString = _newMapKey.ToString();
