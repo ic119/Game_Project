@@ -16,3 +16,6 @@ MonoBehaviour:
   - monsterType: RedBoar
     displayName: "\uBD89\uC740 \uBA67\uB3FC\uC9C0"
     addressableKey: 19
+    grade: 0
+    maxHp: 30
+    attackPower: 5
