@@ -77,7 +77,15 @@ namespace Incheol.Modules
                 return;
             }
 
-            ObjectPoolManager.Instance.Get(AddressableAssetKey.UI_LoadingBarView.ToString());
+            GameObject instance = ObjectPoolManager.Instance.Get(AddressableAssetKey.UI_LoadingBarView.ToString());
+            if (instance != null && instance.TryGetComponent(out UI_LoadingBarView loadingBarView))
+            {
+                // LoadingBarView가 아직 캐시되지 않은 상태(예: Bootstrap의 InstantiateAddressableKeysAsync가
+                // 아직 캐시하기 전, 혹은 그 캐시가 유실된 경우)에서 호출되면 Get()의 반환값을 버려서는 안 된다 -
+                // 그러면 LoadingBarView가 영원히 null로 남아 이후의 모든 ShowLoadingBar 호출이 조용히 무시된다.
+                LoadingBarView = loadingBarView;
+            }
+
             LoadingBarView?.UpdateProgress(0f);
         }
 

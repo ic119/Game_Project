@@ -219,6 +219,8 @@ namespace Incheol.Presenter.Scene
         /// MapPortalController(PortalTeleportType.MapSwap)가 호출한다. Scene을 전환하지 않고 현재 맵 프리팹만
         /// 제거한 뒤 새 맵을 로드해서, 그 안의 _entryPointName Transform으로 로컬 플레이어를 옮긴다.
         /// GameSceneManager/UI_GameScene/GameServerConnectManager 접속은 그대로 유지된다.
+        /// 진행되는 동안(현재 맵 제거 -> 새 맵 생성 -> 플레이어 재배치) GameManager의 UI_LoadingBarView를
+        /// 띄워 빈 화면이 보이지 않게 가리고, 끝나면 100%로 채운 뒤 다시 숨긴다.
         /// </summary>
         public void SwapMap(AddressableAssetKey _newMapKey, string _entryPointName = "RespawnPoint")
         {
@@ -229,6 +231,8 @@ namespace Incheol.Presenter.Scene
             }
 
             string newMapKeyString = _newMapKey.ToString();
+
+            GameManager.Instance?.ShowLoadingBar();
 
             // 지금 스폰돼있는 원격 플레이어는 전부 이전 맵 소속이므로 미리 비운다.
             // 새 맵 목록은 Game_MapChangeAck 응답으로 다시 채워진다.
@@ -244,12 +248,14 @@ namespace Incheol.Presenter.Scene
             {
                 if (this == null || localPlayerInstance == null)
                 {
+                    GameManager.Instance?.HideLoadingBar();
                     return;
                 }
 
                 if (prefab == null)
                 {
                     DebugLogManager.GenerateErrorMessage<GameSceneManager>($"맵 로드 실패 Key : {newMapKeyString}");
+                    GameManager.Instance?.HideLoadingBar();
                     return;
                 }
 
@@ -260,6 +266,7 @@ namespace Incheol.Presenter.Scene
                 if (entryPoint == null)
                 {
                     DebugLogManager.GenerateErrorMessage<GameSceneManager>($"{newMapKeyString} 맵에서 {_entryPointName}을 찾을 수 없습니다.");
+                    GameManager.Instance?.HideLoadingBar();
                     return;
                 }
 
@@ -276,6 +283,10 @@ namespace Incheol.Presenter.Scene
                 }
 
                 GameServerConnectManager.Instance?.SendMapChange(newMapKeyString, entryPoint.position.x, entryPoint.position.y, entryPoint.position.z, entryPoint.eulerAngles.y);
+
+                // 맵 교체가 끝났으므로 진행률을 100%로 채운 뒤 로딩바를 숨긴다.
+                GameManager.Instance?.LoadingBarView?.UpdateProgress(1f);
+                GameManager.Instance?.HideLoadingBar();
             });
         }
 
