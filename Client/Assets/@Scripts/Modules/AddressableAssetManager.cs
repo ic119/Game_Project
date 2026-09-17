@@ -288,7 +288,7 @@ private void RegisterFailCallback(string _key, Action _onFail)
 
             if (loadingHandleDictionary.Remove(_key))
             {
-                loadingCallbackDictionary.Remove(_key);
+                AbortLoadingKey(_key);
                 DeleteKeyHashSet(_key);
                 return;
             }
@@ -316,12 +316,48 @@ private void RegisterFailCallback(string _key, Action _onFail)
             }
 
             // 로딩 중이던 핸들은 완료 전에는 안전하게 Release할 수 없으므로 추적만 제거한다.
-            // 실제 Addressables.Release는 LoadPrefabAddress의 Completed 콜백이 완료 시점에 대신 처리한다.
+            // 실제 Addressables.Release는 LoadPrefabAddress의 Completed 콜백이 완료 시점에 대신 처리한다
+            // (Completed 핸들러가 _isCurrent를 false로 판정해 핸들만 정리하고 등록된 콜백은 호출하지 않는다).
+            // 그 콜백을 기다리던 호출자가 아무 통보도 못 받은 채 방치되지 않도록, 여기서 직접 중단을 알린다.
+            List<string> abortedLoadingKeys = new List<string>(loadingHandleDictionary.Keys);
             loadingHandleDictionary.Clear();
-            loadingCallbackDictionary.Clear();
+
+            for (int i = 0; i < abortedLoadingKeys.Count; i++)
+            {
+                AbortLoadingKey(abortedLoadingKeys[i]);
+            }
 
             loadingKeyHashSet.Clear();
             failedKeyHashSet.Clear();
+        }
+
+        /// <summary>
+        /// ReleaseHandler/ReleaseAllHandler가 아직 완료되지 않은 로드를 추적 대상에서 제외할 때 호출한다.
+        /// 등록된 실패 콜백을 대신 호출해 대기 중인 호출자에게 중단 사실을 알리고, loadingFailCallbackDictionary에
+        /// 항목이 남아 있다가 나중에 같은 Key로 새로 시작한 로드의 결과에 엉뚱하게 다시 불리는 것도 막는다.
+        /// </summary>
+        private void AbortLoadingKey(string _key)
+        {
+            loadingCallbackDictionary.Remove(_key);
+
+            if (!loadingFailCallbackDictionary.TryGetValue(_key, out List<Action> _failCallbacks))
+            {
+                return;
+            }
+
+            loadingFailCallbackDictionary.Remove(_key);
+
+            foreach (Action _failCallback in _failCallbacks)
+            {
+                try
+                {
+                    _failCallback();
+                }
+                catch (Exception exception)
+                {
+                    DebugLogManager.GenerateErrorMessage<AddressableAssetManager>($"Addressable 로드 중단 콜백 처리 중 예외 발생 Key : {_key}, Exception : {exception}");
+                }
+            }
         }
         #endregion
     }
