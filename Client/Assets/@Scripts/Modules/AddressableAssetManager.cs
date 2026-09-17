@@ -236,7 +236,34 @@ private void RegisterFailCallback(string _key, Action _onFail)
             return GetHandler(_key, out _);
         }
 
-        public async Awaitable WaitForLoadAsync(string _key, Func<bool> _isCancelled = null)
+        /// <summary>
+        /// _key의 현재 로딩 진행률(0~1)을 조회한다. 로딩 중이면 Addressables가 보고하는 실제
+        /// AsyncOperationHandle.PercentComplete를, 이미 로드 완료된 상태면 1을 반환한다.
+        /// 로딩 중도 아니고 완료도 안 된 경우(아직 시작 안 함/실패 등)는 false를 반환한다.
+        /// </summary>
+        public bool TryGetLoadingProgress(string _key, out float _percentComplete)
+        {
+            if (loadingHandleDictionary.TryGetValue(_key, out AsyncOperationHandle _loadingHandle))
+            {
+                _percentComplete = _loadingHandle.PercentComplete;
+                return true;
+            }
+
+            if (GetHandler(_key, out _))
+            {
+                _percentComplete = 1f;
+                return true;
+            }
+
+            _percentComplete = 0f;
+            return false;
+        }
+
+        /// <summary>
+        /// _onProgress를 넘기면 대기하는 동안 매 프레임 TryGetLoadingProgress로 조회한 실제 진행률을 알려준다 -
+        /// 로딩바를 "0%에 머물다 끝나면 100%로 점프"가 아니라 실제 다운로드/인스턴스화 진행률에 맞춰 채울 수 있다.
+        /// </summary>
+        public async Awaitable WaitForLoadAsync(string _key, Func<bool> _isCancelled = null, Action<float> _onProgress = null)
         {
             while (true)
             {
@@ -253,6 +280,11 @@ private void RegisterFailCallback(string _key, Action _onFail)
                 if (HasLoadFailed(_key))
                 {
                     return;
+                }
+
+                if (_onProgress != null && TryGetLoadingProgress(_key, out float _percentComplete))
+                {
+                    _onProgress(_percentComplete);
                 }
 
                 await Awaitable.NextFrameAsync();

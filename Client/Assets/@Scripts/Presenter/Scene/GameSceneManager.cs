@@ -277,7 +277,13 @@ namespace Incheol.Presenter.Scene
                 float loadStartTime = Time.unscaledTime;
 
                 AddressableAssetManager.Instance.LoadPrefabAddress<GameObject>(newMapKeyString);
-                await AddressableAssetManager.Instance.WaitForLoadAsync(newMapKeyString, () => Time.unscaledTime - loadStartTime >= loadTimeoutSeconds);
+
+                // 새 맵을 로드하는 동안이 SwapMap 전체 소요 시간의 대부분을 차지하므로(나머지 단계는 전부 순간적),
+                // "0%에 머물다 끝나면 100%로 점프"가 아니라 Addressables가 보고하는 실제 진행률을 그대로 반영한다.
+                await AddressableAssetManager.Instance.WaitForLoadAsync(
+                    newMapKeyString,
+                    () => Time.unscaledTime - loadStartTime >= loadTimeoutSeconds,
+                    percentComplete => GameManager.Instance?.LoadingBarView?.UpdateProgress(percentComplete));
 
                 if (this == null || localPlayerInstance == null)
                 {
