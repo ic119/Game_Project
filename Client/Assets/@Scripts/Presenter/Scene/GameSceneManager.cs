@@ -6,6 +6,7 @@ using Incheol.Utils;
 using System.Collections.Generic;
 using Unity.Cinemachine;
 using UnityEngine;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace Incheol.Presenter.Scene
 {
@@ -25,6 +26,12 @@ namespace Incheol.Presenter.Scene
         /// </summary>
         private GameObject currentMapInstance;
         private string currentMapId = nameof(AddressableAssetKey.Farm);
+
+        /// <summary>
+        /// SwapMapAsync가 진행 중인 동안 true. 앞으로 맵이 늘어나 포털을 연달아 통과하거나 같은 프레임에
+        /// 중복 호출되는 상황이 잦아질 것을 대비해, 이전 전환이 끝나기 전 새 요청을 무시한다.
+        /// </summary>
+        private bool isSwappingMap;
 
         /// <summary>
         /// 로컬 플레이어 인스턴스. SpawnPlayerCharacter가 이 GameSceneManager(transform) 밑에 생성하고
@@ -219,10 +226,22 @@ namespace Incheol.Presenter.Scene
         /// MapPortalController(PortalTeleportType.MapSwap)가 호출한다. Scene을 전환하지 않고 현재 맵 프리팹만
         /// 제거한 뒤 새 맵을 로드해서, 그 안의 _entryPointName Transform으로 로컬 플레이어를 옮긴다.
         /// GameSceneManager/UI_GameScene/GameServerConnectManager 접속은 그대로 유지된다.
-        /// 진행되는 동안(현재 맵 제거 -> 새 맵 생성 -> 플레이어 재배치) GameManager의 UI_LoadingBarView를
-        /// 띄워 빈 화면이 보이지 않게 가리고, 끝나면 100%로 채운 뒤 다시 숨긴다.
+        /// 맵/엔트리포인트 이름은 전부 인자로 받으므로, 새 맵을 추가할 때 이 메서드 자체는 건드릴 필요 없이
+        /// AddressableAssetKey에 항목을 추가하고 MapPortalController에서 그 키를 가리키기만 하면 된다.
         /// </summary>
         public void SwapMap(AddressableAssetKey _newMapKey, string _entryPointName = "RespawnPoint")
+        {
+            _ = SwapMapAsync(_newMapKey, _entryPointName);
+        }
+
+        /// <summary>
+        /// SwapMap의 실제 구현. 진행되는 동안(현재 맵 제거 -> 새 맵 생성 -> 플레이어 재배치) GameManager의
+        /// UI_LoadingBarView를 띄워 빈 화면이 보이지 않게 가리고, 끝나면 100%로 채운 뒤 다시 숨긴다.
+        /// try/finally로 감싸 어떤 경로로 리턴하든(성공/실패/조기 취소) isSwappingMap 해제와 로딩바 숨김이
+        /// 항상 실행되도록 보장한다 - 맵이 늘어나 이 메서드에 실패 분기가 추가되더라도 로딩바를 숨기는 걸
+        /// 깜빡할 여지가 없다.
+        /// </summary>
+        private async Awaitable SwapMapAsync(AddressableAssetKey _newMapKey, string _entryPointName)
         {
             if (AddressableAssetManager.Instance == null || localPlayerInstance == null)
             {
@@ -230,32 +249,43 @@ namespace Incheol.Presenter.Scene
                 return;
             }
 
-            string newMapKeyString = _newMapKey.ToString();
-
-            GameManager.Instance?.ShowLoadingBar();
-
-            // 지금 스폰돼있는 원격 플레이어는 전부 이전 맵 소속이므로 미리 비운다.
-            // 새 맵 목록은 Game_MapChangeAck 응답으로 다시 채워진다.
-            RemotePlayerManager.Instance?.ClearAll();
-
-            if (currentMapInstance != null)
+            if (isSwappingMap)
             {
-                Destroy(currentMapInstance);
-                currentMapInstance = null;
+                DebugLogManager.GenerateErrorMessage<GameSceneManager>($"이전 맵 전환이 아직 끝나지 않아 요청을 무시합니다. 요청한 맵 : {_newMapKey}");
+                return;
             }
 
-            AddressableAssetManager.Instance.LoadPrefabAddress<GameObject>(newMapKeyString, prefab =>
+            isSwappingMap = true;
+            GameManager.Instance?.ShowLoadingBar();
+
+            try
             {
+                string newMapKeyString = _newMapKey.ToString();
+
+                // 지금 스폰돼있는 원격 플레이어는 전부 이전 맵 소속이므로 미리 비운다.
+                // 새 맵 목록은 Game_MapChangeAck 응답으로 다시 채워진다.
+                RemotePlayerManager.Instance?.ClearAll();
+
+                if (currentMapInstance != null)
+                {
+                    Destroy(currentMapInstance);
+                    currentMapInstance = null;
+                }
+
+                const float loadTimeoutSeconds = 30f;
+                float loadStartTime = Time.unscaledTime;
+
+                AddressableAssetManager.Instance.LoadPrefabAddress<GameObject>(newMapKeyString);
+                await AddressableAssetManager.Instance.WaitForLoadAsync(newMapKeyString, () => Time.unscaledTime - loadStartTime >= loadTimeoutSeconds);
+
                 if (this == null || localPlayerInstance == null)
                 {
-                    GameManager.Instance?.HideLoadingBar();
                     return;
                 }
 
-                if (prefab == null)
+                if (!AddressableAssetManager.Instance.GetHandler(newMapKeyString, out AsyncOperationHandle handle) || handle.Result is not GameObject prefab)
                 {
                     DebugLogManager.GenerateErrorMessage<GameSceneManager>($"맵 로드 실패 Key : {newMapKeyString}");
-                    GameManager.Instance?.HideLoadingBar();
                     return;
                 }
 
@@ -266,7 +296,6 @@ namespace Incheol.Presenter.Scene
                 if (entryPoint == null)
                 {
                     DebugLogManager.GenerateErrorMessage<GameSceneManager>($"{newMapKeyString} 맵에서 {_entryPointName}을 찾을 수 없습니다.");
-                    GameManager.Instance?.HideLoadingBar();
                     return;
                 }
 
@@ -284,10 +313,13 @@ namespace Incheol.Presenter.Scene
 
                 GameServerConnectManager.Instance?.SendMapChange(newMapKeyString, entryPoint.position.x, entryPoint.position.y, entryPoint.position.z, entryPoint.eulerAngles.y);
 
-                // 맵 교체가 끝났으므로 진행률을 100%로 채운 뒤 로딩바를 숨긴다.
                 GameManager.Instance?.LoadingBarView?.UpdateProgress(1f);
+            }
+            finally
+            {
+                isSwappingMap = false;
                 GameManager.Instance?.HideLoadingBar();
-            });
+            }
         }
 
         /// <summary>
