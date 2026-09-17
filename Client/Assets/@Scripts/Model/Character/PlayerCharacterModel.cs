@@ -2,32 +2,22 @@ using Incheol.Utils;
 using Incheol.View.UI;
 using UnityEngine;
 
-[RequireComponent(typeof(HealthComponent), typeof(CombatStatComponent))]
+[RequireComponent(typeof(HealthComponent), typeof(CombatStatComponent), typeof(EquipmentController))]
 public class PlayerCharacterModel : MonoBehaviour
 {
     #region Variable
     [Header("유저 캐릭터 이름표 UI")]
     [SerializeField] private UI_NameLabel nameLabel;
 
-    [Header("유저 캐릭터 장비 컨테이너")]
-    [SerializeField] private GameObject bodyEqiupment;
-    [SerializeField] private GameObject backPackEqiupment;
-    [SerializeField] private GameObject cloakEqiupment;
-    [SerializeField] private GameObject leftArmEqiupment;
-    [SerializeField] private GameObject rightArmEqiupment;
-
     [Header("무기")]
-    [Tooltip("현재 장착된 무기 타입. rightArmEqiupment 하위에 무기별 메시가 이미 배치되어 있고 " +
-        "전부 비활성 상태로 시작하므로, EquipWeapon이 타입에 맞는 오브젝트만 활성화한다.")]
+    [Tooltip("현재 장착된 무기 타입(전투 로직/공격 이펙트 조회 기준). 실제로 어떤 메시가 보이는지는 " +
+        "EquipmentController가 equipVisualName을 기준으로 독립적으로 처리한다.")]
     [SerializeField] private WeaponType currentWeaponType = WeaponType.OneHanded;
 
-    /// <summary>
-    /// WeaponType.OneHanded(한손무기류, 오브젝트 이름에 OH 접두사)에 대응하는 무기 오브젝트.
-    /// rightArmEqiupment 하위, 기본값은 OHS03_Sword.
-    /// TwoHanded/Shield/Wand/Spear는 아직 장착 대상 오브젝트가 지정되지 않았다.
-    /// </summary>
-    [Tooltip("WeaponType.OneHanded(한손무기류)에 대응하는 무기 오브젝트(rightArmEqiupment 하위, 기본 OHS03_Sword).")]
-    [SerializeField] private GameObject singleSwordWeaponObject;
+    [Tooltip("인벤토리 연동 전, 기본으로 장착할 무기 메시 오브젝트 이름(rightArmEqiupment 하위, 기본 OHS01_Stick).")]
+    [SerializeField] private string defaultWeaponVisualName = "OHS01_Stick";
+
+    private EquipmentController equipmentController;
 
     /// <summary>
     /// 세이브 데이터(UserSaveData.userExp)로부터 GameSceneController가 채워주는 경험치 런타임 상태.
@@ -54,18 +44,19 @@ public class PlayerCharacterModel : MonoBehaviour
     {
         healthComponent = GetComponent<HealthComponent>();
         combatStatComponent = GetComponent<CombatStatComponent>();
+        equipmentController = GetComponent<EquipmentController>();
 
         if (nameLabel == null)
         {
             nameLabel = GetComponentInChildren<UI_NameLabel>(true);
         }
 
-        if (healthComponent == null || combatStatComponent == null)
+        if (healthComponent == null || combatStatComponent == null || equipmentController == null)
         {
-            DebugLogManager.GenerateErrorMessage<PlayerCharacterModel>("HealthComponent/CombatStatComponent가 없어 체력/공격력 계산이 동작하지 않습니다.");
+            DebugLogManager.GenerateErrorMessage<PlayerCharacterModel>("HealthComponent/CombatStatComponent/EquipmentController가 없어 캐릭터 초기화가 완전하지 않습니다.");
         }
 
-        EquipWeapon(currentWeaponType);
+        EquipWeapon(currentWeaponType, defaultWeaponVisualName);
     }
     #endregion
 
@@ -86,17 +77,37 @@ public class PlayerCharacterModel : MonoBehaviour
         }
     }
     /// <summary>
-    /// _weaponType에 해당하는 무기 오브젝트만 활성화하고 나머지는 비활성화한다.
-    /// 무기 프리팹을 새로 생성/파괴하는 대신, rightArmEqiupment 하위에 이미 배치된
-    /// 무기 메시들 중 하나를 켜고 끄는 방식이다(CharacterCustomModel의 헤어/눈/입 교체와 동일한 패턴).
-    /// 현재는 OneHanded(한손무기류)만 실제 오브젝트가 연결되어 있다. TwoHanded/Shield/Wand/Spear는
-    /// WeaponType에는 존재하지만 아직 대응하는 오브젝트 참조가 없어 장착해도 아무 것도 표시되지 않는다.
+    /// weaponType(전투 로직/공격 이펙트 조회 기준)과 visualName(실제로 표시할 메시 오브젝트 이름)을 함께 반영한다.
+    /// visualName을 생략하면 defaultWeaponVisualName을 사용한다. 실제 메시 전환은 EquipmentController가
+    /// rightArmEqiupment/leftArmEqiupment 하위에서 이름으로 찾아 처리한다(CharacterCustomModel의 헤어/눈/입
+    /// 교체와 같은 SetActive 토글 메커니즘이지만, 인덱스가 아니라 이름 기반이라 프리팹에 새 무기 메시가
+    /// 추가되어도 코드 수정 없이 바로 장착 대상이 된다).
     /// </summary>
-    public void EquipWeapon(WeaponType weaponType)
+    public void EquipWeapon(WeaponType weaponType, string visualName = null)
     {
         currentWeaponType = weaponType;
+        equipmentController.Equip(EquipmentSlotType.Weapon, string.IsNullOrEmpty(visualName) ? defaultWeaponVisualName : visualName);
+    }
 
-        SetWeaponActive(singleSwordWeaponObject, weaponType == WeaponType.OneHanded);
+    /// <summary>
+    /// 인벤토리 아이템 하나를 장착한다. 슬롯 종류에 따라 EquipmentController에 필요한 정보(무기는 weaponType까지)를
+    /// 골라 전달하는 단일 진입점이다 - 추후 인벤토리 UI에서 장비를 교체할 때 슬롯별로 다른 메서드를 호출할 필요 없이
+    /// 이 함수 하나만 호출하면 된다.
+    /// </summary>
+    public void EquipItem(ItemData itemData)
+    {
+        if (itemData == null || itemData.itemType != ItemType.Eqiupment || itemData.equipSlotType == EquipmentSlotType.None)
+        {
+            return;
+        }
+
+        if (itemData.equipSlotType == EquipmentSlotType.Weapon)
+        {
+            EquipWeapon(itemData.weaponType, itemData.equipVisualName);
+            return;
+        }
+
+        equipmentController.Equip(itemData.equipSlotType, itemData.equipVisualName);
     }
 
     /// <summary>
@@ -184,14 +195,5 @@ public class PlayerCharacterModel : MonoBehaviour
         currentExp += amount;
     }
 
-    private static void SetWeaponActive(GameObject weaponObject, bool isActive)
-    {
-        if (weaponObject == null)
-        {
-            return;
-        }
-
-        weaponObject.SetActive(isActive);
-    }
     #endregion
 }

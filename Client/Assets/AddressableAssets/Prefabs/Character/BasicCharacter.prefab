@@ -17055,6 +17055,7 @@ GameObject:
   - component: {fileID: 4702764603272719981}
   - component: {fileID: 8976286199448848791}
   - component: {fileID: 7996449286846888370}
+  - component: {fileID: 6574738023687167225}
   m_Layer: 0
   m_Name: BasicCharacter
   m_TagString: Untagged
@@ -17168,13 +17169,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerCharacterModel
   nameLabel: {fileID: 139876071836541513}
-  bodyEqiupment: {fileID: 3207563037451289169}
-  backPackEqiupment: {fileID: 5395309750576246207}
-  cloakEqiupment: {fileID: 1318771821611678220}
-  leftArmEqiupment: {fileID: 6951739140167240317}
-  rightArmEqiupment: {fileID: 6105368201810433905}
   currentWeaponType: 1
-  singleSwordWeaponObject: {fileID: 376230791627786470}
+  defaultWeaponVisualName: OHS01_Stick
 --- !u!114 &4702764603272719981
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -17224,6 +17220,23 @@ CapsuleCollider:
   m_Height: 1.8
   m_Direction: 1
   m_Center: {x: 0, y: 0.9, z: 0}
+--- !u!114 &6574738023687167225
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6430947460933050228}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 23e51de4cbfe4704aaa4dbc46f8fe851, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EquipmentController
+  bodyEquipment: {fileID: 3207563037451289169}
+  backPackEquipment: {fileID: 5395309750576246207}
+  cloakEquipment: {fileID: 1318771821611678220}
+  leftArmEquipment: {fileID: 6951739140167240317}
+  rightArmEquipment: {fileID: 6105368201810433905}
 --- !u!1 &6438463510138794830
 GameObject:
   m_ObjectHideFlags: 0
