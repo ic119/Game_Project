@@ -34,6 +34,13 @@ services:
       context: .
       dockerfile: GameServer/Dockerfile
     restart: unless-stopped
+    depends_on:
+      - mainserver
+    environment:
+      # Game_EnterRequest의 AccessToken이 실제로 그 캐릭터의 소유 계정인지 MainServer(AuthServer)에
+      # 위임해 확인할 때 쓰는 주소(PlayerAuthValidator). 컨테이너 네트워크 안에서는 localhost가 아니라
+      # 서비스명(mainserver)으로 접근해야 하고, mainserver는 컨테이너 내부에서 HTTPS가 아닌 HTTP(8080)만 연다.
+      AuthServer__BaseUrl: "http://mainserver:8080"
     ports:
       - "9000:9000"
     networks:
