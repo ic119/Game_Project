@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
+using GameServer.Monsters;
 
 namespace GameServer.Networking
 {
@@ -8,10 +10,18 @@ namespace GameServer.Networking
     public class MapRoomRegistry
     {
         private readonly ConcurrentDictionary<string, GameRoom> _rooms = new();
+        private readonly CancellationToken _serverLifetimeCt;
+
+        // 몬스터 리스폰 타이머(GameRoom 내부)가 개별 요청 ct가 아니라 서버 전체 수명에 묶이도록,
+        // 서버 시작 시 한 번 받은 취소 토큰을 새로 만드는 모든 GameRoom에 그대로 물려준다.
+        public MapRoomRegistry(CancellationToken serverLifetimeCt)
+        {
+            _serverLifetimeCt = serverLifetimeCt;
+        }
 
         public GameRoom GetOrCreate(string mapId)
         {
-            return _rooms.GetOrAdd(mapId, _ => new GameRoom());
+            return _rooms.GetOrAdd(mapId, id => new GameRoom(MonsterSpawnCatalog.GetPointsForMap(id), _serverLifetimeCt));
         }
 
         // 방금 나간 방이 비어있으면 레지스트리에서 제거한다. 그 사이 다른 세션이 같은 mapId로

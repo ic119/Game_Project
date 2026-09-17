@@ -83,6 +83,7 @@ namespace GameServer.Networking
                 OpCode.Game_ChatRequest => HandleChatRequestAsync(body, ct),
                 OpCode.Game_AttackRequest => HandleAttackRequestAsync(body, ct),
                 OpCode.Game_MapChangeRequest => HandleMapChangeRequestAsync(body, ct),
+                OpCode.Game_MonsterAttackRequest => HandleMonsterAttackRequestAsync(body, ct),
                 _ => LogUnhandledAsync(opCode)
             };
         }
@@ -119,9 +120,10 @@ namespace GameServer.Networking
             _mapId = info.MapId;
 
             var existingPlayers = room.SnapshotExcluding(info.PlayerId);
+            var existingMonsters = room.SnapshotMonsters();
             room.Add(info, this);
 
-            var ack = new S2CEnterAck { ExistingPlayers = existingPlayers };
+            var ack = new S2CEnterAck { ExistingPlayers = existingPlayers, ExistingMonsters = existingMonsters };
             await SendAsync(OpCode.Game_EnterAck, ack.Encode(), ct);
 
             var joined = new S2CPlayerJoined { Player = info };
@@ -159,12 +161,13 @@ namespace GameServer.Networking
 
             GameRoom nextRoom = _mapRooms.GetOrCreate(request.MapId);
             var existingPlayers = nextRoom.SnapshotExcluding(playerId);
+            var existingMonsters = nextRoom.SnapshotMonsters();
             nextRoom.Add(info, this);
 
             _room = nextRoom;
             _mapId = request.MapId;
 
-            var ack = new S2CEnterAck { ExistingPlayers = existingPlayers };
+            var ack = new S2CEnterAck { ExistingPlayers = existingPlayers, ExistingMonsters = existingMonsters };
             await SendAsync(OpCode.Game_MapChangeAck, ack.Encode(), ct);
 
             var joined = new S2CPlayerJoined { Player = info };
@@ -282,6 +285,42 @@ namespace GameServer.Networking
             };
 
             await room.BroadcastToAllAsync(OpCode.Game_DamageBroadcast, broadcast.Encode(), ct);
+        }
+
+        // 플레이어 공격(HandleAttackRequestAsync)과 같은 쿨다운(_lastAttackAtUtc)을 공유한다 - 그렇지 않으면
+        // 플레이어 공격과 몬스터 공격 요청을 번갈아 보내 최소 공격 간격 제한을 우회할 수 있다.
+        // 데미지 계산 자체(공격력-방어력)는 GameRoom.ApplyMonsterAttackAsync가 서버 권위로 수행한다 -
+        // 몬스터는 소유 클라이언트가 없어 HandleAttackRequestAsync(PvP)처럼 "그대로 중계만" 할 수 없기 때문이다.
+        private async Task HandleMonsterAttackRequestAsync(byte[] body, CancellationToken ct)
+        {
+            var request = C2SMonsterAttackRequest.Decode(body);
+
+            if (_playerId is not { } playerId || request.AttackerId != playerId || _room is not { } room)
+            {
+                return;
+            }
+
+            var now = DateTime.UtcNow;
+            if ((now - _lastAttackAtUtc).TotalMilliseconds < MinAttackIntervalMs)
+            {
+                return;
+            }
+            _lastAttackAtUtc = now;
+
+            if (!room.TryGetInfo(playerId, out var attacker) || !room.TryGetMonsterPosition(request.MonsterId, out var monsterPosition))
+            {
+                return;
+            }
+
+            float dx = attacker.X - monsterPosition.X;
+            float dy = attacker.Y - monsterPosition.Y;
+            float dz = attacker.Z - monsterPosition.Z;
+            if (dx * dx + dy * dy + dz * dz > MaxAttackRangeSquared)
+            {
+                return;
+            }
+
+            await room.ApplyMonsterAttackAsync(request.MonsterId, playerId, attacker.AttackPower, request.Timestamp, ct);
         }
 
         // 여러 세션이 동시에(다른 플레이어의 브로드캐스트로) 같은 스트림에 쓸 수 있으므로 직렬화한다.

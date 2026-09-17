@@ -23,7 +23,8 @@ namespace Incheol.Models.Define
         TwoHandedAttack01,
         OneHandedHit01,
         SpearHit01,
-        TwoHandedHit01
+        TwoHandedHit01,
+        Monster_RedBoar
     }
 }
 

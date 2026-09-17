@@ -7,7 +7,6 @@ namespace GameServer.Networking
     public class GameTcpServer
     {
         private readonly TcpListener _listener;
-        private readonly MapRoomRegistry _mapRooms = new();
         private readonly PlayerAuthValidator _authValidator;
 
         public GameTcpServer(int port, IConfiguration configuration)
@@ -18,6 +17,10 @@ namespace GameServer.Networking
 
         public async Task RunAsync(CancellationToken ct)
         {
+            // 몬스터 리스폰 타이머(GameRoom)가 개별 요청이 아니라 서버 전체 수명에 묶이도록,
+            // 여기서 받은 ct를 MapRoomRegistry에 넘겨 앞으로 생성될 모든 GameRoom이 공유하게 한다.
+            var mapRooms = new MapRoomRegistry(ct);
+
             _listener.Start();
             Console.WriteLine($"[GameServer] TCP 리스너 시작 (Port: {((IPEndPoint)_listener.LocalEndpoint).Port})");
 
@@ -26,7 +29,7 @@ namespace GameServer.Networking
                 while (!ct.IsCancellationRequested)
                 {
                     var tcpClient = await _listener.AcceptTcpClientAsync(ct);
-                    var session = new ClientSession(tcpClient, _mapRooms, _authValidator);
+                    var session = new ClientSession(tcpClient, mapRooms, _authValidator);
                     _ = session.RunAsync(ct);
                 }
             }

@@ -262,9 +262,10 @@ namespace Incheol.Presenter.Scene
             {
                 string newMapKeyString = _newMapKey.ToString();
 
-                // 지금 스폰돼있는 원격 플레이어는 전부 이전 맵 소속이므로 미리 비운다.
+                // 지금 스폰돼있는 원격 플레이어/몬스터는 전부 이전 맵 소속이므로 미리 비운다.
                 // 새 맵 목록은 Game_MapChangeAck 응답으로 다시 채워진다.
                 RemotePlayerManager.Instance?.ClearAll();
+                RemoteMonsterManager.Instance?.ClearAll();
 
                 if (currentMapInstance != null)
                 {
@@ -463,8 +464,10 @@ namespace Incheol.Presenter.Scene
 
             GameServerConnectManager.Instance.ConnectAndEnter(localInfo);
 
-            // 다른 접속자의 입장/퇴장/이동 이벤트 구독을 시작한다(최초 접근 시 SingletonObject가 자동 생성된다).
+            // 다른 접속자의 입장/퇴장/이동, 몬스터 스폰/피격/사망 이벤트 구독을 시작한다
+            // (최초 접근 시 SingletonObject가 자동 생성된다).
             _ = RemotePlayerManager.Instance;
+            _ = RemoteMonsterManager.Instance;
         }
 
         /// <summary>

@@ -88,6 +88,7 @@ namespace Incheol.Controller
             if (GameServerConnectManager.Instance != null)
             {
                 GameServerConnectManager.Instance.OnDamageReceived += HandleDamageReceived;
+                GameServerConnectManager.Instance.OnMonsterDamaged += HandleMonsterDamaged;
             }
         }
 
@@ -96,6 +97,7 @@ namespace Incheol.Controller
             if (GameServerConnectManager.Instance != null)
             {
                 GameServerConnectManager.Instance.OnDamageReceived -= HandleDamageReceived;
+                GameServerConnectManager.Instance.OnMonsterDamaged -= HandleMonsterDamaged;
             }
         }
 
@@ -225,13 +227,19 @@ namespace Incheol.Controller
             Vector3 origin = GetAttackOrigin();
             int hitCount = Physics.OverlapSphereNonAlloc(origin, attackRadius, overlapBuffer);
 
-            long? targetId = FindNearestTargetId(hitCount);
-            if (!targetId.HasValue)
+            if (!TryFindNearestTarget(hitCount, out long targetId, out bool isMonster))
             {
                 return;
             }
 
-            GameServerConnectManager.Instance?.SendAttack(targetId.Value);
+            if (isMonster)
+            {
+                GameServerConnectManager.Instance?.SendMonsterAttack(targetId);
+            }
+            else
+            {
+                GameServerConnectManager.Instance?.SendAttack(targetId);
+            }
         }
 
         private Vector3 GetAttackOrigin()
@@ -284,9 +292,41 @@ namespace Incheol.Controller
             WeaponVfxManager.Instance?.PlayImpactEffect(playerCharacterModel.CurrentWeaponType, ApplyEffectHeight(target.transform.position), target.transform.rotation, effectScale);
         }
 
-        private long? FindNearestTargetId(int hitCount)
+        /// <summary>
+        /// Game_MonsterDamageBroadcast는 전원에게 오지만, 여기서는 "내가 명중시킨" 경우만 처리해 몬스터 위치에
+        /// 임팩트 이펙트를 재생한다(HandleDamageReceived의 몬스터 버전). RemainingHp/사망 여부는 RemoteMonsterManager가
+        /// 직접 처리하므로 여기서는 이펙트 재생만 담당한다.
+        /// </summary>
+        private void HandleMonsterDamaged(GameMonsterDamageBroadcastPacket packet)
         {
-            long? bestId = null;
+            if (playerCharacterModel == null || SaveDataManager.Instance == null)
+            {
+                return;
+            }
+
+            if (packet.AttackerId != SaveDataManager.Instance.SelectedCharacterId)
+            {
+                return;
+            }
+
+            if (RemoteMonsterManager.Instance == null || !RemoteMonsterManager.Instance.TryGetRemoteMonster(packet.MonsterId, out RemoteMonsterController target))
+            {
+                return;
+            }
+
+            WeaponVfxManager.Instance?.PlayImpactEffect(playerCharacterModel.CurrentWeaponType, ApplyEffectHeight(target.transform.position), target.transform.rotation, effectScale);
+        }
+
+        /// <summary>
+        /// 판정 범위 안의 원격 플레이어/몬스터를 통틀어 가장 가까운 대상 하나를 찾는다. 두 타입은 서로 다른
+        /// OpCode(Game_AttackRequest/Game_MonsterAttackRequest)로 공격 요청을 보내야 하므로, 대상 종류(isMonster)도
+        /// 함께 반환한다.
+        /// </summary>
+        private bool TryFindNearestTarget(int hitCount, out long targetId, out bool isMonster)
+        {
+            targetId = 0;
+            isMonster = false;
+            bool found = false;
             float bestDistanceSqr = float.MaxValue;
 
             for (int i = 0; i < hitCount; i++)
@@ -297,21 +337,35 @@ namespace Incheol.Controller
                     continue;
                 }
 
-                RemoteCharacterController remote = hit.GetComponentInParent<RemoteCharacterController>();
-                if (remote == null)
+                RemoteCharacterController remotePlayer = hit.GetComponentInParent<RemoteCharacterController>();
+                if (remotePlayer != null)
                 {
+                    float distanceSqr = (remotePlayer.transform.position - transform.position).sqrMagnitude;
+                    if (distanceSqr < bestDistanceSqr)
+                    {
+                        bestDistanceSqr = distanceSqr;
+                        targetId = remotePlayer.PlayerId;
+                        isMonster = false;
+                        found = true;
+                    }
                     continue;
                 }
 
-                float distanceSqr = (remote.transform.position - transform.position).sqrMagnitude;
-                if (distanceSqr < bestDistanceSqr)
+                RemoteMonsterController remoteMonster = hit.GetComponentInParent<RemoteMonsterController>();
+                if (remoteMonster != null)
                 {
-                    bestDistanceSqr = distanceSqr;
-                    bestId = remote.PlayerId;
+                    float distanceSqr = (remoteMonster.transform.position - transform.position).sqrMagnitude;
+                    if (distanceSqr < bestDistanceSqr)
+                    {
+                        bestDistanceSqr = distanceSqr;
+                        targetId = remoteMonster.MonsterId;
+                        isMonster = true;
+                        found = true;
+                    }
                 }
             }
 
-            return bestId;
+            return found;
         }
     }
 }

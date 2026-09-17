@@ -49,6 +49,9 @@ namespace Incheol.Modules
         public event Action<GameMoveBroadcastPacket> OnPlayerMoved;
         public event Action<GameChatBroadcastPacket> OnChatReceived;
         public event Action<GameDamageBroadcastPacket> OnDamageReceived;
+        public event Action<GameMonsterInfo> OnMonsterSpawned;
+        public event Action<GameMonsterDamageBroadcastPacket> OnMonsterDamaged;
+        public event Action<GameMonsterDieBroadcastPacket> OnMonsterDied;
         public event Action OnDisconnected;
         public event Action<string> OnServerError;
 
@@ -246,6 +249,28 @@ namespace Incheol.Modules
             _ = SendAsync(GameOpCode.Game_AttackRequest, request.Encode());
         }
 
+        /// <summary>
+        /// 몬스터에 대한 공격 의사를 GameServer에 보낸다(Game_MonsterAttackRequest). 플레이어 공격(SendAttack)과
+        /// 달리 데미지 계산은 서버가 직접 수행한다 - 몬스터는 소유 클라이언트가 없어 로컬 Defense로 계산할
+        /// 대상이 없기 때문이다. 결과는 OnMonsterDamaged(RemainingHp 포함)로 돌아온다.
+        /// </summary>
+        public void SendMonsterAttack(long monsterId)
+        {
+            if (!isConnected)
+            {
+                return;
+            }
+
+            var request = new GameMonsterAttackRequestPacket
+            {
+                AttackerId = localPlayerId,
+                MonsterId = monsterId,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            };
+
+            _ = SendAsync(GameOpCode.Game_MonsterAttackRequest, request.Encode());
+        }
+
         public void Disconnect()
         {
             if (!isConnected)
@@ -329,16 +354,24 @@ namespace Incheol.Modules
                     {
                         pendingActions.Enqueue(() => OnPlayerJoined?.Invoke(player));
                     }
+                    foreach (GameMonsterInfo monster in ack.ExistingMonsters)
+                    {
+                        pendingActions.Enqueue(() => OnMonsterSpawned?.Invoke(monster));
+                    }
                     break;
 
-                // 페이로드 구조가 Game_EnterAck과 동일하므로(새 맵의 기존 접속자 목록) 같은 디코더를 재사용한다.
-                // 이전 맵에서 스폰돼있던 원격 플레이어 정리는 서버 응답을 기다리지 않고 맵 전환을 시작한
-                // 클라이언트 쪽(RemotePlayerManager.ClearAll)에서 이미 처리했다는 전제다.
+                // 페이로드 구조가 Game_EnterAck과 동일하므로(새 맵의 기존 접속자/몬스터 목록) 같은 디코더를 재사용한다.
+                // 이전 맵에서 스폰돼있던 원격 플레이어/몬스터 정리는 서버 응답을 기다리지 않고 맵 전환을 시작한
+                // 클라이언트 쪽(RemotePlayerManager.ClearAll/RemoteMonsterManager.ClearAll)에서 이미 처리했다는 전제다.
                 case GameOpCode.Game_MapChangeAck:
                     var mapChangeAck = GameEnterAckPacket.Decode(body);
                     foreach (GamePlayerInfo player in mapChangeAck.ExistingPlayers)
                     {
                         pendingActions.Enqueue(() => OnPlayerJoined?.Invoke(player));
+                    }
+                    foreach (GameMonsterInfo monster in mapChangeAck.ExistingMonsters)
+                    {
+                        pendingActions.Enqueue(() => OnMonsterSpawned?.Invoke(monster));
                     }
                     break;
 
@@ -365,6 +398,21 @@ namespace Incheol.Modules
                 case GameOpCode.Game_DamageBroadcast:
                     var damage = GameDamageBroadcastPacket.Decode(body);
                     pendingActions.Enqueue(() => OnDamageReceived?.Invoke(damage));
+                    break;
+
+                case GameOpCode.Game_MonsterSpawnBroadcast:
+                    var monsterSpawn = GameMonsterSpawnBroadcastPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnMonsterSpawned?.Invoke(monsterSpawn.Monster));
+                    break;
+
+                case GameOpCode.Game_MonsterDamageBroadcast:
+                    var monsterDamage = GameMonsterDamageBroadcastPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnMonsterDamaged?.Invoke(monsterDamage));
+                    break;
+
+                case GameOpCode.Game_MonsterDieBroadcast:
+                    var monsterDie = GameMonsterDieBroadcastPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnMonsterDied?.Invoke(monsterDie));
                     break;
 
                 // 클라이언트가 주기적으로 보낸 System_Heartbeat에 대한 서버 응답이다 - 타임아웃 타이머를 초기화한다.

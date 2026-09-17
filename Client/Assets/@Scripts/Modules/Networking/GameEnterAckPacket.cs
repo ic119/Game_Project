@@ -6,17 +6,25 @@ namespace Incheol.Modules.Networking
     public class GameEnterAckPacket
     {
         public List<GamePlayerInfo> ExistingPlayers = new();
+        public List<GameMonsterInfo> ExistingMonsters = new();
 
         public static GameEnterAckPacket Decode(byte[] body) => GameBinaryPacket.Read(body, reader =>
         {
-            int count = reader.ReadInt32();
-            var players = new List<GamePlayerInfo>(count);
-            for (int i = 0; i < count; i++)
+            int playerCount = reader.ReadInt32();
+            var players = new List<GamePlayerInfo>(playerCount);
+            for (int i = 0; i < playerCount; i++)
             {
                 players.Add(GamePlayerInfo.ReadFrom(reader));
             }
 
-            return new GameEnterAckPacket { ExistingPlayers = players };
+            int monsterCount = reader.ReadInt32();
+            var monsters = new List<GameMonsterInfo>(monsterCount);
+            for (int i = 0; i < monsterCount; i++)
+            {
+                monsters.Add(GameMonsterInfo.ReadFrom(reader));
+            }
+
+            return new GameEnterAckPacket { ExistingPlayers = players, ExistingMonsters = monsters };
         });
     }
 }
