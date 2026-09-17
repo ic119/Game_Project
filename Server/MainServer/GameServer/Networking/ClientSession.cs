@@ -172,14 +172,17 @@ namespace GameServer.Networking
         }
 
         // 룸의 위치를 갱신하고, 본인을 제외한 나머지 접속자에게 브로드캐스트한다.
+        // request.PlayerId가 이 세션의 실제 플레이어와 같은지 검증한다 - 그렇지 않으면 다른 플레이어의
+        // ID를 실어 보내는 것만으로 그 플레이어를 임의의 위치로 옮길 수 있다(다른 핸들러들과 동일한 검증).
         private async Task HandleMoveRequestAsync(byte[] body, CancellationToken ct)
         {
-            if (_room is not { } room)
+            var request = C2SMoveRequest.Decode(body);
+
+            if (_playerId is not { } playerId || request.PlayerId != playerId || _room is not { } room)
             {
                 return;
             }
 
-            var request = C2SMoveRequest.Decode(body);
             room.UpdatePosition(request.PlayerId, request.X, request.Y, request.Z, request.RotationY);
 
             var broadcast = new S2CMoveBroadcast
