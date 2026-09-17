@@ -17,7 +17,13 @@ namespace Incheol.Models.Define
         UI_GameScene = 9,
         Farm = 10,
         UI_InventorySlot = 11,
-        Camp001 = 12
+        Camp001 = 12,
+        OneHandedAttack01,
+        SpearAttack01,
+        TwoHandedAttack01,
+        OneHandedHit01,
+        SpearHit01,
+        TwoHandedHit01
     }
 }
 

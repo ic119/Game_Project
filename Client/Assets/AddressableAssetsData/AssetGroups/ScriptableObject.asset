@@ -15,6 +15,11 @@ MonoBehaviour:
   m_GroupName: ScriptableObject
   m_GUID: e111d5283ab365045a0664990985679a
   m_SerializeEntries:
+  - m_GUID: 87f22d6907f600746985ee829b0a24b8
+    m_Address: WeaponVfxDatabaseSO
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: c93aa2ea7e4a08841b25866dda6bc37d
     m_Address: SceneDataModelSO
     m_ReadOnly: 0

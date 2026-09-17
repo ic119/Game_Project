@@ -99,6 +99,23 @@ namespace Incheol.Presenter
             }
         }
 
+        private class WeaponVfxManage : ISequenceStep
+        {
+            public string StepName => "무기 이펙트 매니저 초기화";
+
+            public async Awaitable<bool> Execute(CancellationToken _cancellationToken)
+            {
+                // WeaponVfxManager.Instance에 접근하는 것만으로 Awake()가 호출되어 WeaponVfxDatabaseSO 로드가
+                // 시작된다. GameServerConnectManage와 같은 이유로 미리 만들어둔다 - 늦어도 GameScene에서 첫
+                // 공격을 하기 전까지만 로드가 끝나면 되므로 여기서 로드 완료까지 기다리지는 않는다.
+                _ = WeaponVfxManager.Instance;
+
+                await Awaitable.NextFrameAsync(_cancellationToken);
+
+                return true;
+            }
+        }
+
         private class ChangeSceneManage : ISequenceStep
         {
             public string StepName => "메인 씬으로 전환 준비";
@@ -191,6 +208,7 @@ private void Start()
             AddressableAssetManage addressableAssetManage = new AddressableAssetManage();
             SoundManage soundManage = new SoundManage();
             GameServerConnectManage gameServerConnectManage = new GameServerConnectManage();
+            WeaponVfxManage weaponVfxManage = new WeaponVfxManage();
             ServerConnectManage serverConnectManage = new ServerConnectManage();
             ChangeSceneManage changeSceneManage = new ChangeSceneManage();
 
@@ -203,6 +221,7 @@ private void Start()
                 loadSceneManage,
                 soundManage,
                 gameServerConnectManage,
+                weaponVfxManage,
                 serverConnectManage,
                 changeSceneManage,
             };
@@ -212,6 +231,7 @@ private void Start()
             SequenceManager.Instance.Enqueue(loadSceneManage);
             SequenceManager.Instance.Enqueue(soundManage);
             SequenceManager.Instance.Enqueue(gameServerConnectManage);
+            SequenceManager.Instance.Enqueue(weaponVfxManage);
             SequenceManager.Instance.Enqueue(serverConnectManage);
             SequenceManager.Instance.Enqueue(changeSceneManage);
 

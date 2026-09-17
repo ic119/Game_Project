@@ -1,4 +1,6 @@
+using Incheol.Models.Define;
 using Incheol.Modules;
+using Incheol.Modules.Networking;
 using UnityEngine;
 
 namespace Incheol.Controller
@@ -35,6 +37,7 @@ namespace Incheol.Controller
 
         private Animator animator;
         private int attackLayerIndex = -1;
+        private PlayerCharacterModel playerCharacterModel;
 
         private int comboStage;
         private float stageStartTime;
@@ -46,6 +49,24 @@ namespace Incheol.Controller
             if (animator != null)
             {
                 attackLayerIndex = animator.GetLayerIndex(AttackLayerName);
+            }
+
+            playerCharacterModel = GetComponent<PlayerCharacterModel>();
+        }
+
+        private void OnEnable()
+        {
+            if (GameServerConnectManager.Instance != null)
+            {
+                GameServerConnectManager.Instance.OnDamageReceived += HandleDamageReceived;
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (GameServerConnectManager.Instance != null)
+            {
+                GameServerConnectManager.Instance.OnDamageReceived -= HandleDamageReceived;
             }
         }
 
@@ -92,6 +113,7 @@ namespace Incheol.Controller
                 animator.SetInteger(ComboIndexHash, comboStage);
             }
 
+            PlaySwingEffect();
             RequestAttack();
         }
 
@@ -106,6 +128,7 @@ namespace Incheol.Controller
                 animator.SetInteger(ComboIndexHash, comboStage);
             }
 
+            PlaySwingEffect();
             RequestAttack();
         }
 
@@ -130,7 +153,7 @@ namespace Incheol.Controller
 
         private void RequestAttack()
         {
-            Vector3 origin = transform.position + transform.forward * attackRange;
+            Vector3 origin = GetAttackOrigin();
             int hitCount = Physics.OverlapSphereNonAlloc(origin, attackRadius, overlapBuffer);
 
             long? targetId = FindNearestTargetId(hitCount);
@@ -140,6 +163,50 @@ namespace Incheol.Controller
             }
 
             GameServerConnectManager.Instance?.SendAttack(targetId.Value);
+        }
+
+        private Vector3 GetAttackOrigin()
+        {
+            return transform.position + transform.forward * attackRange;
+        }
+
+        /// <summary>
+        /// 휘두르는 순간(명중 여부와 무관) 재생하는 이펙트. RequestAttack과 달리 대상을 못 찾아도(허공에 휘둘러도)
+        /// 항상 재생해야 하므로, 콤보 타수마다(StartCombo/AdvanceCombo) 독립적으로 호출한다.
+        /// </summary>
+        private void PlaySwingEffect()
+        {
+            if (playerCharacterModel == null || WeaponVfxManager.Instance == null)
+            {
+                return;
+            }
+
+            WeaponVfxManager.Instance.PlaySwingEffect(playerCharacterModel.CurrentWeaponType, GetAttackOrigin(), transform.rotation);
+        }
+
+        /// <summary>
+        /// Game_DamageBroadcast는 전원에게 오지만, 여기서는 "내가 명중시킨" 경우만 처리해 대상 위치에
+        /// 임팩트 이펙트를 재생한다. 다른 플레이어의 무기 타입은 서버가 아직 전달해주지 않아(GamePlayerInfo에
+        /// WeaponType이 없음) 내가 맞은 경우/남이 남을 때린 경우는 여기서 재생할 수 없다 - 알려진 한계.
+        /// </summary>
+        private void HandleDamageReceived(GameDamageBroadcastPacket packet)
+        {
+            if (playerCharacterModel == null || SaveDataManager.Instance == null)
+            {
+                return;
+            }
+
+            if (packet.AttackerId != SaveDataManager.Instance.SelectedCharacterId)
+            {
+                return;
+            }
+
+            if (RemotePlayerManager.Instance == null || !RemotePlayerManager.Instance.TryGetRemotePlayer(packet.TargetId, out RemoteCharacterController target))
+            {
+                return;
+            }
+
+            WeaponVfxManager.Instance?.PlayImpactEffect(playerCharacterModel.CurrentWeaponType, target.transform.position, target.transform.rotation);
         }
 
         private long? FindNearestTargetId(int hitCount)

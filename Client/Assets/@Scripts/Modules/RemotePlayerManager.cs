@@ -105,6 +105,15 @@ namespace Incheol.Modules
         }
 
         /// <summary>
+        /// playerId에 해당하는 원격 플레이어를 조회한다. PlayerAttackController가 자신의 공격이 명중한
+        /// 대상의 위치에 임팩트 이펙트를 재생할 때 사용한다.
+        /// </summary>
+        public bool TryGetRemotePlayer(long playerId, out RemoteCharacterController controller)
+        {
+            return remotePlayers.TryGetValue(playerId, out controller) && controller != null;
+        }
+
+        /// <summary>
         /// 맵 전환 시작 시 호출한다. 지금 스폰되어 있는 원격 플레이어는 전부 이전 맵 소속이므로,
         /// 서버의 Game_MapChangeAck(새 맵 기존 접속자 목록)로 다시 채워지기 전에 미리 전부 비워야 한다.
         /// </summary>

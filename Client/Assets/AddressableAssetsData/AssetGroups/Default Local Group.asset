@@ -14,7 +14,37 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_GroupName: Default Local Group
   m_GUID: 0d0b5892a0daec74ea1897a39c18955c
-  m_SerializeEntries: []
+  m_SerializeEntries:
+  - m_GUID: 34cabc2ff66c44e418162dcaddb45eac
+    m_Address: TwoHandedHit01
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 497d49571e7b15f459d7c14520a037be
+    m_Address: OneHandedHit01
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5b7bf217d69bf3643b31e1d38059485a
+    m_Address: TwoHandedAttack01
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bac16ef29dba2f444ac57a90ff1c1d96
+    m_Address: SpearHit01
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cd221d5f145a2254797664c5758a2f31
+    m_Address: SpearAttack01
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e8ff3ea4de61f444bbf4db7fa92ce4f3
+    m_Address: OneHandedAttack01
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 7498f9b7ba6761c4bac2c1aab620b9b9, type: 2}
   m_SchemaSet:
