@@ -27,8 +27,9 @@ namespace Incheol.Presenter.Scene
         private string currentMapId = nameof(AddressableAssetKey.Farm);
 
         /// <summary>
-        /// 로컬 플레이어 인스턴스. SpawnPlayerCharacter에서 respawnPoint의 자식으로 생성되므로,
-        /// 맵 전환 시 맵 프리팹이 파괴되기 전에 분리(SetParent)해서 함께 파괴되지 않도록 해야 한다.
+        /// 로컬 플레이어 인스턴스. SpawnPlayerCharacter가 이 GameSceneManager(transform) 밑에 생성하고
+        /// RespawnPoint의 위치/회전값만 가져다 쓰므로, 맵 프리팹(및 그 안의 RespawnPoint)이 파괴돼도
+        /// 함께 파괴되지 않는다.
         /// </summary>
         private GameObject localPlayerInstance;
 
@@ -229,9 +230,6 @@ namespace Incheol.Presenter.Scene
 
             string newMapKeyString = _newMapKey.ToString();
 
-            // 맵 프리팹이 파괴되기 전에 플레이어를 먼저 분리한다 - RespawnPoint 하위에 있으므로 같이 파괴되는 걸 막는다.
-            localPlayerInstance.transform.SetParent(transform, true);
-
             // 지금 스폰돼있는 원격 플레이어는 전부 이전 맵 소속이므로 미리 비운다.
             // 새 맵 목록은 Game_MapChangeAck 응답으로 다시 채워진다.
             RemotePlayerManager.Instance?.ClearAll();
@@ -282,7 +280,9 @@ namespace Incheol.Presenter.Scene
         }
 
         /// <summary>
-        /// BasicCharacter를 Addressable로 로드해 _respawnPoint의 자식으로 생성하고,
+        /// BasicCharacter를 Addressable로 로드해 이 GameSceneManager(transform) 밑에 생성하고,
+        /// _respawnPoint의 위치/회전값만 가져다 배치한다(그 자식으로 만들지는 않는다 - 맵 프리팹 하위에
+        /// 있는 RespawnPoint에 종속되면 맵이 파괴/교체될 때 플레이어도 함께 파괴될 위험이 있다).
         /// SaveDataManager에 저장된 선택 캐릭터의 외형(헤어/눈/입)을 적용한다.
         /// </summary>
         private void SpawnPlayerCharacter(Transform _respawnPoint)
@@ -306,9 +306,8 @@ namespace Incheol.Presenter.Scene
                     return;
                 }
 
-                GameObject playerInstance = AddressableAssetManager.Instance.InstantiatePrefab(prefab, _respawnPoint);
-                playerInstance.transform.localPosition = Vector3.zero;
-                playerInstance.transform.localRotation = Quaternion.identity;
+                GameObject playerInstance = AddressableAssetManager.Instance.InstantiatePrefab(prefab, transform);
+                playerInstance.transform.SetPositionAndRotation(_respawnPoint.position, _respawnPoint.rotation);
                 localPlayerInstance = playerInstance;
 
                 ApplySelectedCharacterCustomization(playerInstance);
