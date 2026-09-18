@@ -24,8 +24,12 @@ public class PlayerCharacterModel : MonoBehaviour
     /// ApplyExp로 초기화된 뒤에는 GainExp로 갱신된다. 체력/공격력/방어력은 각각 HealthComponent/CombatStatComponent가 전담한다.
     /// UI_GameSceneView는 이 값을 계속 폴링해 슬라이더 연출에 사용한다.
     /// </summary>
-    private float currentExp;
+    private int currentExp;
+    private int expToNextLevel;
     private int level = 1;
+
+    // 레벨업 시 MaxHp를 재계산(HealthComponent.ApplyFromUserStats)하려면 원본 스탯이 필요해 스폰 시점에 캐싱해둔다.
+    private UserStats cachedUserStats;
     private HealthComponent healthComponent;
     private CombatStatComponent combatStatComponent;
 
@@ -34,7 +38,10 @@ public class PlayerCharacterModel : MonoBehaviour
     public int Level => level;
     public int MaxHp => healthComponent.MaxHp;
     public int CurrentHp => healthComponent.CurrentHp;
-    public float CurrentExp => currentExp;
+    public int CurrentExp => currentExp;
+
+    /// <summary>다음 레벨까지 필요한 경험치(경험치 바의 maxValue). 만렙이면 0.</summary>
+    public int ExpToNextLevel => expToNextLevel;
     public int AttackPower => combatStatComponent.AttackPower;
     public int Defense => combatStatComponent.Defense;
     #endregion
@@ -129,8 +136,7 @@ public class PlayerCharacterModel : MonoBehaviour
 
     /// <summary>
     /// GameSceneManager가 캐릭터 스폰 직후(외형 적용과 함께) 한 번에 호출하는 진입점.
-    /// 닉네임/레벨/체력(스탯+레벨 기반 임시 공식)/공격력·방어력을 세이브 데이터로 초기화한다.
-    /// 경험치는 서버에 아직 저장되지 않으므로(추후 도입 예정) 항상 0에서 시작한다.
+    /// 닉네임/레벨/체력(스탯+레벨 기반 임시 공식)/공격력·방어력/경험치를 세이브 데이터(DB 영속값)로 초기화한다.
     /// </summary>
     public void ApplyUserSaveData(UserSaveData saveData)
     {
@@ -139,11 +145,13 @@ public class PlayerCharacterModel : MonoBehaviour
             return;
         }
 
+        cachedUserStats = saveData.userStats;
+
         SetNickname(saveData.nickname);
         ApplyLevel(saveData.level);
         healthComponent.ApplyFromUserStats(saveData.userStats, saveData.level);
         combatStatComponent.ApplyFromUserStats(saveData.userStats);
-        ApplyExp(0f);
+        ApplyExp(saveData.exp);
     }
 
     /// <summary>
@@ -175,24 +183,33 @@ public class PlayerCharacterModel : MonoBehaviour
     }
 
     /// <summary>
-    /// 세이브 데이터의 경험치값을 캐릭터에 반영한다(스폰 시 최초 1회). 이후 경험치 획득은 GainExp를 사용한다.
+    /// 세이브 데이터의 경험치값을 캐릭터에 반영한다(스폰 시 최초 1회). 이후 경험치 획득은 ApplyExpGain을 사용한다.
     /// </summary>
-    public void ApplyExp(float exp)
+    public void ApplyExp(int exp)
     {
-        currentExp = Mathf.Max(0f, exp);
+        currentExp = Mathf.Max(0, exp);
+        expToNextLevel = ExpTable.GetRequiredExp(level);
     }
 
     /// <summary>
-    /// amount만큼 경험치를 더한다.
+    /// GameSceneManager가 Game_ExpGainBroadcast(서버 권위)를 받으면 호출한다. 델타를 누적하는 대신
+    /// 서버가 계산한 최종 상태(총 경험치/레벨/다음 레벨까지 필요치)로 그대로 덮어쓴다 - 패킷 유실이 있어도
+    /// 다음 패킷에서 자연히 복구된다(S2CMonsterDamageBroadcast.RemainingHp와 같은 이유).
+    /// 레벨이 올랐다면 MaxHp도 새 레벨 기준으로 다시 계산한다(HealthComponent.ApplyFromUserStats).
     /// </summary>
-    public void GainExp(float amount)
+    public void ApplyExpGain(int totalExp, int newLevel, int newExpToNextLevel)
     {
-        if (amount <= 0f)
-        {
-            return;
-        }
+        currentExp = Mathf.Max(0, totalExp);
+        expToNextLevel = Mathf.Max(0, newExpToNextLevel);
 
-        currentExp += amount;
+        if (newLevel != level)
+        {
+            ApplyLevel(newLevel);
+            if (cachedUserStats != null)
+            {
+                healthComponent.ApplyFromUserStats(cachedUserStats, level);
+            }
+        }
     }
 
     #endregion

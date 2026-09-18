@@ -26,6 +26,7 @@ namespace Shared.Networking
         Game_MonsterDamageBroadcast = 0x020E,
         Game_MonsterDieBroadcast = 0x020F,
         Game_MonsterSpawnBroadcast = 0x0210,
+        Game_ExpGainBroadcast = 0x0211,
 
         // 0x03XX = Dungeon
     }

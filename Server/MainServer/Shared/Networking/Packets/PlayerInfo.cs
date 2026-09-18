@@ -25,6 +25,13 @@ namespace Shared.Networking.Packets
         public int AttackPower { get; set; }
         public int Defense { get; set; }
 
+        // 경험치/레벨. 클라이언트가 Game_EnterRequest 시점에 자신의 세이브 데이터(DB 영속값) 기준으로
+        // 채워 보내며(위 전투 스탯과 동일한 신뢰 수준), 이후 세션 동안의 증가분은 GameRoom이 몬스터 처치 시
+        // 이 인스턴스를 직접 갱신한다(ExpTable 참고). 영속화는 클라이언트가 Game_ExpGainBroadcast를 받아
+        // MainServer(HTTP)에 별도로 저장한다 - GameServer 자체는 DB 접근 권한이 없다.
+        public int Level { get; set; } = 1;
+        public int Exp { get; set; }
+
         public void WriteTo(BinaryWriter writer)
         {
             writer.Write(PlayerId);
@@ -41,6 +48,8 @@ namespace Shared.Networking.Packets
             writer.Write(CurrentHp);
             writer.Write(AttackPower);
             writer.Write(Defense);
+            writer.Write(Level);
+            writer.Write(Exp);
         }
 
         public static PlayerInfo ReadFrom(BinaryReader reader)
@@ -60,7 +69,9 @@ namespace Shared.Networking.Packets
                 MaxHp = reader.ReadInt32(),
                 CurrentHp = reader.ReadInt32(),
                 AttackPower = reader.ReadInt32(),
-                Defense = reader.ReadInt32()
+                Defense = reader.ReadInt32(),
+                Level = reader.ReadInt32(),
+                Exp = reader.ReadInt32()
             };
         }
 

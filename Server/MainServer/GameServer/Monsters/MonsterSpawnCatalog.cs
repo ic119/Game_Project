@@ -25,7 +25,8 @@ namespace GameServer.Monsters
                     RespawnSeconds = 20f,
                     MaxHp = 30,
                     AttackPower = 5,
-                    Defense = 0
+                    Defense = 0,
+                    ExpReward = 22
                 },
                 new()
                 {
@@ -39,7 +40,8 @@ namespace GameServer.Monsters
                     RespawnSeconds = 35f,
                     MaxHp = 45,
                     AttackPower = 7,
-                    Defense = 2
+                    Defense = 2,
+                    ExpReward = 32
                 }
             }
         };

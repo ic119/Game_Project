@@ -58,6 +58,16 @@ namespace MainServer.CharacterServer.Controllers
                 : Ok(result); // 200
         }
 
+        // PUT /api/characters/{characterId}/progress — 레벨/경험치 저장(GameServer가 계산한 값을 클라이언트가 대신 요청, 소유자 검증 포함)
+        [HttpPut("{characterId:long}/progress")]
+        public async Task<IActionResult> UpdateProgress(long characterId, [FromBody] UpdateCharacterProgressRequest request)
+        {
+            var result = await _characterService.UpdateProgressAsync(GetUserId(), characterId, request);
+            return result is null
+                ? NotFound(new { message = "캐릭터를 찾을 수 없습니다." }) // 404
+                : Ok(result); // 200
+        }
+
         // PUT /api/characters/{characterId}/last-login — 로그아웃 시점의 마지막 접속시간을 서버 시각 기준으로 기록(소유자 검증 포함)
         [HttpPut("{characterId:long}/last-login")]
         public async Task<IActionResult> TouchLastLogin(long characterId)

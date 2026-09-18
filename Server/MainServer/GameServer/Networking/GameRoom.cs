@@ -1,11 +1,23 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using GameServer.Monsters;
+using Shared;
 using Shared.Networking;
 using Shared.Networking.Packets;
 
 namespace GameServer.Networking
 {
+    // ApplyMonsterAttackAsync의 결과. GainedExp가 채워져 있으면(몬스터가 죽고 공격자를 찾은 경우)
+    // 호출측(ClientSession)이 공격자 본인에게만 Game_ExpGainBroadcast를 보내야 한다는 뜻이다.
+    public readonly struct MonsterAttackResult
+    {
+        public bool MonsterDied { get; init; }
+        public int? GainedExp { get; init; }
+        public int NewLevel { get; init; }
+        public bool DidLevelUp { get; init; }
+        public int ExpToNextLevel { get; init; }
+    }
+
     // 하나의 맵(mapId)에 속한 접속자들의 그룹. MapRoomRegistry가 맵마다 이 인스턴스를 하나씩 관리한다.
     // 접속자 레지스트리 + "본인 제외 전원 브로드캐스트" 헬퍼에 더해, 이 맵의 몬스터 스폰/전투/리스폰까지 담당한다.
     // 몬스터는 소유 클라이언트가 없으므로(플레이어와 달리) 스탯/HP를 GameServer가 직접 들고 권위를 가진다.
@@ -137,11 +149,11 @@ namespace GameServer.Networking
         // 데미지 계산(공격력-방어력)과 사망/리스폰 판정, 브로드캐스트까지 전부 여기서 처리한다 -
         // 몬스터의 Defense/HP를 아는 유일한 주체가 GameRoom(서버)이기 때문에, 클라이언트가 각자
         // 델타를 계산하는 플레이어 간 전투와 달리 여기서는 서버가 최종 결과(RemainingHp)를 직접 만들어 중계한다.
-        public async Task<bool> ApplyMonsterAttackAsync(long monsterId, long attackerId, int attackerAttackPower, long timestamp, CancellationToken ct)
+        public async Task<MonsterAttackResult> ApplyMonsterAttackAsync(long monsterId, long attackerId, int attackerAttackPower, long timestamp, CancellationToken ct)
         {
             if (!_monsters.TryGetValue(monsterId, out var runtime))
             {
-                return false;
+                return default;
             }
 
             int damage = Math.Max(1, attackerAttackPower - runtime.Info.Defense);
@@ -157,18 +169,47 @@ namespace GameServer.Networking
             };
             await BroadcastToAllAsync(OpCode.Game_MonsterDamageBroadcast, damageBroadcast.Encode(), ct);
 
-            if (runtime.Info.CurrentHp <= 0)
+            if (runtime.Info.CurrentHp > 0)
             {
-                _monsters.TryRemove(monsterId, out _);
-
-                var dieBroadcast = new S2CMonsterDieBroadcast { MonsterId = monsterId, Timestamp = timestamp };
-                await BroadcastToAllAsync(OpCode.Game_MonsterDieBroadcast, dieBroadcast.Encode(), ct);
-
-                // 리스폰은 이 공격 요청 처리와 독립적인 타이머이므로 기다리지 않고 흘려보낸다(fire-and-forget).
-                _ = RespawnAfterDelayAsync(runtime.Point);
+                return default;
             }
 
-            return true;
+            _monsters.TryRemove(monsterId, out _);
+
+            var dieBroadcast = new S2CMonsterDieBroadcast { MonsterId = monsterId, Timestamp = timestamp };
+            await BroadcastToAllAsync(OpCode.Game_MonsterDieBroadcast, dieBroadcast.Encode(), ct);
+
+            // 리스폰은 이 공격 요청 처리와 독립적인 타이머이므로 기다리지 않고 흘려보낸다(fire-and-forget).
+            _ = RespawnAfterDelayAsync(runtime.Point);
+
+            // 처치자의 살아있는 PlayerInfo를 직접 찾아 경험치/레벨을 그 자리에서 갱신한다(플레이어 세션이
+            // 유일하게 이 값을 들고 있는 주체 - GameServer는 DB가 없어 여기서만 값이 존재한다).
+            if (!_players.TryGetValue(attackerId, out var attackerEntry))
+            {
+                return new MonsterAttackResult { MonsterDied = true };
+            }
+
+            int level = attackerEntry.Info.Level;
+            int exp = attackerEntry.Info.Exp;
+            bool applied = ExpTable.TryApplyExp(ref level, ref exp, runtime.Point.ExpReward, out int expToNextLevel);
+            if (!applied)
+            {
+                // 이미 만렙 - 경험치를 지급하지 않는다.
+                return new MonsterAttackResult { MonsterDied = true };
+            }
+
+            bool didLevelUp = level != attackerEntry.Info.Level;
+            attackerEntry.Info.Level = level;
+            attackerEntry.Info.Exp = exp;
+
+            return new MonsterAttackResult
+            {
+                MonsterDied = true,
+                GainedExp = runtime.Point.ExpReward,
+                NewLevel = level,
+                DidLevelUp = didLevelUp,
+                ExpToNextLevel = expToNextLevel
+            };
         }
 
         private async Task RespawnAfterDelayAsync(MonsterSpawnPointDefinition point)

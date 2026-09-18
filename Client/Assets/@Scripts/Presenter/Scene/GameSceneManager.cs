@@ -65,6 +65,7 @@ namespace Incheol.Presenter.Scene
             {
                 GameServerConnectManager.Instance.OnChatReceived += HandleChatReceived;
                 GameServerConnectManager.Instance.OnDamageReceived += HandleDamageReceived;
+                GameServerConnectManager.Instance.OnExpGained += HandleExpGained;
                 GameServerConnectManager.Instance.OnServerError += HandleGameServerError;
                 GameServerConnectManager.Instance.OnDisconnected += HandleGameServerDisconnected;
             }
@@ -76,6 +77,7 @@ namespace Incheol.Presenter.Scene
             {
                 GameServerConnectManager.Instance.OnChatReceived -= HandleChatReceived;
                 GameServerConnectManager.Instance.OnDamageReceived -= HandleDamageReceived;
+                GameServerConnectManager.Instance.OnExpGained -= HandleExpGained;
                 GameServerConnectManager.Instance.OnServerError -= HandleGameServerError;
                 GameServerConnectManager.Instance.OnDisconnected -= HandleGameServerDisconnected;
             }
@@ -471,7 +473,9 @@ namespace Incheol.Presenter.Scene
                 MaxHp = spawnedPlayerModel != null ? spawnedPlayerModel.MaxHp : 0,
                 CurrentHp = spawnedPlayerModel != null ? spawnedPlayerModel.CurrentHp : 0,
                 AttackPower = spawnedPlayerModel != null ? spawnedPlayerModel.AttackPower : 0,
-                Defense = spawnedPlayerModel != null ? spawnedPlayerModel.Defense : 0
+                Defense = spawnedPlayerModel != null ? spawnedPlayerModel.Defense : 0,
+                Level = spawnedPlayerModel != null ? spawnedPlayerModel.Level : 1,
+                Exp = spawnedPlayerModel != null ? spawnedPlayerModel.CurrentExp : 0
             };
 
             GameServerConnectManager.Instance.ConnectAndEnter(localInfo);
@@ -585,6 +589,21 @@ namespace Incheol.Presenter.Scene
             }
 
             spawnedPlayerModel.TakeDamage(new DamageInfo(packet.AttackerId, packet.Damage));
+        }
+
+        /// <summary>
+        /// 내가 몬스터를 처치해 GameServer가 계산한 경험치/레벨(Game_ExpGainBroadcast, 처치자 본인에게만 옴)을 반영하고,
+        /// GameServer는 DB 접근 권한이 없으므로 MainServer(HTTP)에 직접 영속화를 요청한다.
+        /// </summary>
+        private void HandleExpGained(GameExpGainBroadcastPacket packet)
+        {
+            if (spawnedPlayerModel == null)
+            {
+                return;
+            }
+
+            spawnedPlayerModel.ApplyExpGain(packet.TotalExp, packet.Level, packet.ExpToNextLevel);
+            SaveDataManager.Instance?.UpdateCharacterProgress(packet.Level, packet.TotalExp);
         }
 
         /// <summary>

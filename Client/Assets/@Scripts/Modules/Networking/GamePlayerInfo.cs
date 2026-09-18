@@ -27,6 +27,11 @@ namespace Incheol.Modules.Networking
         public int AttackPower;
         public int Defense;
 
+        // 경험치/레벨. Game_EnterRequest 시점에 세이브 데이터 기준으로 채워 보낸다(위 전투 스탯과 동일한 신뢰 수준).
+        // 서버가 몬스터 처치로 갱신한 최신값은 Game_ExpGainBroadcast로 돌려받는다(이 필드 자체는 재전송하지 않음).
+        public int Level = 1;
+        public int Exp;
+
         public void WriteTo(BinaryWriter writer)
         {
             writer.Write(PlayerId);
@@ -43,6 +48,8 @@ namespace Incheol.Modules.Networking
             writer.Write(CurrentHp);
             writer.Write(AttackPower);
             writer.Write(Defense);
+            writer.Write(Level);
+            writer.Write(Exp);
         }
 
         public static GamePlayerInfo ReadFrom(BinaryReader reader)
@@ -62,7 +69,9 @@ namespace Incheol.Modules.Networking
                 MaxHp = reader.ReadInt32(),
                 CurrentHp = reader.ReadInt32(),
                 AttackPower = reader.ReadInt32(),
-                Defense = reader.ReadInt32()
+                Defense = reader.ReadInt32(),
+                Level = reader.ReadInt32(),
+                Exp = reader.ReadInt32()
             };
         }
 

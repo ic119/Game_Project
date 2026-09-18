@@ -320,7 +320,22 @@ namespace GameServer.Networking
                 return;
             }
 
-            await room.ApplyMonsterAttackAsync(request.MonsterId, playerId, attacker.AttackPower, request.Timestamp, ct);
+            MonsterAttackResult result = await room.ApplyMonsterAttackAsync(request.MonsterId, playerId, attacker.AttackPower, request.Timestamp, ct);
+
+            // 방 전체가 아니라 처치자 본인에게만 보낸다 - 다른 접속자는 이 몬스터를 잡은 게 아니므로 경험치와 무관하다.
+            if (result is { MonsterDied: true, GainedExp: { } gainedExp })
+            {
+                var expGain = new S2CExpGainBroadcast
+                {
+                    MonsterId = request.MonsterId,
+                    GainedExp = gainedExp,
+                    TotalExp = attacker.Exp,
+                    Level = result.NewLevel,
+                    DidLevelUp = result.DidLevelUp,
+                    ExpToNextLevel = result.ExpToNextLevel
+                };
+                await SendAsync(OpCode.Game_ExpGainBroadcast, expGain.Encode(), ct);
+            }
         }
 
         // 여러 세션이 동시에(다른 플레이어의 브로드캐스트로) 같은 스트림에 쓸 수 있으므로 직렬화한다.

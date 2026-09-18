@@ -23,6 +23,7 @@ public class UserSaveData
     /// (SaveDataManager.FetchCharacterDetailAsync)에 채워진다.
     /// </summary>
     public int level = 1;
+    public int exp;
     public UserStats userStats;
 
     public static UserSaveData CreateDefault(string nickname, int hairIndex, int eyeIndex, int mouthIndex)

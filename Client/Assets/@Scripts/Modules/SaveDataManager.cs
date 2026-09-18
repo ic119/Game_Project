@@ -30,7 +30,8 @@ namespace Incheol.Modules
         // UserSaveData(클라이언트 내부 모델)와 서버 계약을 분리하기 위해 네트워크 경계에서만 사용한다.
         [Serializable] private class CreateCharacterRequestBody { public string _nickname; public int _hairIndex; public int _eyeIndex; public int _mouthIndex; }
         [Serializable] private class UpdateCustomizationRequestBody { public int _hairIndex; public int _eyeIndex; public int _mouthIndex; }
-        [Serializable] private class CharacterResponseBody { public long _id; public string _nickname; public int _hairIndex; public int _eyeIndex; public int _mouthIndex; public int _str; public int _agi; public int _intel; public int _level; public string _lastLoginAt; public string _createdAt; }
+        [Serializable] private class UpdateProgressRequestBody { public int _level; public int _exp; }
+        [Serializable] private class CharacterResponseBody { public long _id; public string _nickname; public int _hairIndex; public int _eyeIndex; public int _mouthIndex; public int _str; public int _agi; public int _intel; public int _level; public int _exp; public string _lastLoginAt; public string _createdAt; }
         [Serializable] private class JsonArrayWrapper<T> { public T[] items; }
 
         /// <summary>
@@ -126,6 +127,22 @@ namespace Incheol.Modules
             }
 
             _ = UpdateCustomizationAsyncInternal(SelectedCharacterId.Value, _hairIndex, _eyeIndex, _mouthIndex, _onComplete);
+        }
+
+        /// <summary>
+        /// GameServer(TCP)가 몬스터 처치로 계산해 Game_ExpGainBroadcast로 알려준 레벨/경험치를 저장한다
+        /// (PUT api/characters/{id}/progress). GameServer 자체는 DB 접근 권한이 없어 클라이언트가 대신 요청해야 한다.
+        /// </summary>
+        public void UpdateCharacterProgress(int _level, int _exp, Action<bool> _onComplete = null)
+        {
+            if (!SelectedCharacterId.HasValue)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>("선택된 캐릭터가 없어 경험치를 저장할 수 없습니다.");
+                _onComplete?.Invoke(false);
+                return;
+            }
+
+            _ = UpdateProgressAsyncInternal(SelectedCharacterId.Value, _level, _exp, _onComplete);
         }
 
         /// <summary>
@@ -231,6 +248,7 @@ namespace Incheol.Modules
                 eyeIndex = response._eyeIndex,
                 mouthIndex = response._mouthIndex,
                 level = response._level,
+                exp = response._exp,
                 userStats = new UserStats { str = response._str, agi = response._agi, intel = response._intel }
             });
         }
@@ -320,6 +338,29 @@ namespace Incheol.Modules
             if (!success)
             {
                 DebugLogManager.GenerateErrorMessage<SaveDataManager>($"캐릭터 외형 저장 실패 : {error}");
+                _onComplete?.Invoke(false);
+                return;
+            }
+
+            _onComplete?.Invoke(true);
+        }
+
+        private async Awaitable UpdateProgressAsyncInternal(long _characterId, int _level, int _exp, Action<bool> _onComplete)
+        {
+            if (ServerConnectManager.Instance == null)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>("ServerConnectManager.Instance가 null입니다.");
+                _onComplete?.Invoke(false);
+                return;
+            }
+
+            var requestBody = new UpdateProgressRequestBody { _level = _level, _exp = _exp };
+            string json = JsonUtility.ToJson(requestBody);
+            (bool success, string _, string error) = await ServerConnectManager.Instance.SendAuthorizedJsonRequestAsync($"{CharacterApiPath}/{_characterId}/progress", "PUT", json);
+
+            if (!success)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>($"경험치/레벨 저장 실패 : {error}");
                 _onComplete?.Invoke(false);
                 return;
             }

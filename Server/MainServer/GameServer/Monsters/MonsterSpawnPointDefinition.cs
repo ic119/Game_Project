@@ -20,5 +20,9 @@ namespace GameServer.Monsters
         public int MaxHp { get; init; } = 30;
         public int AttackPower { get; init; } = 5;
         public int Defense { get; init; } = 0;
+
+        // 처치 시 지급할 경험치. 가이드라인: round(MaxHp * 0.4 + AttackPower * 2) - 몬스터가 튼튼하고
+        // 셀수록 자동으로 비례해 커지므로, 새 몬스터를 추가할 때도 이 공식으로 값을 매기면 된다.
+        public int ExpReward { get; init; } = 20;
     }
 }
