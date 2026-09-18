@@ -25,6 +25,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 49eedbc2413fdac4ca0fa4fa1a224261
+    m_Address: Dash01
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 5b7bf217d69bf3643b31e1d38059485a
     m_Address: TwoHandedAttack01
     m_ReadOnly: 0
