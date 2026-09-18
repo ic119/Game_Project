@@ -25,7 +25,7 @@ namespace Incheol.Presenter.Scene
         /// MapPortalController(PortalTeleportType.MapSwap)가 SwapMap을 호출할 때 이전 맵을 정리하는 데 쓴다.
         /// </summary>
         private GameObject currentMapInstance;
-        private string currentMapId = nameof(AddressableAssetKey.Farm);
+        private string currentMapId = nameof(AddressableAssetKey.Floor001);
 
         /// <summary>
         /// SwapMapAsync가 진행 중인 동안 true. 앞으로 맵이 늘어나 포털을 연달아 통과하거나 같은 프레임에
@@ -155,16 +155,16 @@ namespace Incheol.Presenter.Scene
 
                     GameObject instance = AddressableAssetManager.Instance.InstantiatePrefab(prefab, transform);
 
-                    // Farm은 단순 프리로드 대상이 아니라 플레이어가 실제로 배치될 맵이므로,
+                    // Floor001은 단순 프리로드 대상이 아니라 플레이어가 실제로 배치될 맵이므로,
                     // 생성 직후 맵 안의 RespawnPoint를 찾아 그 자리에 선택된 캐릭터를 스폰한다.
-                    if (key == AddressableAssetKey.Farm)
+                    if (key == AddressableAssetKey.Floor001)
                     {
                         currentMapInstance = instance;
                         currentMapId = keyString;
                         SpawnPlayerAtRespawnPoint(instance);
                     }
 
-                    // UI_GameScene과 플레이어(Farm 하위에서 비동기로 스폰됨)는 로드 완료 순서가 보장되지 않으므로,
+                    // UI_GameScene과 플레이어(Floor001 하위에서 비동기로 스폰됨)는 로드 완료 순서가 보장되지 않으므로,
                     // 둘 다 준비된 시점에 TryBindPlayerInfo가 캐릭터 정보를 UI에 반영한다.
                     if (key == AddressableAssetKey.UI_GameScene)
                     {
@@ -183,20 +183,20 @@ namespace Incheol.Presenter.Scene
         }
 
         /// <summary>
-        /// Farm 맵 인스턴스 하위에서 "RespawnPoint" 이름의 Transform을 찾아 그 위치에 플레이어 캐릭터를 스폰한다.
+        /// Floor001 맵 인스턴스 하위에서 "RespawnPoint" 이름의 Transform을 찾아 그 위치에 플레이어 캐릭터를 스폰한다.
         /// </summary>
-        private void SpawnPlayerAtRespawnPoint(GameObject _farmInstance)
+        private void SpawnPlayerAtRespawnPoint(GameObject _mapInstance)
         {
-            if (_farmInstance == null)
+            if (_mapInstance == null)
             {
                 return;
             }
 
-            Transform respawnPoint = FindChildRecursive(_farmInstance.transform, "RespawnPoint");
+            Transform respawnPoint = FindChildRecursive(_mapInstance.transform, "RespawnPoint");
 
             if (respawnPoint == null)
             {
-                DebugLogManager.GenerateErrorMessage<GameSceneManager>("Farm 맵에서 RespawnPoint를 찾을 수 없습니다.");
+                DebugLogManager.GenerateErrorMessage<GameSceneManager>("Floor001 맵에서 RespawnPoint를 찾을 수 없습니다.");
                 return;
             }
 
@@ -382,7 +382,7 @@ namespace Incheol.Presenter.Scene
 
         /// <summary>
         /// 씬의 CinemachineCamera(CM_PlayerFollowCamera)가 방금 스폰된 플레이어를 추적하도록 Follow 타깃을 연결한다.
-        /// Farm/RespawnPoint 등 씬 구성 에셋과 달리 카메라는 GameScene.unity에 이미 배치되어 있으므로 여기서는 찾아서 연결만 한다.
+        /// Floor001/RespawnPoint 등 씬 구성 에셋과 달리 카메라는 GameScene.unity에 이미 배치되어 있으므로 여기서는 찾아서 연결만 한다.
         /// </summary>
         private void AssignPlayerToFollowCamera(Transform _playerTransform)
         {

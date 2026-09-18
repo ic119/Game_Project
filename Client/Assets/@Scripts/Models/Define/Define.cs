@@ -15,7 +15,6 @@ namespace Incheol.Models.Define
         BasicCharacter = 7,
         UI_CharacterListItem = 8,
         UI_GameScene = 9,
-        Farm = 10,
         UI_InventorySlot = 11,
         Floor001 = 12,
         OneHandedAttack01 = 13,

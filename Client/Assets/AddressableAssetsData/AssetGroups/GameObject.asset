@@ -20,23 +20,13 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 63d9f83fe1f8ccd4186e43b32e9d3e1b
-    m_Address: Farm
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 735d58c734d5a5a4b92208d4126c63fd
-    m_Address: Camp001
+    m_Address: Floor001
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 99046688727543445abd1930c59733e9
     m_Address: Portal
-    m_ReadOnly: 0
-    m_SerializedLabels: []
-    FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: cb412a3d9b0ecd54bbafe4c2922e3006
-    m_Address: SlimeMonster
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
