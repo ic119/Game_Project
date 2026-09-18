@@ -26,6 +26,10 @@ public class UI_GameSceneView : MonoBehaviour
     [SerializeField] private RectTransform chatContentRoot;
     [SerializeField] private GameObject chatMessageTemplate;
 
+    [Header("Mini Map")]
+    [SerializeField] private RawImage miniMapView;
+    [SerializeField] private Sprite playerMiniMapIcon;
+
     /// <summary>
     /// 채팅창에 쌓아두는 메시지 아이템의 최대 개수. 세션이 길어져도 UI 오브젝트가 무한히 늘어나지 않도록
     /// 오래된 메시지부터 제거한다.
@@ -132,6 +136,16 @@ public class UI_GameSceneView : MonoBehaviour
             playerLevelLabel.text = $"Lv.{playerModel.Level}";
         }
     }
+
+    /// <summary>
+    /// 미니맵을 실제로 그리는 MiniMapController(Presenter가 생성/초기화)가 참조할 RawImage.
+    /// </summary>
+    public RawImage MiniMapView => miniMapView;
+
+    /// <summary>
+    /// MiniMapController가 플레이어 위치 아이콘을 만들 때 사용할 스프라이트.
+    /// </summary>
+    public Sprite PlayerMiniMapIcon => playerMiniMapIcon;
 
     public bool IsMainPopupActive => mainPopup != null && mainPopup.activeSelf;
 

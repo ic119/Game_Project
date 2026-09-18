@@ -17,6 +17,7 @@ namespace Incheol.Presenter.Scene
 
         private UI_GameSceneView gameSceneView;
         private PlayerCharacterModel spawnedPlayerModel;
+        private MiniMapController miniMapController;
 
         private GameObject inventoryInstance;
 
@@ -490,7 +491,31 @@ namespace Incheol.Presenter.Scene
             if (gameSceneView != null && spawnedPlayerModel != null)
             {
                 gameSceneView.BindPlayer(spawnedPlayerModel);
+                SetupMiniMap();
             }
+        }
+
+        /// <summary>
+        /// UI_GameScene과 로컬 플레이어가 모두 준비된 시점(TryBindPlayerInfo)에 한 번만 MiniMapController를
+        /// 생성해 초기화한다. gameSceneView.miniMapView가 인스펙터에 연결돼 있지 않으면 조용히 건너뛴다.
+        /// </summary>
+        private void SetupMiniMap()
+        {
+            if (miniMapController != null || localPlayerInstance == null)
+            {
+                return;
+            }
+
+            if (gameSceneView.MiniMapView == null)
+            {
+                return;
+            }
+
+            GameObject miniMapObject = new GameObject(nameof(MiniMapController));
+            miniMapObject.transform.SetParent(transform, false);
+
+            miniMapController = miniMapObject.AddComponent<MiniMapController>();
+            miniMapController.Initialize(gameSceneView.MiniMapView, gameSceneView.PlayerMiniMapIcon, localPlayerInstance.transform);
         }
 
         /// <summary>
