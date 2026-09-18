@@ -30,13 +30,13 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 83187382e7bb7844da2964a6fec3b29b
-    m_Address: Monster_RedBoar
+  - m_GUID: 99046688727543445abd1930c59733e9
+    m_Address: Portal
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
-  - m_GUID: 99046688727543445abd1930c59733e9
-    m_Address: Portal
+  - m_GUID: cb412a3d9b0ecd54bbafe4c2922e3006
+    m_Address: SlimeMonster
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0

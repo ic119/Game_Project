@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 664e6debfb2b21b429306a3108b6683e
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 260493
+  packageName: RPG Monster BUNDLE PBR
+  packageVersion: 1.5
+  assetPath: Assets/RPGMonsterBundlePBR/CommonStuffs/Scene/AllTogether/Directional
+    Light.prefab
+  uploadId: 990826

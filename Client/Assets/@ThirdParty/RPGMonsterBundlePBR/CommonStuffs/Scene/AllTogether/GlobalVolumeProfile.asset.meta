@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: ae02a625105083c4aafc7bb26f5d5f65
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 260493
+  packageName: RPG Monster BUNDLE PBR
+  packageVersion: 1.5
+  assetPath: Assets/RPGMonsterBundlePBR/CommonStuffs/Scene/AllTogether/GlobalVolumeProfile.asset
+  uploadId: 990826
