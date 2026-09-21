@@ -17,7 +17,8 @@ public class UI_GameSceneView : MonoBehaviour
     [SerializeField] private Slider expBarSlider;
     [SerializeField] private TextMeshProUGUI expBarSliderValue;
 
-    [Header ("적 정보 UI")]
+    [Header("적 정보 UI")]
+    [SerializeField] private GameObject monsterInfoContainer;
     [SerializeField] private TextMeshProUGUI monsterNameLabel;
     [SerializeField] private Slider monsterHpBarSlider;
     [SerializeField] private TextMeshProUGUI monsterHpBarSliderValue;
@@ -54,6 +55,15 @@ public class UI_GameSceneView : MonoBehaviour
     /// 몬스터가 죽어 오브젝트가 파괴되면 Unity의 오버로드된 == 비교로 자연히 null 취급된다.
     /// </summary>
     private RemoteMonsterController targetMonster;
+
+    /// <summary>
+    /// targetMonster를 마지막으로 공격(BindMonster 호출)한 시각(Time.time). 이 시각으로부터
+    /// MonsterTargetLostTimeoutSeconds가 지나도록 재공격이 없으면 Update()가 타겟을 자동 해제한다 -
+    /// 몬스터가 죽지 않았는데도 정보 패널이 계속 떠 있는 걸 막기 위함이다.
+    /// </summary>
+    private float lastMonsterTargetedTime;
+
+    private const float MonsterTargetLostTimeoutSeconds = 8f;
     #endregion
 
     #region LifeCycle
@@ -68,6 +78,11 @@ public class UI_GameSceneView : MonoBehaviour
         }
 
         SetMainPopupActive(false);
+
+        if (monsterInfoContainer != null)
+        {
+            monsterInfoContainer.SetActive(false);
+        }
 
         if (chatInputField != null)
         {
@@ -125,9 +140,26 @@ public class UI_GameSceneView : MonoBehaviour
             expBarSliderValue.text = FormatExpText(playerModel.CurrentExp, playerModel.ExpToNextLevel);
         }
 
+        // 마지막 공격(BindMonster) 이후 MonsterTargetLostTimeoutSeconds가 지나도록 재공격이 없으면
+        // 죽지 않았어도 타겟을 자동 해제한다(플레이어가 다른 데로 가버린 경우 정보가 계속 남는 것 방지).
+        if (targetMonster != null && Time.time - lastMonsterTargetedTime > MonsterTargetLostTimeoutSeconds)
+        {
+            targetMonster = null;
+        }
+
+        // targetMonster가 죽어 오브젝트가 파괴되면 Unity의 오버로드된 ==로 자연히 null 취급되므로,
+        // monsterInfoContainer의 활성 상태를 매 프레임 이 값 하나로 동기화한다 - BindMonster(공격 시
+        // 활성화)와 사망/타겟로스트 감지(비활성화)를 별도 경로로 나누지 않고 한 곳에서 일관되게 처리한다.
+        bool hasLiveTarget = targetMonster != null;
+
+        if (monsterInfoContainer != null && monsterInfoContainer.activeSelf != hasLiveTarget)
+        {
+            monsterInfoContainer.SetActive(hasLiveTarget);
+        }
+
         if (monsterHpBarSlider != null)
         {
-            if (targetMonster != null)
+            if (hasLiveTarget)
             {
                 monsterHpBarSlider.maxValue = Mathf.Max(1, targetMonster.MaxHp);
                 monsterHpBarSlider.value = targetMonster.CurrentHp;
@@ -139,12 +171,17 @@ public class UI_GameSceneView : MonoBehaviour
             }
             else
             {
-                // 타겟이 죽어 파괴되면(targetMonster가 Unity의 오버로드된 ==로 null 취급) 체력바를 비운다.
+                // 타겟이 죽거나(파괴) 타겟로스트로 해제되면 체력바/이름을 비운다.
                 monsterHpBarSlider.value = 0;
 
                 if (monsterHpBarSliderValue != null)
                 {
                     monsterHpBarSliderValue.text = string.Empty;
+                }
+
+                if (monsterNameLabel != null)
+                {
+                    monsterNameLabel.text = string.Empty;
                 }
             }
         }
@@ -203,6 +240,11 @@ public class UI_GameSceneView : MonoBehaviour
     public void BindMonster(RemoteMonsterController _monster)
     {
         targetMonster = _monster;
+
+        if (targetMonster != null)
+        {
+            lastMonsterTargetedTime = Time.time;
+        }
 
         if (monsterNameLabel == null)
         {
