@@ -23,8 +23,16 @@ namespace Incheol.Models.Define
         OneHandedHit01 = 16,
         SpearHit01 = 17,
         TwoHandedHit01 = 18,
-        Monster_RedBoar = 19,
         Dash01 = 20
+    }
+
+    /// <summary>
+    /// 몬스터 생성 및 스폰 설정 시 사용하기 위한 몬스터 관련 Key만 관리하는 Enum형 변수
+    /// </summary>
+    public enum MonsterType
+    {
+        None = 0,
+        RedMushroom = 1
     }
 }
 

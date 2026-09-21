@@ -43,6 +43,7 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnMonsterSpawned += HandleMonsterSpawned;
             GameServerConnectManager.Instance.OnMonsterDamaged += HandleMonsterDamaged;
             GameServerConnectManager.Instance.OnMonsterDied += HandleMonsterDied;
+            GameServerConnectManager.Instance.OnMonsterMoved += HandleMonsterMoved;
         }
 
         private void OnDisable()
@@ -55,6 +56,7 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnMonsterSpawned -= HandleMonsterSpawned;
             GameServerConnectManager.Instance.OnMonsterDamaged -= HandleMonsterDamaged;
             GameServerConnectManager.Instance.OnMonsterDied -= HandleMonsterDied;
+            GameServerConnectManager.Instance.OnMonsterMoved -= HandleMonsterMoved;
         }
         #endregion
 
@@ -136,7 +138,7 @@ namespace Incheol.Modules
                 instance.name = $"Monster_{info.MonsterType}_{info.MonsterId}";
 
                 RemoteMonsterController controller = instance.AddComponent<RemoteMonsterController>();
-                controller.SetMonsterId(info.MonsterId, info.MonsterType);
+                controller.Initialize(info.MonsterId, info.MonsterType, monsterData.displayName, monsterData.grade, info.ExpReward, info.MaxHp, info.CurrentHp);
                 controller.Warp(new Vector3(info.X, info.Y, info.Z), info.RotationY);
 
                 remoteMonsters[info.MonsterId] = controller;
@@ -171,7 +173,8 @@ namespace Incheol.Modules
 
         /// <summary>
         /// Game_MonsterDamageBroadcast는 전원에게 온다. 대상 몬스터가 아직 이 클라이언트에 스폰돼 있으면
-        /// 피격 트리거만 재생한다(HP 자체는 서버 권위값이라 별도 로컬 계산 없이 그대로 신뢰한다).
+        /// CurrentHp를 갱신(OnHpChanged 발생)하고 피격 트리거를 재생한다(HP 자체는 서버 권위값이라
+        /// 별도 로컬 계산 없이 그대로 신뢰한다).
         /// </summary>
         private void HandleMonsterDamaged(GameMonsterDamageBroadcastPacket packet)
         {
@@ -180,6 +183,7 @@ namespace Incheol.Modules
                 return;
             }
 
+            controller.ApplyDamage(packet.RemainingHp);
             controller.PlayHitReaction();
         }
 
@@ -197,6 +201,21 @@ namespace Incheol.Modules
             remoteMonsters.Remove(packet.MonsterId);
             controller.PlayDeath();
             Destroy(controller.gameObject, dieAnimationDuration);
+        }
+
+        /// <summary>
+        /// Game_MonsterMoveBroadcast는 GameRoom의 AI 틱(추적/복귀)이 몬스터 위치를 바꿀 때마다 온다.
+        /// RemoteCharacterController(원격 플레이어)와 동일하게 목표 위치/회전만 갱신하고, 실제 이동은
+        /// RemoteMonsterController.Update()에서 매 프레임 보간한다.
+        /// </summary>
+        private void HandleMonsterMoved(GameMonsterMoveBroadcastPacket packet)
+        {
+            if (!remoteMonsters.TryGetValue(packet.MonsterId, out RemoteMonsterController controller) || controller == null)
+            {
+                return;
+            }
+
+            controller.SetTarget(new Vector3(packet.X, packet.Y, packet.Z), packet.RotationY);
         }
         #endregion
     }

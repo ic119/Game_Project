@@ -17,6 +17,7 @@ namespace Incheol.Modules.Networking
         public float Y;
         public float Z;
         public float RotationY;
+        public int ExpReward;
 
         public static GameMonsterInfo ReadFrom(BinaryReader reader)
         {
@@ -31,7 +32,8 @@ namespace Incheol.Modules.Networking
                 X = reader.ReadSingle(),
                 Y = reader.ReadSingle(),
                 Z = reader.ReadSingle(),
-                RotationY = reader.ReadSingle()
+                RotationY = reader.ReadSingle(),
+                ExpReward = reader.ReadInt32()
             };
         }
     }

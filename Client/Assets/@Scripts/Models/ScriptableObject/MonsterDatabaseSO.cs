@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Incheol.Models.Define;
 using Incheol.Utils;
 using UnityEngine;
 
@@ -45,12 +46,12 @@ namespace Incheol.Models.SO
 
             foreach (MonsterData monster in monsters)
             {
-                if (monster == null || string.IsNullOrEmpty(monster.monsterType))
+                if (monster == null || monster.monsterType == MonsterType.None)
                 {
                     continue;
                 }
 
-                monsterDictionary[monster.monsterType] = monster;
+                monsterDictionary[monster.monsterType.ToString()] = monster;
             }
         }
 
@@ -66,10 +67,10 @@ namespace Incheol.Models.SO
                 return;
             }
 
-            var seenTypes = new HashSet<string>();
+            var seenTypes = new HashSet<MonsterType>();
             foreach (MonsterData monster in monsters)
             {
-                if (monster == null || string.IsNullOrEmpty(monster.monsterType))
+                if (monster == null || monster.monsterType == MonsterType.None)
                 {
                     continue;
                 }
