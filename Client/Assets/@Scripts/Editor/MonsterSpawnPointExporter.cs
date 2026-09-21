@@ -89,6 +89,22 @@ namespace Incheol.Editor
                 // 서버가 부팅 시점에 "Entries가 비어있으면 실패"로 막아주긴 하지만, 그 전에 여기서
                 // 먼저 걸러야 이 프리팹 하나가 잘못됐다고 다른 포인트까지 포함된 내보내기 전체를
                 // 조용히 반쪽짜리로 만들지 않는다 - 문제가 있으면 파일을 아예 안 쓰고 통째로 중단한다.
+
+                // pointId는 marker.gameObject.name을 그대로 쓰므로(클래스 주석 참고), 같은 맵 안에 이름이
+                // 겹치면 클라이언트(RemoteMonsterManager.FindSpawnPointTransform)가 여러 포인트 중 아무거나
+                // 먼저 찾은 오브젝트에 비결정적으로 몰아 배치하게 된다 - 여기서 미리 잡아낸다.
+                var seenPointIds = new HashSet<string>();
+                foreach (MonsterSpawnPointMarker marker in markers)
+                {
+                    if (!seenPointIds.Add(marker.gameObject.name))
+                    {
+                        string message = $"스폰 포인트 이름 '{marker.gameObject.name}'이(가) 이 맵 안에 중복됩니다.";
+                        if (showDialogs) EditorUtility.DisplayDialog("스폰 포인트 내보내기", message, "확인");
+                        Debug.LogError($"[MonsterSpawnPointExporter] {message} 내보내기를 중단합니다.");
+                        return 0;
+                    }
+                }
+
                 foreach (MonsterSpawnPointMarker marker in markers)
                 {
                     if (marker.entries == null || marker.entries.Count == 0)

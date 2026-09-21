@@ -239,11 +239,16 @@ namespace GameServer.Networking
             }
         }
 
+        // 같은 포인트에서 maxAlive > 1로 여러 마리가 스폰될 때 한 좌표에 겹쳐 뭉치지 않도록,
+        // 포인트 중심에서 이 반경 안의 원 안에 균등 분포로 스폰 좌표를 흩뿌린다.
+        private const float SpawnJitterRadius = 1.5f;
+
         // point.Entries 중 하나를 무작위로 골라 그 타입/스탯으로 몬스터를 만든다. 리스폰마다 다시 호출되므로
         // 같은 포인트에서도 스폰될 때마다 다른 타입이 나올 수 있다.
         private MonsterInfo SpawnMonsterAtPoint(MonsterSpawnPointDefinition point)
         {
             MonsterSpawnEntry entry = point.Entries[Random.Shared.Next(point.Entries.Count)];
+            (float homeX, float homeZ) = ApplySpawnJitter(point.X, point.Z);
 
             var info = new MonsterInfo
             {
@@ -253,22 +258,37 @@ namespace GameServer.Networking
                 CurrentHp = entry.MaxHp,
                 AttackPower = entry.AttackPower,
                 Defense = entry.Defense,
-                X = point.X,
+                X = homeX,
                 Y = point.Y,
-                Z = point.Z,
+                Z = homeZ,
                 RotationY = point.RotationY,
                 ExpReward = entry.ExpReward,
                 PointId = point.PointId
             };
 
-            _monsters[info.MonsterId] = new MonsterRuntime(info, point, entry.ExpReward);
+            _monsters[info.MonsterId] = new MonsterRuntime(info, point, entry.ExpReward, homeX, homeZ);
             return info;
+        }
+
+        // 반지름에 sqrt(균등난수)를 곱해 원 "둘레"가 아니라 "넓이" 기준으로 균등 분포시킨다
+        // (sqrt 보정이 없으면 중심 근처에 점이 몰린다).
+        private static (float X, float Z) ApplySpawnJitter(float centerX, float centerZ)
+        {
+            float angle = Random.Shared.NextSingle() * MathF.PI * 2f;
+            float radius = MathF.Sqrt(Random.Shared.NextSingle()) * SpawnJitterRadius;
+            return (centerX + MathF.Cos(angle) * radius, centerZ + MathF.Sin(angle) * radius);
         }
 
         private sealed class MonsterRuntime
         {
             public MonsterInfo Info { get; }
             public MonsterSpawnPointDefinition Point { get; }
+
+            // 스폰 시 지터가 적용된 이 개체만의 실제 스폰 좌표(SpawnMonsterAtPoint 참고). 리쉬 판정과 복귀
+            // 목적지에 Point.X/Z(포인트 공유 중심) 대신 이 값을 써서, 전투 후 복귀해도 다시 한 좌표로
+            // 뭉치지 않고 각자 스폰됐던 자리로 흩어진 채 대기하게 한다.
+            public float HomeX { get; }
+            public float HomeZ { get; }
 
             // 스폰 시 선택된 엔트리의 경험치. Point.Entries 중 어느 것이 뽑혔는지는 리스폰마다 달라질 수 있어
             // Point가 아니라 이 인스턴스에 따로 저장해둔다(ApplyMonsterAttackAsync가 처치 시 참조).
@@ -277,11 +297,13 @@ namespace GameServer.Networking
             public MonsterAiState AiState { get; set; } = MonsterAiState.Idle;
             public long? TargetPlayerId { get; set; }
 
-            public MonsterRuntime(MonsterInfo info, MonsterSpawnPointDefinition point, int expReward)
+            public MonsterRuntime(MonsterInfo info, MonsterSpawnPointDefinition point, int expReward, float homeX, float homeZ)
             {
                 Info = info;
                 Point = point;
                 ExpReward = expReward;
+                HomeX = homeX;
+                HomeZ = homeZ;
             }
         }
 
@@ -375,7 +397,7 @@ namespace GameServer.Networking
             MonsterInfo info = runtime.Info;
             PlayerInfo target = targetEntry.Info;
 
-            float distanceFromSpawn = Distance(info.X, info.Z, runtime.Point.X, runtime.Point.Z);
+            float distanceFromSpawn = Distance(info.X, info.Z, runtime.HomeX, runtime.HomeZ);
             if (distanceFromSpawn > runtime.Point.LeashRange)
             {
                 runtime.TargetPlayerId = null;
@@ -391,15 +413,14 @@ namespace GameServer.Networking
         private bool TickReturning(MonsterRuntime runtime, float deltaSeconds)
         {
             MonsterInfo info = runtime.Info;
-            MonsterSpawnPointDefinition point = runtime.Point;
 
-            bool moved = MoveToward(info, point.X, point.Z, point.ChaseSpeed, deltaSeconds);
+            bool moved = MoveToward(info, runtime.HomeX, runtime.HomeZ, runtime.Point.ChaseSpeed, deltaSeconds);
 
-            if (Distance(info.X, info.Z, point.X, point.Z) <= ArrivalThreshold)
+            if (Distance(info.X, info.Z, runtime.HomeX, runtime.HomeZ) <= ArrivalThreshold)
             {
-                info.X = point.X;
-                info.Z = point.Z;
-                info.RotationY = point.RotationY;
+                info.X = runtime.HomeX;
+                info.Z = runtime.HomeZ;
+                info.RotationY = runtime.Point.RotationY;
                 runtime.AiState = MonsterAiState.Idle;
                 return true;
             }

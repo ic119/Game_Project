@@ -54,6 +54,20 @@ namespace Incheol.Presenter.Scene
         #endregion
 
         #region LifeCycle
+        private void Awake()
+        {
+            // 맵/플레이어/몬스터가 전부 이 transform의 자식으로 생성된다. 몬스터 스폰 좌표는 에디터에서
+            // 맵 프리팹만 고립시켜 내보낸 값(사실상 로컬 좌표, MonsterSpawnPointExporter 참고)이라
+            // 이 오브젝트가 원점이 아니면 서버가 아는 몬스터 좌표와 플레이어의 실제 월드 좌표계가
+            // 어긋나 버린다(스폰 위치는 물론 인식/추적 AI 판정도 깨진다). Scene 뷰에서 실수로 옮겨질
+            // 수 있으니 부팅 시점에 바로 경고한다.
+            if (transform.position != Vector3.zero)
+            {
+                DebugLogManager.GenerateErrorMessage<GameSceneManager>(
+                    $"GameSceneManager가 원점이 아닙니다({transform.position}). 맵/몬스터 좌표계가 어긋날 수 있으니 Transform을 (0,0,0)으로 되돌리세요.");
+            }
+        }
+
         private void Start()
         {
             LoadAndInstantiateGameSceneAssets();

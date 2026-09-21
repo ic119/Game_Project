@@ -161,23 +161,15 @@ namespace Incheol.Modules
                     return;
                 }
 
+                // 부모는 씬의 포인트 오브젝트로 두되(계층 정리용), 실제 배치 좌표는 항상 서버가 권위를 갖는
+                // info.X/Y/Z를 그대로 쓴다. 같은 포인트에서 여러 마리가 스폰될 때 서버가 개체마다 흩뿌린
+                // 좌표(GameRoom.SpawnMonsterAtPoint의 지터)를 여기서 포인트 위치로 덮어쓰면 다시 한 점에
+                // 겹쳐버리기 때문이다.
                 Transform spawnParent = FindSpawnPointTransform(info.PointId);
-                Vector3 spawnPosition;
-                float spawnRotationY;
-
-                if (spawnParent != null)
+                if (spawnParent == null)
                 {
-                    // 서버 좌표(info.X/Y/Z) 대신 실제 씬에 배치된 포인트 오브젝트의 현재 위치/회전을 신뢰한다.
-                    // 맵을 다시 export하지 않고 마커만 옮긴 경우에도 몬스터가 항상 눈에 보이는 포인트 위치에 생성되게 하기 위함이다.
-                    spawnPosition = spawnParent.position;
-                    spawnRotationY = spawnParent.eulerAngles.y;
-                }
-                else
-                {
-                    DebugLogManager.GenerateErrorMessage<RemoteMonsterManager>($"PointId '{info.PointId}'에 해당하는 스폰 포인트 오브젝트를 GameScene에서 찾을 수 없어 서버 좌표로 생성합니다.");
+                    DebugLogManager.GenerateErrorMessage<RemoteMonsterManager>($"PointId '{info.PointId}'에 해당하는 스폰 포인트 오브젝트를 GameScene에서 찾을 수 없어 기본 위치에 생성합니다.");
                     spawnParent = transform;
-                    spawnPosition = new Vector3(info.X, info.Y, info.Z);
-                    spawnRotationY = info.RotationY;
                 }
 
                 GameObject instance = AddressableAssetManager.Instance.InstantiatePrefab(prefab, spawnParent);
@@ -185,7 +177,7 @@ namespace Incheol.Modules
 
                 RemoteMonsterController controller = instance.AddComponent<RemoteMonsterController>();
                 controller.Initialize(info.MonsterId, info.MonsterType, monsterData.displayName, monsterData.grade, info.ExpReward, info.MaxHp, info.CurrentHp);
-                controller.Warp(spawnPosition, spawnRotationY);
+                controller.Warp(new Vector3(info.X, info.Y, info.Z), info.RotationY);
 
                 remoteMonsters[info.MonsterId] = controller;
             });
