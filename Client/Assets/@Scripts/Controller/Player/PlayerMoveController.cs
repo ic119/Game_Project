@@ -52,8 +52,11 @@ namespace Incheol.Controller
         {
             rigidBody = GetComponent<Rigidbody>();
             rigidBody.useGravity = true;
-            // 이동/회전은 이 스크립트가 직접 제어하므로, 충돌로 캐릭터가 넘어지지 않도록 X/Z 회전만 고정한다(Y는 회전 제어에 필요).
-            rigidBody.constraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
+            // 회전은 이 스크립트가 MoveRotation으로만 직접 제어한다(물리 힘과 무관하게 목표 회전을 그대로 적용하므로
+            // Y축을 Freeze해도 화살표 키 회전에는 영향이 없다). X/Y/Z를 전부 고정해, 몬스터/벽 등과 충돌했을 때
+            // 물리 엔진이 계산한 충돌 토크가 Y축 회전에 새어 들어가 카메라(Follow 대상 회전을 그대로 쓰는
+            // ThirdPersonFollow)까지 의도치 않게 돌아가는 문제를 막는다.
+            rigidBody.constraints = RigidbodyConstraints.FreezeRotation;
             rigidBody.interpolation = RigidbodyInterpolation.Interpolate;
 
             CapsuleCollider capsuleCollider = GetComponent<CapsuleCollider>();
