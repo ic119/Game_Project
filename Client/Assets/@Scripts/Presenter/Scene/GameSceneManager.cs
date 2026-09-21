@@ -79,6 +79,7 @@ namespace Incheol.Presenter.Scene
             {
                 GameServerConnectManager.Instance.OnChatReceived += HandleChatReceived;
                 GameServerConnectManager.Instance.OnDamageReceived += HandleDamageReceived;
+                GameServerConnectManager.Instance.OnMonsterAttacked += HandleMonsterAttackReceived;
                 GameServerConnectManager.Instance.OnExpGained += HandleExpGained;
                 GameServerConnectManager.Instance.OnServerError += HandleGameServerError;
                 GameServerConnectManager.Instance.OnDisconnected += HandleGameServerDisconnected;
@@ -91,6 +92,7 @@ namespace Incheol.Presenter.Scene
             {
                 GameServerConnectManager.Instance.OnChatReceived -= HandleChatReceived;
                 GameServerConnectManager.Instance.OnDamageReceived -= HandleDamageReceived;
+                GameServerConnectManager.Instance.OnMonsterAttacked -= HandleMonsterAttackReceived;
                 GameServerConnectManager.Instance.OnExpGained -= HandleExpGained;
                 GameServerConnectManager.Instance.OnServerError -= HandleGameServerError;
                 GameServerConnectManager.Instance.OnDisconnected -= HandleGameServerDisconnected;
@@ -603,6 +605,25 @@ namespace Incheol.Presenter.Scene
             }
 
             spawnedPlayerModel.TakeDamage(new DamageInfo(packet.AttackerId, packet.Damage));
+        }
+
+        /// <summary>
+        /// Game_MonsterAttackBroadcast는 전원에게 오지만(공격 애니메이션은 RemoteMonsterManager가 전원 재생),
+        /// 실제 데미지 적용은 내(로컬 플레이어)가 대상인 경우만 처리한다 - HandleDamageReceived(PvP)와 동일한 패턴.
+        /// </summary>
+        private void HandleMonsterAttackReceived(GameMonsterAttackBroadcastPacket packet)
+        {
+            if (spawnedPlayerModel == null || SaveDataManager.Instance == null)
+            {
+                return;
+            }
+
+            if (packet.TargetPlayerId != SaveDataManager.Instance.SelectedCharacterId)
+            {
+                return;
+            }
+
+            spawnedPlayerModel.TakeDamage(new DamageInfo(packet.MonsterId, packet.Damage));
         }
 
         /// <summary>

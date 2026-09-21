@@ -45,6 +45,7 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnMonsterDamaged += HandleMonsterDamaged;
             GameServerConnectManager.Instance.OnMonsterDied += HandleMonsterDied;
             GameServerConnectManager.Instance.OnMonsterMoved += HandleMonsterMoved;
+            GameServerConnectManager.Instance.OnMonsterAttacked += HandleMonsterAttacked;
         }
 
         private void OnDisable()
@@ -58,6 +59,7 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnMonsterDamaged -= HandleMonsterDamaged;
             GameServerConnectManager.Instance.OnMonsterDied -= HandleMonsterDied;
             GameServerConnectManager.Instance.OnMonsterMoved -= HandleMonsterMoved;
+            GameServerConnectManager.Instance.OnMonsterAttacked -= HandleMonsterAttacked;
         }
         #endregion
 
@@ -246,6 +248,21 @@ namespace Incheol.Modules
 
             controller.ApplyDamage(packet.RemainingHp);
             controller.PlayHitReaction();
+        }
+
+        /// <summary>
+        /// Game_MonsterAttackBroadcast는 전원에게 온다(몬스터가 근접 사거리 안의 플레이어를 공격할 때마다).
+        /// 여기서는 공격 애니메이션만 재생한다 - 실제 데미지 적용은 대상이 로컬 플레이어인 경우
+        /// GameSceneManager.HandleMonsterAttackReceived가 별도로 처리한다.
+        /// </summary>
+        private void HandleMonsterAttacked(GameMonsterAttackBroadcastPacket packet)
+        {
+            if (!remoteMonsters.TryGetValue(packet.MonsterId, out RemoteMonsterController controller) || controller == null)
+            {
+                return;
+            }
+
+            controller.PlayAttack();
         }
 
         /// <summary>

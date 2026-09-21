@@ -21,6 +21,11 @@ namespace Incheol.Controller
         private static readonly int DieHash = Animator.StringToHash("Die");
         private static readonly int IsIdleHash = Animator.StringToHash("IsIdle");
         private static readonly int IsMoveHash = Animator.StringToHash("IsMove");
+        private static readonly int AttackHash = Animator.StringToHash("Attack");
+        private static readonly int AttackIndexHash = Animator.StringToHash("AttackIndex");
+
+        // MushroomStance 기준 공격 모션 개수(Attack001~Attack003). AttackIndex는 1부터 시작한다.
+        private const int AttackVariationCount = 3;
 
         private Vector3 targetPosition;
         private Quaternion targetRotation;
@@ -112,6 +117,21 @@ namespace Incheol.Controller
             targetPosition = position;
             targetRotation = Quaternion.Euler(0f, rotationY, 0f);
             transform.SetPositionAndRotation(position, targetRotation);
+        }
+
+        /// <summary>
+        /// 이 몬스터가 대상(플레이어)을 공격하는 순간 재생한다. MushroomStance의 Attack001~Attack003 중
+        /// 하나를 매번 무작위로 골라 AttackIndex에 채운 뒤 Attack 트리거를 발동한다.
+        /// </summary>
+        public void PlayAttack()
+        {
+            if (animator == null)
+            {
+                return;
+            }
+
+            animator.SetInteger(AttackIndexHash, UnityEngine.Random.Range(1, AttackVariationCount + 1));
+            animator.SetTrigger(AttackHash);
         }
 
         /// <summary>
