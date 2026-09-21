@@ -42,6 +42,11 @@ namespace Incheol.Presenter.Scene
         private GameObject localPlayerInstance;
 
         /// <summary>
+        /// 로컬 플레이어의 PlayerAttackController. MonsterTargeted 구독 해지(OnDestroy)를 위해 들고 있는다.
+        /// </summary>
+        private PlayerAttackController localPlayerAttackController;
+
+        /// <summary>
         /// 인벤토리 UI(inventoryInstance)의 현재 활성화 여부를 들고 있는 상태값.
         /// I키 토글 시 gameObject.activeSelf를 직접 확인하는 대신 이 값을 기준(source of truth)으로 판단한다.
         /// </summary>
@@ -113,6 +118,11 @@ namespace Incheol.Presenter.Scene
             {
                 gameSceneView.ChatMessageSubmitted -= HandleChatMessageSubmitted;
                 gameSceneView.LogoutButtonClicked -= HandleLogoutButtonClicked;
+            }
+
+            if (localPlayerAttackController != null)
+            {
+                localPlayerAttackController.MonsterTargeted -= HandleMonsterTargeted;
             }
 
             // GameScene을 벗어나면(씬 전환) GameServer 접속을 종료한다 - PersistAcrossScenes로 유지되는
@@ -395,7 +405,8 @@ namespace Incheol.Presenter.Scene
                 playerInstance.AddComponent<PlayerNetworkSender>();
 
                 // Space 입력으로 전방의 원격 플레이어를 공격(Game_AttackRequest)한다.
-                playerInstance.AddComponent<PlayerAttackController>();
+                localPlayerAttackController = playerInstance.AddComponent<PlayerAttackController>();
+                localPlayerAttackController.MonsterTargeted += HandleMonsterTargeted;
             });
         }
 
@@ -624,6 +635,15 @@ namespace Incheol.Presenter.Scene
             }
 
             spawnedPlayerModel.TakeDamage(new DamageInfo(packet.MonsterId, packet.Damage));
+        }
+
+        /// <summary>
+        /// PlayerAttackController.MonsterTargeted(내가 몬스터를 공격할 때마다)를 그대로 UI_GameSceneView에
+        /// 전달해 몬스터 이름/등급/체력바를 갱신한다.
+        /// </summary>
+        private void HandleMonsterTargeted(RemoteMonsterController targetMonster)
+        {
+            gameSceneView?.BindMonster(targetMonster);
         }
 
         /// <summary>

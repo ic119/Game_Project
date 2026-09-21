@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using Incheol.Controller;
+using Incheol.Utils;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -11,7 +13,14 @@ public class UI_GameSceneView : MonoBehaviour
     [SerializeField] private TextMeshProUGUI playerNameLabel;
     [SerializeField] private TextMeshProUGUI playerLevelLabel;
     [SerializeField] private Slider hpBarSlider;
+    [SerializeField] private TextMeshProUGUI hpBarSliderValue;
     [SerializeField] private Slider expBarSlider;
+    [SerializeField] private TextMeshProUGUI expBarSliderValue;
+
+    [Header ("적 정보 UI")]
+    [SerializeField] private TextMeshProUGUI monsterNameLabel;
+    [SerializeField] private Slider monsterHpBarSlider;
+    [SerializeField] private TextMeshProUGUI monsterHpBarSliderValue;
 
     [Header("Menu Button UI")]
     [SerializeField] private GameObject mainPopup;
@@ -39,6 +48,12 @@ public class UI_GameSceneView : MonoBehaviour
     private readonly Queue<GameObject> chatMessageInstances = new();
 
     private PlayerCharacterModel playerModel;
+
+    /// <summary>
+    /// Player가 마지막으로 공격한 몬스터(GameSceneManager.HandleMonsterTargeted가 BindMonster로 전달).
+    /// 몬스터가 죽어 오브젝트가 파괴되면 Unity의 오버로드된 == 비교로 자연히 null 취급된다.
+    /// </summary>
+    private RemoteMonsterController targetMonster;
     #endregion
 
     #region LifeCycle
@@ -93,11 +108,45 @@ public class UI_GameSceneView : MonoBehaviour
             hpBarSlider.value = playerModel.CurrentHp;
         }
 
+        if (hpBarSliderValue != null)
+        {
+            hpBarSliderValue.text = $"{playerModel.CurrentHp}/{playerModel.MaxHp}";
+        }
+
         if (expBarSlider != null)
         {
             // 만렙(ExpToNextLevel == 0)이면 슬라이더를 가득 채운 상태로 고정한다.
             expBarSlider.maxValue = Mathf.Max(1, playerModel.ExpToNextLevel);
             expBarSlider.value = playerModel.ExpToNextLevel > 0 ? playerModel.CurrentExp : expBarSlider.maxValue;
+        }
+
+        if (expBarSliderValue != null)
+        {
+            expBarSliderValue.text = FormatExpText(playerModel.CurrentExp, playerModel.ExpToNextLevel);
+        }
+
+        if (monsterHpBarSlider != null)
+        {
+            if (targetMonster != null)
+            {
+                monsterHpBarSlider.maxValue = Mathf.Max(1, targetMonster.MaxHp);
+                monsterHpBarSlider.value = targetMonster.CurrentHp;
+
+                if (monsterHpBarSliderValue != null)
+                {
+                    monsterHpBarSliderValue.text = $"{targetMonster.CurrentHp}/{targetMonster.MaxHp}";
+                }
+            }
+            else
+            {
+                // 타겟이 죽어 파괴되면(targetMonster가 Unity의 오버로드된 ==로 null 취급) 체력바를 비운다.
+                monsterHpBarSlider.value = 0;
+
+                if (monsterHpBarSliderValue != null)
+                {
+                    monsterHpBarSliderValue.text = string.Empty;
+                }
+            }
         }
     }
     #endregion
@@ -129,6 +178,45 @@ public class UI_GameSceneView : MonoBehaviour
         {
             playerLevelLabel.text = $"Lv.{playerModel.Level}";
         }
+    }
+
+    /// <summary>
+    /// "현재/다음 레벨업까지 필요 경험치 (퍼센트%)" 형식으로 표시한다(예: "10/100 (10%)").
+    /// 만렙(expToNextLevel이 0)이면 퍼센트 계산이 불가능하므로 "(MAX)"로 표시한다.
+    /// </summary>
+    private static string FormatExpText(int currentExp, int expToNextLevel)
+    {
+        if (expToNextLevel <= 0)
+        {
+            return $"{currentExp} (MAX)";
+        }
+
+        int percent = Mathf.RoundToInt((float)currentExp / expToNextLevel * 100f);
+        return $"{currentExp}/{expToNextLevel} ({percent}%)";
+    }
+
+    /// <summary>
+    /// Player가 몬스터를 공격할 때마다(PlayerAttackController.MonsterTargeted) GameSceneManager가 호출한다.
+    /// 이름은 등급 색상(ItemGradeUtils)을 입혀 표시하고, 체력바는 Update()에서 계속 폴링해 갱신한다
+    /// (BindPlayer와 동일하게 전투 중 실시간으로 바뀌는 값은 이벤트 대신 폴링하는 기존 컨벤션을 따른다).
+    /// </summary>
+    public void BindMonster(RemoteMonsterController _monster)
+    {
+        targetMonster = _monster;
+
+        if (monsterNameLabel == null)
+        {
+            return;
+        }
+
+        if (targetMonster == null)
+        {
+            monsterNameLabel.text = string.Empty;
+            return;
+        }
+
+        string colorHex = ColorUtility.ToHtmlStringRGBA(targetMonster.Grade.GetGradeColor());
+        monsterNameLabel.text = $"<color=#{colorHex}>{targetMonster.DisplayName}</color>";
     }
 
     /// <summary>

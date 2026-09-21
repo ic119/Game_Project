@@ -67,6 +67,12 @@ namespace Incheol.Controller
         private int attackLayerIndex = -1;
         private PlayerCharacterModel playerCharacterModel;
 
+        /// <summary>
+        /// 공격 판정(RequestAttack)이 몬스터를 대상으로 찾을 때마다 발생한다. UI_GameSceneView가
+        /// 몬스터 이름/등급/체력바를 갱신하는 데 사용한다(GameSceneManager가 중계).
+        /// </summary>
+        public event Action<RemoteMonsterController> MonsterTargeted;
+
         private int comboStage;
         private float stageStartTime;
         private float currentStageDuration;
@@ -235,6 +241,11 @@ namespace Incheol.Controller
             if (isMonster)
             {
                 GameServerConnectManager.Instance?.SendMonsterAttack(targetId);
+
+                if (RemoteMonsterManager.Instance != null && RemoteMonsterManager.Instance.TryGetRemoteMonster(targetId, out RemoteMonsterController targetMonster))
+                {
+                    MonsterTargeted?.Invoke(targetMonster);
+                }
             }
             else
             {
