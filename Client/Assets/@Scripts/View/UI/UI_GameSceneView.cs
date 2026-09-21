@@ -258,7 +258,8 @@ public class UI_GameSceneView : MonoBehaviour
         }
 
         string colorHex = ColorUtility.ToHtmlStringRGBA(targetMonster.Grade.GetGradeColor());
-        monsterNameLabel.text = $"<color=#{colorHex}>{targetMonster.DisplayName}</color>";
+        string gradeName = targetMonster.Grade.GetGradeDisplayName();
+        monsterNameLabel.text = $"<color=#{colorHex}>{targetMonster.DisplayName}({gradeName})</color>";
     }
 
     /// <summary>

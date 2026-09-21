@@ -3,8 +3,9 @@ using UnityEngine;
 namespace Incheol.Utils
 {
     /// <summary>
-    /// ItemGrade에 대응하는 표시 색상을 제공한다.
-    /// UI_InventorySlot의 GradeBorder 등 등급을 색으로 표현하는 모든 곳에서 이 값을 공용으로 사용한다.
+    /// ItemGrade에 대응하는 표시 색상/한글 등급명을 제공한다.
+    /// UI_InventorySlot의 GradeBorder, UI_GameSceneView의 몬스터 이름표 등 등급을 표현하는
+    /// 모든 곳에서 이 값을 공용으로 사용한다.
     /// </summary>
     public static class ItemGradeUtils
     {
@@ -26,6 +27,22 @@ namespace Incheol.Utils
                 case ItemGrade.Common:
                 default:
                     return CommonColor;
+            }
+        }
+
+        public static string GetGradeDisplayName(this ItemGrade _grade)
+        {
+            switch (_grade)
+            {
+                case ItemGrade.Rare:
+                    return "희귀";
+                case ItemGrade.Epic:
+                    return "영웅";
+                case ItemGrade.Legendary:
+                    return "전설";
+                case ItemGrade.Common:
+                default:
+                    return "일반";
             }
         }
     }
