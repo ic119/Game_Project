@@ -18,6 +18,10 @@ namespace Shared.Networking.Packets
         public float Z { get; set; }
         public float RotationY { get; set; }
 
+        // 처치 시 공격자에게 지급되는 경험치(스폰 시 뽑힌 entry 값). GameRoom.MonsterRuntime이 처치 판정에
+        // 쓰는 것과 같은 값을 클라이언트 UI(몬스터 정보창)에도 미리 보여줄 수 있도록 스폰 시점에 함께 보낸다.
+        public int ExpReward { get; set; }
+
         public void WriteTo(BinaryWriter writer)
         {
             writer.Write(MonsterId);
@@ -30,6 +34,7 @@ namespace Shared.Networking.Packets
             writer.Write(Y);
             writer.Write(Z);
             writer.Write(RotationY);
+            writer.Write(ExpReward);
         }
 
         public static MonsterInfo ReadFrom(BinaryReader reader)
@@ -45,7 +50,8 @@ namespace Shared.Networking.Packets
                 X = reader.ReadSingle(),
                 Y = reader.ReadSingle(),
                 Z = reader.ReadSingle(),
-                RotationY = reader.ReadSingle()
+                RotationY = reader.ReadSingle(),
+                ExpReward = reader.ReadInt32()
             };
         }
 
