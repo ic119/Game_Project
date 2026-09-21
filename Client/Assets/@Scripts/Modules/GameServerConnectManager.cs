@@ -52,6 +52,7 @@ namespace Incheol.Modules
         public event Action<GameMonsterInfo> OnMonsterSpawned;
         public event Action<GameMonsterDamageBroadcastPacket> OnMonsterDamaged;
         public event Action<GameMonsterDieBroadcastPacket> OnMonsterDied;
+        public event Action<GameMonsterMoveBroadcastPacket> OnMonsterMoved;
         public event Action<GameExpGainBroadcastPacket> OnExpGained;
         public event Action OnDisconnected;
         public event Action<string> OnServerError;
@@ -414,6 +415,11 @@ namespace Incheol.Modules
                 case GameOpCode.Game_MonsterDieBroadcast:
                     var monsterDie = GameMonsterDieBroadcastPacket.Decode(body);
                     pendingActions.Enqueue(() => OnMonsterDied?.Invoke(monsterDie));
+                    break;
+
+                case GameOpCode.Game_MonsterMoveBroadcast:
+                    var monsterMove = GameMonsterMoveBroadcastPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnMonsterMoved?.Invoke(monsterMove));
                     break;
 
                 case GameOpCode.Game_ExpGainBroadcast:

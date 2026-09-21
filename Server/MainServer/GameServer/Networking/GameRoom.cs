@@ -51,6 +51,8 @@ namespace GameServer.Networking
                     SpawnMonsterAtPoint(point);
                 }
             }
+
+            _ = RunMonsterAiLoopAsync(_serverLifetimeCt);
         }
 
         public void Add(PlayerInfo info, ClientSession session)
@@ -191,7 +193,7 @@ namespace GameServer.Networking
 
             int level = attackerEntry.Info.Level;
             int exp = attackerEntry.Info.Exp;
-            bool applied = ExpTable.TryApplyExp(ref level, ref exp, runtime.Point.ExpReward, out int expToNextLevel);
+            bool applied = ExpTable.TryApplyExp(ref level, ref exp, runtime.ExpReward, out int expToNextLevel);
             if (!applied)
             {
                 // 이미 만렙 - 경험치를 지급하지 않는다.
@@ -205,7 +207,7 @@ namespace GameServer.Networking
             return new MonsterAttackResult
             {
                 MonsterDied = true,
-                GainedExp = runtime.Point.ExpReward,
+                GainedExp = runtime.ExpReward,
                 NewLevel = level,
                 DidLevelUp = didLevelUp,
                 ExpToNextLevel = expToNextLevel
@@ -237,23 +239,28 @@ namespace GameServer.Networking
             }
         }
 
+        // point.Entries 중 하나를 무작위로 골라 그 타입/스탯으로 몬스터를 만든다. 리스폰마다 다시 호출되므로
+        // 같은 포인트에서도 스폰될 때마다 다른 타입이 나올 수 있다.
         private MonsterInfo SpawnMonsterAtPoint(MonsterSpawnPointDefinition point)
         {
+            MonsterSpawnEntry entry = point.Entries[Random.Shared.Next(point.Entries.Count)];
+
             var info = new MonsterInfo
             {
                 MonsterId = MonsterIdGenerator.Next(),
-                MonsterType = point.MonsterType,
-                MaxHp = point.MaxHp,
-                CurrentHp = point.MaxHp,
-                AttackPower = point.AttackPower,
-                Defense = point.Defense,
+                MonsterType = entry.MonsterType,
+                MaxHp = entry.MaxHp,
+                CurrentHp = entry.MaxHp,
+                AttackPower = entry.AttackPower,
+                Defense = entry.Defense,
                 X = point.X,
                 Y = point.Y,
                 Z = point.Z,
-                RotationY = point.RotationY
+                RotationY = point.RotationY,
+                ExpReward = entry.ExpReward
             };
 
-            _monsters[info.MonsterId] = new MonsterRuntime(info, point);
+            _monsters[info.MonsterId] = new MonsterRuntime(info, point, entry.ExpReward);
             return info;
         }
 
@@ -262,11 +269,196 @@ namespace GameServer.Networking
             public MonsterInfo Info { get; }
             public MonsterSpawnPointDefinition Point { get; }
 
-            public MonsterRuntime(MonsterInfo info, MonsterSpawnPointDefinition point)
+            // 스폰 시 선택된 엔트리의 경험치. Point.Entries 중 어느 것이 뽑혔는지는 리스폰마다 달라질 수 있어
+            // Point가 아니라 이 인스턴스에 따로 저장해둔다(ApplyMonsterAttackAsync가 처치 시 참조).
+            public int ExpReward { get; }
+
+            public MonsterAiState AiState { get; set; } = MonsterAiState.Idle;
+            public long? TargetPlayerId { get; set; }
+
+            public MonsterRuntime(MonsterInfo info, MonsterSpawnPointDefinition point, int expReward)
             {
                 Info = info;
                 Point = point;
+                ExpReward = expReward;
             }
         }
+
+        #region Method - Monster AI
+        private static readonly TimeSpan AiTickInterval = TimeSpan.FromMilliseconds(150);
+        private const float ArrivalThreshold = 0.1f;
+
+        // 몬스터 추적 AI 틱 루프. 방이 생성되는 시점(첫 입장자)에 시작해 서버가 종료될 때까지 돈다.
+        // 개별 요청과 무관한 방의 백그라운드 작업이라 리스폰 타이머(RespawnAfterDelayAsync)와 같은
+        // 서버 전체 수명 토큰을 쓴다 - 방이 비어도 이 루프 자체는 멈추지 않지만, 플레이어가 없으면
+        // 감지 대상이 없어 순회 비용만 남는다(몬스터 수가 매우 적은 MVP 규모라 무시할 만하다).
+        private async Task RunMonsterAiLoopAsync(CancellationToken ct)
+        {
+            try
+            {
+                while (!ct.IsCancellationRequested)
+                {
+                    await Task.Delay(AiTickInterval, ct);
+                    await TickMonsterAiAsync((float)AiTickInterval.TotalSeconds, ct);
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                // 서버 종료로 인한 정상 취소.
+            }
+        }
+
+        // 몬스터 종류에 관계없이 공통으로 동작한다 - 몬스터별 분기 없이 MonsterSpawnPointDefinition의
+        // DetectionRange/ChaseSpeed/LeashRange 값만으로 감지/추적/복귀를 판단하므로, 새 몬스터 타입을
+        // 추가해도 이 로직은 수정할 필요가 없다.
+        private async Task TickMonsterAiAsync(float deltaSeconds, CancellationToken ct)
+        {
+            foreach (var runtime in _monsters.Values)
+            {
+                if (!UpdateMonster(runtime, deltaSeconds))
+                {
+                    continue;
+                }
+
+                var broadcast = new S2CMonsterMoveBroadcast
+                {
+                    MonsterId = runtime.Info.MonsterId,
+                    X = runtime.Info.X,
+                    Y = runtime.Info.Y,
+                    Z = runtime.Info.Z,
+                    RotationY = runtime.Info.RotationY,
+                    Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                };
+
+                await BroadcastToAllAsync(OpCode.Game_MonsterMoveBroadcast, broadcast.Encode(), ct);
+            }
+        }
+
+        // 몬스터 한 마리의 상태를 한 틱만큼 갱신한다. 위치가 실제로 바뀌었으면 true를 반환해
+        // 호출측이 브로드캐스트를 보내게 한다(제자리 대기 중인 몬스터까지 매 틱 보낼 필요는 없다).
+        private bool UpdateMonster(MonsterRuntime runtime, float deltaSeconds)
+        {
+            switch (runtime.AiState)
+            {
+                case MonsterAiState.Idle:
+                    long? foundTargetId = FindNearestPlayerInRange(runtime.Info, runtime.Point.DetectionRange);
+                    if (foundTargetId is { } targetId)
+                    {
+                        runtime.AiState = MonsterAiState.Chasing;
+                        runtime.TargetPlayerId = targetId;
+                    }
+                    return false;
+
+                case MonsterAiState.Chasing:
+                    return TickChasing(runtime, deltaSeconds);
+
+                case MonsterAiState.Returning:
+                    return TickReturning(runtime, deltaSeconds);
+
+                default:
+                    return false;
+            }
+        }
+
+        private bool TickChasing(MonsterRuntime runtime, float deltaSeconds)
+        {
+            if (runtime.TargetPlayerId is not { } targetId
+                || !_players.TryGetValue(targetId, out var targetEntry)
+                || targetEntry.Info.CurrentHp <= 0)
+            {
+                runtime.TargetPlayerId = null;
+                runtime.AiState = MonsterAiState.Returning;
+                return false;
+            }
+
+            MonsterInfo info = runtime.Info;
+            PlayerInfo target = targetEntry.Info;
+
+            float distanceFromSpawn = Distance(info.X, info.Z, runtime.Point.X, runtime.Point.Z);
+            if (distanceFromSpawn > runtime.Point.LeashRange)
+            {
+                runtime.TargetPlayerId = null;
+                runtime.AiState = MonsterAiState.Returning;
+                return false;
+            }
+
+            return MoveToward(info, target.X, target.Z, runtime.Point.ChaseSpeed, deltaSeconds);
+        }
+
+        // 리쉬 범위를 벗어나 추적을 포기한 몬스터가 스폰 지점으로 되돌아간다. 도착 전까지는
+        // 재감지를 하지 않는다(복귀 도중 계속 재어그로되면 영영 스폰 지점으로 못 돌아갈 수 있다).
+        private bool TickReturning(MonsterRuntime runtime, float deltaSeconds)
+        {
+            MonsterInfo info = runtime.Info;
+            MonsterSpawnPointDefinition point = runtime.Point;
+
+            bool moved = MoveToward(info, point.X, point.Z, point.ChaseSpeed, deltaSeconds);
+
+            if (Distance(info.X, info.Z, point.X, point.Z) <= ArrivalThreshold)
+            {
+                info.X = point.X;
+                info.Z = point.Z;
+                info.RotationY = point.RotationY;
+                runtime.AiState = MonsterAiState.Idle;
+                return true;
+            }
+
+            return moved;
+        }
+
+        // targetX/targetZ 방향으로 moveSpeed(초당 이동 거리)만큼 이동시키고 그 방향을 바라보게 회전시킨다.
+        // 한 틱에 이동할 거리가 남은 거리보다 크면 목표 지점에서 멈춘다(오버슈트 방지).
+        private static bool MoveToward(MonsterInfo info, float targetX, float targetZ, float moveSpeed, float deltaSeconds)
+        {
+            float dx = targetX - info.X;
+            float dz = targetZ - info.Z;
+            float distance = MathF.Sqrt(dx * dx + dz * dz);
+
+            if (distance <= ArrivalThreshold)
+            {
+                return false;
+            }
+
+            float step = Math.Min(distance, moveSpeed * deltaSeconds);
+            info.X += dx / distance * step;
+            info.Z += dz / distance * step;
+            info.RotationY = MathF.Atan2(dx, dz) * (180f / MathF.PI);
+
+            return true;
+        }
+
+        private long? FindNearestPlayerInRange(MonsterInfo monster, float range)
+        {
+            long? nearestId = null;
+            float nearestDistanceSquared = range * range;
+
+            foreach (var (info, _) in _players.Values)
+            {
+                if (info.CurrentHp <= 0)
+                {
+                    continue;
+                }
+
+                float dx = info.X - monster.X;
+                float dz = info.Z - monster.Z;
+                float distanceSquared = dx * dx + dz * dz;
+
+                if (distanceSquared <= nearestDistanceSquared)
+                {
+                    nearestDistanceSquared = distanceSquared;
+                    nearestId = info.PlayerId;
+                }
+            }
+
+            return nearestId;
+        }
+
+        private static float Distance(float x1, float z1, float x2, float z2)
+        {
+            float dx = x1 - x2;
+            float dz = z1 - z2;
+            return MathF.Sqrt(dx * dx + dz * dz);
+        }
+        #endregion
     }
 }

@@ -1,0 +1,25 @@
+{
+    "points": [
+        {
+            "pointId": "Floor001_MushroomForest",
+            "x": -93.0,
+            "y": 0.6100000143051148,
+            "z": 14.0,
+            "rotationY": 0.0,
+            "maxAlive": 6,
+            "respawnSeconds": 20.0,
+            "entries": [
+                {
+                    "monsterType": "RedMushroom",
+                    "maxHp": 80,
+                    "attackPower": 5,
+                    "defense": 0,
+                    "expReward": 10
+                }
+            ],
+            "detectionRange": 4.0,
+            "chaseSpeed": 2.5,
+            "leashRange": 10.0
+        }
+    ]
+}
