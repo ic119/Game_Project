@@ -257,7 +257,8 @@ namespace GameServer.Networking
                 Y = point.Y,
                 Z = point.Z,
                 RotationY = point.RotationY,
-                ExpReward = entry.ExpReward
+                ExpReward = entry.ExpReward,
+                PointId = point.PointId
             };
 
             _monsters[info.MonsterId] = new MonsterRuntime(info, point, entry.ExpReward);

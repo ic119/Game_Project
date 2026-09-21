@@ -13,9 +13,6 @@ MonoBehaviour:
   m_Name: MonsterDatabaseSO
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.Models.SO.MonsterDatabaseSO
   monsters:
-  - monsterType: RedBoar
-    displayName: "\uBD89\uC740 \uBA67\uB3FC\uC9C0"
-    addressableKey: 19
+  - monsterType: 1
+    displayName: "\uBE68\uAC04 \uC5BC\uB8E9\uBC84\uC12F"
     grade: 0
-    maxHp: 30
-    attackPower: 5

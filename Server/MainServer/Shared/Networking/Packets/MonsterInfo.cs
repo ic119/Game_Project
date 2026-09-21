@@ -22,6 +22,10 @@ namespace Shared.Networking.Packets
         // 쓰는 것과 같은 값을 클라이언트 UI(몬스터 정보창)에도 미리 보여줄 수 있도록 스폰 시점에 함께 보낸다.
         public int ExpReward { get; set; }
 
+        // 이 몬스터가 스폰된 MonsterSpawnPointDefinition.PointId. 클라이언트가 맵 프리팹 안에서 같은 이름의
+        // MonsterSpawnPointMarker 오브젝트를 찾아 그 자식으로 몬스터를 배치하는 데 쓴다.
+        public string PointId { get; set; } = string.Empty;
+
         public void WriteTo(BinaryWriter writer)
         {
             writer.Write(MonsterId);
@@ -35,6 +39,7 @@ namespace Shared.Networking.Packets
             writer.Write(Z);
             writer.Write(RotationY);
             writer.Write(ExpReward);
+            writer.Write(PointId);
         }
 
         public static MonsterInfo ReadFrom(BinaryReader reader)
@@ -51,7 +56,8 @@ namespace Shared.Networking.Packets
                 Y = reader.ReadSingle(),
                 Z = reader.ReadSingle(),
                 RotationY = reader.ReadSingle(),
-                ExpReward = reader.ReadInt32()
+                ExpReward = reader.ReadInt32(),
+                PointId = reader.ReadString()
             };
         }
 

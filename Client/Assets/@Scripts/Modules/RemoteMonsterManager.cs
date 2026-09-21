@@ -25,6 +25,7 @@ namespace Incheol.Modules
         [SerializeField, Min(0f)] private float dieAnimationDuration = 1.5f;
 
         private readonly Dictionary<long, RemoteMonsterController> remoteMonsters = new();
+        private readonly Queue<GameMonsterInfo> pendingSpawnQueue = new();
         private MonsterDatabaseSO database;
 
         #region LifeCycle
@@ -77,6 +78,11 @@ namespace Incheol.Modules
 
             handle.Completed += result =>
             {
+                if (this == null)
+                {
+                    return;
+                }
+
                 if (result.Status != AsyncOperationStatus.Succeeded || result.Result == null)
                 {
                     DebugLogManager.GenerateErrorMessage<RemoteMonsterManager>($"MonsterDatabaseSO 로드 실패(Status : {result.Status})");
@@ -84,6 +90,12 @@ namespace Incheol.Modules
                 }
 
                 database = result.Result;
+
+                // DB 로드가 끝나기 전에 도착해 대기 중이던 스폰 요청(주로 Game_EnterAck의 ExistingMonsters)을 그제서야 처리한다.
+                while (pendingSpawnQueue.Count > 0)
+                {
+                    SpawnMonster(pendingSpawnQueue.Dequeue());
+                }
             };
         }
 
@@ -99,11 +111,26 @@ namespace Incheol.Modules
 
             if (database == null)
             {
-                DebugLogManager.GenerateErrorMessage<RemoteMonsterManager>("MonsterDatabaseSO가 아직 로드되지 않았습니다.");
+                // DB 로드(비동기)가 아직 안 끝난 상태 - 유실시키지 않고 큐에 쌓아뒀다가 로드 완료 시 재처리한다.
+                pendingSpawnQueue.Enqueue(info);
                 return;
             }
 
-            if (!database.TryGetByType(info.MonsterType, out MonsterData monsterData) || monsterData.addressableKey == AddressableAssetKey.None)
+            SpawnMonster(info);
+        }
+
+        /// <summary>
+        /// database가 준비된 이후의 실제 스폰 처리. HandleMonsterSpawned(최초 도착 시)와 LoadDatabase의
+        /// Completed 콜백(대기 큐 재처리 시) 양쪽에서 호출된다.
+        /// </summary>
+        private void SpawnMonster(GameMonsterInfo info)
+        {
+            if (remoteMonsters.ContainsKey(info.MonsterId))
+            {
+                return;
+            }
+
+            if (!database.TryGetByType(info.MonsterType, out MonsterData monsterData))
             {
                 DebugLogManager.GenerateErrorMessage<RemoteMonsterManager>($"MonsterDatabaseSO에 monsterType '{info.MonsterType}'에 대한 설정이 없습니다.");
                 return;
@@ -115,7 +142,7 @@ namespace Incheol.Modules
                 return;
             }
 
-            AddressableAssetManager.Instance.LoadPrefabAddress<GameObject>(monsterData.addressableKey.ToString(), prefab =>
+            AddressableAssetManager.Instance.LoadPrefabAddress<GameObject>(monsterData.monsterType.ToString(), prefab =>
             {
                 if (this == null)
                 {
@@ -124,7 +151,7 @@ namespace Incheol.Modules
 
                 if (prefab == null)
                 {
-                    DebugLogManager.GenerateErrorMessage<RemoteMonsterManager>($"몬스터 로드 실패 Key : {monsterData.addressableKey}");
+                    DebugLogManager.GenerateErrorMessage<RemoteMonsterManager>($"몬스터 로드 실패 Key : {monsterData.monsterType}");
                     return;
                 }
 
@@ -134,15 +161,57 @@ namespace Incheol.Modules
                     return;
                 }
 
-                GameObject instance = AddressableAssetManager.Instance.InstantiatePrefab(prefab, transform);
+                Transform spawnParent = FindSpawnPointTransform(info.PointId);
+                Vector3 spawnPosition;
+                float spawnRotationY;
+
+                if (spawnParent != null)
+                {
+                    // 서버 좌표(info.X/Y/Z) 대신 실제 씬에 배치된 포인트 오브젝트의 현재 위치/회전을 신뢰한다.
+                    // 맵을 다시 export하지 않고 마커만 옮긴 경우에도 몬스터가 항상 눈에 보이는 포인트 위치에 생성되게 하기 위함이다.
+                    spawnPosition = spawnParent.position;
+                    spawnRotationY = spawnParent.eulerAngles.y;
+                }
+                else
+                {
+                    DebugLogManager.GenerateErrorMessage<RemoteMonsterManager>($"PointId '{info.PointId}'에 해당하는 스폰 포인트 오브젝트를 GameScene에서 찾을 수 없어 서버 좌표로 생성합니다.");
+                    spawnParent = transform;
+                    spawnPosition = new Vector3(info.X, info.Y, info.Z);
+                    spawnRotationY = info.RotationY;
+                }
+
+                GameObject instance = AddressableAssetManager.Instance.InstantiatePrefab(prefab, spawnParent);
                 instance.name = $"Monster_{info.MonsterType}_{info.MonsterId}";
 
                 RemoteMonsterController controller = instance.AddComponent<RemoteMonsterController>();
                 controller.Initialize(info.MonsterId, info.MonsterType, monsterData.displayName, monsterData.grade, info.ExpReward, info.MaxHp, info.CurrentHp);
-                controller.Warp(new Vector3(info.X, info.Y, info.Z), info.RotationY);
+                controller.Warp(spawnPosition, spawnRotationY);
 
                 remoteMonsters[info.MonsterId] = controller;
             });
+        }
+
+        /// <summary>
+        /// pointId와 이름이 같은 MonsterSpawnPointMarker 오브젝트를 현재 씬에서 찾는다. 맵 프리팹 안의 마커는
+        /// MonsterSpawnPointExporter가 내보낼 때 이름을 그대로 pointId로 썼으므로(RemoteMonsterManager.cs 주석 참고)
+        /// 이름 일치로 원본 포인트를 역으로 찾을 수 있다. 못 찾으면 null(호출부에서 기본 위치로 대체).
+        /// </summary>
+        private static Transform FindSpawnPointTransform(string pointId)
+        {
+            if (string.IsNullOrEmpty(pointId))
+            {
+                return null;
+            }
+
+            foreach (MonsterSpawnPointMarker marker in FindObjectsByType<MonsterSpawnPointMarker>(FindObjectsSortMode.None))
+            {
+                if (marker.gameObject.name == pointId)
+                {
+                    return marker.transform;
+                }
+            }
+
+            return null;
         }
 
         /// <summary>

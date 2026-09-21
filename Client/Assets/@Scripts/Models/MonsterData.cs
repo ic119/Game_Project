@@ -12,13 +12,12 @@ using UnityEngine;
 [Serializable]
 public class MonsterData
 {
-    [Tooltip("인스펙터에서 몬스터 타입을 선택한다. Define.MonsterType과 1:1로 대응한다.")]
+    [Tooltip("인스펙터에서 몬스터 타입을 선택한다. Define.MonsterType과 1:1로 대응한다. 이 값의 " +
+        "ToString()이 그대로 Addressable Address로 쓰인다(예: RedMushroom) - 프리팹을 Addressable " +
+        "그룹에 등록할 때 Address를 이 이름과 정확히 같게 맞춰야 한다.")]
     public MonsterType monsterType = MonsterType.None;
 
     public string displayName;
-
-    [Tooltip("이 몬스터의 시각적 프리팹을 가리키는 Addressable 키.")]
-    public AddressableAssetKey addressableKey = AddressableAssetKey.None;
 
     [Tooltip("몬스터 등급(표시용). ItemGrade를 그대로 재사용한다 - 등급 색상(ItemGradeUtils.GetGradeColor) 등 " +
         "기존 등급 표현 로직을 몬스터 UI(네임플레이트/도감 등)에도 그대로 적용할 수 있다.")]
