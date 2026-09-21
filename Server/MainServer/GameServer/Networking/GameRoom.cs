@@ -297,6 +297,10 @@ namespace GameServer.Networking
             public MonsterAiState AiState { get; set; } = MonsterAiState.Idle;
             public long? TargetPlayerId { get; set; }
 
+            // TickChasing이 근접 사거리 안에서 공격할 때마다 AttackIntervalSeconds로 리셋하고, 매 틱
+            // deltaSeconds만큼 줄인다. 0 이하면 다음 틱에 바로 공격 가능.
+            public float AttackCooldownRemaining { get; set; }
+
             public MonsterRuntime(MonsterInfo info, MonsterSpawnPointDefinition point, int expReward, float homeX, float homeZ)
             {
                 Info = info;
@@ -383,6 +387,11 @@ namespace GameServer.Networking
             }
         }
 
+        // 근접 사거리(공격 판정 자체는 서버 권위 - ApplyMonsterAttackAsync/HandleMonsterAttackRequestAsync와
+        // 같은 이유로 몬스터는 신뢰할 공격 요청 주체가 없다) 및 공격 쿨다운.
+        private const float MeleeAttackRange = 1.5f;
+        private const float AttackIntervalSeconds = 1.5f;
+
         private bool TickChasing(MonsterRuntime runtime, float deltaSeconds)
         {
             if (runtime.TargetPlayerId is not { } targetId
@@ -405,7 +414,54 @@ namespace GameServer.Networking
                 return false;
             }
 
+            if (runtime.AttackCooldownRemaining > 0f)
+            {
+                runtime.AttackCooldownRemaining -= deltaSeconds;
+            }
+
+            if (Distance(info.X, info.Z, target.X, target.Z) <= MeleeAttackRange)
+            {
+                // 사거리 안에 들어오면 더 붙지 않고 그 자리에서 대상을 바라보며 공격만 한다.
+                info.RotationY = MathF.Atan2(target.X - info.X, target.Z - info.Z) * (180f / MathF.PI);
+
+                if (runtime.AttackCooldownRemaining <= 0f)
+                {
+                    runtime.AttackCooldownRemaining = AttackIntervalSeconds;
+                    _ = AttackPlayerAsync(runtime, target);
+                }
+
+                return true;
+            }
+
             return MoveToward(info, target.X, target.Z, runtime.Point.ChaseSpeed, deltaSeconds);
+        }
+
+        // 근접 사거리 안에서 공격 쿨다운마다 호출된다. 몬스터는 소유 클라이언트가 없어 ApplyMonsterAttackAsync와
+        // 같은 이유로 서버가 최종 권위로 데미지를 계산한다. 다만 클라이언트에는 S2CDamageBroadcast(PvP)와
+        // 동일하게 방어력 적용 전 원본 Damage만 보내 각자 로컬 Defense로 다시 계산해 표시하게 한다 -
+        // target.CurrentHp 갱신은 TickChasing의 사망 판정(targetEntry.Info.CurrentHp <= 0)에 쓰기 위한
+        // 서버 내부 상태일 뿐, 클라이언트로는 전달하지 않는다.
+        private async Task AttackPlayerAsync(MonsterRuntime runtime, PlayerInfo target)
+        {
+            int serverComputedDamage = Math.Max(1, runtime.Info.AttackPower - target.Defense);
+            target.CurrentHp = Math.Max(0, target.CurrentHp - serverComputedDamage);
+
+            var broadcast = new S2CMonsterAttackBroadcast
+            {
+                MonsterId = runtime.Info.MonsterId,
+                TargetPlayerId = target.PlayerId,
+                Damage = runtime.Info.AttackPower,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            };
+
+            try
+            {
+                await BroadcastToAllAsync(OpCode.Game_MonsterAttackBroadcast, broadcast.Encode(), _serverLifetimeCt);
+            }
+            catch (OperationCanceledException)
+            {
+                // 서버 종료 - 무시.
+            }
         }
 
         // 리쉬 범위를 벗어나 추적을 포기한 몬스터가 스폰 지점으로 되돌아간다. 도착 전까지는
