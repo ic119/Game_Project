@@ -55,6 +55,7 @@ namespace Incheol.Modules
         public event Action<GameMonsterMoveBroadcastPacket> OnMonsterMoved;
         public event Action<GameMonsterAttackBroadcastPacket> OnMonsterAttacked;
         public event Action<GameExpGainBroadcastPacket> OnExpGained;
+        public event Action<GameLootBroadcastPacket> OnLootReceived;
         public event Action OnDisconnected;
         public event Action<string> OnServerError;
 
@@ -431,6 +432,11 @@ namespace Incheol.Modules
                 case GameOpCode.Game_ExpGainBroadcast:
                     var expGain = GameExpGainBroadcastPacket.Decode(body);
                     pendingActions.Enqueue(() => OnExpGained?.Invoke(expGain));
+                    break;
+
+                case GameOpCode.Game_LootBroadcast:
+                    var loot = GameLootBroadcastPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnLootReceived?.Invoke(loot));
                     break;
 
                 // 클라이언트가 주기적으로 보낸 System_Heartbeat에 대한 서버 응답이다 - 타임아웃 타이머를 초기화한다.

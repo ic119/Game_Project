@@ -3,6 +3,7 @@ using Incheol.Models.Define;
 using Incheol.Modules;
 using Incheol.Modules.Networking;
 using Incheol.Utils;
+using Incheol.View.UI;
 using System.Collections.Generic;
 using Unity.Cinemachine;
 using UnityEngine;
@@ -20,6 +21,13 @@ namespace Incheol.Presenter.Scene
         private MiniMapController miniMapController;
 
         private GameObject inventoryInstance;
+
+        /// <summary>
+        /// 로컬 플레이어가 처치 보상(Game_LootBroadcast)으로 받은 아이템의 런타임 누적 상태.
+        /// itemId별 수량만 들고 있고, 이름/아이콘 등 정적 정의는 아직 클라이언트에 아이템 데이터베이스가
+        /// 연결되어 있지 않아 조회하지 않는다(인벤토리 UI 슬롯 렌더링은 별도 작업으로 남겨둔다).
+        /// </summary>
+        private readonly List<InventoryItemStack> localInventoryItems = new List<InventoryItemStack>();
 
         /// <summary>
         /// 현재 로드되어 있는 맵 프리팹 인스턴스와 그 Addressable 키.
@@ -86,6 +94,7 @@ namespace Incheol.Presenter.Scene
                 GameServerConnectManager.Instance.OnDamageReceived += HandleDamageReceived;
                 GameServerConnectManager.Instance.OnMonsterAttacked += HandleMonsterAttackReceived;
                 GameServerConnectManager.Instance.OnExpGained += HandleExpGained;
+                GameServerConnectManager.Instance.OnLootReceived += HandleLootReceived;
                 GameServerConnectManager.Instance.OnServerError += HandleGameServerError;
                 GameServerConnectManager.Instance.OnDisconnected += HandleGameServerDisconnected;
             }
@@ -99,6 +108,7 @@ namespace Incheol.Presenter.Scene
                 GameServerConnectManager.Instance.OnDamageReceived -= HandleDamageReceived;
                 GameServerConnectManager.Instance.OnMonsterAttacked -= HandleMonsterAttackReceived;
                 GameServerConnectManager.Instance.OnExpGained -= HandleExpGained;
+                GameServerConnectManager.Instance.OnLootReceived -= HandleLootReceived;
                 GameServerConnectManager.Instance.OnServerError -= HandleGameServerError;
                 GameServerConnectManager.Instance.OnDisconnected -= HandleGameServerDisconnected;
             }
@@ -581,6 +591,11 @@ namespace Incheol.Presenter.Scene
                 inventoryInstance = AddressableAssetManager.Instance.InstantiatePrefab(prefab, transform);
                 inventoryInstance.SetActive(false);
                 isInventoryActive = false;
+
+                // UI_InventoryView.Awake()가 임시 플레이스홀더 골드값으로 초기화해두므로, 생성 직후 실제
+                // 세이브 데이터 값으로 즉시 덮어쓴다(그 사이 처치 보상을 먼저 받는 레이스는 없다 - 인벤토리는
+                // 캐릭터 커스터마이징이 끝난 뒤에야 생성되고, GameServer 접속/전투는 그다음에 시작된다).
+                RefreshInventoryCurrencyDisplay();
             });
         }
 
@@ -663,6 +678,66 @@ namespace Incheol.Presenter.Scene
 
             spawnedPlayerModel.ApplyExpGain(packet.TotalExp, packet.Level, packet.ExpToNextLevel);
             SaveDataManager.Instance?.UpdateCharacterProgress(packet.Level, packet.TotalExp);
+        }
+
+        /// <summary>
+        /// 내가 몬스터를 처치해 GameServer가 굴린 골드/아이템 드롭(Game_LootBroadcast, 처치자 본인에게만 옴)을 반영한다.
+        /// HandleExpGained와 별개의 패킷이라(만렙이면 경험치 없이 드롭만 올 수 있음) 독립적으로 저장을 요청하되,
+        /// 서버 kill-rewards 엔드포인트가 레벨/경험치도 함께 요구하므로 spawnedPlayerModel이 이미 들고 있는
+        /// 현재 값을 그대로 다시 실어 보낸다(값이 바뀌지 않으므로 안전하게 덮어써진다).
+        /// </summary>
+        private void HandleLootReceived(GameLootBroadcastPacket packet)
+        {
+            if (spawnedPlayerModel == null)
+            {
+                return;
+            }
+
+            if (packet.GoldGained > 0)
+            {
+                spawnedPlayerModel.ApplyGoldGain(packet.GoldGained);
+            }
+
+            foreach (GameLootItemEntry item in packet.Items)
+            {
+                AddOrMergeInventoryItem(item.ItemId, item.Qty);
+            }
+
+            RefreshInventoryCurrencyDisplay();
+
+            SaveDataManager.Instance?.ApplyKillRewards(spawnedPlayerModel.Level, spawnedPlayerModel.CurrentExp, packet.GoldGained, packet.Items);
+        }
+
+        /// <summary>
+        /// localInventoryItems에서 같은 itemId 스택을 찾아 수량만 더하고, 없으면 새 스택을 추가한다.
+        /// </summary>
+        private void AddOrMergeInventoryItem(string itemId, int qty)
+        {
+            InventoryItemStack existing = localInventoryItems.Find(stack => stack.itemId == itemId);
+            if (existing != null)
+            {
+                existing.count += qty;
+                return;
+            }
+
+            localInventoryItems.Add(new InventoryItemStack(itemId, qty));
+        }
+
+        /// <summary>
+        /// 인벤토리 UI가 이미 생성되어 있으면 골드 표시만 최신값으로 갱신한다. 아이템 슬롯 렌더링(아이콘/등급 조회)은
+        /// 아직 클라이언트에 아이템 데이터베이스가 연결되어 있지 않아 별도 작업으로 남겨둔다.
+        /// </summary>
+        private void RefreshInventoryCurrencyDisplay()
+        {
+            if (inventoryInstance == null || spawnedPlayerModel == null)
+            {
+                return;
+            }
+
+            if (inventoryInstance.TryGetComponent(out UI_InventoryView inventoryView))
+            {
+                inventoryView.SetCurrency(spawnedPlayerModel.Gold, 0);
+            }
         }
 
         /// <summary>

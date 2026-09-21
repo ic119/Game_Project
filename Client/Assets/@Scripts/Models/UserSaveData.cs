@@ -24,6 +24,7 @@ public class UserSaveData
     /// </summary>
     public int level = 1;
     public int exp;
+    public long gold;
     public UserStats userStats;
 
     public static UserSaveData CreateDefault(string nickname, int hairIndex, int eyeIndex, int mouthIndex)

@@ -1,3 +1,4 @@
+using Incheol.Modules.Networking;
 using Incheol.Utils;
 using System;
 using System.Collections.Generic;
@@ -31,7 +32,9 @@ namespace Incheol.Modules
         [Serializable] private class CreateCharacterRequestBody { public string _nickname; public int _hairIndex; public int _eyeIndex; public int _mouthIndex; }
         [Serializable] private class UpdateCustomizationRequestBody { public int _hairIndex; public int _eyeIndex; public int _mouthIndex; }
         [Serializable] private class UpdateProgressRequestBody { public int _level; public int _exp; }
-        [Serializable] private class CharacterResponseBody { public long _id; public string _nickname; public int _hairIndex; public int _eyeIndex; public int _mouthIndex; public int _str; public int _agi; public int _intel; public int _level; public int _exp; public string _lastLoginAt; public string _createdAt; }
+        [Serializable] private class KillRewardItemBody { public string _itemId; public int _qty; }
+        [Serializable] private class ApplyKillRewardsRequestBody { public int _level; public int _exp; public long _goldGained; public List<KillRewardItemBody> _items; }
+        [Serializable] private class CharacterResponseBody { public long _id; public string _nickname; public int _hairIndex; public int _eyeIndex; public int _mouthIndex; public int _str; public int _agi; public int _intel; public int _level; public int _exp; public long _gold; public string _lastLoginAt; public string _createdAt; }
         [Serializable] private class JsonArrayWrapper<T> { public T[] items; }
 
         /// <summary>
@@ -146,6 +149,24 @@ namespace Incheol.Modules
         }
 
         /// <summary>
+        /// GameServer(TCP)가 몬스터 처치로 계산한 골드/아이템 드롭(Game_LootBroadcast)을 저장한다
+        /// (POST api/characters/{id}/kill-rewards). _level/_exp는 UpdateCharacterProgress와 동일하게 현재
+        /// 알고 있는 최종 값을 그대로 실어 보내고(변경 없음), _goldGained/_items만 델타로 더해진다 -
+        /// 서버 엔드포인트가 경험치/레벨/골드/아이템을 한 번에 저장하도록 설계되어 있어 항상 네 값을 함께 보내야 한다.
+        /// </summary>
+        public void ApplyKillRewards(int _level, int _exp, long _goldGained, List<GameLootItemEntry> _items, Action<bool> _onComplete = null)
+        {
+            if (!SelectedCharacterId.HasValue)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>("선택된 캐릭터가 없어 처치 보상을 저장할 수 없습니다.");
+                _onComplete?.Invoke(false);
+                return;
+            }
+
+            _ = ApplyKillRewardsAsyncInternal(SelectedCharacterId.Value, _level, _exp, _goldGained, _items, _onComplete);
+        }
+
+        /// <summary>
         /// 로그아웃 시점에 선택된 캐릭터의 마지막 접속시간을 서버 시각 기준으로 기록한다(PUT api/characters/{id}/last-login).
         /// 클라이언트 시각을 보내지 않고 서버가 직접 DateTime.UtcNow로 채우므로 요청 바디가 없다.
         /// 선택된 캐릭터가 없으면(로그인만 하고 캐릭터 선택 전 로그아웃 등) 아무 것도 하지 않고 실패로 처리한다.
@@ -249,6 +270,7 @@ namespace Incheol.Modules
                 mouthIndex = response._mouthIndex,
                 level = response._level,
                 exp = response._exp,
+                gold = response._gold,
                 userStats = new UserStats { str = response._str, agi = response._agi, intel = response._intel }
             });
         }
@@ -361,6 +383,38 @@ namespace Incheol.Modules
             if (!success)
             {
                 DebugLogManager.GenerateErrorMessage<SaveDataManager>($"경험치/레벨 저장 실패 : {error}");
+                _onComplete?.Invoke(false);
+                return;
+            }
+
+            _onComplete?.Invoke(true);
+        }
+
+        private async Awaitable ApplyKillRewardsAsyncInternal(long _characterId, int _level, int _exp, long _goldGained, List<GameLootItemEntry> _items, Action<bool> _onComplete)
+        {
+            if (ServerConnectManager.Instance == null)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>("ServerConnectManager.Instance가 null입니다.");
+                _onComplete?.Invoke(false);
+                return;
+            }
+
+            var itemBodies = new List<KillRewardItemBody>();
+            if (_items != null)
+            {
+                foreach (GameLootItemEntry item in _items)
+                {
+                    itemBodies.Add(new KillRewardItemBody { _itemId = item.ItemId, _qty = item.Qty });
+                }
+            }
+
+            var requestBody = new ApplyKillRewardsRequestBody { _level = _level, _exp = _exp, _goldGained = _goldGained, _items = itemBodies };
+            string json = JsonUtility.ToJson(requestBody);
+            (bool success, string _, string error) = await ServerConnectManager.Instance.SendAuthorizedJsonRequestAsync($"{CharacterApiPath}/{_characterId}/kill-rewards", "POST", json);
+
+            if (!success)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>($"처치 보상 저장 실패 : {error}");
                 _onComplete?.Invoke(false);
                 return;
             }

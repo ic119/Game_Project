@@ -28,6 +28,12 @@ public class PlayerCharacterModel : MonoBehaviour
     private int expToNextLevel;
     private int level = 1;
 
+    /// <summary>
+    /// 세이브 데이터(UserSaveData.gold)로부터 ApplyUserSaveData가 채워주는 골드 런타임 상태.
+    /// 이후 처치 보상(Game_LootBroadcast)마다 ApplyGoldGain으로 갱신된다.
+    /// </summary>
+    private long gold;
+
     // 레벨업 시 MaxHp를 재계산(HealthComponent.ApplyFromUserStats)하려면 원본 스탯이 필요해 스폰 시점에 캐싱해둔다.
     private UserStats cachedUserStats;
     private HealthComponent healthComponent;
@@ -39,6 +45,7 @@ public class PlayerCharacterModel : MonoBehaviour
     public int MaxHp => healthComponent.MaxHp;
     public int CurrentHp => healthComponent.CurrentHp;
     public int CurrentExp => currentExp;
+    public long Gold => gold;
 
     /// <summary>다음 레벨까지 필요한 경험치(경험치 바의 maxValue). 만렙이면 0.</summary>
     public int ExpToNextLevel => expToNextLevel;
@@ -152,6 +159,7 @@ public class PlayerCharacterModel : MonoBehaviour
         healthComponent.ApplyFromUserStats(saveData.userStats, saveData.level);
         combatStatComponent.ApplyFromUserStats(saveData.userStats);
         ApplyExp(saveData.exp);
+        ApplyGold(saveData.gold);
     }
 
     /// <summary>
@@ -210,6 +218,23 @@ public class PlayerCharacterModel : MonoBehaviour
                 healthComponent.ApplyFromUserStats(cachedUserStats, level);
             }
         }
+    }
+
+    /// <summary>
+    /// 세이브 데이터의 골드값을 캐릭터에 반영한다(스폰 시 최초 1회). 이후 골드 획득은 ApplyGoldGain을 사용한다.
+    /// </summary>
+    public void ApplyGold(long newGold)
+    {
+        gold = Mathf.Max(0, newGold);
+    }
+
+    /// <summary>
+    /// GameSceneManager가 Game_LootBroadcast(서버 권위)를 받으면 호출한다. ApplyExpGain과 달리 서버가
+    /// 최종 총액이 아니라 이번에 획득한 델타만 보내므로(S2CLootBroadcast.GoldGained), 여기서는 그대로 누적한다.
+    /// </summary>
+    public void ApplyGoldGain(int goldGained)
+    {
+        gold += goldGained;
     }
 
     #endregion
