@@ -336,6 +336,19 @@ namespace GameServer.Networking
                 };
                 await SendAsync(OpCode.Game_ExpGainBroadcast, expGain.Encode(), ct);
             }
+
+            // 골드/아이템도 처치자 본인에게만 보낸다. 만렙이라 GainedExp가 없는 경우에도 드롭은 지급되므로
+            // 위 exp 분기와 독립적으로 판단한다(둘 다 0/빈 목록이면 굳이 빈 패킷을 보내지 않는다).
+            if (result.MonsterDied && (result.GainedGold > 0 || result.DroppedItems is { Count: > 0 }))
+            {
+                var loot = new S2CLootBroadcast
+                {
+                    MonsterId = request.MonsterId,
+                    GoldGained = result.GainedGold,
+                    Items = result.DroppedItems?.ToList() ?? new List<(string, int)>()
+                };
+                await SendAsync(OpCode.Game_LootBroadcast, loot.Encode(), ct);
+            }
         }
 
         // 여러 세션이 동시에(다른 플레이어의 브로드캐스트로) 같은 스트림에 쓸 수 있으므로 직렬화한다.

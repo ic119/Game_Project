@@ -1,0 +1,5 @@
+{
+  "potion_hp_small": { "name": "체력 물약(소)", "maxStack": 99 },
+  "mushroom_spore": { "name": "버섯 포자", "maxStack": 999 },
+  "rare_essence": { "name": "희귀한 정수", "maxStack": 99 }
+}

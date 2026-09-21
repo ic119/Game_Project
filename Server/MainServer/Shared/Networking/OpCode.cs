@@ -29,6 +29,7 @@ namespace Shared.Networking
         Game_ExpGainBroadcast = 0x0211,
         Game_MonsterMoveBroadcast = 0x0212,
         Game_MonsterAttackBroadcast = 0x0213,
+        Game_LootBroadcast = 0x0214,
 
         // 0x03XX = Dungeon
     }

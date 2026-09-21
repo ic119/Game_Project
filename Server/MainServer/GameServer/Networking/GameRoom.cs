@@ -16,6 +16,11 @@ namespace GameServer.Networking
         public int NewLevel { get; init; }
         public bool DidLevelUp { get; init; }
         public int ExpToNextLevel { get; init; }
+
+        // 처치 시 DropTableCatalog.Roll로 계산된 보상. 공격자를 찾지 못해 GainedExp가 비어도(즉시 return된
+        // 경로) 드롭은 이미 굴려진 상태이므로 별도로 채워진다 - 몬스터 처치 자체는 성립했기 때문이다.
+        public int GainedGold { get; init; }
+        public IReadOnlyList<(string ItemId, int Qty)>? DroppedItems { get; init; }
     }
 
     // 하나의 맵(mapId)에 속한 접속자들의 그룹. MapRoomRegistry가 맵마다 이 인스턴스를 하나씩 관리한다.
@@ -178,6 +183,10 @@ namespace GameServer.Networking
 
             _monsters.TryRemove(monsterId, out _);
 
+            // 골드/아이템 드롭은 경험치 지급 성공 여부(공격자 존재, 만렙 여부)와 무관하게 처치 자체에
+            // 대한 보상이므로, 아래 조기 반환 분기들과 상관없이 항상 한 번만 굴려 결과에 실어 보낸다.
+            (int gainedGold, List<(string ItemId, int Qty)> droppedItems) = DropTableCatalog.Roll(runtime.Info.MonsterType);
+
             var dieBroadcast = new S2CMonsterDieBroadcast { MonsterId = monsterId, Timestamp = timestamp };
             await BroadcastToAllAsync(OpCode.Game_MonsterDieBroadcast, dieBroadcast.Encode(), ct);
 
@@ -188,7 +197,7 @@ namespace GameServer.Networking
             // 유일하게 이 값을 들고 있는 주체 - GameServer는 DB가 없어 여기서만 값이 존재한다).
             if (!_players.TryGetValue(attackerId, out var attackerEntry))
             {
-                return new MonsterAttackResult { MonsterDied = true };
+                return new MonsterAttackResult { MonsterDied = true, GainedGold = gainedGold, DroppedItems = droppedItems };
             }
 
             int level = attackerEntry.Info.Level;
@@ -196,8 +205,8 @@ namespace GameServer.Networking
             bool applied = ExpTable.TryApplyExp(ref level, ref exp, runtime.ExpReward, out int expToNextLevel);
             if (!applied)
             {
-                // 이미 만렙 - 경험치를 지급하지 않는다.
-                return new MonsterAttackResult { MonsterDied = true };
+                // 이미 만렙 - 경험치는 지급하지 않지만 골드/아이템 드롭은 그대로 지급한다.
+                return new MonsterAttackResult { MonsterDied = true, GainedGold = gainedGold, DroppedItems = droppedItems };
             }
 
             bool didLevelUp = level != attackerEntry.Info.Level;
@@ -210,7 +219,9 @@ namespace GameServer.Networking
                 GainedExp = runtime.ExpReward,
                 NewLevel = level,
                 DidLevelUp = didLevelUp,
-                ExpToNextLevel = expToNextLevel
+                ExpToNextLevel = expToNextLevel,
+                GainedGold = gainedGold,
+                DroppedItems = droppedItems
             };
         }
 

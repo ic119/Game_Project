@@ -9,6 +9,7 @@ namespace MainServer.CharacterServer.Services
         Task<CharacterResponse> CreateAsync(long userId, CreateCharacterRequest request);
         Task<CharacterResponse?> UpdateCustomizationAsync(long userId, long characterId, UpdateCharacterCustomizationRequest request);
         Task<CharacterResponse?> UpdateProgressAsync(long userId, long characterId, UpdateCharacterProgressRequest request);
+        Task<CharacterResponse?> ApplyKillRewardsAsync(long userId, long characterId, ApplyKillRewardsRequest request);
         Task<CharacterResponse?> TouchLastLoginAsync(long userId, long characterId);
         Task<bool> DeleteCharacterAsync(long userId, long characterId);
     }

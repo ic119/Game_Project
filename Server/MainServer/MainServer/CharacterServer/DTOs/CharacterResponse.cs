@@ -11,6 +11,7 @@ namespace MainServer.CharacterServer.DTOs
         int _intel,
         int _level,
         int _exp,
+        long _gold,
         DateTime? _lastLoginAt,
         DateTime _createdAt);
 }

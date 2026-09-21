@@ -1,0 +1,11 @@
+{
+  "RedMushroom": {
+    "minGold": 5,
+    "maxGold": 15,
+    "items": [
+      { "itemId": "potion_hp_small", "minQty": 1, "maxQty": 2, "dropRate": 0.35 },
+      { "itemId": "mushroom_spore", "minQty": 1, "maxQty": 3, "dropRate": 0.6 },
+      { "itemId": "rare_essence", "minQty": 1, "maxQty": 1, "dropRate": 0.02 }
+    ]
+  }
+}

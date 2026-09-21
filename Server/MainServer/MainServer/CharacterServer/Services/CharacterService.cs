@@ -86,6 +86,48 @@ namespace MainServer.CharacterServer.Services
             return ToResponse(character);
         }
 
+        // GameServer가 몬스터 처치 시 계산한 경험치/레벨/골드/아이템 보상을 한 번에 저장한다.
+        // progress/gold/item을 각각 별도 요청으로 쪼개면 라운드트립도 늘고 중간에 하나만 실패했을 때
+        // 클라이언트-서버 상태가 어긋날 수 있어, 하나의 SaveChangesAsync로 묶어 반영한다.
+        public async Task<CharacterResponse?> ApplyKillRewardsAsync(long userId, long characterId, ApplyKillRewardsRequest request)
+        {
+            var character = await FindOwnedCharacterAsync(userId, characterId);
+            if (character is null)
+                return null;
+
+            character.Level = request._level;
+            character.Exp = request._exp;
+            character.Gold += request._goldGained;
+            character.UpdatedAt = DateTime.UtcNow;
+
+            foreach (var item in request._items)
+            {
+                if (item._qty <= 0)
+                    continue;
+
+                var existing = await _db.CharacterItems
+                    .FirstOrDefaultAsync(ci => ci.CharacterId == characterId && ci.ItemId == item._itemId);
+
+                if (existing is null)
+                {
+                    _db.CharacterItems.Add(new CharacterItem
+                    {
+                        CharacterId = characterId,
+                        ItemId = item._itemId,
+                        Quantity = item._qty
+                    });
+                }
+                else
+                {
+                    existing.Quantity += item._qty;
+                }
+            }
+
+            await _db.SaveChangesAsync();
+
+            return ToResponse(character);
+        }
+
         // 로그아웃 시점에 서버 시각(UtcNow) 기준으로 마지막 접속시간을 기록한다. 클라이언트 시각을 신뢰하지 않는다.
         public async Task<CharacterResponse?> TouchLastLoginAsync(long userId, long characterId)
         {
@@ -144,6 +186,7 @@ namespace MainServer.CharacterServer.Services
             character.Intel,
             character.Level,
             character.Exp,
+            character.Gold,
             character.LastLoginAt,
             character.CreatedAt);
     }

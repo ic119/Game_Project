@@ -15,6 +15,7 @@ namespace MainServer.CharacterServer.Entities
         public int Intel { get; set; }
         public int Level { get; set; } = 1;
         public int Exp { get; set; }
+        public long Gold { get; set; }
         public DateTime? LastLoginAt { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }

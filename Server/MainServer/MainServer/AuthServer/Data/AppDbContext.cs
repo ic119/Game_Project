@@ -12,6 +12,7 @@ namespace MainServer.AuthServer.Data
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<Character> Characters => Set<Character>();
         public DbSet<CharacterSlot> CharacterSlots => Set<CharacterSlot>();
+        public DbSet<CharacterItem> CharacterItems => Set<CharacterItem>();
 
         protected override void OnModelCreating(ModelBuilder _modelBuilder)
         {
@@ -48,6 +49,18 @@ namespace MainServer.AuthServer.Data
                 entity.HasOne(cs => cs.User)
                       .WithOne(u => u.CharacterSlot)
                       .HasForeignKey<CharacterSlot>(cs => cs.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            _modelBuilder.Entity<CharacterItem>(entity =>
+            {
+                entity.ToTable("character_items");
+                // 캐릭터당 같은 ItemId를 한 행으로만 유지(스택형 인벤토리) - 처치 보상 적용 시
+                // 이 인덱스로 기존 행을 찾아 수량만 증가시키고, 없으면 새로 만든다.
+                entity.HasIndex(ci => new { ci.CharacterId, ci.ItemId }).IsUnique();
+                entity.HasOne(ci => ci.Character)
+                      .WithMany()
+                      .HasForeignKey(ci => ci.CharacterId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
         }
