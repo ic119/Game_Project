@@ -13,16 +13,6 @@ MonoBehaviour:
   m_Name: ItemDatabaseSO
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.Models.SO.ItemDatabaseSO
   items:
-  - itemId: material_stone
-    itemName: "\uB3CC"
-    description: 
-    itemType: 2
-    equipSlotType: 0
-    weaponType: 0
-    equipVisualName: 
-    icon: {fileID: 0}
-    itemGrade: 0
-    maxStackCount: 1
   - itemId: potion_hp_small
     itemName: "\uCCB4\uB825 \uBB3C\uC57D(\uC18C)"
     description: 
@@ -44,7 +34,7 @@ MonoBehaviour:
     itemGrade: 0
     maxStackCount: 999
   - itemId: rare_essence
-    itemName: "\uD76C\uADC0\uD55C \uC815\uC218"
+    itemName: "\uBAAC\uC2A4\uD130 \uC815\uC218 (\uD76C\uADC0)"
     description: 
     itemType: 2
     equipSlotType: 0
