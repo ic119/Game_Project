@@ -7,8 +7,10 @@ namespace MainServer.CharacterServer.Services
 {
     public class CharacterService : ICharacterService
     {
-        // 캐릭터 생성 시 부여되는 기본 능력치. Client의 UserStats.CreateDefault()와 동일한 값으로 맞춘다.
-        private const int DefaultStat = 5;
+        // 캐릭터 생성 시 부여되는 기본 능력치. Client의 UserStats.CreateDefault()(10/10/10)와 동일한 값으로 맞춘다.
+        // 몬스터 스탯(Monsters/몬스터_밸런싱_공식.txt)도 이 기준값(str=10 → AttackPower=10)을 전제로 계산되어 있으므로,
+        // 이 값이 달라지면 밸런싱 문서의 DangerScore/ExpReward 역산이 전부 어긋난다.
+        private const int DefaultStat = 10;
 
         private readonly AppDbContext _db;
 
