@@ -22,6 +22,7 @@ namespace Incheol.Presenter.Scene
         private MiniMapController miniMapController;
         private UI_ChatView chatView;
         private UI_MonsterTargetView monsterTargetView;
+        private UI_DropItemPopupView dropItemPopupView;
         private float lastMonsterTargetedTime;
         private const float MonsterTargetLostTimeoutSeconds = 8f;
 
@@ -226,6 +227,7 @@ namespace Incheol.Presenter.Scene
                         instance.TryGetComponent(out gameSceneView);
                         instance.TryGetComponent(out chatView);
                         instance.TryGetComponent(out monsterTargetView);
+                        instance.TryGetComponent(out dropItemPopupView);
 
                         if (gameSceneView != null)
                         {
@@ -732,8 +734,28 @@ namespace Incheol.Presenter.Scene
 
             RefreshInventoryDisplay();
 
+            ShowDropItemPopup(packet.Items);
+
             SaveDataManager.Instance?.ApplyKillRewards(spawnedPlayerModel.Level, spawnedPlayerModel.CurrentExp, packet.GoldGained, packet.Items);
         }
+
+
+        /// <summary>
+        /// HandleLootReceived가 반영한 드롭 아이템 목록을 UI_DropItemPopupView로 보여준다.
+        /// RefreshInventoryDisplay와 동일하게 ItemDatabaseManager.FindById를 조회 함수로 넘긴다
+        /// (아직 아이콘이 등록되지 않은 아이템은 UI_DropListItemView가 이름/수량만으로 최소 표시한다).
+        /// </summary>
+        private void ShowDropItemPopup(List<GameLootItemEntry> items)
+        {
+            if (dropItemPopupView == null || items == null || items.Count == 0)
+            {
+                return;
+            }
+
+            Func<string, ItemData> itemLookup = ItemDatabaseManager.Instance != null ? ItemDatabaseManager.Instance.FindById : null;
+            dropItemPopupView.Show(items, itemLookup);
+        }
+
 
         /// <summary>
         /// localInventoryItems에서 같은 itemId 스택을 찾아 수량만 더하고, 없으면 새 스택을 추가한다.
