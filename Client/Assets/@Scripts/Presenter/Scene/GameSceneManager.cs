@@ -20,6 +20,10 @@ namespace Incheol.Presenter.Scene
         private UI_GameSceneView gameSceneView;
         private PlayerCharacterModel spawnedPlayerModel;
         private MiniMapController miniMapController;
+        private UI_ChatView chatView;
+        private UI_MonsterTargetView monsterTargetView;
+        private float lastMonsterTargetedTime;
+        private const float MonsterTargetLostTimeoutSeconds = 8f;
 
         private GameObject inventoryInstance;
 
@@ -121,14 +125,25 @@ namespace Incheol.Presenter.Scene
             {
                 ToggleInventory();
             }
+
+            if (monsterTargetView != null && monsterTargetView.HasTarget &&
+                Time.time - lastMonsterTargetedTime > MonsterTargetLostTimeoutSeconds)
+            {
+                monsterTargetView.ClearTarget();
+            }
         }
 
         private void OnDestroy()
         {
             if (gameSceneView != null)
             {
-                gameSceneView.ChatMessageSubmitted -= HandleChatMessageSubmitted;
+
                 gameSceneView.LogoutButtonClicked -= HandleLogoutButtonClicked;
+            }
+
+            if (chatView != null)
+            {
+                chatView.MessageSubmitted -= HandleChatMessageSubmitted;
             }
 
             if (localPlayerAttackController != null)
@@ -209,11 +224,17 @@ namespace Incheol.Presenter.Scene
                     if (key == AddressableAssetKey.UI_GameScene)
                     {
                         instance.TryGetComponent(out gameSceneView);
+                        instance.TryGetComponent(out chatView);
+                        instance.TryGetComponent(out monsterTargetView);
 
                         if (gameSceneView != null)
                         {
-                            gameSceneView.ChatMessageSubmitted += HandleChatMessageSubmitted;
                             gameSceneView.LogoutButtonClicked += HandleLogoutButtonClicked;
+                        }
+
+                        if (chatView != null)
+                        {
+                            chatView.MessageSubmitted += HandleChatMessageSubmitted;
                         }
 
                         TryBindPlayerInfo();
@@ -314,7 +335,7 @@ namespace Incheol.Presenter.Scene
 
                 // ClearAll이 파괴한 몬스터를 UI_GameSceneView의 Update() 폴링(Unity null 비교)이 알아서
                 // 감지하긴 하지만, 맵 전환 시점에 명시적으로 타겟 정보 패널을 즉시 닫아 경합 프레임을 없앤다.
-                gameSceneView?.BindMonster(null);
+                monsterTargetView?.ClearTarget();
 
                 if (currentMapInstance != null)
                 {
@@ -615,7 +636,7 @@ namespace Incheol.Presenter.Scene
         /// </summary>
         private void HandleChatReceived(GameChatBroadcastPacket packet)
         {
-            gameSceneView?.AddChatMessage(packet.Nickname, packet.Message);
+            chatView?.AddChatMessage(packet.Nickname, packet.Message);
         }
 
         /// <summary>
@@ -658,12 +679,17 @@ namespace Incheol.Presenter.Scene
         }
 
         /// <summary>
-        /// PlayerAttackController.MonsterTargeted(내가 몬스터를 공격할 때마다)를 그대로 UI_GameSceneView에
-        /// 전달해 몬스터 이름/등급/체력바를 갱신한다.
+        /// PlayerAttackController.MonsterTargeted(내가 몬스터를 공격할 때마다)를 그대로 UI_MonsterTargetView에
+        /// 전달해 몬스터 이름/등급/체력바를 갱신하고, 타겟-로스트 타임아웃 판정에 쓸 시각을 갱신한다.
         /// </summary>
         private void HandleMonsterTargeted(RemoteMonsterController targetMonster)
         {
-            gameSceneView?.BindMonster(targetMonster);
+            monsterTargetView?.BindTarget(targetMonster);
+
+            if (targetMonster != null)
+            {
+                lastMonsterTargetedTime = Time.time;
+            }
         }
 
         /// <summary>

@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Incheol.Controller;
 using Incheol.Utils;
 using TMPro;
@@ -17,12 +16,6 @@ public class UI_GameSceneView : MonoBehaviour
     [SerializeField] private Slider expBarSlider;
     [SerializeField] private TextMeshProUGUI expBarSliderValue;
 
-    [Header("적 정보 UI")]
-    [SerializeField] private GameObject monsterInfoContainer;
-    [SerializeField] private TextMeshProUGUI monsterNameLabel;
-    [SerializeField] private Slider monsterHpBarSlider;
-    [SerializeField] private TextMeshProUGUI monsterHpBarSliderValue;
-
     [Header("Menu Button UI")]
     [SerializeField] private GameObject mainPopup;
     [SerializeField] private Button optionButton;
@@ -30,40 +23,11 @@ public class UI_GameSceneView : MonoBehaviour
     [SerializeField] private Button logoutButton;
     [SerializeField] private Button cancelButton;
 
-    [Header("Chat UI")]
-    [SerializeField] private TMP_InputField chatInputField;
-    [SerializeField] private ScrollRect chatScrollRect;
-    [SerializeField] private RectTransform chatContentRoot;
-    [SerializeField] private GameObject chatMessageTemplate;
-
     [Header("Mini Map")]
     [SerializeField] private RawImage miniMapView;
     [SerializeField] private Sprite playerMiniMapIcon;
 
-    /// <summary>
-    /// 채팅창에 쌓아두는 메시지 아이템의 최대 개수. 세션이 길어져도 UI 오브젝트가 무한히 늘어나지 않도록
-    /// 오래된 메시지부터 제거한다.
-    /// </summary>
-    private const int MaxChatMessageCount = 100;
-
-    private readonly Queue<GameObject> chatMessageInstances = new();
-
     private PlayerCharacterModel playerModel;
-
-    /// <summary>
-    /// Player가 마지막으로 공격한 몬스터(GameSceneManager.HandleMonsterTargeted가 BindMonster로 전달).
-    /// 몬스터가 죽어 오브젝트가 파괴되면 Unity의 오버로드된 == 비교로 자연히 null 취급된다.
-    /// </summary>
-    private RemoteMonsterController targetMonster;
-
-    /// <summary>
-    /// targetMonster를 마지막으로 공격(BindMonster 호출)한 시각(Time.time). 이 시각으로부터
-    /// MonsterTargetLostTimeoutSeconds가 지나도록 재공격이 없으면 Update()가 타겟을 자동 해제한다 -
-    /// 몬스터가 죽지 않았는데도 정보 패널이 계속 떠 있는 걸 막기 위함이다.
-    /// </summary>
-    private float lastMonsterTargetedTime;
-
-    private const float MonsterTargetLostTimeoutSeconds = 8f;
     #endregion
 
     #region LifeCycle
@@ -78,16 +42,6 @@ public class UI_GameSceneView : MonoBehaviour
         }
 
         SetMainPopupActive(false);
-
-        if (monsterInfoContainer != null)
-        {
-            monsterInfoContainer.SetActive(false);
-        }
-
-        if (chatInputField != null)
-        {
-            chatInputField.onSubmit.AddListener(OnChatInputSubmit);
-        }
     }
 
     private void OnDisable()
@@ -98,11 +52,6 @@ public class UI_GameSceneView : MonoBehaviour
         if (cancelButton != null)
         {
             cancelButton.onClick.RemoveListener(OnClickCancelButton);
-        }
-
-        if (chatInputField != null)
-        {
-            chatInputField.onSubmit.RemoveListener(OnChatInputSubmit);
         }
     }
 
@@ -139,59 +88,12 @@ public class UI_GameSceneView : MonoBehaviour
         {
             expBarSliderValue.text = FormatExpText(playerModel.CurrentExp, playerModel.ExpToNextLevel);
         }
-
-        // 마지막 공격(BindMonster) 이후 MonsterTargetLostTimeoutSeconds가 지나도록 재공격이 없으면
-        // 죽지 않았어도 타겟을 자동 해제한다(플레이어가 다른 데로 가버린 경우 정보가 계속 남는 것 방지).
-        if (targetMonster != null && Time.time - lastMonsterTargetedTime > MonsterTargetLostTimeoutSeconds)
-        {
-            targetMonster = null;
-        }
-
-        // targetMonster가 죽어 오브젝트가 파괴되면 Unity의 오버로드된 ==로 자연히 null 취급되므로,
-        // monsterInfoContainer의 활성 상태를 매 프레임 이 값 하나로 동기화한다 - BindMonster(공격 시
-        // 활성화)와 사망/타겟로스트 감지(비활성화)를 별도 경로로 나누지 않고 한 곳에서 일관되게 처리한다.
-        bool hasLiveTarget = targetMonster != null;
-
-        if (monsterInfoContainer != null && monsterInfoContainer.activeSelf != hasLiveTarget)
-        {
-            monsterInfoContainer.SetActive(hasLiveTarget);
-        }
-
-        if (monsterHpBarSlider != null)
-        {
-            if (hasLiveTarget)
-            {
-                monsterHpBarSlider.maxValue = Mathf.Max(1, targetMonster.MaxHp);
-                monsterHpBarSlider.value = targetMonster.CurrentHp;
-
-                if (monsterHpBarSliderValue != null)
-                {
-                    monsterHpBarSliderValue.text = $"{targetMonster.CurrentHp}/{targetMonster.MaxHp}";
-                }
-            }
-            else
-            {
-                // 타겟이 죽거나(파괴) 타겟로스트로 해제되면 체력바/이름을 비운다.
-                monsterHpBarSlider.value = 0;
-
-                if (monsterHpBarSliderValue != null)
-                {
-                    monsterHpBarSliderValue.text = string.Empty;
-                }
-
-                if (monsterNameLabel != null)
-                {
-                    monsterNameLabel.text = string.Empty;
-                }
-            }
-        }
     }
     #endregion
 
     #region Method
     public event Action MenuButtonClicked;
     public event Action LogoutButtonClicked;
-    public event Action<string> ChatMessageSubmitted;
 
     /// <summary>
     /// 스폰된 로컬 플레이어를 이 뷰에 연결한다. 닉네임/레벨은 즉시 표시하고,
@@ -230,36 +132,6 @@ public class UI_GameSceneView : MonoBehaviour
 
         int percent = Mathf.RoundToInt((float)currentExp / expToNextLevel * 100f);
         return $"{currentExp}/{expToNextLevel} ({percent}%)";
-    }
-
-    /// <summary>
-    /// Player가 몬스터를 공격할 때마다(PlayerAttackController.MonsterTargeted) GameSceneManager가 호출한다.
-    /// 이름은 등급 색상(ItemGradeUtils)을 입혀 표시하고, 체력바는 Update()에서 계속 폴링해 갱신한다
-    /// (BindPlayer와 동일하게 전투 중 실시간으로 바뀌는 값은 이벤트 대신 폴링하는 기존 컨벤션을 따른다).
-    /// </summary>
-    public void BindMonster(RemoteMonsterController _monster)
-    {
-        targetMonster = _monster;
-
-        if (targetMonster != null)
-        {
-            lastMonsterTargetedTime = Time.time;
-        }
-
-        if (monsterNameLabel == null)
-        {
-            return;
-        }
-
-        if (targetMonster == null)
-        {
-            monsterNameLabel.text = string.Empty;
-            return;
-        }
-
-        string colorHex = ColorUtility.ToHtmlStringRGBA(targetMonster.Grade.GetGradeColor());
-        string gradeName = targetMonster.Grade.GetGradeDisplayName();
-        monsterNameLabel.text = $"<color=#{colorHex}>{targetMonster.DisplayName}({gradeName})</color>";
     }
 
     /// <summary>
@@ -302,62 +174,6 @@ public class UI_GameSceneView : MonoBehaviour
         {
             SetMainPopupActive(false);
         }
-    }
-
-    /// <summary>
-    /// ChatContainer/Scroll View/Viewport/Content 아래에 chatMessageTemplate을 복제해 한 줄을 추가한다.
-    /// MaxChatMessageCount를 넘으면 가장 오래된 항목부터 제거하고, 추가 직후 스크롤을 맨 아래로 내린다.
-    /// 리치 텍스트는 채팅 내용에 꺾쇠 문자가 섞여 들어와도 태그로 해석되지 않도록 항상 꺼둔다.
-    /// </summary>
-    public void AddChatMessage(string _nickname, string _message)
-    {
-        if (chatMessageTemplate == null || chatContentRoot == null)
-        {
-            return;
-        }
-
-        GameObject instance = Instantiate(chatMessageTemplate, chatContentRoot);
-        instance.SetActive(true);
-
-        if (instance.TryGetComponent(out TextMeshProUGUI text))
-        {
-            text.richText = false;
-            text.text = string.IsNullOrEmpty(_nickname) ? _message : $"[{_nickname}]: {_message}";
-        }
-
-        chatMessageInstances.Enqueue(instance);
-
-        while (chatMessageInstances.Count > MaxChatMessageCount)
-        {
-            GameObject oldest = chatMessageInstances.Dequeue();
-            if (oldest != null)
-            {
-                Destroy(oldest);
-            }
-        }
-
-        if (chatScrollRect != null)
-        {
-            Canvas.ForceUpdateCanvases();
-            chatScrollRect.verticalNormalizedPosition = 0f;
-        }
-    }
-
-    /// <summary>
-    /// ChatInputField에서 Enter(Submit)를 누르면 호출된다. 빈 문자열은 무시하고,
-    /// 전송 후에는 입력창을 비우고 즉시 재포커스해 연속으로 대화를 이어갈 수 있게 한다.
-    /// </summary>
-    private void OnChatInputSubmit(string _text)
-    {
-        if (string.IsNullOrWhiteSpace(_text))
-        {
-            return;
-        }
-
-        ChatMessageSubmitted?.Invoke(_text.Trim());
-
-        chatInputField.text = string.Empty;
-        chatInputField.ActivateInputField();
     }
     #endregion
 }
