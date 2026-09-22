@@ -20,7 +20,7 @@ MonoBehaviour:
     equipSlotType: 0
     weaponType: 0
     equipVisualName: 
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 8747fbd096b50834ab608c29a3c05bcc, type: 3}
     itemGrade: 0
     maxStackCount: 99
   - itemId: mushroom_spore
@@ -30,7 +30,7 @@ MonoBehaviour:
     equipSlotType: 0
     weaponType: 0
     equipVisualName: 
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 73b277da837c0874893f6123d5842ca0, type: 3}
     itemGrade: 0
     maxStackCount: 999
   - itemId: rare_essence
