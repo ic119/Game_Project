@@ -1,0 +1,88 @@
+몬스터 드랍 아이템 및 재화 설정 과정
+====================================
+
+몬스터 하나에 대해 드롭 아이템/골드를 새로 설정하는 전체 과정입니다.
+서버(데이터/검증)와 클라이언트(표시)가 분리되어 있어 양쪽 다 손대야 합니다.
+
+
+1. itemId 정하기
+--------------------------------
+카테고리 접두사 규칙(ItemData.cs 툴팁 참고)을 따라 짓는다.
+- 무기 weapon_
+- 방어구 armor_
+- 투구 helmet_
+- 신발 boots_
+- 장신구 accessory_
+- 물약 potion_
+- 재료/기타 material_
+
+한 번 정하면 서버/클라이언트 양쪽에서 동일하게 써야 하므로 바꾸지 않는 걸 전제로 신중히 정한다.
+
+
+2. 서버: 아이템 정의 등록
+--------------------------------
+파일: Server/MainServer/GameServer/Items/ItemDefinitions.json
+
+itemId를 키로 추가한다.
+
+예)
+"material_slime_jelly": { "name": "슬라임 젤리", "maxStack": 999 }
+
+주의: 이 파일에 없는 itemId를 드롭 테이블에서 참조하면 서버 부팅 자체가 막힌다(오타 방지용 검증).
+
+
+3. 서버: 드롭 테이블에 골드/아이템 추가
+--------------------------------
+파일: Server/MainServer/GameServer/Drops/DropTables.json
+
+해당 MonsterType(스폰 데이터의 monsterType과 정확히 일치해야 함) 키 아래에 작성한다.
+
+예)
+"GreenSlime": {
+  "minGold": 3,
+  "maxGold": 8,
+  "items": [
+    { "itemId": "material_slime_jelly", "minQty": 1, "maxQty": 2, "dropRate": 0.8 }
+  ]
+}
+
+- minGold/maxGold : 처치 시 지급할 골드 범위(항상 지급)
+- dropRate : 항목별 독립 확률(0.0~1.0). 가중치 1개 뽑기가 아니라, 한 번의 처치에 여러 항목이 동시에
+  나올 수도, 하나도 안 나올 수도 있다. 1.0이면 항상 드롭.
+- minQty/maxQty : 당첨됐을 때 드롭될 개수 범위
+
+주의: 범위 오류(maxGold<minGold, maxQty<minQty 등)나 존재하지 않는 itemId를 참조하면
+부팅 시 자동 검증되어 서버 시작이 차단된다.
+
+
+4. 클라이언트: ItemDatabaseSO에 같은 itemId 등록
+--------------------------------
+Unity 에디터에서 다음 에셋을 연다.
+Assets/@Scripts/Models/ScriptableObject/ItemDatabaseSO.asset
+
+items 리스트에 같은 itemId로 항목을 추가(또는 이미 추가되어 있으면 그대로 사용)하고
+아이콘(Sprite)과 설명(description)을 채운다.
+
+- 여기 없으면 인벤토리에 아이콘 없이 itemId 텍스트만 표시된다(에러는 아님).
+- itemName, itemType(Potion/Equipment/General), itemGrade, maxStackCount도 여기서 함께 설정한다.
+
+
+5. GameServer 재시작
+--------------------------------
+Drops/DropTables.json, Items/ItemDefinitions.json은 부팅 시 1회만 로드되므로,
+실행 중 수정해도 반영되지 않는다. 반드시 GameServer를 재시작해야 한다.
+
+(ItemDatabaseSO는 Unity 에디터가 즉시 반영하므로 재시작이 필요 없다.)
+
+
+6. 검증
+--------------------------------
+GameServer 콘솔에서 다음 로그로 정상 로드 여부를 확인한다.
+
+[GameServer] 아이템 정의 로드 완료 : N종
+[GameServer] 드롭 테이블 로드 완료 : N종
+
+에러 없이 뜨면 정상이다. 이후 순서대로 확인한다.
+1) 해당 몬스터를 처치해 골드/아이템 획득
+2) 인벤토리 UI에 정상 표시되는지 확인
+3) 재로그인 후 DB 반영 확인 (characters.Gold, character_items 테이블)
