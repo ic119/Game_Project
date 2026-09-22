@@ -4,6 +4,7 @@ using Incheol.Modules;
 using Incheol.Modules.Networking;
 using Incheol.Utils;
 using Incheol.View.UI;
+using System;
 using System.Collections.Generic;
 using Unity.Cinemachine;
 using UnityEngine;
@@ -595,7 +596,7 @@ namespace Incheol.Presenter.Scene
                 // UI_InventoryView.Awake()가 임시 플레이스홀더 골드값으로 초기화해두므로, 생성 직후 실제
                 // 세이브 데이터 값으로 즉시 덮어쓴다(그 사이 처치 보상을 먼저 받는 레이스는 없다 - 인벤토리는
                 // 캐릭터 커스터마이징이 끝난 뒤에야 생성되고, GameServer 접속/전투는 그다음에 시작된다).
-                RefreshInventoryCurrencyDisplay();
+                RefreshInventoryDisplay();
             });
         }
 
@@ -703,7 +704,7 @@ namespace Incheol.Presenter.Scene
                 AddOrMergeInventoryItem(item.ItemId, item.Qty);
             }
 
-            RefreshInventoryCurrencyDisplay();
+            RefreshInventoryDisplay();
 
             SaveDataManager.Instance?.ApplyKillRewards(spawnedPlayerModel.Level, spawnedPlayerModel.CurrentExp, packet.GoldGained, packet.Items);
         }
@@ -724,10 +725,12 @@ namespace Incheol.Presenter.Scene
         }
 
         /// <summary>
-        /// 인벤토리 UI가 이미 생성되어 있으면 골드 표시만 최신값으로 갱신한다. 아이템 슬롯 렌더링(아이콘/등급 조회)은
-        /// 아직 클라이언트에 아이템 데이터베이스가 연결되어 있지 않아 별도 작업으로 남겨둔다.
+        /// 인벤토리 UI가 이미 생성되어 있으면 골드/아이템 슬롯을 현재 런타임 상태(spawnedPlayerModel.Gold,
+        /// localInventoryItems)로 다시 그린다. 아이콘/등급은 ItemDatabaseManager를 통해 조회하며, 아직 로드되지
+        /// 않았거나(부트스트랩 직후) 디자이너가 해당 itemId를 등록하기 전이면 UI_InventoryView가 알아서
+        /// 아이콘 없이 최소 정보로 표시한다.
         /// </summary>
-        private void RefreshInventoryCurrencyDisplay()
+        private void RefreshInventoryDisplay()
         {
             if (inventoryInstance == null || spawnedPlayerModel == null)
             {
@@ -736,7 +739,8 @@ namespace Incheol.Presenter.Scene
 
             if (inventoryInstance.TryGetComponent(out UI_InventoryView inventoryView))
             {
-                inventoryView.SetCurrency(spawnedPlayerModel.Gold, 0);
+                Func<string, ItemData> itemLookup = ItemDatabaseManager.Instance != null ? ItemDatabaseManager.Instance.FindById : null;
+                inventoryView.RefreshInventory(spawnedPlayerModel.Gold, localInventoryItems, itemLookup);
             }
         }
 

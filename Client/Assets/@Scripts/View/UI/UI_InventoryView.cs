@@ -252,6 +252,44 @@ namespace Incheol.View.UI
             if (diamondText != null) diamondText.text = $"{_diamond:N0}";
         }
 
+        /// <summary>
+        /// 골드 표시와 인벤토리 슬롯 전체를 실제 보유 데이터로 다시 그린다. 서버(CharacterItem)가 슬롯 인덱스를
+        /// 따로 저장하지 않는 스택형 인벤토리라(GameSceneManager.localInventoryItems 참고), 매번 _items 순서대로
+        /// 앞 슬롯부터 채우고 나머지는 비운다 - 드래그로 슬롯 순서를 바꾸는 기능은 아직 없어 순서가 흔들릴 일이 없다.
+        /// _itemLookup(보통 ItemDatabaseManager.Instance.FindById)이 null을 반환하면(디자이너가 아직 아이콘/설명을
+        /// 채우기 전) 아이콘 없이 itemId 텍스트와 수량만으로 최소 표시한다. ItemDatabaseSO를 직접 참조하지 않고
+        /// 조회 함수만 받는 이유는 ItemDatabaseManager가 유일한 로드 지점이라는 규칙을 UI 쪽에서도 지키기 위함이다.
+        /// </summary>
+        public void RefreshInventory(long _gold, IReadOnlyList<InventoryItemStack> _items, Func<string, ItemData> _itemLookup)
+        {
+            SetCurrency(_gold, 0);
+
+            int itemCount = _items?.Count ?? 0;
+
+            for (int i = 0; i < inventorySlots.Count; i++)
+            {
+                if (i >= itemCount)
+                {
+                    inventorySlots[i].ClearSlot();
+                    continue;
+                }
+
+                InventoryItemStack stack = _items[i];
+                ItemData itemData = _itemLookup?.Invoke(stack.itemId);
+
+                if (itemData != null)
+                {
+                    inventorySlots[i].SetItem(stack.itemId, itemData.icon, stack.count, itemData.itemGrade);
+                }
+                else
+                {
+                    inventorySlots[i].SetItem(stack.itemId, null, stack.count, ItemGrade.Common);
+                }
+            }
+
+            SetCapacity(itemCount, inventorySlots.Count);
+        }
+
         public void SetCapacity(int _current, int _max)
         {
             if (capacityText != null)

@@ -116,6 +116,23 @@ namespace Incheol.Presenter
             }
         }
 
+        private class ItemDatabaseManage : ISequenceStep
+        {
+            public string StepName => "아이템 데이터베이스 초기화";
+
+            public async Awaitable<bool> Execute(CancellationToken _cancellationToken)
+            {
+                // ItemDatabaseManager.Instance에 접근하는 것만으로 Awake()가 호출되어 ItemDatabaseSO 로드가
+                // 시작된다. WeaponVfxManage와 같은 이유로 미리 만들어둔다 - 늦어도 GameScene에서 첫 처치 보상을
+                // 받거나 인벤토리를 열기 전까지만 로드가 끝나면 되므로 여기서 로드 완료까지 기다리지는 않는다.
+                _ = ItemDatabaseManager.Instance;
+
+                await Awaitable.NextFrameAsync(_cancellationToken);
+
+                return true;
+            }
+        }
+
         private class ChangeSceneManage : ISequenceStep
         {
             public string StepName => "메인 씬으로 전환 준비";
@@ -209,6 +226,7 @@ private void Start()
             SoundManage soundManage = new SoundManage();
             GameServerConnectManage gameServerConnectManage = new GameServerConnectManage();
             WeaponVfxManage weaponVfxManage = new WeaponVfxManage();
+            ItemDatabaseManage itemDatabaseManage = new ItemDatabaseManage();
             ServerConnectManage serverConnectManage = new ServerConnectManage();
             ChangeSceneManage changeSceneManage = new ChangeSceneManage();
 
@@ -222,6 +240,7 @@ private void Start()
                 soundManage,
                 gameServerConnectManage,
                 weaponVfxManage,
+                itemDatabaseManage,
                 serverConnectManage,
                 changeSceneManage,
             };
@@ -232,6 +251,7 @@ private void Start()
             SequenceManager.Instance.Enqueue(soundManage);
             SequenceManager.Instance.Enqueue(gameServerConnectManage);
             SequenceManager.Instance.Enqueue(weaponVfxManage);
+            SequenceManager.Instance.Enqueue(itemDatabaseManage);
             SequenceManager.Instance.Enqueue(serverConnectManage);
             SequenceManager.Instance.Enqueue(changeSceneManage);
 

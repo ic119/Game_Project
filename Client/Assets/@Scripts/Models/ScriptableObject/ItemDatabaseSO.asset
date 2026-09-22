@@ -19,6 +19,37 @@ MonoBehaviour:
     itemType: 2
     equipSlotType: 0
     weaponType: 0
+    equipVisualName: 
     icon: {fileID: 0}
     itemGrade: 0
     maxStackCount: 1
+  - itemId: potion_hp_small
+    itemName: "\uCCB4\uB825 \uBB3C\uC57D(\uC18C)"
+    description: 
+    itemType: 1
+    equipSlotType: 0
+    weaponType: 0
+    equipVisualName: 
+    icon: {fileID: 0}
+    itemGrade: 0
+    maxStackCount: 99
+  - itemId: mushroom_spore
+    itemName: "\uBC84\uC12F \uD3EC\uC790"
+    description: 
+    itemType: 2
+    equipSlotType: 0
+    weaponType: 0
+    equipVisualName: 
+    icon: {fileID: 0}
+    itemGrade: 0
+    maxStackCount: 999
+  - itemId: rare_essence
+    itemName: "\uD76C\uADC0\uD55C \uC815\uC218"
+    description: 
+    itemType: 2
+    equipSlotType: 0
+    weaponType: 0
+    equipVisualName: 
+    icon: {fileID: 0}
+    itemGrade: 1
+    maxStackCount: 99
