@@ -225,7 +225,7 @@ public class PlayerCharacterModel : MonoBehaviour
     /// </summary>
     public void ApplyGold(long newGold)
     {
-        gold = Mathf.Max(0, newGold);
+        gold = System.Math.Max(0L, newGold);
     }
 
     /// <summary>
