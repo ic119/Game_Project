@@ -7,14 +7,14 @@
             "z": 14.0,
             "rotationY": 0.0,
             "maxAlive": 1,
-            "respawnSeconds": 15.0,
+            "respawnSeconds": 75.0,
             "entries": [
                 {
                     "monsterType": "RedMushroom",
-                    "maxHp": 80,
-                    "attackPower": 5,
-                    "defense": 0,
-                    "expReward": 10
+                    "maxHp": 250,
+                    "attackPower": 18,
+                    "defense": 4,
+                    "expReward": 42
                 }
             ],
             "detectionRange": 6.0,

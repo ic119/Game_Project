@@ -1,0 +1,114 @@
+몬스터 밸런싱 공식 (소수 정예 / 신중한 전투 설계)
+====================================
+
+배경
+--------------------------------
+기존 방식(몹 다수 + 낮은 스탯 그라인딩)에서, 몬스터 수를 1~2마리로 줄이고 기본 공격력/체력을
+높여 "한 마리 한 마리 신중하게 싸우는" 방식으로 전환하기 위한 밸런싱 공식이다.
+
+기존 가이드라인(ExpReward ≈ round(MaxHp*0.4 + AttackPower*2))은 선형 공식이라 이 설계와 맞지
+않는다. 선형이면 강한 몹 1마리와 약한 몹 여러 마리를 빠르게 잡는 것의 시간당 보상이 비슷해져서,
+위험을 감수하고 강한 몹과 싸울 유인이 사라지기 때문이다. 위험이 커질수록 보상이 그보다 더
+가파르게 늘어야 "신중하게 싸울 가치"가 생긴다.
+
+
+1. 플레이어 기준 전투력 (실제 코드 공식)
+--------------------------------
+CombatStatComponent.ApplyFromUserStats:
+  AttackPower = str
+  Defense = agi / 2
+
+HealthComponent.ApplyFromUserStats:
+  MaxHp = 100 + agi*5 + max(0, level-1)*10
+
+데미지 공식(CombatCalculator.ApplyDefense, 서버/클라이언트 동일):
+  최종데미지 = max(1, 원본데미지 - 방어력)
+
+기본 스탯(UserStats.CreateDefault): str=10, agi=10, intel=10
+→ Lv1 플레이어: AttackPower=10, Defense=5, MaxHp=150
+
+
+2. 몬스터 위험도 점수 (DangerScore)
+--------------------------------
+세 스탯을 하나의 "이 몬스터가 얼마나 위협적인가" 점수로 합친다.
+
+  DangerScore = MaxHp * 0.4 + AttackPower * 3 + Defense * 2
+
+- MaxHp 가중치 0.4  : 체력이 늘수록 전투 시간이 길어짐(생존/지속 위협)
+- AttackPower 가중치 3 : "신중한 전투" 설계에선 공격력이 플레이어 생존에 미치는 영향이 크므로
+  기존 가이드라인(가중치 2)보다 높게 잡는다.
+- Defense 가중치 2  : 방어력은 플레이어의 처치 시간을 늘려 피격 노출 시간을 늘리는 핵심 요인.
+  기존 가이드라인엔 없던 항목이다.
+
+
+3. 경험치 공식 (지수 곡선)
+--------------------------------
+  ExpReward = round(K * DangerScore ^ 1.15)
+
+- 지수 1.15 : DangerScore가 2배인 몹은 보상이 2배가 아니라 약 2.2배가 되도록 만드는 장치.
+  강한 몹을 신중하게 잡는 쪽이 항상 더 효율적이도록 설계한다.
+  (1.0에 가까울수록 그라인딩형, 1.3 이상이면 하이리스크-하이리턴형 — 체감 난이도를 보며
+   조절하는 유일한 노브로 남겨둔다.)
+- K : 보정 상수. 기존에 실제로 쓰이던 값 하나를 기준으로 역산해서 정한다.
+  현재(변경 전) RedMushroom : DangerScore=47, ExpReward=10 (실데이터)
+  → K = 10 / 47^1.15 ≈ 0.1194
+  이후 새 몹은 스탯만 넣으면 이 K로 자동으로 맞는 값이 나온다.
+
+
+4. 골드 공식 (경험치에 종속)
+--------------------------------
+minGold/maxGold를 몹마다 손으로 따로 맞추면 서로 어긋나기 쉬우므로, 경험치 계산이 끝난 뒤
+비율 + 편차로 도출한다.
+
+  baseGold = ExpReward * goldToExpRatio   (goldToExpRatio = 0.8)
+  minGold  = round(baseGold * 0.8)
+  maxGold  = round(baseGold * 1.2)
+
+튜닝 지점이 사실상 goldToExpRatio 하나로 줄어든다.
+
+
+5. 리스폰 시간 공식 (체감 처치 시간에 비례)
+--------------------------------
+MaxAlive를 1~2로 줄이는 설계에서는, 몹이 강해질수록 RespawnSeconds도 같이 늘려야
+"시간당 보상"이 몹 티어와 무관하게 일정하게 유지된다.
+
+  RespawnSeconds ≈ 기존RespawnSeconds * (신규예상처치시간 / 기존예상처치시간)
+
+예상 처치 시간은 "플레이어가 몹에게 주는 데미지"와 "플레이어 공격 주기(대략치)"로 추정한다.
+정확한 애니메이션 타이밍 데이터가 없으므로 근사치이며, 실제 체감 난이도를 보며 보정한다.
+
+
+6. RedMushroom 재계산 예시 (실제 적용값)
+--------------------------------
+[변경 전]
+  MaxHp=80, AttackPower=5, Defense=0
+  ExpReward=10, MinGold=5, MaxGold=15
+  MaxAlive=1, RespawnSeconds=15
+
+[변경 후]
+  MaxHp=250, AttackPower=18, Defense=4
+
+  DangerScore = 250*0.4 + 18*3 + 4*2 = 100 + 54 + 8 = 162
+  ExpReward = round(0.1194 * 162^1.15) = round(0.1194 * 347.5) ≈ 42
+
+  baseGold = 42 * 0.8 = 33.6
+  MinGold = round(33.6*0.8) = 27
+  MaxGold = round(33.6*1.2) = 40
+
+  RespawnSeconds = 15 * (12.5초 / 2.4초) ≈ 75
+
+  검증(Lv1 기본 스탯 기준):
+  - 플레이어가 주는 데미지: max(1, 10-4) = 6/타 → 250/6 ≈ 42타 필요
+  - 몬스터가 주는 데미지: max(1, 18-5) = 13/타, 공격 주기 1.5초
+    → 약 12.5초 전투 동안 8회 피격 ≈ 104데미지(플레이어 HP 150의 약 69%)
+  → 죽지는 않지만 체력을 크게 깎이는 "위험한" 전투가 되어 설계 의도에 부합.
+
+
+7. 새 몹을 추가할 때 적용 순서
+--------------------------------
+1) 목표 MaxHp/AttackPower/Defense를 플레이어 기준 전투력 대비 비율로 정한다.
+2) DangerScore 계산.
+3) ExpReward = round(K * DangerScore^1.15) 계산 (K=0.1194 유지, 전체 밸런스를 다시 잡을 때만 재역산).
+4) MinGold/MaxGold = ExpReward 기반 비율 공식 적용.
+5) 예상 처치 시간을 추정해 RespawnSeconds를 비례 조정.
+6) SpawnPoints/{mapId}.json, Drops/DropTables.json 수정 후 GameServer 재시작(부팅 시 1회 로드).
