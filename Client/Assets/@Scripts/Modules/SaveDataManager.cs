@@ -34,7 +34,8 @@ namespace Incheol.Modules
         [Serializable] private class UpdateProgressRequestBody { public int _level; public int _exp; }
         [Serializable] private class KillRewardItemBody { public string _itemId; public int _qty; }
         [Serializable] private class ApplyKillRewardsRequestBody { public int _level; public int _exp; public long _goldGained; public List<KillRewardItemBody> _items; }
-        [Serializable] private class CharacterResponseBody { public long _id; public string _nickname; public int _hairIndex; public int _eyeIndex; public int _mouthIndex; public int _str; public int _agi; public int _intel; public int _level; public int _exp; public long _gold; public string _lastLoginAt; public string _createdAt; }
+        [Serializable] private class CharacterItemBody { public string _itemId; public int _qty; }
+        [Serializable] private class CharacterResponseBody { public long _id; public string _nickname; public int _hairIndex; public int _eyeIndex; public int _mouthIndex; public int _str; public int _agi; public int _intel; public int _level; public int _exp; public long _gold; public List<CharacterItemBody> _items; public string _lastLoginAt; public string _createdAt; }
         [Serializable] private class JsonArrayWrapper<T> { public T[] items; }
 
         /// <summary>
@@ -261,6 +262,15 @@ namespace Incheol.Modules
                 return;
             }
 
+            List<InventoryItemStack> items = new List<InventoryItemStack>();
+            if (response._items != null)
+            {
+                foreach (CharacterItemBody item in response._items)
+                {
+                    items.Add(new InventoryItemStack(item._itemId, item._qty));
+                }
+            }
+
             _onComplete?.Invoke(new UserSaveData
             {
                 characterId = response._id,
@@ -271,7 +281,8 @@ namespace Incheol.Modules
                 level = response._level,
                 exp = response._exp,
                 gold = response._gold,
-                userStats = new UserStats { str = response._str, agi = response._agi, intel = response._intel }
+                userStats = new UserStats { str = response._str, agi = response._agi, intel = response._intel },
+                items = items
             });
         }
 

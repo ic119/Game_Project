@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 /// <summary>
 /// 캐릭터 생성 팝업에서 입력/선택한 값을 담아 상위 Controller에 전달하는 저장용 데이터.
@@ -26,6 +27,12 @@ public class UserSaveData
     public int exp;
     public long gold;
     public UserStats userStats;
+
+    /// <summary>
+    /// 서버(CharacterResponse._items)가 함께 내려주는 보유 아이템 목록. 캐릭터 생성 팝업에서는 당연히 빈 목록이고,
+    /// 실제 값은 gold와 마찬가지로 서버 응답을 받은 뒤(SaveDataManager.FetchCharacterDetailAsync)에 채워진다.
+    /// </summary>
+    public List<InventoryItemStack> items = new();
 
     public static UserSaveData CreateDefault(string nickname, int hairIndex, int eyeIndex, int mouthIndex)
     {

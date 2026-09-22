@@ -501,6 +501,11 @@ namespace Incheol.Presenter.Scene
                     TryBindPlayerInfo();
                 }
 
+                // 이전 세션에서 처치 보상으로 쌓인 아이템(서버 CharacterItems)을 복원한다. 골드는
+                // ApplyUserSaveData가 이미 spawnedPlayerModel.Gold로 반영했으므로 여기서는 아이템만 채운다.
+                localInventoryItems.Clear();
+                localInventoryItems.AddRange(userSaveData.items);
+
                 // 캐릭터 생성(외형/스탯 적용)이 성공적으로 끝난 시점에 인벤토리 UI를 비활성 상태로 미리 만들어둔다.
                 SpawnInventoryUI();
 

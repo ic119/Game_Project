@@ -17,13 +17,19 @@ namespace MainServer.CharacterServer.Services
         public async Task<IReadOnlyList<CharacterResponse>> GetMyCharactersAsync(long userId)
         {
             var characters = await _db.Characters.Where(c => c.UserId == userId).ToListAsync();
-            return characters.Select(ToResponse).ToList();
+
+            var result = new List<CharacterResponse>(characters.Count);
+            foreach (var character in characters)
+            {
+                result.Add(await ToResponseAsync(character));
+            }
+            return result;
         }
 
         public async Task<CharacterResponse?> GetCharacterAsync(long userId, long characterId)
         {
             var character = await FindOwnedCharacterAsync(userId, characterId);
-            return character is null ? null : ToResponse(character);
+            return character is null ? null : await ToResponseAsync(character);
         }
 
         public async Task<CharacterResponse> CreateAsync(long userId, CreateCharacterRequest request)
@@ -50,7 +56,7 @@ namespace MainServer.CharacterServer.Services
             slot.CurrentCount++;
             await _db.SaveChangesAsync();
 
-            return ToResponse(character);
+            return await ToResponseAsync(character);
         }
 
         public async Task<CharacterResponse?> UpdateCustomizationAsync(long userId, long characterId, UpdateCharacterCustomizationRequest request)
@@ -66,7 +72,7 @@ namespace MainServer.CharacterServer.Services
 
             await _db.SaveChangesAsync();
 
-            return ToResponse(character);
+            return await ToResponseAsync(character);
         }
 
         // GameServer(TCP)가 몬스터 처치 시 계산한 레벨/경험치를 클라이언트가 대신 저장 요청한다.
@@ -83,7 +89,7 @@ namespace MainServer.CharacterServer.Services
 
             await _db.SaveChangesAsync();
 
-            return ToResponse(character);
+            return await ToResponseAsync(character);
         }
 
         // GameServer가 몬스터 처치 시 계산한 경험치/레벨/골드/아이템 보상을 한 번에 저장한다.
@@ -125,7 +131,7 @@ namespace MainServer.CharacterServer.Services
 
             await _db.SaveChangesAsync();
 
-            return ToResponse(character);
+            return await ToResponseAsync(character);
         }
 
         // 로그아웃 시점에 서버 시각(UtcNow) 기준으로 마지막 접속시간을 기록한다. 클라이언트 시각을 신뢰하지 않는다.
@@ -138,7 +144,7 @@ namespace MainServer.CharacterServer.Services
             character.LastLoginAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
 
-            return ToResponse(character);
+            return await ToResponseAsync(character);
         }
 
         public async Task<bool> DeleteCharacterAsync(long userId, long characterId)
@@ -175,19 +181,31 @@ namespace MainServer.CharacterServer.Services
             return slot;
         }
 
-        private static CharacterResponse ToResponse(Character character) => new(
-            character.Id,
-            character.Nickname,
-            character.HairIndex,
-            character.EyeIndex,
-            character.MouthIndex,
-            character.Str,
-            character.Agi,
-            character.Intel,
-            character.Level,
-            character.Exp,
-            character.Gold,
-            character.LastLoginAt,
-            character.CreatedAt);
+        // 인벤토리 아이템(CharacterItems)까지 함께 실어 보내는 응답 빌더. 목록/생성/진행도 저장 등
+        // CharacterResponse를 만드는 모든 경로가 이 메서드 하나를 거치므로, 클라이언트는 어느 API를 호출하든
+        // 항상 최신 아이템 목록을 함께 받는다 - 별도의 "인벤토리 조회 API"를 새로 만들 필요가 없다.
+        private async Task<CharacterResponse> ToResponseAsync(Character character)
+        {
+            var items = await _db.CharacterItems
+                .Where(ci => ci.CharacterId == character.Id)
+                .Select(ci => new CharacterItemResponse(ci.ItemId, ci.Quantity))
+                .ToListAsync();
+
+            return new CharacterResponse(
+                character.Id,
+                character.Nickname,
+                character.HairIndex,
+                character.EyeIndex,
+                character.MouthIndex,
+                character.Str,
+                character.Agi,
+                character.Intel,
+                character.Level,
+                character.Exp,
+                character.Gold,
+                items,
+                character.LastLoginAt,
+                character.CreatedAt);
+        }
     }
 }
