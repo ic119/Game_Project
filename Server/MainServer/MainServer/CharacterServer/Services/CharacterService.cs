@@ -198,6 +198,52 @@ namespace MainServer.CharacterServer.Services
             return await ToResponseAsync(character);
         }
 
+        // 소비 아이템(물약 등) 1개를 사용한다(소유자 검증 포함). 장착 중인 스택(EquipSlot != null)은 대상에서
+        // 제외한다 - 장비류는 이 경로로 소모될 일이 없고, 혹시 클라이언트가 잘못된 요청을 보내도 장착 중인
+        // 아이템이 실수로 사라지지 않도록 방어한다. 수량이 0 이하가 되면 스택 자체를 삭제한다.
+        public async Task<CharacterResponse?> ConsumeItemAsync(long userId, long characterId, string itemId)
+        {
+            var character = await FindOwnedCharacterAsync(userId, characterId);
+            if (character is null)
+                return null;
+
+            var targetItem = await _db.CharacterItems
+                .FirstOrDefaultAsync(ci => ci.CharacterId == characterId && ci.ItemId == itemId && ci.EquipSlot == null);
+
+            if (targetItem is null)
+                throw new InvalidOperationException("보유하지 않은 아이템은 사용할 수 없습니다.");
+
+            targetItem.Quantity -= 1;
+            if (targetItem.Quantity <= 0)
+            {
+                _db.CharacterItems.Remove(targetItem);
+            }
+
+            await _db.SaveChangesAsync();
+
+            return await ToResponseAsync(character);
+        }
+
+        // 인벤토리 아이템을 버린다(소유자 검증 포함). 장착 중인 스택(EquipSlot != null)은 대상에서 제외한다 -
+        // 장비를 버리려면 먼저 해제해야 한다. DELETE 의미에 맞게 대상이 이미 없어도 에러 없이 현재 상태를 그대로 반환한다.
+        public async Task<CharacterResponse?> RemoveItemAsync(long userId, long characterId, string itemId)
+        {
+            var character = await FindOwnedCharacterAsync(userId, characterId);
+            if (character is null)
+                return null;
+
+            var targetItem = await _db.CharacterItems
+                .FirstOrDefaultAsync(ci => ci.CharacterId == characterId && ci.ItemId == itemId && ci.EquipSlot == null);
+
+            if (targetItem is not null)
+            {
+                _db.CharacterItems.Remove(targetItem);
+                await _db.SaveChangesAsync();
+            }
+
+            return await ToResponseAsync(character);
+        }
+
         // 로그아웃 시점에 서버 시각(UtcNow) 기준으로 마지막 접속시간을 기록한다. 클라이언트 시각을 신뢰하지 않는다.
         public async Task<CharacterResponse?> TouchLastLoginAsync(long userId, long characterId)
         {

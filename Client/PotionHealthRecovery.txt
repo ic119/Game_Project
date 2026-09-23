@@ -55,26 +55,43 @@
         기존 TakeDamage(DamageInfo) -> healthComponent.TakeDamage(...)와 동일한 패스스루 패턴.
 
 [5] Assets/@Scripts/Presenter/Scene/GameSceneManager.cs
-    - 인벤토리 UI(UI_InventoryView)의 "장착 / 사용" 버튼 클릭(OnUseItemRequested)을 받아 처리.
+    - 인벤토리 UI(UI_InventoryView)의 "사용"(OnUseItemRequested) / "버리기"(OnDropItemRequested) 버튼 클릭을 받아 처리.
     - HandleInventoryUseRequested(UI_InventorySlot _slot)
         1) 슬롯이 장비 슬롯(SlotType != Inventory)이면 -> TryUnequipSlot (기존 로직 그대로)
         2) 일반 인벤토리 슬롯이고 itemType == Potion이면 -> TryUseHealthPotion(itemId, itemData)
         3) 그 외(장비 아이템 등)는 -> TryEquipItem(itemId) (기존 로직 그대로)
-    - TryUseHealthPotion(string _itemId, ItemData _itemData)  [신규]
+    - TryUseHealthPotion(string _itemId, ItemData _itemData)
         1) localInventoryItems에서 해당 itemId의 미장착 스택(InventoryItemStack)을 찾는다.
         2) spawnedPlayerModel.UseHealthPotion(_itemData) 호출 -> 실제 체력 회복.
-        3) 스택 count를 1 감소시키고, 0 이하가 되면 localInventoryItems에서 제거.
-        4) RefreshInventoryDisplay()로 UI 갱신.
-    - TryEquipItem과 동일한 "로컬 낙관적 갱신" 패턴을 따른다.
-    - 단, TryEquipItem과 달리 서버(SaveDataManager)에는 아직 "소비 아이템 사용" API가 없어
-      로컬 상태(체력/인벤토리 수량)만 갱신하고 서버 동기화는 하지 않는다.
-      (현재 SaveDataManager에는 EquipItem / UnequipItem만 존재, 소비 아이템 사용 엔드포인트는 미구현)
-      -> 추후 관련 엔드포인트가 추가되면 TryEquipItem의 SaveDataManager 호출부와 동일한 패턴으로 연동 필요.
+        3) 스택 count를 1 감소시키고, 0 이하가 되면 localInventoryItems에서 제거 -> RefreshInventoryDisplay()로 UI 갱신.
+        4) SaveDataManager.Instance.ConsumeItem(_itemId, ...)으로 서버에 수량 차감을 백그라운드 요청.
+    - HandleInventoryDropRequested(UI_InventorySlot _slot) / TryDropItem(string _itemId)
+        1) 장비 슬롯(SlotType != Inventory)은 버릴 수 없다(먼저 장착 해제 필요).
+        2) localInventoryItems에서 해당 itemId의 미장착 스택 전체(개별 수량이 아니라 슬롯 단위)를 제거 -> RefreshInventoryDisplay().
+        3) SaveDataManager.Instance.RemoveItem(_itemId, ...)으로 서버에 아이템 삭제를 백그라운드 요청.
+    - 위 두 메서드 모두 TryEquipItem과 동일한 "로컬 낙관적 갱신 + 서버 백그라운드 저장" 패턴을 따른다.
+
+[6] Assets/@Scripts/Modules/SaveDataManager.cs
+    - public void ConsumeItem(string _itemId, Action<bool> _onComplete = null)
+        POST api/characters/{id}/items/{itemId}/consume 호출(성공 여부만 콜백으로 알림).
+    - public void RemoveItem(string _itemId, Action<bool> _onComplete = null)
+        DELETE api/characters/{id}/items/{itemId} 호출(성공 여부만 콜백으로 알림).
+    - 기존 EquipItem/UnequipItem과 완전히 동일한 "public 진입점 + *AsyncInternal" 구조.
+
+[7] Server/MainServer/MainServer/CharacterServer (서버 프로젝트, CharacterController.cs / CharacterService.cs / ICharacterService.cs)
+    - POST /api/characters/{characterId}/items/{itemId}/consume -> CharacterService.ConsumeItemAsync
+        해당 itemId의 미장착(EquipSlot == null) CharacterItem을 찾아 Quantity를 1 감소.
+        없으면 InvalidOperationException("보유하지 않은 아이템은 사용할 수 없습니다.") -> 400 Bad Request.
+        Quantity가 0 이하가 되면 CharacterItems 행 자체를 삭제.
+    - DELETE /api/characters/{characterId}/items/{itemId} -> CharacterService.RemoveItemAsync
+        해당 itemId의 미장착 CharacterItem을 찾아 행 전체를 삭제. 이미 없으면 에러 없이 현재 상태 그대로 반환(DELETE 멱등성).
+    - 두 메서드 모두 EquipItemAsync/UnequipItemAsync와 동일하게 FindOwnedCharacterAsync로 소유자 검증을 거친다.
 
 
 3. 데이터 흐름 요약
 --------------------
-UI_InventoryView (사용 버튼 클릭)
+[사용]
+UI_InventoryView ("사용" 버튼 클릭)
   -> OnUseItemRequested 이벤트
   -> GameSceneManager.HandleInventoryUseRequested
   -> (itemType == Potion) GameSceneManager.TryUseHealthPotion
@@ -82,13 +99,24 @@ UI_InventoryView (사용 버튼 클릭)
             -> HealthComponent.HealByPercent(healPercent)
                  -> CombatCalculator.CalculateHealAmount(maxHp, healPercent)
                  -> HealthComponent.Heal(amount) -> currentHp 갱신, OnHealthChanged/OnHealed 발화
-       -> localInventoryItems 스택 count 감소/제거
-       -> GameSceneManager.RefreshInventoryDisplay() -> UI_InventoryView 갱신
+       -> localInventoryItems 스택 count 감소/제거 -> RefreshInventoryDisplay()
+       -> SaveDataManager.ConsumeItem(itemId) -> POST .../items/{itemId}/consume -> CharacterService.ConsumeItemAsync (DB Quantity 감소/삭제)
+
+[버리기]
+UI_InventoryView ("버리기" 버튼 클릭)
+  -> OnDropItemRequested 이벤트
+  -> GameSceneManager.HandleInventoryDropRequested
+  -> GameSceneManager.TryDropItem
+       -> localInventoryItems 스택 전체 제거 -> RefreshInventoryDisplay()
+       -> SaveDataManager.RemoveItem(itemId) -> DELETE .../items/{itemId} -> CharacterService.RemoveItemAsync (DB 행 삭제)
 
 
 4. 남은 작업 / 제약사항
 ------------------------
 - ItemDatabaseSO에 등록된 물약 아이템들의 healPercent 값을 실제로 채워 넣어야 동작한다
   (potion_health_small=10, potion_health_medium=30, potion_health_large=50 등).
-- 소비 아이템 사용에 대한 서버 저장(API)이 아직 없어, 현재는 클라이언트 로컬에서만 인벤토리 수량이 줄어든다.
-  재접속/새로고침 시 수량이 서버 값으로 되돌아갈 수 있으므로, 서버 엔드포인트 추가가 필요하다.
+- 서버 동기화는 "클라이언트가 로컬 갱신 후 결과를 신경 쓰지 않고 요청만 보내는" 낙관적 방식이다.
+  요청이 실패하면 DebugLogManager로 에러 로그만 남기고 로컬 상태를 롤백하지 않는다(기존 EquipItem/UnequipItem과 동일한 한계).
+  네트워크 순단 등으로 서버 저장이 실패하면 재접속 시 서버 값(감소 전 수량)으로 되돌아갈 수 있다.
+- 서버 측 ConsumeItem/RemoveItem은 EquipItemAsync처럼 itemType(예: Potion 여부)을 검증하지 않는다 - 기존 EquipItemAsync도
+  itemType을 재검증하지 않는 동일한 수준의 신뢰 모델이라 새 엔드포인트도 같은 수준으로 맞췄다. 추후 보안 강화 시 같이 검토 필요.

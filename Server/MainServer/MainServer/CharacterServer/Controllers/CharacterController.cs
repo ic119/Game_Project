@@ -106,6 +106,33 @@ namespace MainServer.CharacterServer.Controllers
                 : Ok(result); // 200
         }
 
+        // POST /api/characters/{characterId}/items/{itemId}/consume — 소비 아이템(물약 등) 1개 사용(수량 차감, 소유자 검증 포함)
+        [HttpPost("{characterId:long}/items/{itemId}/consume")]
+        public async Task<IActionResult> ConsumeItem(long characterId, string itemId)
+        {
+            try
+            {
+                var result = await _characterService.ConsumeItemAsync(GetUserId(), characterId, itemId);
+                return result is null
+                    ? NotFound(new { message = "캐릭터를 찾을 수 없습니다." }) // 404
+                    : Ok(result); // 200
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message }); // 400
+            }
+        }
+
+        // DELETE /api/characters/{characterId}/items/{itemId} — 인벤토리 아이템 버리기(장착 중이 아닌 스택 전체 제거, 소유자 검증 포함)
+        [HttpDelete("{characterId:long}/items/{itemId}")]
+        public async Task<IActionResult> RemoveItem(long characterId, string itemId)
+        {
+            var result = await _characterService.RemoveItemAsync(GetUserId(), characterId, itemId);
+            return result is null
+                ? NotFound(new { message = "캐릭터를 찾을 수 없습니다." }) // 404
+                : Ok(result); // 200
+        }
+
         // PUT /api/characters/{characterId}/last-login — 로그아웃 시점의 마지막 접속시간을 서버 시각 기준으로 기록(소유자 검증 포함)
         [HttpPut("{characterId:long}/last-login")]
         public async Task<IActionResult> TouchLastLogin(long characterId)

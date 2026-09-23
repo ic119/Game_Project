@@ -168,6 +168,8 @@ namespace Incheol.Presenter.Scene
             if (inventoryView != null)
             {
                 inventoryView.OnUseItemRequested -= HandleInventoryUseRequested;
+                inventoryView.OnDropItemRequested -= HandleInventoryDropRequested;
+
             }
 
             // GameScene을 벗어나면(씬 전환) GameServer 접속을 종료한다 - PersistAcrossScenes로 유지되는
@@ -648,6 +650,8 @@ namespace Incheol.Presenter.Scene
                 if (inventoryInstance.TryGetComponent(out inventoryView))
                 {
                     inventoryView.OnUseItemRequested += HandleInventoryUseRequested;
+                    inventoryView.OnDropItemRequested += HandleInventoryDropRequested;
+
                 }
 
                 // UI_InventoryView.Awake()가 임시 플레이스홀더 골드값으로 초기화해두므로, 생성 직후 실제
@@ -986,9 +990,8 @@ private void TryEquipItem(string _itemId)
 
 /// <summary>
         /// 물약(ItemType.Potion) 하나를 사용해 체력을 회복시키고 인벤토리에서 1개 소모한다. TryEquipItem과 동일하게
-        /// 로컬 상태(체력/인벤토리 수량)를 먼저 낙관적으로 갱신해 즉시 반영한다. 장비 장착과 달리 현재 서버에는
-        /// 소비 아이템 사용을 저장하는 API가 아직 없어(SaveDataManager 참고), 로컬 갱신만 수행한다 - 추후 관련
-        /// 엔드포인트가 추가되면 TryEquipItem의 SaveDataManager 호출부와 동일한 패턴으로 연동해야 한다.
+        /// 로컬 상태(체력/인벤토리 수량)를 먼저 낙관적으로 갱신해 즉시 반영하고, 서버 저장은 백그라운드로 요청한다
+        /// (POST api/characters/{id}/items/{itemId}/consume).
         /// </summary>
         private void TryUseHealthPotion(string _itemId, ItemData _itemData)
         {
@@ -1007,7 +1010,55 @@ private void TryEquipItem(string _itemId)
             }
 
             RefreshInventoryDisplay();
+
+            SaveDataManager.Instance?.ConsumeItem(_itemId, success =>
+            {
+                if (!success)
+                {
+                    DebugLogManager.GenerateErrorMessage<GameSceneManager>($"아이템 사용 저장 실패 : {_itemId}");
+                }
+            });
         }
+
+/// <summary>
+        /// 인벤토리 슬롯의 "버리기" 버튼 클릭(UI_InventoryView.OnDropItemRequested)을 처리한다. 장착 중인 장비
+        /// 슬롯(SlotType != Inventory)은 버릴 수 없다 - 먼저 장착 해제해 일반 인벤토리 칸으로 옮긴 뒤에만 버릴 수 있다.
+        /// </summary>
+        private void HandleInventoryDropRequested(UI_InventorySlot _slot)
+        {
+            if (_slot == null || !_slot.HasItem || _slot.SlotType != InventorySlotType.Inventory)
+            {
+                return;
+            }
+
+            TryDropItem(_slot.ItemId);
+        }
+
+        /// <summary>
+        /// itemId에 해당하는 미장착 스택 전체를 인벤토리에서 제거한다(개별 수량이 아니라 슬롯 단위로 통째로 버린다).
+        /// TryEquipItem/TryUseHealthPotion과 동일한 낙관적 로컬 갱신 패턴을 따른다 - 로컬 상태를 먼저 갱신해
+        /// UI에 즉시 반영하고, 서버 저장은 백그라운드로 요청한다(DELETE api/characters/{id}/items/{itemId}).
+        /// </summary>
+        private void TryDropItem(string _itemId)
+        {
+            InventoryItemStack targetStack = localInventoryItems.Find(stack => stack.itemId == _itemId && string.IsNullOrEmpty(stack.equipSlot));
+            if (targetStack == null)
+            {
+                return;
+            }
+
+            localInventoryItems.Remove(targetStack);
+            RefreshInventoryDisplay();
+
+            SaveDataManager.Instance?.RemoveItem(_itemId, success =>
+            {
+                if (!success)
+                {
+                    DebugLogManager.GenerateErrorMessage<GameSceneManager>($"아이템 버리기 저장 실패 : {_itemId}");
+                }
+            });
+        }
+
 
 
         /// <summary>

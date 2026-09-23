@@ -200,6 +200,39 @@ namespace Incheol.Modules
         }
 
         /// <summary>
+        /// 소비 아이템(물약 등) 1개를 사용한다(POST api/characters/{id}/items/{itemId}/consume). GameSceneManager가
+        /// 로컬 상태(체력/인벤토리 수량)를 먼저 낙관적으로 갱신한 뒤 이 메서드로 서버에 반영을 요청하는 흐름이라,
+        /// 여기서는 성공 여부만 콜백으로 알린다.
+        /// </summary>
+        public void ConsumeItem(string _itemId, Action<bool> _onComplete = null)
+        {
+            if (!SelectedCharacterId.HasValue)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>("선택된 캐릭터가 없어 아이템을 사용할 수 없습니다.");
+                _onComplete?.Invoke(false);
+                return;
+            }
+
+            _ = ConsumeItemAsyncInternal(SelectedCharacterId.Value, _itemId, _onComplete);
+        }
+
+        /// <summary>
+        /// 인벤토리 아이템을 버린다(DELETE api/characters/{id}/items/{itemId}). EquipItem/ConsumeItem과 동일하게
+        /// 로컬 낙관적 갱신 이후 서버 반영만 요청하는 패스스루다.
+        /// </summary>
+        public void RemoveItem(string _itemId, Action<bool> _onComplete = null)
+        {
+            if (!SelectedCharacterId.HasValue)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>("선택된 캐릭터가 없어 아이템을 버릴 수 없습니다.");
+                _onComplete?.Invoke(false);
+                return;
+            }
+
+            _ = RemoveItemAsyncInternal(SelectedCharacterId.Value, _itemId, _onComplete);
+        }
+
+        /// <summary>
         /// 로그아웃 시점에 선택된 캐릭터의 마지막 접속시간을 서버 시각 기준으로 기록한다(PUT api/characters/{id}/last-login).
         /// 클라이언트 시각을 보내지 않고 서버가 직접 DateTime.UtcNow로 채우므로 요청 바디가 없다.
         /// 선택된 캐릭터가 없으면(로그인만 하고 캐릭터 선택 전 로그아웃 등) 아무 것도 하지 않고 실패로 처리한다.
@@ -500,6 +533,44 @@ namespace Incheol.Modules
             if (!success)
             {
                 DebugLogManager.GenerateErrorMessage<SaveDataManager>($"장비 해제 저장 실패 : {error}");
+            }
+
+            _onComplete?.Invoke(success);
+        }
+
+        private async Awaitable ConsumeItemAsyncInternal(long _characterId, string _itemId, Action<bool> _onComplete)
+        {
+            if (ServerConnectManager.Instance == null)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>("ServerConnectManager.Instance가 null입니다.");
+                _onComplete?.Invoke(false);
+                return;
+            }
+
+            (bool success, string _, string error) = await ServerConnectManager.Instance.SendAuthorizedJsonRequestAsync($"{CharacterApiPath}/{_characterId}/items/{_itemId}/consume", "POST");
+
+            if (!success)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>($"아이템 사용 저장 실패 : {error}");
+            }
+
+            _onComplete?.Invoke(success);
+        }
+
+        private async Awaitable RemoveItemAsyncInternal(long _characterId, string _itemId, Action<bool> _onComplete)
+        {
+            if (ServerConnectManager.Instance == null)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>("ServerConnectManager.Instance가 null입니다.");
+                _onComplete?.Invoke(false);
+                return;
+            }
+
+            (bool success, string _, string error) = await ServerConnectManager.Instance.SendAuthorizedJsonRequestAsync($"{CharacterApiPath}/{_characterId}/items/{_itemId}", "DELETE");
+
+            if (!success)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>($"아이템 버리기 저장 실패 : {error}");
             }
 
             _onComplete?.Invoke(success);
