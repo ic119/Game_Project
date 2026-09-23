@@ -18,8 +18,12 @@ namespace Shared.Networking.Packets
         public float Z { get; set; }
         public float RotationY { get; set; }
 
-        // 전투 관련 값. 클라이언트가 Game_EnterRequest 시점에 자신의 세이브 데이터 기준으로 채워 보낸다
-        // (Nickname과 동일한 신뢰 수준 - GameServer는 DB 접근 권한이 없어 직접 검증하지 못한다).
+        // 전투 관련 값. 클라이언트가 Game_EnterRequest 시점에 자신의 세이브 데이터 기준으로 채워 보낸다.
+        // MaxHp/CurrentHp는 Nickname과 동일한 신뢰 수준(GameServer는 DB 접근 권한이 없어 직접 검증하지 못한다)
+        // 그대로 받아들이지만, AttackPower/Defense는 여기 채워진 값을 그대로 쓰지 않는다 - ClientSession이
+        // Game_EnterRequest/Game_StatUpdateRequest를 처리할 때마다 PlayerAuthValidator로 MainServer에서
+        // str/agi/장착 아이템을 다시 조회해 CombatStatCalculator로 직접 재계산한 값으로 항상 덮어쓴다
+        // (치트 방지 - 여기 채워지는 값은 서버가 실제로 사용하기 전 임시값일 뿐이다).
         public int MaxHp { get; set; }
         public int CurrentHp { get; set; }
         public int AttackPower { get; set; }

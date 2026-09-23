@@ -52,5 +52,12 @@ namespace GameServer.Items
             EnsureLoaded();
             return _definitionsByItemId!.ContainsKey(itemId);
         }
+
+        // Combat.CombatStatCalculator가 장착 중인 아이템의 공격력/방어력 보너스를 조회할 때 쓴다.
+        public static bool TryGet(string itemId, out ItemDefinition definition)
+        {
+            EnsureLoaded();
+            return _definitionsByItemId!.TryGetValue(itemId, out definition!);
+        }
     }
 }

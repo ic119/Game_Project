@@ -1,5 +1,6 @@
 using System.Net.Sockets;
 using System.Text;
+using GameServer.Combat;
 using Shared.Networking;
 using Shared.Networking.Packets;
 
@@ -16,6 +17,11 @@ namespace GameServer.Networking
 
         // 이 세션이 Game_EnterRequest로 등록한 플레이어 id. 등록 전이면 null.
         private long? _playerId;
+
+        // Game_EnterRequest에서 소유권 검증에 성공한 AccessToken. Game_StatUpdateRequest가 올 때마다
+        // MainServer에서 전투 스탯 원본(str/agi/장착 아이템)을 다시 조회하는 데 재사용한다 - 매번 새
+        // 토큰을 받을 방법이 없어(C2SStatUpdateRequest에는 AccessToken이 없음) 세션에 보관해둔다.
+        private string? _accessToken;
 
         // 현재 속한 맵의 GameRoom과 그 mapId. Game_EnterRequest 전이면 null.
         // Game_MapChangeRequest로 다른 맵으로 옮길 때 이 필드 자체를 교체한다(GameRoom은 수정하지 않음).
@@ -84,7 +90,7 @@ namespace GameServer.Networking
                 OpCode.Game_AttackRequest => HandleAttackRequestAsync(body, ct),
                 OpCode.Game_MapChangeRequest => HandleMapChangeRequestAsync(body, ct),
                 OpCode.Game_MonsterAttackRequest => HandleMonsterAttackRequestAsync(body, ct),
-                OpCode.Game_StatUpdateRequest => HandleStatUpdateRequestAsync(body),
+                OpCode.Game_StatUpdateRequest => HandleStatUpdateRequestAsync(body, ct),
                 _ => LogUnhandledAsync(opCode)
             };
         }
@@ -104,7 +110,8 @@ namespace GameServer.Networking
             var request = C2SEnterRequest.Decode(body);
             var info = request.Player;
 
-            if (!await _authValidator.OwnsCharacterAsync(request.AccessToken, info.PlayerId, ct))
+            CharacterCombatSnapshot? snapshot = await _authValidator.FetchOwnedCharacterAsync(request.AccessToken, info.PlayerId, ct);
+            if (snapshot is null)
             {
                 Console.WriteLine($"[GameServer] Game_EnterRequest 인증 실패 (PlayerId={info.PlayerId}) - 연결을 종료합니다.");
                 byte[] errorBody = Encoding.UTF8.GetBytes("인증에 실패했습니다.");
@@ -115,6 +122,12 @@ namespace GameServer.Networking
             }
 
             _playerId = info.PlayerId;
+            _accessToken = request.AccessToken;
+
+            // info.AttackPower/Defense는 클라이언트가 자기 세이브 데이터 기준으로 채워 보낸 값이라 위조 가능하다
+            // (PlayerInfo.cs 주석 참고). MainServer에서 방금 받아온 snapshot(str/agi/장착 아이템)으로 서버가
+            // 직접 재계산해 덮어쓴다 - 이후 이 값이 GameRoom에 저장되고, 다른 접속자에게도 이 값으로 브로드캐스트된다.
+            (info.AttackPower, info.Defense) = CombatStatCalculator.Calculate(snapshot);
 
             GameRoom room = _mapRooms.GetOrCreate(info.MapId);
             _room = room;
@@ -357,18 +370,29 @@ namespace GameServer.Networking
             }
         }
 
-        // 인벤토리에서 장비를 장착/해제해 공격력/방어력이 바뀌었을 때 클라이언트가 보낸다. 브로드캐스트가
-        // 필요 없어(GameRoom.TryUpdateCombatStats 주석 참고) 응답 없이 서버 캐시만 갱신한다.
-        private Task HandleStatUpdateRequestAsync(byte[] body)
+        // 인벤토리에서 장비를 장착/해제해 공격력/방어력이 바뀌었을 때 클라이언트가 보낸다. request.AttackPower/
+        // Defense(클라이언트 자기 계산값)는 신뢰하지 않고 트리거로만 쓴다 - Game_EnterRequest 때와 동일하게
+        // MainServer에서 str/agi/장착 아이템을 다시 조회해 서버가 직접 재계산한다(CombatStatCalculator).
+        // 브로드캐스트는 필요 없어(GameRoom.TryUpdateCombatStats 주석 참고) 응답 없이 서버 캐시만 갱신한다.
+        private async Task HandleStatUpdateRequestAsync(byte[] body, CancellationToken ct)
         {
             var request = C2SStatUpdateRequest.Decode(body);
 
-            if (_playerId is { } playerId && request.PlayerId == playerId && _room is { } room)
+            if (_playerId is not { } playerId || request.PlayerId != playerId || _room is not { } room || _accessToken is not { } accessToken)
             {
-                room.TryUpdateCombatStats(playerId, request.AttackPower, request.Defense);
+                return;
             }
 
-            return Task.CompletedTask;
+            CharacterCombatSnapshot? snapshot = await _authValidator.FetchOwnedCharacterAsync(accessToken, playerId, ct);
+            if (snapshot is null)
+            {
+                // MainServer 순단 등으로 조회에 실패한 경우 - 이전에 검증된 값을 그대로 유지하고 이번 갱신만 건너뛴다.
+                Console.WriteLine($"[GameServer] Game_StatUpdateRequest 스탯 재조회 실패 (PlayerId={playerId}) - 이전 값을 유지합니다.");
+                return;
+            }
+
+            (int attackPower, int defense) = CombatStatCalculator.Calculate(snapshot);
+            room.TryUpdateCombatStats(playerId, attackPower, defense);
         }
 
         // 여러 세션이 동시에(다른 플레이어의 브로드캐스트로) 같은 스트림에 쓸 수 있으므로 직렬화한다.
