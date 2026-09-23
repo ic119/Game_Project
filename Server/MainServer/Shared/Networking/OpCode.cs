@@ -30,6 +30,7 @@ namespace Shared.Networking
         Game_MonsterMoveBroadcast = 0x0212,
         Game_MonsterAttackBroadcast = 0x0213,
         Game_LootBroadcast = 0x0214,
+        Game_StatUpdateRequest = 0x0215,
 
         // 0x03XX = Dungeon
     }

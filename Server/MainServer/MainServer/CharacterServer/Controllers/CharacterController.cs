@@ -79,6 +79,33 @@ namespace MainServer.CharacterServer.Controllers
                 : Ok(result); // 200
         }
 
+        // PUT /api/characters/{characterId}/equipment — 인벤토리 아이템을 장비 슬롯에 장착(소유자 검증 포함)
+        [HttpPut("{characterId:long}/equipment")]
+        public async Task<IActionResult> EquipItem(long characterId, [FromBody] EquipItemRequest request)
+        {
+            try
+            {
+                var result = await _characterService.EquipItemAsync(GetUserId(), characterId, request);
+                return result is null
+                    ? NotFound(new { message = "캐릭터를 찾을 수 없습니다." }) // 404
+                    : Ok(result); // 200
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message }); // 400
+            }
+        }
+
+        // DELETE /api/characters/{characterId}/equipment/{equipSlot} — 장비 슬롯 해제(소유자 검증 포함)
+        [HttpDelete("{characterId:long}/equipment/{equipSlot}")]
+        public async Task<IActionResult> UnequipItem(long characterId, string equipSlot)
+        {
+            var result = await _characterService.UnequipItemAsync(GetUserId(), characterId, equipSlot);
+            return result is null
+                ? NotFound(new { message = "캐릭터를 찾을 수 없습니다." }) // 404
+                : Ok(result); // 200
+        }
+
         // PUT /api/characters/{characterId}/last-login — 로그아웃 시점의 마지막 접속시간을 서버 시각 기준으로 기록(소유자 검증 포함)
         [HttpPut("{characterId:long}/last-login")]
         public async Task<IActionResult> TouchLastLogin(long characterId)

@@ -58,6 +58,9 @@ namespace MainServer.AuthServer.Data
                 // 캐릭터당 같은 ItemId를 한 행으로만 유지(스택형 인벤토리) - 처치 보상 적용 시
                 // 이 인덱스로 기존 행을 찾아 수량만 증가시키고, 없으면 새로 만든다.
                 entity.HasIndex(ci => new { ci.CharacterId, ci.ItemId }).IsUnique();
+                // 캐릭터당 슬롯 하나에는 하나의 스택만 장착 가능(EquipSlot이 null인 행은 여러 개 있어도
+                // MySQL/MariaDB가 NULL을 서로 다른 값으로 취급해 유니크 제약에 걸리지 않는다).
+                entity.HasIndex(ci => new { ci.CharacterId, ci.EquipSlot }).IsUnique();
                 entity.HasOne(ci => ci.Character)
                       .WithMany()
                       .HasForeignKey(ci => ci.CharacterId)

@@ -152,6 +152,22 @@ namespace GameServer.Networking
             return false;
         }
 
+        // 인벤토리에서 장비를 장착/해제해 바뀐 공격력/방어력을 반영한다(Game_StatUpdateRequest). PlayerInfo가
+        // class(참조 타입)라 이 메서드로 값만 바꿔주면 ApplyMonsterAttackAsync/AttackPlayerAsync가 다음 판정부터
+        // 곧바로 새 값을 쓴다 - Game_EnterRequest 스냅샷 이후 갱신 경로가 이것뿐이므로, 호출하지 않으면 세션 내내
+        // 접속 시점 스탯으로 고정된다. 다른 접속자에게 알릴 필요는 없다(PvP 피해는 각자 로컬 Defense로 계산).
+        public bool TryUpdateCombatStats(long playerId, int attackPower, int defense)
+        {
+            if (!_players.TryGetValue(playerId, out var entry))
+            {
+                return false;
+            }
+
+            entry.Info.AttackPower = attackPower;
+            entry.Info.Defense = defense;
+            return true;
+        }
+
         // 공격 판정 자체(사거리/쿨다운 등)는 ClientSession이 검증한 뒤 이 메서드를 호출한다.
         // 데미지 계산(공격력-방어력)과 사망/리스폰 판정, 브로드캐스트까지 전부 여기서 처리한다 -
         // 몬스터의 Defense/HP를 아는 유일한 주체가 GameRoom(서버)이기 때문에, 클라이언트가 각자

@@ -84,6 +84,7 @@ namespace GameServer.Networking
                 OpCode.Game_AttackRequest => HandleAttackRequestAsync(body, ct),
                 OpCode.Game_MapChangeRequest => HandleMapChangeRequestAsync(body, ct),
                 OpCode.Game_MonsterAttackRequest => HandleMonsterAttackRequestAsync(body, ct),
+                OpCode.Game_StatUpdateRequest => HandleStatUpdateRequestAsync(body),
                 _ => LogUnhandledAsync(opCode)
             };
         }
@@ -242,7 +243,12 @@ namespace GameServer.Networking
         // 로컬로 들고 있는 target의 실제 Defense로 계산해야 모든 클라이언트가 일관된 결과를 얻는다
         // (attacker/target의 스탯은 Game_EnterRequest 시점에 이미 전원에게 동기화되어 있음).
         // 여기서는 위조된 공격자 신원 차단, 최소 공격 간격, 사거리만 검증하고 그대로 중계한다.
-        private const double MinAttackIntervalMs = 300;
+        // 클라이언트 PlayerAttackController.comboInputGuard(150ms)가 지나면 2타 콤보 입력을 즉시 받아들여
+        // 두 번째 Game_AttackRequest/Game_MonsterAttackRequest를 보낸다. 이 값이 그보다 크면(과거 300ms)
+        // 정상적인 콤보 2타 요청까지 여기서 조용히 드롭되어 "애니메이션은 2콤보, 데미지는 1타"만 반영되는
+        // 문제가 생기므로, comboInputGuard보다 여유를 두고 짧게 잡아 정상 콤보는 통과시키고 그보다
+        // 빠른(매크로 등) 연타만 차단한다. comboInputGuard를 바꾸면 이 값도 함께 맞춰야 한다.
+        private const double MinAttackIntervalMs = 100;
         private const float MaxAttackRangeSquared = 5f * 5f;
         private DateTime _lastAttackAtUtc = DateTime.MinValue;
 
@@ -349,6 +355,20 @@ namespace GameServer.Networking
                 };
                 await SendAsync(OpCode.Game_LootBroadcast, loot.Encode(), ct);
             }
+        }
+
+        // 인벤토리에서 장비를 장착/해제해 공격력/방어력이 바뀌었을 때 클라이언트가 보낸다. 브로드캐스트가
+        // 필요 없어(GameRoom.TryUpdateCombatStats 주석 참고) 응답 없이 서버 캐시만 갱신한다.
+        private Task HandleStatUpdateRequestAsync(byte[] body)
+        {
+            var request = C2SStatUpdateRequest.Decode(body);
+
+            if (_playerId is { } playerId && request.PlayerId == playerId && _room is { } room)
+            {
+                room.TryUpdateCombatStats(playerId, request.AttackPower, request.Defense);
+            }
+
+            return Task.CompletedTask;
         }
 
         // 여러 세션이 동시에(다른 플레이어의 브로드캐스트로) 같은 스트림에 쓸 수 있으므로 직렬화한다.

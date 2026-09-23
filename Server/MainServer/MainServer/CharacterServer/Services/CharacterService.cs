@@ -136,6 +136,68 @@ namespace MainServer.CharacterServer.Services
             return await ToResponseAsync(character);
         }
 
+        // 인벤토리 UI에서 장착 가능한 슬롯 이름. 클라이언트 EquipmentSlotType(None 제외)과 철자를 맞춘다.
+        private static readonly HashSet<string> ValidEquipSlots = new() { "Weapon", "Armor", "Helmet", "Boots", "Accessory" };
+
+        // 인벤토리 아이템을 장비 슬롯에 장착한다(소유자 검증 포함). 같은 슬롯에 이미 장착돼 있던 다른 아이템은
+        // 자동으로 해제한 뒤(먼저 커밋) 새 아이템을 장착한다 - (CharacterId, EquipSlot) 유니크 인덱스가 있어
+        // 두 UPDATE를 한 SaveChangesAsync에 묶으면 EF가 실행 순서를 보장하지 않아 일시적으로 제약 위반이 날 수 있다.
+        public async Task<CharacterResponse?> EquipItemAsync(long userId, long characterId, EquipItemRequest request)
+        {
+            var character = await FindOwnedCharacterAsync(userId, characterId);
+            if (character is null)
+                return null;
+
+            if (string.IsNullOrEmpty(request._equipSlot) || !ValidEquipSlots.Contains(request._equipSlot))
+                throw new InvalidOperationException($"알 수 없는 장비 슬롯입니다: {request._equipSlot}");
+
+            var targetItem = await _db.CharacterItems
+                .FirstOrDefaultAsync(ci => ci.CharacterId == characterId && ci.ItemId == request._itemId);
+
+            if (targetItem is null)
+                throw new InvalidOperationException("보유하지 않은 아이템은 장착할 수 없습니다.");
+
+            if (targetItem.EquipSlot == request._equipSlot)
+                return await ToResponseAsync(character); // 이미 장착 중
+
+            var previouslyEquipped = await _db.CharacterItems
+                .Where(ci => ci.CharacterId == characterId && ci.EquipSlot == request._equipSlot)
+                .ToListAsync();
+
+            if (previouslyEquipped.Count > 0)
+            {
+                foreach (var item in previouslyEquipped)
+                {
+                    item.EquipSlot = null;
+                }
+                await _db.SaveChangesAsync();
+            }
+
+            targetItem.EquipSlot = request._equipSlot;
+            await _db.SaveChangesAsync();
+
+            return await ToResponseAsync(character);
+        }
+
+        // 장비 슬롯을 해제한다(소유자 검증 포함). 해당 슬롯에 장착된 아이템이 없으면 아무 것도 하지 않고 현재 상태를 그대로 반환한다.
+        public async Task<CharacterResponse?> UnequipItemAsync(long userId, long characterId, string equipSlot)
+        {
+            var character = await FindOwnedCharacterAsync(userId, characterId);
+            if (character is null)
+                return null;
+
+            var equippedItem = await _db.CharacterItems
+                .FirstOrDefaultAsync(ci => ci.CharacterId == characterId && ci.EquipSlot == equipSlot);
+
+            if (equippedItem is not null)
+            {
+                equippedItem.EquipSlot = null;
+                await _db.SaveChangesAsync();
+            }
+
+            return await ToResponseAsync(character);
+        }
+
         // 로그아웃 시점에 서버 시각(UtcNow) 기준으로 마지막 접속시간을 기록한다. 클라이언트 시각을 신뢰하지 않는다.
         public async Task<CharacterResponse?> TouchLastLoginAsync(long userId, long characterId)
         {
@@ -190,7 +252,7 @@ namespace MainServer.CharacterServer.Services
         {
             var items = await _db.CharacterItems
                 .Where(ci => ci.CharacterId == character.Id)
-                .Select(ci => new CharacterItemResponse(ci.ItemId, ci.Quantity))
+                .Select(ci => new CharacterItemResponse(ci.ItemId, ci.Quantity, ci.EquipSlot))
                 .ToListAsync();
 
             return new CharacterResponse(
