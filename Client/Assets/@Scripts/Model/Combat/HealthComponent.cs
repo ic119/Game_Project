@@ -16,6 +16,9 @@ public class HealthComponent : MonoBehaviour, IDamageable
     /// <summary>사망 여부와 무관하게 TakeDamage로 공격을 받을 때마다 발화된다(피격 연출 트리거용). ApplyHealth로인 초기화/회복에서는 발화되지 않는다.</summary>
     public event Action OnDamaged;
 
+    /// <summary>Heal로 체력을 회복할 때마다 발화된다(회복 연출 트리거용). ApplyHealth로인 초기화에서는 발화되지 않는다.</summary>
+    public event Action OnHealed;
+
     private int maxHp;
     private int currentHp;
     private CombatStatComponent combatStat;
@@ -80,5 +83,30 @@ public class HealthComponent : MonoBehaviour, IDamageable
         {
             OnDied?.Invoke();
         }
+    }
+
+    /// <summary>
+    /// 체력을 amount만큼 회복시킨다(포션 등 회복 아이템 사용 시 진입점). currentHp가 maxHp를 넘지 않도록
+    /// 보정한다. 이미 사망한 상태면 무시한다 - 부활은 이 메서드의 책임이 아니라 별도 로직이어야 한다.
+    /// </summary>
+    public void Heal(int amount)
+    {
+        if (IsDead || amount <= 0)
+        {
+            return;
+        }
+
+        currentHp = Mathf.Clamp(currentHp + amount, 0, maxHp);
+        OnHealthChanged?.Invoke(currentHp, maxHp);
+        OnHealed?.Invoke();
+    }
+
+    /// <summary>
+    /// 최대체력 대비 healPercent(%)만큼 회복시킨다(ItemData.healPercent를 그대로 전달받는 포션 사용 전용 진입점).
+    /// 실제 회복량 계산은 CombatCalculator.CalculateHealAmount가 담당한다.
+    /// </summary>
+    public void HealByPercent(int healPercent)
+    {
+        Heal(CombatCalculator.CalculateHealAmount(maxHp, healPercent));
     }
 }

@@ -915,29 +915,35 @@ namespace Incheol.Presenter.Scene
         /// 클릭된 슬롯이 일반 인벤토리 칸이면 장비 아이템만 장착 처리하고(소비 아이템 사용은 아직 미구현),
         /// 장비 슬롯이면 장착을 해제한다.
         /// </summary>
-        private void HandleInventoryUseRequested(UI_InventorySlot _slot)
+private void HandleInventoryUseRequested(UI_InventorySlot _slot)
         {
             if (_slot == null || !_slot.HasItem || spawnedPlayerModel == null)
             {
                 return;
             }
 
-            if (_slot.SlotType == InventorySlotType.Inventory)
-            {
-                TryEquipItem(_slot.ItemId);
-            }
-            else
+            if (_slot.SlotType != InventorySlotType.Inventory)
             {
                 TryUnequipSlot(ToEquipmentSlotType(_slot.SlotType));
+                return;
             }
+
+            ItemData itemData = ItemDatabaseManager.Instance != null ? ItemDatabaseManager.Instance.FindById(_slot.ItemId) : null;
+            if (itemData != null && itemData.itemType == ItemType.Potion)
+            {
+                TryUseHealthPotion(_slot.ItemId, itemData);
+                return;
+            }
+
+            TryEquipItem(_slot.ItemId);
         }
 
         /// <summary>
-        /// itemId를 장착한다. 장비 아이템이 아니면 조용히 무시한다(소비 아이템 "사용"은 별도 기능으로 남겨둔다).
+        /// itemId를 장착한다. 장비 아이템이 아니면 조용히 무시한다(물약 사용은 TryUseHealthPotion이 별도로 처리하고, 그 외 소비 아이템 사용은 아직 미구현이다).
         /// 로컬 상태를 먼저 낙관적으로 갱신해 UI/캐릭터 시각을 즉시 반영하고, 서버 저장은 백그라운드로 요청한다
         /// (HandleLootReceived 등 기존 인벤토리 갱신 흐름과 동일한 낙관적 갱신 패턴).
         /// </summary>
-        private void TryEquipItem(string _itemId)
+private void TryEquipItem(string _itemId)
         {
             ItemData itemData = ItemDatabaseManager.Instance != null ? ItemDatabaseManager.Instance.FindById(_itemId) : null;
             if (itemData == null || itemData.itemType != ItemType.Eqiupment || itemData.equipSlotType == EquipmentSlotType.None)
@@ -977,6 +983,32 @@ namespace Incheol.Presenter.Scene
                 }
             });
         }
+
+/// <summary>
+        /// 물약(ItemType.Potion) 하나를 사용해 체력을 회복시키고 인벤토리에서 1개 소모한다. TryEquipItem과 동일하게
+        /// 로컬 상태(체력/인벤토리 수량)를 먼저 낙관적으로 갱신해 즉시 반영한다. 장비 장착과 달리 현재 서버에는
+        /// 소비 아이템 사용을 저장하는 API가 아직 없어(SaveDataManager 참고), 로컬 갱신만 수행한다 - 추후 관련
+        /// 엔드포인트가 추가되면 TryEquipItem의 SaveDataManager 호출부와 동일한 패턴으로 연동해야 한다.
+        /// </summary>
+        private void TryUseHealthPotion(string _itemId, ItemData _itemData)
+        {
+            InventoryItemStack targetStack = localInventoryItems.Find(stack => stack.itemId == _itemId && string.IsNullOrEmpty(stack.equipSlot));
+            if (targetStack == null || targetStack.count <= 0)
+            {
+                return;
+            }
+
+            spawnedPlayerModel.UseHealthPotion(_itemData);
+
+            targetStack.count--;
+            if (targetStack.count <= 0)
+            {
+                localInventoryItems.Remove(targetStack);
+            }
+
+            RefreshInventoryDisplay();
+        }
+
 
         /// <summary>
         /// 지정한 장비 슬롯을 해제한다. TryEquipItem과 대칭되는 낙관적 갱신 흐름을 따른다.

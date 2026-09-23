@@ -14,4 +14,13 @@ public static class CombatCalculator
     {
         return Mathf.Max(1, rawDamage - defense);
     }
+
+    /// <summary>
+    /// 최대체력의 healPercent(%)만큼 회복량을 계산한다. 물약 등 회복 아이템 전용 공식이며,
+    /// 비율이 아무리 낮아도(1% 등) 아무 효과가 없어 보이지 않도록 최소 1은 회복하도록 한다.
+    /// </summary>
+    public static int CalculateHealAmount(int maxHp, int healPercent)
+    {
+        return Mathf.Max(1, Mathf.RoundToInt(maxHp * healPercent / 100f));
+    }
 }

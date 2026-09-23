@@ -48,4 +48,9 @@ public class ItemData
 
     [Tooltip("itemType이 Eqiupment일 때만 의미가 있다. 장착 시 CombatStatComponent.Defense에 더해지는 보너스.")]
     public int bonusDefense = 0;
+
+    [Range(0, 100)]
+    [Tooltip("itemType이 Potion일 때만 의미가 있다. 사용 시 최대체력의 이 비율(%)만큼 현재체력을 회복시킨다" +
+        "(HealthComponent.HealByPercent). 예) potion_health_small=10, potion_health_medium=30, potion_health_large=50.")]
+    public int healPercent = 0;
 }
