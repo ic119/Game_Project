@@ -15,6 +15,11 @@ namespace Incheol.View.UI
         [SerializeField] private GameObject dropItemListContainer;
         [SerializeField] private Button closeButton;
 
+        [Header("골드 표시")]
+        [SerializeField] private string goldDisplayName = "골드";
+        // 아직 골드용 2D 스프라이트가 없으면 비워둬도 된다(아이콘 없이 이름/수량만 표시된다).
+        [SerializeField] private Sprite goldIcon;
+
         // contentRect 아래에 Show()가 런타임에 생성한 아이템 줄 목록. 다음 Show() 호출(또는 Close())에서 정리한다.
         private readonly List<UI_DropListItemView> spawnedItemViews = new();
         #endregion
@@ -44,21 +49,31 @@ namespace Incheol.View.UI
 
         #region Method
         /// <summary>
-        /// 몬스터 처치로 획득한 아이템 목록을 contentRect 아래에 다시 그려 팝업을 연다.
+        /// 몬스터 처치로 획득한 골드/아이템을 contentRect 아래에 다시 그려 팝업을 연다.
+        /// 골드만 떨어지고 아이템이 하나도 없어도(_items가 비어 있어도) 골드 줄만으로 팝업을 연다.
         /// _itemLookup(보통 ItemDatabaseManager.Instance.FindById)이 null을 반환하는 아이템은
         /// UI_InventoryView.RefreshInventory와 동일하게 아이콘 없이 itemId 텍스트로 최소 표시한다.
         /// </summary>
-        public void Show(IReadOnlyList<GameLootItemEntry> _items, Func<string, ItemData> _itemLookup)
+        public void Show(int _goldGained, IReadOnlyList<GameLootItemEntry> _items, Func<string, ItemData> _itemLookup)
         {
-            if (contentRect == null || dropListItemViewPrefab == null || _items == null || _items.Count == 0)
+            int itemCount = _items != null ? _items.Count : 0;
+            if (contentRect == null || dropListItemViewPrefab == null || (_goldGained <= 0 && itemCount == 0))
             {
                 return;
             }
 
             ClearItems();
 
-            foreach (GameLootItemEntry entry in _items)
+            if (_goldGained > 0)
             {
+                UI_DropListItemView goldView = Instantiate(dropListItemViewPrefab, contentRect);
+                goldView.SetGold(goldDisplayName, goldIcon, _goldGained);
+                spawnedItemViews.Add(goldView);
+            }
+
+            for (int i = 0; i < itemCount; i++)
+            {
+                GameLootItemEntry entry = _items[i];
                 ItemData itemData = _itemLookup?.Invoke(entry.ItemId);
                 UI_DropListItemView itemView = Instantiate(dropListItemViewPrefab, contentRect);
                 itemView.SetItem(itemData != null ? itemData.itemName : entry.ItemId, itemData?.icon, entry.Qty);

@@ -24,6 +24,20 @@ namespace Incheol.View.UI
         /// </summary>
         public void SetItem(string _itemName, Sprite _icon, int _count)
         {
+            SetRow(_itemName, _icon, $"x{_count}");
+        }
+
+        /// <summary>
+        /// 골드 획득 한 줄을 표시한다. 드롭 아이템과 같은 프리팹을 쓰되 수량 표기만
+        /// UI_InventoryView.SetCurrency와 동일한 "1,000 G" 형식으로 맞춘다.
+        /// </summary>
+        public void SetGold(string _goldName, Sprite _icon, int _amount)
+        {
+            SetRow(_goldName, _icon, $"{_amount:N0} G");
+        }
+
+        private void SetRow(string _name, Sprite _icon, string _countText)
+        {
             if (itemIcon != null)
             {
                 itemIcon.sprite = _icon;
@@ -32,12 +46,12 @@ namespace Incheol.View.UI
 
             if (dropItemNameLabel != null)
             {
-                dropItemNameLabel.text = _itemName;
+                dropItemNameLabel.text = _name;
             }
 
             if (dropItemCountLabel != null)
             {
-                dropItemCountLabel.text = $"x{_count}";
+                dropItemCountLabel.text = _countText;
             }
         }
         #endregion

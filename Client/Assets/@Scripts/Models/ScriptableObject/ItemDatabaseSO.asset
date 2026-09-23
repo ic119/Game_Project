@@ -15,7 +15,8 @@ MonoBehaviour:
   items:
   - itemId: potion_hp_small
     itemName: "\uCCB4\uB825 \uBB3C\uC57D(\uC18C)"
-    description: 
+    description: "\uCD5C\uB300\uCCB4\uB825\uC758 10%\uB9CC\uD07C \uCCB4\uB825\uC744
+      \uD68C\uBCF5\uC2DC\uD0A4\uB294 \uCCB4\uB825 \uBB3C\uC57D"
     itemType: 1
     equipSlotType: 0
     weaponType: 0
@@ -23,9 +24,12 @@ MonoBehaviour:
     icon: {fileID: 21300000, guid: 8747fbd096b50834ab608c29a3c05bcc, type: 3}
     itemGrade: 0
     maxStackCount: 99
+    bonusAttackPower: 0
+    bonusDefense: 0
   - itemId: mushroom_spore
     itemName: "\uBC84\uC12F \uD3EC\uC790"
-    description: 
+    description: "\uBC84\uC12F\uD0C0\uC785\uC758 \uBAAC\uC2A4\uD130\uAC00 \uD769\uBFCC\uB9B0
+      \uD3EC\uC790"
     itemType: 2
     equipSlotType: 0
     weaponType: 0
@@ -33,13 +37,17 @@ MonoBehaviour:
     icon: {fileID: 21300000, guid: 73b277da837c0874893f6123d5842ca0, type: 3}
     itemGrade: 0
     maxStackCount: 999
+    bonusAttackPower: 0
+    bonusDefense: 0
   - itemId: rare_essence
     itemName: "\uBAAC\uC2A4\uD130 \uC815\uC218 (\uD76C\uADC0)"
-    description: 
+    description: "\uBAAC\uC2A4\uD130\uC758 \uAE30\uC6B4\uC774 \uB2F4\uAE34 \uC815\uC218"
     itemType: 2
     equipSlotType: 0
     weaponType: 0
     equipVisualName: 
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 73b277da837c0874893f6123d5842ca0, type: 3}
     itemGrade: 1
     maxStackCount: 99
+    bonusAttackPower: 0
+    bonusDefense: 0

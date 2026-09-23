@@ -55,14 +55,6 @@ namespace Incheol.View.UI
         [SerializeField] private UI_InventorySlot bootsSlot;
         [SerializeField] private UI_InventorySlot accessorySlot;
 
-        [Header("Equipment Slot Placeholder Icons")]
-        [Tooltip("해당 슬롯에 아무 것도 장착하지 않았을 때 흐리게 표시할 종류별 아이콘.")]
-        [SerializeField] private Sprite weaponPlaceholderIcon;
-        [SerializeField] private Sprite armorPlaceholderIcon;
-        [SerializeField] private Sprite helmetPlaceholderIcon;
-        [SerializeField] private Sprite bootsPlaceholderIcon;
-        [SerializeField] private Sprite accessoryPlaceholderIcon;
-
         [Header("Stats Display")]
         [SerializeField] private TextMeshProUGUI strValueText;
         [SerializeField] private TextMeshProUGUI agiValueText;
@@ -73,7 +65,6 @@ namespace Incheol.View.UI
 
         [Header("Currency")]
         [SerializeField] private TextMeshProUGUI goldText;
-        [SerializeField] private TextMeshProUGUI diamondText;
 
         [Header("Action Buttons")]
         [SerializeField] private Button sortButton;
@@ -83,10 +74,14 @@ namespace Incheol.View.UI
 
         [Header("Item Detail Section")]
         [SerializeField] private GameObject itemDetailPanel;
-        [SerializeField] private Image detailItemIcon;
         [SerializeField] private TextMeshProUGUI detailItemNameText;
         [SerializeField] private TextMeshProUGUI detailItemTypeText;
         [SerializeField] private TextMeshProUGUI detailItemDescText;
+
+        // RefreshInventory가 마지막으로 받은 아이템 조회 함수를 캐싱해둔다. 슬롯 클릭(UpdateItemDetail)은
+        // RefreshInventory 호출과 별개의 시점에 일어나므로, 그때마다 새로 받을 방법이 없어 마지막 값을 재사용한다.
+        // 인벤토리가 열려있으려면 이미 최소 한 번 RefreshInventory가 호출된 뒤이므로 항상 최신 값이다.
+        private Func<string, ItemData> itemLookup;
 
         private InventoryTabType currentTab = InventoryTabType.All;
         private UI_InventorySlot selectedSlot = null;
@@ -186,29 +181,31 @@ namespace Incheol.View.UI
 
         private void InitEquipmentSlots()
         {
+            // placeholderIcon 인자를 넘기지 않는다 - 장비 슬롯도 일반 인벤토리 칸과 동일하게, 아무 것도
+            // 장착하지 않은 상태에서는 아이콘 없이 라벨 텍스트("무기" 등)만 보이게 한다.
             if (weaponSlot != null)
             {
-                weaponSlot.InitSlot(InventorySlotType.EquipmentWeapon, 0, "무기", weaponPlaceholderIcon);
+                weaponSlot.InitSlot(InventorySlotType.EquipmentWeapon, 0, "무기");
                 weaponSlot.OnSlotClicked += HandleSlotClicked;
             }
             if (armorSlot != null)
             {
-                armorSlot.InitSlot(InventorySlotType.EquipmentArmor, 1, "갑옷", armorPlaceholderIcon);
+                armorSlot.InitSlot(InventorySlotType.EquipmentArmor, 1, "갑옷");
                 armorSlot.OnSlotClicked += HandleSlotClicked;
             }
             if (helmetSlot != null)
             {
-                helmetSlot.InitSlot(InventorySlotType.EquipmentHelmet, 2, "투구", helmetPlaceholderIcon);
+                helmetSlot.InitSlot(InventorySlotType.EquipmentHelmet, 2, "투구");
                 helmetSlot.OnSlotClicked += HandleSlotClicked;
             }
             if (bootsSlot != null)
             {
-                bootsSlot.InitSlot(InventorySlotType.EquipmentBoots, 3, "신발", bootsPlaceholderIcon);
+                bootsSlot.InitSlot(InventorySlotType.EquipmentBoots, 3, "신발");
                 bootsSlot.OnSlotClicked += HandleSlotClicked;
             }
             if (accessorySlot != null)
             {
-                accessorySlot.InitSlot(InventorySlotType.EquipmentAccessory, 4, "장신구", accessoryPlaceholderIcon);
+                accessorySlot.InitSlot(InventorySlotType.EquipmentAccessory, 4, "장신구");
                 accessorySlot.OnSlotClicked += HandleSlotClicked;
             }
         }
@@ -216,6 +213,13 @@ namespace Incheol.View.UI
         private void InitTabs()
         {
             SelectTab(InventoryTabType.All);
+
+            // 인벤토리를 처음 여는 시점에는 선택된 슬롯이 없으므로, 에디터에서 미리보기용으로 채워뒀을 수 있는
+            // 상세정보 패널/텍스트를 빈 상태로 초기화한다. 이후 상태는 슬롯 클릭(UpdateItemDetail)이 관리한다.
+            if (itemDetailPanel != null) itemDetailPanel.SetActive(false);
+            if (detailItemNameText != null) detailItemNameText.text = string.Empty;
+            if (detailItemTypeText != null) detailItemTypeText.text = string.Empty;
+            if (detailItemDescText != null) detailItemDescText.text = string.Empty;
         }
 
         public void Open()
@@ -259,7 +263,6 @@ namespace Incheol.View.UI
         public void SetCurrency(long _gold, int _diamond)
         {
             if (goldText != null) goldText.text = $"{_gold:N0} G";
-            if (diamondText != null) diamondText.text = $"{_diamond:N0}";
         }
 
         /// <summary>
@@ -274,6 +277,8 @@ namespace Incheol.View.UI
         /// </summary>
         public void RefreshInventory(long _gold, IReadOnlyList<InventoryItemStack> _items, Func<string, ItemData> _itemLookup)
         {
+            itemLookup = _itemLookup;
+
             SetCurrency(_gold, 0);
 
             var unequippedItems = new List<InventoryItemStack>();
@@ -423,6 +428,53 @@ namespace Incheol.View.UI
             if (useButtonText != null)
             {
                 useButtonText.text = _slot.SlotType == InventorySlotType.Inventory ? "장착 / 사용" : "장착 해제";
+            }
+
+            ItemData itemData = itemLookup?.Invoke(_slot.ItemId);
+
+            if (detailItemNameText != null)
+            {
+                detailItemNameText.text = itemData != null ? itemData.itemName : _slot.ItemId;
+            }
+
+            if (detailItemTypeText != null)
+            {
+                detailItemTypeText.text = itemData != null ? GetItemTypeLabel(itemData) : string.Empty;
+            }
+
+            if (detailItemDescText != null)
+            {
+                detailItemDescText.text = itemData != null ? itemData.description : string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// 상세정보 패널의 "종류" 텍스트(예: "장비 · 무기", "물약", "기타"). 장비류는 등급별 슬롯 라벨과
+        /// 같은 표기(무기/갑옷/투구/신발/장신구)를 재사용해 좌측 장비 슬롯 라벨과 용어가 갈리지 않게 한다.
+        /// </summary>
+        private static string GetItemTypeLabel(ItemData _itemData)
+        {
+            switch (_itemData.itemType)
+            {
+                case ItemType.Eqiupment:
+                    return $"장비 · {GetEquipmentSlotLabel(_itemData.equipSlotType)}";
+                case ItemType.Potion:
+                    return "물약";
+                default:
+                    return "기타";
+            }
+        }
+
+        private static string GetEquipmentSlotLabel(EquipmentSlotType _slotType)
+        {
+            switch (_slotType)
+            {
+                case EquipmentSlotType.Weapon: return "무기";
+                case EquipmentSlotType.Armor: return "갑옷";
+                case EquipmentSlotType.Helmet: return "투구";
+                case EquipmentSlotType.Boots: return "신발";
+                case EquipmentSlotType.Accessory: return "장신구";
+                default: return "장비";
             }
         }
 

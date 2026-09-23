@@ -666,6 +666,8 @@ MonoBehaviour:
   dropListItemViewPrefab: {fileID: 4534843910360818499, guid: da19d2a7896f1c043bcf9fc5ad8302af, type: 3}
   dropItemListContainer: {fileID: 3587055354720349287}
   closeButton: {fileID: 1002473034270457510}
+  goldDisplayName: "\uACE8\uB4DC"
+  goldIcon: {fileID: 0}
 --- !u!1 &679356952977009938
 GameObject:
   m_ObjectHideFlags: 0

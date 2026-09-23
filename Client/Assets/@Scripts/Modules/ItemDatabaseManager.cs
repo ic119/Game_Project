@@ -19,6 +19,20 @@ namespace Incheol.Modules
 
         private ItemDatabaseSO database;
 
+        /// <summary>
+        /// LoadDatabase()의 Addressables 로드가 완료되었는지. 씬 진입 직후처럼 로드가 아직 안 끝난 상태에서
+        /// FindById가 계속 null을 반환할 수 있으므로, 호출측(GameSceneManager)이 "아직 로딩 중이라 못 찾은 것"과
+        /// "로드는 끝났는데 등록 안 된 itemId"를 구분해 재조회 타이밍을 잡을 때 쓴다.
+        /// </summary>
+        public bool IsLoaded { get; private set; }
+
+        /// <summary>
+        /// 로드가 끝나는 시점에 1회 발생한다. 인벤토리가 database 로드 완료 전에 먼저 열려 아이콘/이름 없이
+        /// 표시된 경우, 구독자(GameSceneManager)가 이 이벤트를 받아 인벤토리를 다시 그려 뒤늦게라도 정상
+        /// 표시되게 한다.
+        /// </summary>
+        public event Action OnDatabaseLoaded;
+
         protected override void Awake()
         {
             base.Awake();
@@ -57,6 +71,8 @@ namespace Incheol.Modules
                 }
 
                 database = result.Result;
+                IsLoaded = true;
+                OnDatabaseLoaded?.Invoke();
             };
         }
     }
