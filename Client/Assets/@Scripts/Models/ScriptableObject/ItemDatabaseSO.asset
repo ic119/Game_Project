@@ -26,6 +26,7 @@ MonoBehaviour:
     maxStackCount: 99
     bonusAttackPower: 0
     bonusDefense: 0
+    healPercent: 10
   - itemId: mushroom_spore
     itemName: "\uBC84\uC12F \uD3EC\uC790"
     description: "\uBC84\uC12F\uD0C0\uC785\uC758 \uBAAC\uC2A4\uD130\uAC00 \uD769\uBFCC\uB9B0
@@ -39,6 +40,7 @@ MonoBehaviour:
     maxStackCount: 999
     bonusAttackPower: 0
     bonusDefense: 0
+    healPercent: 0
   - itemId: rare_essence
     itemName: "\uBAAC\uC2A4\uD130 \uC815\uC218 (\uD76C\uADC0)"
     description: "\uBAAC\uC2A4\uD130\uC758 \uAE30\uC6B4\uC774 \uB2F4\uAE34 \uC815\uC218"
@@ -51,3 +53,4 @@ MonoBehaviour:
     maxStackCount: 99
     bonusAttackPower: 0
     bonusDefense: 0
+    healPercent: 0

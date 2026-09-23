@@ -88,25 +88,37 @@ public class HealthComponent : MonoBehaviour, IDamageable
     /// <summary>
     /// 체력을 amount만큼 회복시킨다(포션 등 회복 아이템 사용 시 진입점). currentHp가 maxHp를 넘지 않도록
     /// 보정한다. 이미 사망한 상태면 무시한다 - 부활은 이 메서드의 책임이 아니라 별도 로직이어야 한다.
+    /// 반환값은 실제로 currentHp가 변했는지(=효과가 있었는지) 여부다 - 사망 상태이거나 이미 만피라
+    /// 아무 변화가 없었다면 false를 반환하며, 호출부(TryUseHealthPotion 등)는 이 값으로 아이템 소모 여부를
+    /// 판단해 "효과 없는 사용"으로 아이템만 낭비되는 것을 막는다.
     /// </summary>
-    public void Heal(int amount)
+    public bool Heal(int amount)
     {
         if (IsDead || amount <= 0)
         {
-            return;
+            return false;
         }
 
+        int previousHp = currentHp;
         currentHp = Mathf.Clamp(currentHp + amount, 0, maxHp);
+
+        if (currentHp == previousHp)
+        {
+            return false;
+        }
+
         OnHealthChanged?.Invoke(currentHp, maxHp);
         OnHealed?.Invoke();
+        return true;
     }
 
     /// <summary>
     /// 최대체력 대비 healPercent(%)만큼 회복시킨다(ItemData.healPercent를 그대로 전달받는 포션 사용 전용 진입점).
-    /// 실제 회복량 계산은 CombatCalculator.CalculateHealAmount가 담당한다.
+    /// 실제 회복량 계산은 CombatCalculator.CalculateHealAmount가 담당한다. 반환값은 Heal(amount)와 동일하게
+    /// 실제로 회복이 일어났는지 여부다.
     /// </summary>
-    public void HealByPercent(int healPercent)
+    public bool HealByPercent(int healPercent)
     {
-        Heal(CombatCalculator.CalculateHealAmount(maxHp, healPercent));
+        return Heal(CombatCalculator.CalculateHealAmount(maxHp, healPercent));
     }
 }

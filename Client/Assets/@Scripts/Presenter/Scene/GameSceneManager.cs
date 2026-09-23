@@ -991,7 +991,9 @@ private void TryEquipItem(string _itemId)
 /// <summary>
         /// 물약(ItemType.Potion) 하나를 사용해 체력을 회복시키고 인벤토리에서 1개 소모한다. TryEquipItem과 동일하게
         /// 로컬 상태(체력/인벤토리 수량)를 먼저 낙관적으로 갱신해 즉시 반영하고, 서버 저장은 백그라운드로 요청한다
-        /// (POST api/characters/{id}/items/{itemId}/consume).
+        /// (POST api/characters/{id}/items/{itemId}/consume). UseHealthPotion이 실제로 체력을 회복시키지 못했다면
+        /// (사망 상태, 만피, healPercent 미설정 등) 아이템을 소모하지 않고 그대로 둔다 - 효과 없는 사용으로
+        /// 아이템만 낭비되는 것을 막기 위함이다.
         /// </summary>
         private void TryUseHealthPotion(string _itemId, ItemData _itemData)
         {
@@ -1001,7 +1003,10 @@ private void TryEquipItem(string _itemId)
                 return;
             }
 
-            spawnedPlayerModel.UseHealthPotion(_itemData);
+            if (!spawnedPlayerModel.UseHealthPotion(_itemData))
+            {
+                return;
+            }
 
             targetStack.count--;
             if (targetStack.count <= 0)

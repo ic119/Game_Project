@@ -227,15 +227,17 @@ public class PlayerCharacterModel : MonoBehaviour
     /// 물약(ItemType.Potion) 아이템을 사용해 체력을 회복시킨다. itemData가 물약이 아니거나 healPercent가
     /// 0 이하이면 조용히 무시한다. 실제 회복량 계산(최대체력의 healPercent %)은
     /// HealthComponent.HealByPercent(CombatCalculator.CalculateHealAmount)가 담당한다.
+    /// 반환값은 실제로 체력이 회복됐는지 여부다(사망 상태/만피 등으로 효과가 없었으면 false) - 호출부
+    /// (GameSceneManager.TryUseHealthPotion)가 이 값을 보고 효과 없는 아이템 소모를 막는 데 사용한다.
     /// </summary>
-    public void UseHealthPotion(ItemData itemData)
+    public bool UseHealthPotion(ItemData itemData)
     {
         if (itemData == null || itemData.itemType != ItemType.Potion || itemData.healPercent <= 0)
         {
-            return;
+            return false;
         }
 
-        healthComponent.HealByPercent(itemData.healPercent);
+        return healthComponent.HealByPercent(itemData.healPercent);
     }
 
     /// <summary>
