@@ -1,0 +1,10 @@
+# MainServer(HTTP API, 컨테이너 내부 8080)를 위한 리버스 프록시. DOMAIN이 .env에 설정되어 있으면
+# Caddy가 Let's Encrypt 인증서를 자동으로 발급/갱신해 HTTPS(443)로 서비스하고, 80은 HTTP->HTTPS
+# 리다이렉트 및 ACME 인증에만 쓴다(Caddy 기본 동작).
+#
+# 로컬 개발(도메인이 없는 경우)에는 이 Caddy 서비스를 쓰지 않고 지금까지처럼 MainServer를
+# 직접(https://localhost:58208, dotnet dev-certs) 호출해도 된다 - 이 파일은 docker-compose로
+# 실제 배포할 때만 필요하다.
+{$DOMAIN} {
+	reverse_proxy mainserver:8080
+}

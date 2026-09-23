@@ -2,7 +2,10 @@ using Incheol.Modules.Networking;
 using Incheol.Utils;
 using System;
 using System.Collections.Concurrent;
+using System.IO;
+using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,7 +32,10 @@ namespace Incheol.Modules
         protected override bool PersistAcrossScenes => true;
 
         private TcpClient tcpClient;
-        private NetworkStream stream;
+
+        // TLS 핸드셰이크가 끝나면 SslStream으로 교체된다(ConnectAndEnterAsync 참고). 이후 코드는 Stream
+        // 인터페이스만 보므로 평문/암호화 여부를 신경 쓰지 않는다.
+        private Stream stream;
         private CancellationTokenSource cts;
         private readonly ConcurrentQueue<Action> pendingActions = new();
 
@@ -110,6 +116,25 @@ namespace Incheol.Modules
         }
         #endregion
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        /// <summary>
+        /// 로컬 개발 GameServer(GameServerCertificateProvider가 생성한 자체 서명 인증서)를 신뢰하기 위한 우회.
+        /// ServerConnectManager.LocalDevCertificateHandler와 동일한 이유 - 실제 서버 인증서 검증을 완전히
+        /// 생략하므로 UNITY_EDITOR/DEVELOPMENT_BUILD로 제한해 프로덕션 배포 빌드에는 절대 포함되지 않게 한다.
+        /// </summary>
+        private static bool ValidateServerCertificate(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+        {
+            return true;
+        }
+#else
+        // 프로덕션 빌드는 정상적인 인증서 검증(OS 신뢰 저장소 기준)을 그대로 따른다 - GameServer:TlsCertPath에
+        // 실제 인증서가 설정되어 있어야 접속에 성공한다(GameServerCertificateProvider.cs 참고).
+        private static bool ValidateServerCertificate(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+        {
+            return sslPolicyErrors == SslPolicyErrors.None;
+        }
+#endif
+
         #region Method
         /// <summary>
         /// GameServer에 접속하고 자신의 캐릭터 정보를 Game_EnterRequest로 전송한다.
@@ -140,7 +165,13 @@ namespace Incheol.Modules
             {
                 tcpClient = new TcpClient();
                 await tcpClient.ConnectAsync(host, port);
-                stream = tcpClient.GetStream();
+
+                // GameServer(ClientSession.RunAsync)가 접속을 받자마자 TLS 핸드셰이크부터 요구하므로,
+                // 프레임을 하나라도 보내기 전에 SslStream으로 감싸고 인증을 마쳐야 한다.
+                var sslStream = new SslStream(tcpClient.GetStream(), leaveInnerStreamOpen: false, ValidateServerCertificate);
+                await sslStream.AuthenticateAsClientAsync(host);
+                stream = sslStream;
+
                 cts = new CancellationTokenSource();
                 localPlayerId = localInfo.PlayerId;
                 isConnected = true;

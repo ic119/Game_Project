@@ -24,8 +24,31 @@ services:
       ConnectionStrings__Default: "Server=mysql;Port=3306;Database=${MYSQL_DATABASE:-game_auth};User=${MYSQL_USER:-game_server};Password=${MYSQL_PASSWORD};"
       Jwt__Key: ${JWT_KEY:?JWT_KEY를 .env에 설정하세요}
       Jwt__Issuer: GameAuthServer
+    # 호스트에 직접 노출하지 않는다 - 외부 트래픽은 아래 caddy가 TLS를 씌운 뒤에만 여기로 들어온다
+    # (컨테이너 네트워크 안에서는 서비스명 mainserver:8080으로 접근).
+    networks:
+      - backend
+
+  # MainServer(HTTP API) 앞단 TLS 종료 지점. DOMAIN이 설정되어 있으면 Let's Encrypt 인증서를
+  # 자동으로 발급/갱신한다(Caddyfile 참고). 로그인 요청(아이디/비밀번호)이 평문으로 오가는 것을 막기 위한
+  # 최소한의 구성이며, 도메인이 아직 없다면 이 서비스를 실행하지 않고 mainserver에 ports를 직접 열어
+  # 예전처럼 테스트할 수 있다(단, 그 경우 HTTPS는 없다).
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - mainserver
+    environment:
+      # 아직 도메인이 없다면 비워둬도 mysql/mainserver/gameserver 기동에는 영향 없다(caddy 컨테이너만
+      # 유효하지 않은 사이트 주소로 실패한다) - 도메인이 생기면 .env에 DOMAIN만 채우고 재시작하면 된다.
+      DOMAIN: ${DOMAIN:-}
     ports:
-      - "8080:8080"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
     networks:
       - backend
 
@@ -41,6 +64,14 @@ services:
       # 위임해 확인할 때 쓰는 주소(PlayerAuthValidator). 컨테이너 네트워크 안에서는 localhost가 아니라
       # 서비스명(mainserver)으로 접근해야 하고, mainserver는 컨테이너 내부에서 HTTPS가 아닌 HTTP(8080)만 연다.
       AuthServer__BaseUrl: "http://mainserver:8080"
+      # GameServer 자체 TCP(SslStream) 인증서. 비워두면 자체 서명 인증서를 자동 생성해 쓰지만, 클라이언트
+      # 프로덕션 빌드는 이를 신뢰하지 않으므로(GameServerCertificateProvider.cs 참고) 실서비스에는
+      # 아래 두 값에 실제 인증서(PFX)를 지정해야 한다 - 예: Caddy가 발급받은 인증서를 pfx로 변환해
+      # ./certs에 두고 GameServer__TlsCertPath=/certs/gameserver.pfx로 마운트.
+      GameServer__TlsCertPath: ${GAMESERVER_TLS_CERT_PATH:-}
+      GameServer__TlsCertPassword: ${GAMESERVER_TLS_CERT_PASSWORD:-}
+    volumes:
+      - ./certs:/certs:ro
     ports:
       - "9000:9000"
     networks:
@@ -51,3 +82,5 @@ networks:
 
 volumes:
   mysql_data:
+  caddy_data:
+  caddy_config:

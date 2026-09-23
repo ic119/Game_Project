@@ -1,4 +1,7 @@
+using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using GameServer.Combat;
 using Shared.Networking;
@@ -6,13 +9,18 @@ using Shared.Networking.Packets;
 
 namespace GameServer.Networking
 {
-    // 접속 클라이언트 1개를 담당: 프레임 수신 루프 + OpCode 디스패치
+    // 접속 클라이언트 1개를 담당: TLS 핸드셰이크 + 프레임 수신 루프 + OpCode 디스패치
     public class ClientSession
     {
         private readonly TcpClient _tcpClient;
-        private readonly NetworkStream _stream;
+
+        // 생성 시점에는 아직 평문 NetworkStream이다. RunAsync가 TLS 핸드셰이크에 성공하면 이 필드를
+        // SslStream으로 교체한다(암/복호화는 SslStream이 내부적으로 처리하고, 이후 코드는 Stream API만 사용하므로
+        // PacketFrame.ReadFrameAsync/SendAsync 쪽은 손댈 필요가 없다).
+        private Stream _stream;
         private readonly MapRoomRegistry _mapRooms;
         private readonly PlayerAuthValidator _authValidator;
+        private readonly X509Certificate2 _serverCertificate;
         private readonly SemaphoreSlim _writeLock = new(1, 1);
 
         // 이 세션이 Game_EnterRequest로 등록한 플레이어 id. 등록 전이면 null.
@@ -28,12 +36,13 @@ namespace GameServer.Networking
         private GameRoom? _room;
         private string? _mapId;
 
-        public ClientSession(TcpClient tcpClient, MapRoomRegistry mapRooms, PlayerAuthValidator authValidator)
+        public ClientSession(TcpClient tcpClient, MapRoomRegistry mapRooms, PlayerAuthValidator authValidator, X509Certificate2 serverCertificate)
         {
             _tcpClient = tcpClient;
             _stream = tcpClient.GetStream();
             _mapRooms = mapRooms;
             _authValidator = authValidator;
+            _serverCertificate = serverCertificate;
         }
 
         public async Task RunAsync(CancellationToken ct)
@@ -43,6 +52,17 @@ namespace GameServer.Networking
 
             try
             {
+                // 프레임을 하나라도 주고받기 전에 TLS 핸드셰이크부터 마친다 - 이후 _stream을 쓰는 모든 코드
+                // (PacketFrame.ReadFrameAsync/SendAsync)는 암호화 여부를 몰라도 되도록 Stream 인터페이스만 본다.
+                var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false);
+                await sslStream.AuthenticateAsServerAsync(
+                    new SslServerAuthenticationOptions
+                    {
+                        ServerCertificate = _serverCertificate,
+                        ClientCertificateRequired = false
+                    }, ct);
+                _stream = sslStream;
+
                 while (!ct.IsCancellationRequested)
                 {
                     var frame = await PacketFrame.ReadFrameAsync(_stream, ct);
@@ -59,6 +79,12 @@ namespace GameServer.Networking
             catch (IOException)
             {
                 // 클라이언트 비정상 종료 (연결 끊김)
+            }
+            catch (AuthenticationException ex)
+            {
+                // TLS 핸드셰이크 실패(프로토콜 불일치, 인증서 미신뢰 등) - 위조/스캐너 트래픽일 수 있으므로
+                // 조용히 연결만 닫는다.
+                Console.WriteLine($"[GameServer] TLS 핸드셰이크 실패: {endpoint} - {ex.Message}");
             }
             catch (EnterAuthFailedException)
             {
