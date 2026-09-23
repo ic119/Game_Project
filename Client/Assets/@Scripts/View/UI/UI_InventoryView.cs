@@ -55,6 +55,14 @@ namespace Incheol.View.UI
         [SerializeField] private UI_InventorySlot bootsSlot;
         [SerializeField] private UI_InventorySlot accessorySlot;
 
+        [Header("Equipment Slot Placeholder Icons")]
+        [Tooltip("해당 슬롯에 아무 것도 장착하지 않았을 때 흐리게 표시할 종류별 아이콘.")]
+        [SerializeField] private Sprite weaponPlaceholderIcon;
+        [SerializeField] private Sprite armorPlaceholderIcon;
+        [SerializeField] private Sprite helmetPlaceholderIcon;
+        [SerializeField] private Sprite bootsPlaceholderIcon;
+        [SerializeField] private Sprite accessoryPlaceholderIcon;
+
         [Header("Stats Display")]
         [SerializeField] private TextMeshProUGUI strValueText;
         [SerializeField] private TextMeshProUGUI agiValueText;
@@ -101,7 +109,9 @@ namespace Incheol.View.UI
             RegisterEvents();
             InitEquipmentSlots();
             InitTabs();
-            UpdateStatsUI(UserStats.CreateDefault());
+            // 실제 값은 GameSceneManager.RefreshInventoryDisplay가 스폰 직후 곧바로 덮어쓴다 - 여기서는
+            // 인벤토리 열기 전까지 잠깐 보일 자리 표시자일 뿐이다.
+            UpdateStatsUI(UserStats.CreateDefault(), 0, 0, 0);
             SetCurrency(1250000, 350);
             SetCapacity(0, InventorySlotCount);
         }
@@ -178,27 +188,27 @@ namespace Incheol.View.UI
         {
             if (weaponSlot != null)
             {
-                weaponSlot.InitSlot(InventorySlotType.EquipmentWeapon, 0, "무기");
+                weaponSlot.InitSlot(InventorySlotType.EquipmentWeapon, 0, "무기", weaponPlaceholderIcon);
                 weaponSlot.OnSlotClicked += HandleSlotClicked;
             }
             if (armorSlot != null)
             {
-                armorSlot.InitSlot(InventorySlotType.EquipmentArmor, 1, "갑옷");
+                armorSlot.InitSlot(InventorySlotType.EquipmentArmor, 1, "갑옷", armorPlaceholderIcon);
                 armorSlot.OnSlotClicked += HandleSlotClicked;
             }
             if (helmetSlot != null)
             {
-                helmetSlot.InitSlot(InventorySlotType.EquipmentHelmet, 2, "투구");
+                helmetSlot.InitSlot(InventorySlotType.EquipmentHelmet, 2, "투구", helmetPlaceholderIcon);
                 helmetSlot.OnSlotClicked += HandleSlotClicked;
             }
             if (bootsSlot != null)
             {
-                bootsSlot.InitSlot(InventorySlotType.EquipmentBoots, 3, "신발");
+                bootsSlot.InitSlot(InventorySlotType.EquipmentBoots, 3, "신발", bootsPlaceholderIcon);
                 bootsSlot.OnSlotClicked += HandleSlotClicked;
             }
             if (accessorySlot != null)
             {
-                accessorySlot.InitSlot(InventorySlotType.EquipmentAccessory, 4, "장신구");
+                accessorySlot.InitSlot(InventorySlotType.EquipmentAccessory, 4, "장신구", accessoryPlaceholderIcon);
                 accessorySlot.OnSlotClicked += HandleSlotClicked;
             }
         }
@@ -254,8 +264,10 @@ namespace Incheol.View.UI
 
         /// <summary>
         /// 골드 표시와 인벤토리 슬롯 전체를 실제 보유 데이터로 다시 그린다. 서버(CharacterItem)가 슬롯 인덱스를
-        /// 따로 저장하지 않는 스택형 인벤토리라(GameSceneManager.localInventoryItems 참고), 매번 _items 순서대로
-        /// 앞 슬롯부터 채우고 나머지는 비운다 - 드래그로 슬롯 순서를 바꾸는 기능은 아직 없어 순서가 흔들릴 일이 없다.
+        /// 따로 저장하지 않는 스택형 인벤토리라(GameSceneManager.localInventoryItems 참고), equipSlot이 비어있는
+        /// (미장착) 스택만 순서대로 앞 슬롯부터 채우고 나머지는 비운다 - 드래그로 슬롯 순서를 바꾸는 기능은 아직
+        /// 없어 순서가 흔들릴 일이 없다. equipSlot이 있는(장착 중인) 스택은 일반 그리드에는 표시하지 않고
+        /// RefreshEquipmentSlots가 좌측 해당 장비 슬롯에 표시한다.
         /// _itemLookup(보통 ItemDatabaseManager.Instance.FindById)이 null을 반환하면(디자이너가 아직 아이콘/설명을
         /// 채우기 전) 아이콘 없이 itemId 텍스트와 수량만으로 최소 표시한다. ItemDatabaseSO를 직접 참조하지 않고
         /// 조회 함수만 받는 이유는 ItemDatabaseManager가 유일한 로드 지점이라는 규칙을 UI 쪽에서도 지키기 위함이다.
@@ -264,7 +276,29 @@ namespace Incheol.View.UI
         {
             SetCurrency(_gold, 0);
 
-            int itemCount = _items?.Count ?? 0;
+            var unequippedItems = new List<InventoryItemStack>();
+            var equippedBySlot = new Dictionary<EquipmentSlotType, InventoryItemStack>();
+
+            if (_items != null)
+            {
+                foreach (InventoryItemStack stack in _items)
+                {
+                    if (!string.IsNullOrEmpty(stack.equipSlot) &&
+                        Enum.TryParse(stack.equipSlot, out EquipmentSlotType parsedSlot) &&
+                        parsedSlot != EquipmentSlotType.None)
+                    {
+                        equippedBySlot[parsedSlot] = stack;
+                    }
+                    else
+                    {
+                        unequippedItems.Add(stack);
+                    }
+                }
+            }
+
+            RefreshEquipmentSlots(equippedBySlot, _itemLookup);
+
+            int itemCount = unequippedItems.Count;
 
             for (int i = 0; i < inventorySlots.Count; i++)
             {
@@ -274,20 +308,58 @@ namespace Incheol.View.UI
                     continue;
                 }
 
-                InventoryItemStack stack = _items[i];
+                InventoryItemStack stack = unequippedItems[i];
                 ItemData itemData = _itemLookup?.Invoke(stack.itemId);
 
                 if (itemData != null)
                 {
-                    inventorySlots[i].SetItem(stack.itemId, itemData.icon, stack.count, itemData.itemGrade);
+                    inventorySlots[i].SetItem(stack.itemId, itemData.itemName, itemData.icon, stack.count, itemData.itemGrade);
                 }
                 else
                 {
-                    inventorySlots[i].SetItem(stack.itemId, null, stack.count, ItemGrade.Common);
+                    inventorySlots[i].SetItem(stack.itemId, stack.itemId, null, stack.count, ItemGrade.Common);
                 }
             }
 
             SetCapacity(itemCount, inventorySlots.Count);
+        }
+
+        /// <summary>
+        /// equipSlot별로 정리된 장착 아이템을 좌측 장비 슬롯(weaponSlot 등)에 반영한다. 해당 슬롯에 장착된 아이템이
+        /// 없으면 InitEquipmentSlots가 지정해둔 기본 라벨("무기" 등)로 되돌린다.
+        /// </summary>
+        private void RefreshEquipmentSlots(Dictionary<EquipmentSlotType, InventoryItemStack> _equippedBySlot, Func<string, ItemData> _itemLookup)
+        {
+            SetEquipmentSlot(weaponSlot, EquipmentSlotType.Weapon, "무기", _equippedBySlot, _itemLookup);
+            SetEquipmentSlot(armorSlot, EquipmentSlotType.Armor, "갑옷", _equippedBySlot, _itemLookup);
+            SetEquipmentSlot(helmetSlot, EquipmentSlotType.Helmet, "투구", _equippedBySlot, _itemLookup);
+            SetEquipmentSlot(bootsSlot, EquipmentSlotType.Boots, "신발", _equippedBySlot, _itemLookup);
+            SetEquipmentSlot(accessorySlot, EquipmentSlotType.Accessory, "장신구", _equippedBySlot, _itemLookup);
+        }
+
+        private static void SetEquipmentSlot(UI_InventorySlot _slot, EquipmentSlotType _slotType, string _defaultLabel,
+            Dictionary<EquipmentSlotType, InventoryItemStack> _equippedBySlot, Func<string, ItemData> _itemLookup)
+        {
+            if (_slot == null)
+            {
+                return;
+            }
+
+            if (!_equippedBySlot.TryGetValue(_slotType, out InventoryItemStack stack))
+            {
+                _slot.ClearSlot(_defaultLabel);
+                return;
+            }
+
+            ItemData itemData = _itemLookup?.Invoke(stack.itemId);
+            if (itemData != null)
+            {
+                _slot.SetItem(stack.itemId, itemData.itemName, itemData.icon, stack.count, itemData.itemGrade);
+            }
+            else
+            {
+                _slot.SetItem(stack.itemId, stack.itemId, null, stack.count, ItemGrade.Common);
+            }
         }
 
         public void SetCapacity(int _current, int _max)
@@ -298,7 +370,12 @@ namespace Incheol.View.UI
             }
         }
 
-        public void UpdateStatsUI(UserStats _stats)
+        /// <summary>
+        /// 원본 스탯(str/agi/intel)과 실제 전투 수치(공격력/방어력/최대체력)를 함께 받아 표시한다. 공격력/방어력/
+        /// 최대체력을 이 UI가 str/agi로부터 다시 계산하지 않는다 - CombatStatComponent/HealthComponent의 실제
+        /// 계산 결과(장비 보너스 포함)를 그대로 받아야, 장착한 장비의 효과가 이 패널에도 정확히 반영된다.
+        /// </summary>
+        public void UpdateStatsUI(UserStats _stats, int _attackPower, int _defense, int _maxHp)
         {
             if (_stats == null) return;
 
@@ -306,10 +383,9 @@ namespace Incheol.View.UI
             if (agiValueText != null) agiValueText.text = _stats.agi.ToString();
             if (intValueText != null) intValueText.text = _stats.intel.ToString();
 
-            // 유도 스탯 표시
-            if (atkValueText != null) atkValueText.text = (_stats.str * 2 + _stats.agi).ToString();
-            if (defValueText != null) defValueText.text = (_stats.str + _stats.agi * 2).ToString();
-            if (hpValueText != null) hpValueText.text = (_stats.str * 10 + 100).ToString();
+            if (atkValueText != null) atkValueText.text = _attackPower.ToString();
+            if (defValueText != null) defValueText.text = _defense.ToString();
+            if (hpValueText != null) hpValueText.text = _maxHp.ToString();
         }
 
         public void HandleSlotClicked(UI_InventorySlot _slot)

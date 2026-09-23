@@ -275,6 +275,29 @@ namespace Incheol.Modules
             _ = SendAsync(GameOpCode.Game_MonsterAttackRequest, request.Encode());
         }
 
+        /// <summary>
+        /// 인벤토리에서 장비를 장착/해제해 바뀐 공격력/방어력을 GameServer에 알린다(Game_StatUpdateRequest).
+        /// 서버는 이 값을 Game_EnterRequest 때와 같은 신뢰 수준으로 그대로 캐싱만 하고 응답하지 않는다.
+        /// 접속 전이면(아직 GameScene 진입 전, 또는 이미 끊긴 상태) 아무 것도 하지 않는다 - 그 경우 최신 값은
+        /// 다음 Game_EnterRequest(재접속)에 자연히 실려 간다.
+        /// </summary>
+        public void SendStatUpdate(int attackPower, int defense)
+        {
+            if (!isConnected)
+            {
+                return;
+            }
+
+            var request = new GameStatUpdateRequestPacket
+            {
+                PlayerId = localPlayerId,
+                AttackPower = attackPower,
+                Defense = defense
+            };
+
+            _ = SendAsync(GameOpCode.Game_StatUpdateRequest, request.Encode());
+        }
+
         public void Disconnect()
         {
             if (!isConnected)

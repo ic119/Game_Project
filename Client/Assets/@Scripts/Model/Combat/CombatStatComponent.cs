@@ -14,8 +14,13 @@ public class CombatStatComponent : MonoBehaviour
     // AttackPower를 읽을 때만 더해진다. 지속시간 관리는 호출측(PlayerController)의 몫이다.
     private int bonusAttackPower;
 
-    public int AttackPower => baseAttackPower + bonusAttackPower;
-    public int Defense => baseDefense;
+    // 장착 중인 장비(ItemData.bonusAttackPower/bonusDefense 합계)로 더해지는 공격력/방어력. bonusAttackPower(스킬
+    // 버프)와 별도의 덧셈 레이어라 스킬 버프 지속 중에 장비를 바꿔도 서로 값을 덮어쓰지 않는다.
+    private int equipmentAttackBonus;
+    private int equipmentDefenseBonus;
+
+    public int AttackPower => baseAttackPower + bonusAttackPower + equipmentAttackBonus;
+    public int Defense => baseDefense + equipmentDefenseBonus;
 
     // UserStats(str/agi/intel)로부터 공격력/방어력을 계산해 반영한다.
     // str 1당 공격력 1, agi 2당 방어력 1로 잡은 임시 공식이며, 실제 밸런스 기획이 정해지면
@@ -44,5 +49,13 @@ public class CombatStatComponent : MonoBehaviour
     public void SetBonusAttackPower(int amount)
     {
         bonusAttackPower = amount;
+    }
+
+    // 장비 장착/해제로 바뀐 공격력/방어력 보너스를 설정한다. 델타가 아니라 항상 현재 장착 중인 장비 전체의
+    // 합계를 받는다 - 호출측(GameSceneManager.RecalculateEquipmentStats)이 매번 처음부터 다시 합산해서 넘긴다.
+    public void SetEquipmentBonus(int attackPower, int defense)
+    {
+        equipmentAttackBonus = attackPower;
+        equipmentDefenseBonus = defense;
     }
 }

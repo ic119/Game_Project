@@ -27,11 +27,11 @@ namespace Incheol.Presenter.Scene
         private const float MonsterTargetLostTimeoutSeconds = 8f;
 
         private GameObject inventoryInstance;
+        private UI_InventoryView inventoryView;
 
         /// <summary>
         /// 로컬 플레이어가 처치 보상(Game_LootBroadcast)으로 받은 아이템의 런타임 누적 상태.
-        /// itemId별 수량만 들고 있고, 이름/아이콘 등 정적 정의는 아직 클라이언트에 아이템 데이터베이스가
-        /// 연결되어 있지 않아 조회하지 않는다(인벤토리 UI 슬롯 렌더링은 별도 작업으로 남겨둔다).
+        /// itemId별 수량과 장착 슬롯(equipSlot)을 들고 있으며, 서버(CharacterItem)와 1:1로 대응한다.
         /// </summary>
         private readonly List<InventoryItemStack> localInventoryItems = new List<InventoryItemStack>();
 
@@ -104,6 +104,14 @@ namespace Incheol.Presenter.Scene
                 GameServerConnectManager.Instance.OnServerError += HandleGameServerError;
                 GameServerConnectManager.Instance.OnDisconnected += HandleGameServerDisconnected;
             }
+
+            // ItemDatabaseSO는 Addressables로 비동기 로드되므로, 씬 진입 직후 인벤토리를 처음 열면 로드가
+            // 아직 안 끝나 아이템 아이콘/이름이 비어 보일 수 있다. 로드가 끝나는 즉시 한 번 더 갱신해
+            // 이미 열려 있었던(또는 그 사이 열렸다 닫힌) 인벤토리도 뒤늦게 정상 표시되게 한다.
+            if (ItemDatabaseManager.Instance != null)
+            {
+                ItemDatabaseManager.Instance.OnDatabaseLoaded += HandleItemDatabaseLoaded;
+            }
         }
 
         private void OnDisable()
@@ -117,6 +125,11 @@ namespace Incheol.Presenter.Scene
                 GameServerConnectManager.Instance.OnLootReceived -= HandleLootReceived;
                 GameServerConnectManager.Instance.OnServerError -= HandleGameServerError;
                 GameServerConnectManager.Instance.OnDisconnected -= HandleGameServerDisconnected;
+            }
+
+            if (ItemDatabaseManager.Instance != null)
+            {
+                ItemDatabaseManager.Instance.OnDatabaseLoaded -= HandleItemDatabaseLoaded;
             }
         }
 
@@ -150,6 +163,11 @@ namespace Incheol.Presenter.Scene
             if (localPlayerAttackController != null)
             {
                 localPlayerAttackController.MonsterTargeted -= HandleMonsterTargeted;
+            }
+
+            if (inventoryView != null)
+            {
+                inventoryView.OnUseItemRequested -= HandleInventoryUseRequested;
             }
 
             // GameScene을 벗어나면(씬 전환) GameServer 접속을 종료한다 - PersistAcrossScenes로 유지되는
@@ -506,6 +524,12 @@ namespace Incheol.Presenter.Scene
                 localInventoryItems.Clear();
                 localInventoryItems.AddRange(userSaveData.items);
 
+                // 복원한 아이템 중 equipSlot이 설정된(이전 세션에 장착해뒀던) 것들을 캐릭터 시각에 반영하고,
+                // 장비 스탯 보너스를 계산해둔다 - 이 직후 ConnectToGameServer가 만드는 GamePlayerInfo가
+                // spawnedPlayerModel.AttackPower/Defense를 그대로 읽으므로, Enter 시점부터 이미 보너스가 실려 간다.
+                ApplyEquippedVisuals();
+                RecalculateEquipmentStats();
+
                 // 캐릭터 생성(외형/스탯 적용)이 성공적으로 끝난 시점에 인벤토리 UI를 비활성 상태로 미리 만들어둔다.
                 SpawnInventoryUI();
 
@@ -620,6 +644,11 @@ namespace Incheol.Presenter.Scene
                 inventoryInstance = AddressableAssetManager.Instance.InstantiatePrefab(prefab, transform);
                 inventoryInstance.SetActive(false);
                 isInventoryActive = false;
+
+                if (inventoryInstance.TryGetComponent(out inventoryView))
+                {
+                    inventoryView.OnUseItemRequested += HandleInventoryUseRequested;
+                }
 
                 // UI_InventoryView.Awake()가 임시 플레이스홀더 골드값으로 초기화해두므로, 생성 직후 실제
                 // 세이브 데이터 값으로 즉시 덮어쓴다(그 사이 처치 보상을 먼저 받는 레이스는 없다 - 인벤토리는
@@ -739,26 +768,28 @@ namespace Incheol.Presenter.Scene
 
             RefreshInventoryDisplay();
 
-            ShowDropItemPopup(packet.Items);
+            ShowDropItemPopup(packet.GoldGained, packet.Items);
 
             SaveDataManager.Instance?.ApplyKillRewards(spawnedPlayerModel.Level, spawnedPlayerModel.CurrentExp, packet.GoldGained, packet.Items);
         }
 
 
         /// <summary>
-        /// HandleLootReceived가 반영한 드롭 아이템 목록을 UI_DropItemPopupView로 보여준다.
+        /// HandleLootReceived가 반영한 획득 골드/드롭 아이템 목록을 UI_DropItemPopupView로 보여준다.
+        /// 아이템 없이 골드만 떨어진 경우에도 골드 줄만으로 팝업을 열어, 처치 보상은 항상 같은 팝업을 거치게 한다.
         /// RefreshInventoryDisplay와 동일하게 ItemDatabaseManager.FindById를 조회 함수로 넘긴다
         /// (아직 아이콘이 등록되지 않은 아이템은 UI_DropListItemView가 이름/수량만으로 최소 표시한다).
         /// </summary>
-        private void ShowDropItemPopup(List<GameLootItemEntry> items)
+        private void ShowDropItemPopup(int goldGained, List<GameLootItemEntry> items)
         {
-            if (dropItemPopupView == null || items == null || items.Count == 0)
+            int itemCount = items != null ? items.Count : 0;
+            if (dropItemPopupView == null || (goldGained <= 0 && itemCount == 0))
             {
                 return;
             }
 
             Func<string, ItemData> itemLookup = ItemDatabaseManager.Instance != null ? ItemDatabaseManager.Instance.FindById : null;
-            dropItemPopupView.Show(items, itemLookup);
+            dropItemPopupView.Show(goldGained, items, itemLookup);
         }
 
 
@@ -778,24 +809,220 @@ namespace Incheol.Presenter.Scene
         }
 
         /// <summary>
-        /// 인벤토리 UI가 이미 생성되어 있으면 골드/아이템 슬롯을 현재 런타임 상태(spawnedPlayerModel.Gold,
-        /// localInventoryItems)로 다시 그린다. 아이콘/등급은 ItemDatabaseManager를 통해 조회하며, 아직 로드되지
-        /// 않았거나(부트스트랩 직후) 디자이너가 해당 itemId를 등록하기 전이면 UI_InventoryView가 알아서
-        /// 아이콘 없이 최소 정보로 표시한다.
+        /// ItemDatabaseManager.OnDatabaseLoaded 콜백. 인벤토리가 ItemDatabaseSO 로드 완료 전에 먼저 열려
+        /// 아이콘/이름 없이(itemId 텍스트만으로) 표시됐을 수 있으므로, 로드가 끝나는 즉시 한 번 더 갱신해
+        /// 뒤늦게라도 정상 아이콘/이름으로 바뀌게 한다.
+        /// </summary>
+        private void HandleItemDatabaseLoaded()
+        {
+            // ItemDatabaseSO가 이제야 로드됐다면, 로드 전이라 건너뛰었던 장착 시각 반영/스탯 보너스 계산도 함께 재시도한다.
+            ApplyEquippedVisuals();
+            RecalculateEquipmentStats();
+            RefreshInventoryDisplay();
+        }
+
+        /// <summary>
+        /// 인벤토리 UI가 이미 생성되어 있으면 골드/아이템 슬롯과 스탯 패널을 현재 런타임 상태(spawnedPlayerModel)로
+        /// 다시 그린다. 아이콘/등급은 ItemDatabaseManager를 통해 조회하며, 아직 로드되지 않았거나(부트스트랩 직후)
+        /// 디자이너가 해당 itemId를 등록하기 전이면 UI_InventoryView가 알아서 아이콘 없이 최소 정보로 표시한다.
+        /// 스탯 패널(공격력/방어력/최대체력)은 CombatStatComponent/HealthComponent가 이미 계산해둔 실제 값을
+        /// 그대로 받아 표시하므로, 장비 보너스가 반영된 뒤(RecalculateEquipmentStats 이후) 호출해야 최신값이 보인다.
         /// </summary>
         private void RefreshInventoryDisplay()
         {
-            if (inventoryInstance == null || spawnedPlayerModel == null)
+            if (inventoryView == null || spawnedPlayerModel == null)
             {
                 return;
             }
 
-            if (inventoryInstance.TryGetComponent(out UI_InventoryView inventoryView))
+            Func<string, ItemData> itemLookup = ItemDatabaseManager.Instance != null ? ItemDatabaseManager.Instance.FindById : null;
+            inventoryView.RefreshInventory(spawnedPlayerModel.Gold, localInventoryItems, itemLookup);
+            inventoryView.UpdateStatsUI(spawnedPlayerModel.Stats, spawnedPlayerModel.AttackPower, spawnedPlayerModel.Defense, spawnedPlayerModel.MaxHp);
+        }
+
+        /// <summary>
+        /// localInventoryItems 중 장착 중인(equipSlot이 설정된) 스택들의 ItemData.bonusAttackPower/bonusDefense를
+        /// 합산해 CombatStatComponent에 반영하고, GameServer 접속 중이면 갱신된 값을 알린다(Game_StatUpdateRequest).
+        /// GameServer는 Game_EnterRequest 시점 스냅샷(PlayerInfo.AttackPower/Defense)을 그대로 캐싱해서 전투 판정에
+        /// 쓰기 때문에(GameRoom.ApplyMonsterAttackAsync/AttackPlayerAsync), 이 알림이 없으면 인벤토리에는 스탯이
+        /// 올랐다고 뜨지만 실제 몬스터 전투 데미지는 그대로인 불일치가 생긴다.
+        /// 장착/해제(TryEquipItem/TryUnequipSlot)와 로그인 복원(ApplySelectedCharacterCustomization,
+        /// HandleItemDatabaseLoaded) 양쪽에서 호출된다.
+        /// </summary>
+        private void RecalculateEquipmentStats()
+        {
+            if (spawnedPlayerModel == null || ItemDatabaseManager.Instance == null)
             {
-                Func<string, ItemData> itemLookup = ItemDatabaseManager.Instance != null ? ItemDatabaseManager.Instance.FindById : null;
-                inventoryView.RefreshInventory(spawnedPlayerModel.Gold, localInventoryItems, itemLookup);
+                return;
+            }
+
+            int totalAttackBonus = 0;
+            int totalDefenseBonus = 0;
+
+            foreach (InventoryItemStack stack in localInventoryItems)
+            {
+                if (string.IsNullOrEmpty(stack.equipSlot))
+                {
+                    continue;
+                }
+
+                ItemData itemData = ItemDatabaseManager.Instance.FindById(stack.itemId);
+                if (itemData == null)
+                {
+                    continue;
+                }
+
+                totalAttackBonus += itemData.bonusAttackPower;
+                totalDefenseBonus += itemData.bonusDefense;
+            }
+
+            spawnedPlayerModel.SetEquipmentBonus(totalAttackBonus, totalDefenseBonus);
+
+            GameServerConnectManager.Instance?.SendStatUpdate(spawnedPlayerModel.AttackPower, spawnedPlayerModel.Defense);
+        }
+
+        /// <summary>
+        /// localInventoryItems 중 equipSlot이 설정된(장착 중인) 스택을 실제 캐릭터 장비 시각(PlayerCharacterModel.EquipItem)에
+        /// 반영한다. 로그인 직후(캐릭터 복원, ApplySelectedCharacterCustomization)와 ItemDatabaseSO 로드 완료 시점
+        /// (HandleItemDatabaseLoaded) 양쪽에서 호출된다 - 아이템 데이터베이스가 아직 로드되지 않은 상태에서 먼저
+        /// 호출되면 해당 스택은 건너뛰고, 로드가 끝난 뒤 재호출로 뒤늦게 반영된다. EquipmentController.Equip은
+        /// 멱등이라(같은 슬롯에 같은 비주얼을 다시 활성화) 두 번 호출돼도 안전하다.
+        /// </summary>
+        private void ApplyEquippedVisuals()
+        {
+            if (spawnedPlayerModel == null || ItemDatabaseManager.Instance == null)
+            {
+                return;
+            }
+
+            foreach (InventoryItemStack stack in localInventoryItems)
+            {
+                if (string.IsNullOrEmpty(stack.equipSlot))
+                {
+                    continue;
+                }
+
+                ItemData itemData = ItemDatabaseManager.Instance.FindById(stack.itemId);
+                if (itemData != null)
+                {
+                    spawnedPlayerModel.EquipItem(itemData);
+                }
             }
         }
+
+        /// <summary>
+        /// 인벤토리 슬롯의 "장착/사용" 또는 "장착 해제" 버튼 클릭(UI_InventoryView.OnUseItemRequested)을 처리한다.
+        /// 클릭된 슬롯이 일반 인벤토리 칸이면 장비 아이템만 장착 처리하고(소비 아이템 사용은 아직 미구현),
+        /// 장비 슬롯이면 장착을 해제한다.
+        /// </summary>
+        private void HandleInventoryUseRequested(UI_InventorySlot _slot)
+        {
+            if (_slot == null || !_slot.HasItem || spawnedPlayerModel == null)
+            {
+                return;
+            }
+
+            if (_slot.SlotType == InventorySlotType.Inventory)
+            {
+                TryEquipItem(_slot.ItemId);
+            }
+            else
+            {
+                TryUnequipSlot(ToEquipmentSlotType(_slot.SlotType));
+            }
+        }
+
+        /// <summary>
+        /// itemId를 장착한다. 장비 아이템이 아니면 조용히 무시한다(소비 아이템 "사용"은 별도 기능으로 남겨둔다).
+        /// 로컬 상태를 먼저 낙관적으로 갱신해 UI/캐릭터 시각을 즉시 반영하고, 서버 저장은 백그라운드로 요청한다
+        /// (HandleLootReceived 등 기존 인벤토리 갱신 흐름과 동일한 낙관적 갱신 패턴).
+        /// </summary>
+        private void TryEquipItem(string _itemId)
+        {
+            ItemData itemData = ItemDatabaseManager.Instance != null ? ItemDatabaseManager.Instance.FindById(_itemId) : null;
+            if (itemData == null || itemData.itemType != ItemType.Eqiupment || itemData.equipSlotType == EquipmentSlotType.None)
+            {
+                return;
+            }
+
+            InventoryItemStack targetStack = localInventoryItems.Find(stack => stack.itemId == _itemId && string.IsNullOrEmpty(stack.equipSlot));
+            if (targetStack == null)
+            {
+                return;
+            }
+
+            string slotKey = itemData.equipSlotType.ToString();
+            InventoryItemStack previouslyEquipped = localInventoryItems.Find(stack => stack.equipSlot == slotKey);
+            if (previouslyEquipped == targetStack)
+            {
+                return; // 이미 장착 중
+            }
+
+            if (previouslyEquipped != null)
+            {
+                previouslyEquipped.equipSlot = null;
+            }
+
+            targetStack.equipSlot = slotKey;
+
+            spawnedPlayerModel.EquipItem(itemData);
+            RecalculateEquipmentStats();
+            RefreshInventoryDisplay();
+
+            SaveDataManager.Instance?.EquipItem(_itemId, itemData.equipSlotType, success =>
+            {
+                if (!success)
+                {
+                    DebugLogManager.GenerateErrorMessage<GameSceneManager>($"장비 장착 저장 실패 : {_itemId}");
+                }
+            });
+        }
+
+        /// <summary>
+        /// 지정한 장비 슬롯을 해제한다. TryEquipItem과 대칭되는 낙관적 갱신 흐름을 따른다.
+        /// </summary>
+        private void TryUnequipSlot(EquipmentSlotType _slotType)
+        {
+            if (_slotType == EquipmentSlotType.None)
+            {
+                return;
+            }
+
+            string slotKey = _slotType.ToString();
+            InventoryItemStack equippedStack = localInventoryItems.Find(stack => stack.equipSlot == slotKey);
+            if (equippedStack == null)
+            {
+                return;
+            }
+
+            equippedStack.equipSlot = null;
+
+            spawnedPlayerModel.UnequipItem(_slotType);
+            RecalculateEquipmentStats();
+            RefreshInventoryDisplay();
+
+            SaveDataManager.Instance?.UnequipItem(_slotType, success =>
+            {
+                if (!success)
+                {
+                    DebugLogManager.GenerateErrorMessage<GameSceneManager>($"장비 해제 저장 실패 : {_slotType}");
+                }
+            });
+        }
+
+        /// <summary>
+        /// UI_InventorySlot.InventorySlotType(뷰 계층의 슬롯 종류)을 EquipmentSlotType(모델 계층의 장비 슬롯 종류)으로
+        /// 변환한다. 일반 인벤토리 칸(Inventory)이면 장비 슬롯이 아니므로 None을 반환한다.
+        /// </summary>
+        private static EquipmentSlotType ToEquipmentSlotType(InventorySlotType _slotType) => _slotType switch
+        {
+            InventorySlotType.EquipmentWeapon => EquipmentSlotType.Weapon,
+            InventorySlotType.EquipmentArmor => EquipmentSlotType.Armor,
+            InventorySlotType.EquipmentHelmet => EquipmentSlotType.Helmet,
+            InventorySlotType.EquipmentBoots => EquipmentSlotType.Boots,
+            InventorySlotType.EquipmentAccessory => EquipmentSlotType.Accessory,
+            _ => EquipmentSlotType.None
+        };
 
         /// <summary>
         /// GameServer가 Game_EnterRequest 인증 실패 등으로 연결을 끊기 직전에 보낸 사유(System_Error)를 알림 팝업으로 보여준다.
@@ -882,8 +1109,15 @@ namespace Incheol.Presenter.Scene
             }
             else
             {
+                // 반드시 SetActive(true)를 먼저 하고 그 다음에 갱신해야 한다. TextMeshPro/Image 등 UI Graphic은
+                // 비활성 상태에서 텍스트/스프라이트를 바꿔도 내부적으로 SetVerticesDirty 등이 "IsActive()==false면
+                // 무시"하기 때문에 다시 그려지도록 예약되지 않는다 - 그래서 활성화 전에 RefreshInventoryDisplay를
+                // 먼저 호출하면(과거 코드) 처음 열 때는 골드/아이템이 비어 보이고, 한 번 껐다 켜야만(그 사이
+                // 다른 경로로 한 번 더 갱신되며) 반영되는 문제가 있었다. 활성화부터 한 뒤에 갱신하면 첫 번째
+                // 여는 시점부터 항상 정상적으로 보인다.
                 inventoryInstance.SetActive(true);
                 isInventoryActive = true;
+                RefreshInventoryDisplay();
             }
         }
 

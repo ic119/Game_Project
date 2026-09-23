@@ -6047,6 +6047,11 @@ MonoBehaviour:
   helmetSlot: {fileID: 8053589612734114789}
   bootsSlot: {fileID: 2813067956236050508}
   accessorySlot: {fileID: 7299290631326673089}
+  weaponPlaceholderIcon: {fileID: 21300000, guid: c278ec36abbc540489a08ba8765cd092, type: 3}
+  armorPlaceholderIcon: {fileID: 21300000, guid: 28b103e16acf21b45afc90eb7afb7e42, type: 3}
+  helmetPlaceholderIcon: {fileID: 21300000, guid: ee0ed61959fdb2a4fa6a6294228f5f47, type: 3}
+  bootsPlaceholderIcon: {fileID: 21300000, guid: c544836e2ceee34428d1abdac6b5ac59, type: 3}
+  accessoryPlaceholderIcon: {fileID: 21300000, guid: f84b6dd0347a94f4a9a69ac911fc1f9d, type: 3}
   strValueText: {fileID: 1903023520224526122}
   agiValueText: {fileID: 7002863988905895928}
   intValueText: {fileID: 1437483771503134185}

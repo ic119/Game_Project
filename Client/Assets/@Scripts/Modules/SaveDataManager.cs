@@ -34,7 +34,8 @@ namespace Incheol.Modules
         [Serializable] private class UpdateProgressRequestBody { public int _level; public int _exp; }
         [Serializable] private class KillRewardItemBody { public string _itemId; public int _qty; }
         [Serializable] private class ApplyKillRewardsRequestBody { public int _level; public int _exp; public long _goldGained; public List<KillRewardItemBody> _items; }
-        [Serializable] private class CharacterItemBody { public string _itemId; public int _qty; }
+        [Serializable] private class CharacterItemBody { public string _itemId; public int _qty; public string _equipSlot; }
+        [Serializable] private class EquipItemRequestBody { public string _itemId; public string _equipSlot; }
         [Serializable] private class CharacterResponseBody { public long _id; public string _nickname; public int _hairIndex; public int _eyeIndex; public int _mouthIndex; public int _str; public int _agi; public int _intel; public int _level; public int _exp; public long _gold; public List<CharacterItemBody> _items; public string _lastLoginAt; public string _createdAt; }
         [Serializable] private class JsonArrayWrapper<T> { public T[] items; }
 
@@ -168,6 +169,37 @@ namespace Incheol.Modules
         }
 
         /// <summary>
+        /// 인벤토리에서 장비 아이템을 장착한다(PUT api/characters/{id}/equipment). GameSceneManager가 로컬 상태(localInventoryItems)를
+        /// 먼저 낙관적으로 갱신한 뒤 이 메서드로 서버에 반영을 요청하는 흐름이라, 여기서는 성공 여부만 콜백으로 알린다.
+        /// </summary>
+        public void EquipItem(string _itemId, EquipmentSlotType _equipSlot, Action<bool> _onComplete = null)
+        {
+            if (!SelectedCharacterId.HasValue)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>("선택된 캐릭터가 없어 장비를 장착할 수 없습니다.");
+                _onComplete?.Invoke(false);
+                return;
+            }
+
+            _ = EquipItemAsyncInternal(SelectedCharacterId.Value, _itemId, _equipSlot, _onComplete);
+        }
+
+        /// <summary>
+        /// 장비 슬롯을 해제한다(DELETE api/characters/{id}/equipment/{slot}).
+        /// </summary>
+        public void UnequipItem(EquipmentSlotType _equipSlot, Action<bool> _onComplete = null)
+        {
+            if (!SelectedCharacterId.HasValue)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>("선택된 캐릭터가 없어 장비를 해제할 수 없습니다.");
+                _onComplete?.Invoke(false);
+                return;
+            }
+
+            _ = UnequipItemAsyncInternal(SelectedCharacterId.Value, _equipSlot, _onComplete);
+        }
+
+        /// <summary>
         /// 로그아웃 시점에 선택된 캐릭터의 마지막 접속시간을 서버 시각 기준으로 기록한다(PUT api/characters/{id}/last-login).
         /// 클라이언트 시각을 보내지 않고 서버가 직접 DateTime.UtcNow로 채우므로 요청 바디가 없다.
         /// 선택된 캐릭터가 없으면(로그인만 하고 캐릭터 선택 전 로그아웃 등) 아무 것도 하지 않고 실패로 처리한다.
@@ -267,7 +299,7 @@ namespace Incheol.Modules
             {
                 foreach (CharacterItemBody item in response._items)
                 {
-                    items.Add(new InventoryItemStack(item._itemId, item._qty));
+                    items.Add(new InventoryItemStack(item._itemId, item._qty, item._equipSlot));
                 }
             }
 
@@ -431,6 +463,46 @@ namespace Incheol.Modules
             }
 
             _onComplete?.Invoke(true);
+        }
+
+        private async Awaitable EquipItemAsyncInternal(long _characterId, string _itemId, EquipmentSlotType _equipSlot, Action<bool> _onComplete)
+        {
+            if (ServerConnectManager.Instance == null)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>("ServerConnectManager.Instance가 null입니다.");
+                _onComplete?.Invoke(false);
+                return;
+            }
+
+            var requestBody = new EquipItemRequestBody { _itemId = _itemId, _equipSlot = _equipSlot.ToString() };
+            string json = JsonUtility.ToJson(requestBody);
+            (bool success, string _, string error) = await ServerConnectManager.Instance.SendAuthorizedJsonRequestAsync($"{CharacterApiPath}/{_characterId}/equipment", "PUT", json);
+
+            if (!success)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>($"장비 장착 저장 실패 : {error}");
+            }
+
+            _onComplete?.Invoke(success);
+        }
+
+        private async Awaitable UnequipItemAsyncInternal(long _characterId, EquipmentSlotType _equipSlot, Action<bool> _onComplete)
+        {
+            if (ServerConnectManager.Instance == null)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>("ServerConnectManager.Instance가 null입니다.");
+                _onComplete?.Invoke(false);
+                return;
+            }
+
+            (bool success, string _, string error) = await ServerConnectManager.Instance.SendAuthorizedJsonRequestAsync($"{CharacterApiPath}/{_characterId}/equipment/{_equipSlot}", "DELETE");
+
+            if (!success)
+            {
+                DebugLogManager.GenerateErrorMessage<SaveDataManager>($"장비 해제 저장 실패 : {error}");
+            }
+
+            _onComplete?.Invoke(success);
         }
 
         private async Awaitable TouchLastLoginAsyncInternal(long _characterId, Action<bool> _onComplete)

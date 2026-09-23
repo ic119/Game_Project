@@ -10,9 +10,16 @@ public class InventoryItemStack
     public string itemId;
     public int count;
 
-    public InventoryItemStack(string _itemId, int _count)
+    /// <summary>
+    /// 이 스택이 현재 장착 중인 장비 슬롯(EquipmentSlotType 이름, 예: "Weapon"). null/빈 문자열이면 미장착 상태로
+    /// 일반 인벤토리 그리드에 표시된다. 서버 CharacterItem.EquipSlot과 값을 그대로 맞춘다.
+    /// </summary>
+    public string equipSlot;
+
+    public InventoryItemStack(string _itemId, int _count, string _equipSlot = null)
     {
         itemId = _itemId;
         count = _count;
+        equipSlot = _equipSlot;
     }
 }

@@ -17,6 +17,10 @@ public class PlayerCharacterModel : MonoBehaviour
     [Tooltip("인벤토리 연동 전, 기본으로 장착할 무기 메시 오브젝트 이름(rightArmEqiupment 하위, 기본 OHS01_Stick).")]
     [SerializeField] private string defaultWeaponVisualName = "OHS01_Stick";
 
+    // Awake 시점의 currentWeaponType/defaultWeaponVisualName 조합. UnequipItem(Weapon)이 맨손이 아니라
+    // 이 기본 무기로 되돌리는 기준이 된다(currentWeaponType은 EquipWeapon 호출마다 덮어써지므로 별도 캐싱이 필요하다).
+    private WeaponType defaultWeaponType;
+
     private EquipmentController equipmentController;
 
     /// <summary>
@@ -51,6 +55,9 @@ public class PlayerCharacterModel : MonoBehaviour
     public int ExpToNextLevel => expToNextLevel;
     public int AttackPower => combatStatComponent.AttackPower;
     public int Defense => combatStatComponent.Defense;
+
+    /// <summary>ApplyUserSaveData가 캐싱해둔 원본 스탯(str/agi/intel). 인벤토리 스탯 패널 표시용.</summary>
+    public UserStats Stats => cachedUserStats;
     #endregion
 
     #region LifeCycle
@@ -70,6 +77,7 @@ public class PlayerCharacterModel : MonoBehaviour
             DebugLogManager.GenerateErrorMessage<PlayerCharacterModel>("HealthComponent/CombatStatComponent/EquipmentController가 없어 캐릭터 초기화가 완전하지 않습니다.");
         }
 
+        defaultWeaponType = currentWeaponType;
         EquipWeapon(currentWeaponType, defaultWeaponVisualName);
     }
     #endregion
@@ -122,6 +130,31 @@ public class PlayerCharacterModel : MonoBehaviour
         }
 
         equipmentController.Equip(itemData.equipSlotType, itemData.equipVisualName);
+    }
+
+    /// <summary>
+    /// 장비 슬롯 하나를 해제한다. EquipItem과 대칭되는 단일 진입점 - 인벤토리 UI는 슬롯 종류별로 분기할 필요 없이
+    /// 이 함수만 호출하면 된다. Weapon 슬롯은 맨손이 아니라 defaultWeaponType/defaultWeaponVisualName(기본 무기)으로
+    /// 되돌아간다 - 이 캐릭터는 항상 최소한 기본 무기를 들고 있는 것이 정상 상태이기 때문이다.
+    /// </summary>
+    public void UnequipItem(EquipmentSlotType slot)
+    {
+        if (slot == EquipmentSlotType.Weapon)
+        {
+            EquipWeapon(defaultWeaponType, defaultWeaponVisualName);
+            return;
+        }
+
+        equipmentController.Unequip(slot);
+    }
+
+    /// <summary>
+    /// 현재 장착 중인 장비 전체의 공격력/방어력 보너스 합계를 CombatStatComponent에 반영한다. GameSceneManager가
+    /// 장착/해제가 성공할 때마다(RecalculateEquipmentStats) 새로 합산한 값을 넘겨 호출한다.
+    /// </summary>
+    public void SetEquipmentBonus(int bonusAttackPower, int bonusDefense)
+    {
+        combatStatComponent.SetEquipmentBonus(bonusAttackPower, bonusDefense);
     }
 
     /// <summary>

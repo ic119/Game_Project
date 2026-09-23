@@ -42,4 +42,10 @@ public class ItemData
     [Min(1)]
     [Tooltip("한 슬롯에 중첩 가능한 최대 개수. 장비류는 보통 1.")]
     public int maxStackCount = 1;
+
+    [Tooltip("itemType이 Eqiupment일 때만 의미가 있다. 장착 시 CombatStatComponent.AttackPower에 더해지는 보너스.")]
+    public int bonusAttackPower = 0;
+
+    [Tooltip("itemType이 Eqiupment일 때만 의미가 있다. 장착 시 CombatStatComponent.Defense에 더해지는 보너스.")]
+    public int bonusDefense = 0;
 }
