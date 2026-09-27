@@ -179,25 +179,48 @@ namespace GameServer.Networking
                 return default;
             }
 
-            int damage = Math.Max(1, attackerAttackPower - runtime.Info.Defense);
-            runtime.Info.CurrentHp = Math.Max(0, runtime.Info.CurrentHp - damage);
+            // 여러 세션(다른 플레이어)이 같은 몬스터를 동시에 공격할 수 있으므로, HP 차감과 "이 공격으로 죽었는가"
+            // 판정을 한 번에 원자적으로 처리한다. 예전에는 HP 차감 -> 피격 브로드캐스트(await) -> 사망 처리 순서라,
+            // 그 await 사이에 들어온 다른 공격도 HP 0을 보고 사망 처리를 반복해 드롭/리스폰이 중복됐다.
+            // 이제 HP가 0이 되는 순간을 만든 공격 하나만 killedByThisAttack = true가 된다.
+            int damage;
+            int remainingHp;
+            bool killedByThisAttack;
+            lock (runtime)
+            {
+                if (runtime.Info.CurrentHp <= 0)
+                {
+                    // 이미 다른 공격으로 처치가 확정된 몬스터 - 피격/보상 모두 무시한다.
+                    return default;
+                }
+
+                damage = Math.Max(1, attackerAttackPower - runtime.Info.Defense);
+                runtime.Info.CurrentHp = Math.Max(0, runtime.Info.CurrentHp - damage);
+                remainingHp = runtime.Info.CurrentHp;
+                killedByThisAttack = remainingHp <= 0;
+            }
+
+            if (killedByThisAttack)
+            {
+                // 첫 await 전에 목록에서 빼서, 브로드캐스트 도중 들어온 공격/AI 틱/신규 입장자 스냅샷이
+                // 이미 죽은 몬스터를 더 이상 보지 않게 한다.
+                _monsters.TryRemove(monsterId, out _);
+            }
 
             var damageBroadcast = new S2CMonsterDamageBroadcast
             {
                 MonsterId = monsterId,
                 AttackerId = attackerId,
                 Damage = damage,
-                RemainingHp = runtime.Info.CurrentHp,
+                RemainingHp = remainingHp,
                 Timestamp = timestamp
             };
             await BroadcastToAllAsync(OpCode.Game_MonsterDamageBroadcast, damageBroadcast.Encode(), ct);
 
-            if (runtime.Info.CurrentHp > 0)
+            if (!killedByThisAttack)
             {
                 return default;
             }
-
-            _monsters.TryRemove(monsterId, out _);
 
             // 골드/아이템 드롭은 경험치 지급 성공 여부(공격자 존재, 만렙 여부)와 무관하게 처치 자체에
             // 대한 보상이므로, 아래 조기 반환 분기들과 상관없이 항상 한 번만 굴려 결과에 실어 보낸다.
@@ -369,6 +392,13 @@ namespace GameServer.Networking
         {
             foreach (var runtime in _monsters.Values)
             {
+                // 이 순회 도중 ApplyMonsterAttackAsync가 처치해 목록에서 뺀 몬스터가 아직 보일 수 있다 -
+                // 죽은 몬스터가 한 번 더 이동/공격하지 않도록 건너뛴다.
+                if (runtime.Info.CurrentHp <= 0)
+                {
+                    continue;
+                }
+
                 if (!UpdateMonster(runtime, deltaSeconds))
                 {
                     continue;
