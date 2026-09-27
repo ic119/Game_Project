@@ -39,6 +39,9 @@ namespace Incheol.Modules
         private CancellationTokenSource cts;
         private readonly ConcurrentQueue<Action> pendingActions = new();
 
+        // stream 쓰기를 한 번에 하나로 직렬화한다(SendAsync 참고).
+        private readonly SemaphoreSlim writeLock = new(1, 1);
+
         private long localPlayerId;
 
         // ReadLoopAsync(백그라운드 스레드)와 Update/Disconnect(메인 스레드) 양쪽에서 읽고 쓰므로
@@ -360,15 +363,34 @@ namespace Incheol.Modules
                 return;
             }
 
+            byte[] frame = GamePacketFrame.Encode((ushort)opCode, body);
+            CancellationToken ct = cts.Token;
+            bool lockTaken = false;
+
             try
             {
-                byte[] frame = GamePacketFrame.Encode((ushort)opCode, body);
-                await stream.WriteAsync(frame, cts.Token);
+                // 이동(주기 전송)/하트비트/공격/채팅이 모두 fire-and-forget으로 이 메서드를 호출하므로, 앞선 쓰기가
+                // 끝나기 전에 다음 쓰기가 시작될 수 있다. SslStream은 동시 쓰기를 지원하지 않아 프레임이 섞이거나
+                // NotSupportedException이 나므로, 서버 ClientSession.SendAsync와 같은 방식으로 한 번에 하나씩 쓴다.
+                await writeLock.WaitAsync(ct);
+                lockTaken = true;
+                await stream.WriteAsync(frame, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                // Disconnect()로 연결을 정리하는 중 - 대기 중이던 전송은 조용히 버린다.
             }
             catch (Exception exception)
             {
                 // 접속이 끊긴 상태에서의 전송 실패는 ReadLoopAsync 쪽에서 이미 처리하지만, 디버깅을 위해 로그는 남겨둔다.
                 DebugLogManager.GenerateErrorMessage<GameServerConnectManager>($"GameServer 전송 실패 opCode={opCode} : {exception.Message}");
+            }
+            finally
+            {
+                if (lockTaken)
+                {
+                    writeLock.Release();
+                }
             }
         }
 
