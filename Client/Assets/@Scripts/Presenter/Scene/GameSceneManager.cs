@@ -733,8 +733,8 @@ namespace Incheol.Presenter.Scene
         }
 
         /// <summary>
-        /// 내가 몬스터를 처치해 GameServer가 계산한 경험치/레벨(Game_ExpGainBroadcast, 처치자 본인에게만 옴)을 반영하고,
-        /// GameServer는 DB 접근 권한이 없으므로 MainServer(HTTP)에 직접 영속화를 요청한다.
+        /// 내가 몬스터를 처치해 GameServer가 계산한 경험치/레벨(Game_ExpGainBroadcast, 처치자 본인에게만 옴)을 화면에 반영한다.
+        /// DB 저장은 GameServer가 MainServer에 직접 하므로(서버 간 API) 클라이언트는 저장을 요청하지 않는다.
         /// </summary>
         private void HandleExpGained(GameExpGainBroadcastPacket packet)
         {
@@ -744,14 +744,11 @@ namespace Incheol.Presenter.Scene
             }
 
             spawnedPlayerModel.ApplyExpGain(packet.TotalExp, packet.Level, packet.ExpToNextLevel);
-            SaveDataManager.Instance?.UpdateCharacterProgress(packet.Level, packet.TotalExp);
         }
 
         /// <summary>
-        /// 내가 몬스터를 처치해 GameServer가 굴린 골드/아이템 드롭(Game_LootBroadcast, 처치자 본인에게만 옴)을 반영한다.
-        /// HandleExpGained와 별개의 패킷이라(만렙이면 경험치 없이 드롭만 올 수 있음) 독립적으로 저장을 요청하되,
-        /// 서버 kill-rewards 엔드포인트가 레벨/경험치도 함께 요구하므로 spawnedPlayerModel이 이미 들고 있는
-        /// 현재 값을 그대로 다시 실어 보낸다(값이 바뀌지 않으므로 안전하게 덮어써진다).
+        /// 내가 몬스터를 처치해 GameServer가 굴린 골드/아이템 드롭(Game_LootBroadcast, 처치자 본인에게만 옴)을 화면에 반영한다.
+        /// HandleExpGained와 마찬가지로 DB 저장은 GameServer가 직접 하므로 여기서는 표시만 한다.
         /// </summary>
         private void HandleLootReceived(GameLootBroadcastPacket packet)
         {
@@ -773,8 +770,6 @@ namespace Incheol.Presenter.Scene
             RefreshInventoryDisplay();
 
             ShowDropItemPopup(packet.GoldGained, packet.Items);
-
-            SaveDataManager.Instance?.ApplyKillRewards(spawnedPlayerModel.Level, spawnedPlayerModel.CurrentExp, packet.GoldGained, packet.Items);
         }
 
 

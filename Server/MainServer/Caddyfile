@@ -6,5 +6,10 @@
 # 직접(https://localhost:58208, dotnet dev-certs) 호출해도 된다 - 이 파일은 docker-compose로
 # 실제 배포할 때만 필요하다.
 {$DOMAIN} {
+	# 서버 간 API(GameServer 전용)는 외부에 노출하지 않는다 - GameServer는 컨테이너 네트워크 안에서
+	# mainserver:8080으로 직접 호출하므로 Caddy를 거치지 않는다. MainServer의 InternalApiKey 검증과 함께 이중 방어.
+	@internal path /api/internal/*
+	respond @internal 404
+
 	reverse_proxy mainserver:8080
 }

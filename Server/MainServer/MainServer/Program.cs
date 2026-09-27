@@ -40,6 +40,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
+// GameServer -> MainServer 서버 간 API(api/internal/...) 보호용 공유 키(InternalApiKeyAttribute 참고).
+// 비어 있으면 모든 내부 호출이 401로 막혀 처치 보상이 저장되지 않으므로, 설정 누락을 기동 시점에 드러낸다.
+if (string.IsNullOrEmpty(builder.Configuration["InternalApi:Key"]))
+    throw new InvalidOperationException("InternalApi:Key 설정이 없습니다.");
+
 var app = builder.Build();
 
 // 컨테이너/클라우드 배포 시 DB에 스키마가 없는 상태로 최초 기동되므로, 시작 시점에 대기 중인 마이그레이션을 적용한다.

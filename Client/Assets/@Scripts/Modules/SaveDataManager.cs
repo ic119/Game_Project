@@ -31,9 +31,6 @@ namespace Incheol.Modules
         // UserSaveData(클라이언트 내부 모델)와 서버 계약을 분리하기 위해 네트워크 경계에서만 사용한다.
         [Serializable] private class CreateCharacterRequestBody { public string _nickname; public int _hairIndex; public int _eyeIndex; public int _mouthIndex; }
         [Serializable] private class UpdateCustomizationRequestBody { public int _hairIndex; public int _eyeIndex; public int _mouthIndex; }
-        [Serializable] private class UpdateProgressRequestBody { public int _level; public int _exp; }
-        [Serializable] private class KillRewardItemBody { public string _itemId; public int _qty; }
-        [Serializable] private class ApplyKillRewardsRequestBody { public int _level; public int _exp; public long _goldGained; public List<KillRewardItemBody> _items; }
         [Serializable] private class CharacterItemBody { public string _itemId; public int _qty; public string _equipSlot; }
         [Serializable] private class EquipItemRequestBody { public string _itemId; public string _equipSlot; }
         [Serializable] private class CharacterResponseBody { public long _id; public string _nickname; public int _hairIndex; public int _eyeIndex; public int _mouthIndex; public int _str; public int _agi; public int _intel; public int _level; public int _exp; public long _gold; public List<CharacterItemBody> _items; public string _lastLoginAt; public string _createdAt; }
@@ -132,40 +129,6 @@ namespace Incheol.Modules
             }
 
             _ = UpdateCustomizationAsyncInternal(SelectedCharacterId.Value, _hairIndex, _eyeIndex, _mouthIndex, _onComplete);
-        }
-
-        /// <summary>
-        /// GameServer(TCP)가 몬스터 처치로 계산해 Game_ExpGainBroadcast로 알려준 레벨/경험치를 저장한다
-        /// (PUT api/characters/{id}/progress). GameServer 자체는 DB 접근 권한이 없어 클라이언트가 대신 요청해야 한다.
-        /// </summary>
-        public void UpdateCharacterProgress(int _level, int _exp, Action<bool> _onComplete = null)
-        {
-            if (!SelectedCharacterId.HasValue)
-            {
-                DebugLogManager.GenerateErrorMessage<SaveDataManager>("선택된 캐릭터가 없어 경험치를 저장할 수 없습니다.");
-                _onComplete?.Invoke(false);
-                return;
-            }
-
-            _ = UpdateProgressAsyncInternal(SelectedCharacterId.Value, _level, _exp, _onComplete);
-        }
-
-        /// <summary>
-        /// GameServer(TCP)가 몬스터 처치로 계산한 골드/아이템 드롭(Game_LootBroadcast)을 저장한다
-        /// (POST api/characters/{id}/kill-rewards). _level/_exp는 UpdateCharacterProgress와 동일하게 현재
-        /// 알고 있는 최종 값을 그대로 실어 보내고(변경 없음), _goldGained/_items만 델타로 더해진다 -
-        /// 서버 엔드포인트가 경험치/레벨/골드/아이템을 한 번에 저장하도록 설계되어 있어 항상 네 값을 함께 보내야 한다.
-        /// </summary>
-        public void ApplyKillRewards(int _level, int _exp, long _goldGained, List<GameLootItemEntry> _items, Action<bool> _onComplete = null)
-        {
-            if (!SelectedCharacterId.HasValue)
-            {
-                DebugLogManager.GenerateErrorMessage<SaveDataManager>("선택된 캐릭터가 없어 처치 보상을 저장할 수 없습니다.");
-                _onComplete?.Invoke(false);
-                return;
-            }
-
-            _ = ApplyKillRewardsAsyncInternal(SelectedCharacterId.Value, _level, _exp, _goldGained, _items, _onComplete);
         }
 
         /// <summary>
@@ -436,61 +399,6 @@ namespace Incheol.Modules
             if (!success)
             {
                 DebugLogManager.GenerateErrorMessage<SaveDataManager>($"캐릭터 외형 저장 실패 : {error}");
-                _onComplete?.Invoke(false);
-                return;
-            }
-
-            _onComplete?.Invoke(true);
-        }
-
-        private async Awaitable UpdateProgressAsyncInternal(long _characterId, int _level, int _exp, Action<bool> _onComplete)
-        {
-            if (ServerConnectManager.Instance == null)
-            {
-                DebugLogManager.GenerateErrorMessage<SaveDataManager>("ServerConnectManager.Instance가 null입니다.");
-                _onComplete?.Invoke(false);
-                return;
-            }
-
-            var requestBody = new UpdateProgressRequestBody { _level = _level, _exp = _exp };
-            string json = JsonUtility.ToJson(requestBody);
-            (bool success, string _, string error) = await ServerConnectManager.Instance.SendAuthorizedJsonRequestAsync($"{CharacterApiPath}/{_characterId}/progress", "PUT", json);
-
-            if (!success)
-            {
-                DebugLogManager.GenerateErrorMessage<SaveDataManager>($"경험치/레벨 저장 실패 : {error}");
-                _onComplete?.Invoke(false);
-                return;
-            }
-
-            _onComplete?.Invoke(true);
-        }
-
-        private async Awaitable ApplyKillRewardsAsyncInternal(long _characterId, int _level, int _exp, long _goldGained, List<GameLootItemEntry> _items, Action<bool> _onComplete)
-        {
-            if (ServerConnectManager.Instance == null)
-            {
-                DebugLogManager.GenerateErrorMessage<SaveDataManager>("ServerConnectManager.Instance가 null입니다.");
-                _onComplete?.Invoke(false);
-                return;
-            }
-
-            var itemBodies = new List<KillRewardItemBody>();
-            if (_items != null)
-            {
-                foreach (GameLootItemEntry item in _items)
-                {
-                    itemBodies.Add(new KillRewardItemBody { _itemId = item.ItemId, _qty = item.Qty });
-                }
-            }
-
-            var requestBody = new ApplyKillRewardsRequestBody { _level = _level, _exp = _exp, _goldGained = _goldGained, _items = itemBodies };
-            string json = JsonUtility.ToJson(requestBody);
-            (bool success, string _, string error) = await ServerConnectManager.Instance.SendAuthorizedJsonRequestAsync($"{CharacterApiPath}/{_characterId}/kill-rewards", "POST", json);
-
-            if (!success)
-            {
-                DebugLogManager.GenerateErrorMessage<SaveDataManager>($"처치 보상 저장 실패 : {error}");
                 _onComplete?.Invoke(false);
                 return;
             }

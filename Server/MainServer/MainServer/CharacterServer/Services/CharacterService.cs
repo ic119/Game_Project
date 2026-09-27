@@ -77,29 +77,14 @@ namespace MainServer.CharacterServer.Services
             return await ToResponseAsync(character);
         }
 
-        // GameServer(TCP)가 몬스터 처치 시 계산한 레벨/경험치를 클라이언트가 대신 저장 요청한다.
-        // GameServer 자체는 DB 접근 권한이 없어 이 경로를 거쳐야만 영속화된다.
-        public async Task<CharacterResponse?> UpdateProgressAsync(long userId, long characterId, UpdateCharacterProgressRequest request)
-        {
-            var character = await FindOwnedCharacterAsync(userId, characterId);
-            if (character is null)
-                return null;
-
-            character.Level = request._level;
-            character.Exp = request._exp;
-            character.UpdatedAt = DateTime.UtcNow;
-
-            await _db.SaveChangesAsync();
-
-            return await ToResponseAsync(character);
-        }
-
         // GameServer가 몬스터 처치 시 계산한 경험치/레벨/골드/아이템 보상을 한 번에 저장한다.
         // progress/gold/item을 각각 별도 요청으로 쪼개면 라운드트립도 늘고 중간에 하나만 실패했을 때
-        // 클라이언트-서버 상태가 어긋날 수 있어, 하나의 SaveChangesAsync로 묶어 반영한다.
-        public async Task<CharacterResponse?> ApplyKillRewardsAsync(long userId, long characterId, ApplyKillRewardsRequest request)
+        // 상태가 어긋날 수 있어, 하나의 SaveChangesAsync로 묶어 반영한다.
+        // 서버 간 API(InternalCharacterController) 전용이라 userId 소유권 검증을 하지 않는다 - GameServer가
+        // 입장 시점에 이미 소유권을 확인한 세션의 characterId만 넘긴다.
+        public async Task<CharacterResponse?> ApplyKillRewardsAsync(long characterId, ApplyKillRewardsRequest request)
         {
-            var character = await FindOwnedCharacterAsync(userId, characterId);
+            var character = await _db.Characters.FirstOrDefaultAsync(c => c.Id == characterId);
             if (character is null)
                 return null;
 

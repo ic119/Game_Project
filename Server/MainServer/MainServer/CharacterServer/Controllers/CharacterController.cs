@@ -58,26 +58,8 @@ namespace MainServer.CharacterServer.Controllers
                 : Ok(result); // 200
         }
 
-        // PUT /api/characters/{characterId}/progress — 레벨/경험치 저장(GameServer가 계산한 값을 클라이언트가 대신 요청, 소유자 검증 포함)
-        [HttpPut("{characterId:long}/progress")]
-        public async Task<IActionResult> UpdateProgress(long characterId, [FromBody] UpdateCharacterProgressRequest request)
-        {
-            var result = await _characterService.UpdateProgressAsync(GetUserId(), characterId, request);
-            return result is null
-                ? NotFound(new { message = "캐릭터를 찾을 수 없습니다." }) // 404
-                : Ok(result); // 200
-        }
-
-        // POST /api/characters/{characterId}/kill-rewards — 몬스터 처치 보상(경험치/레벨/골드/아이템) 일괄 저장
-        // (소유자 검증 포함). 델타(골드/아이템)를 더하는 동작이라 progress와 달리 PUT이 아닌 POST를 쓴다.
-        [HttpPost("{characterId:long}/kill-rewards")]
-        public async Task<IActionResult> ApplyKillRewards(long characterId, [FromBody] ApplyKillRewardsRequest request)
-        {
-            var result = await _characterService.ApplyKillRewardsAsync(GetUserId(), characterId, request);
-            return result is null
-                ? NotFound(new { message = "캐릭터를 찾을 수 없습니다." }) // 404
-                : Ok(result); // 200
-        }
+        // 레벨/경험치/골드/처치 드롭 저장은 클라이언트용 API로 열지 않는다 - 클라이언트가 값을 임의로 정해 보낼 수 있기
+        // 때문이다. GameServer가 InternalCharacterController(api/internal/...)로 직접 저장한다.
 
         // PUT /api/characters/{characterId}/equipment — 인벤토리 아이템을 장비 슬롯에 장착(소유자 검증 포함)
         [HttpPut("{characterId:long}/equipment")]

@@ -20,6 +20,7 @@ namespace GameServer.Networking
         private Stream _stream;
         private readonly MapRoomRegistry _mapRooms;
         private readonly PlayerAuthValidator _authValidator;
+        private readonly KillRewardPersister _killRewardPersister;
         private readonly X509Certificate2 _serverCertificate;
         private readonly SemaphoreSlim _writeLock = new(1, 1);
 
@@ -36,12 +37,13 @@ namespace GameServer.Networking
         private GameRoom? _room;
         private string? _mapId;
 
-        public ClientSession(TcpClient tcpClient, MapRoomRegistry mapRooms, PlayerAuthValidator authValidator, X509Certificate2 serverCertificate)
+        public ClientSession(TcpClient tcpClient, MapRoomRegistry mapRooms, PlayerAuthValidator authValidator, KillRewardPersister killRewardPersister, X509Certificate2 serverCertificate)
         {
             _tcpClient = tcpClient;
             _stream = tcpClient.GetStream();
             _mapRooms = mapRooms;
             _authValidator = authValidator;
+            _killRewardPersister = killRewardPersister;
             _serverCertificate = serverCertificate;
         }
 
@@ -393,6 +395,22 @@ namespace GameServer.Networking
                     Items = result.DroppedItems?.ToList() ?? new List<(string, int)>()
                 };
                 await SendAsync(OpCode.Game_LootBroadcast, loot.Encode(), ct);
+            }
+
+            // 위 두 패킷은 클라이언트 화면 표시용일 뿐이고, DB 저장은 GameServer가 MainServer 서버 간 API로 직접 한다 -
+            // 클라이언트가 저장을 대신 요청하던 방식은 보상 값을 위조할 수 있었다(KillRewardPersister 참고).
+            // 클라이언트 표시를 먼저 보낸 뒤 저장을 기다린다. 같은 세션의 처치가 연달아 와도 이 await 덕분에
+            // 저장 순서가 처치 순서와 같아져, 최종값인 level/exp가 이전 값으로 덮어써지지 않는다.
+            bool hasReward = result.GainedExp is not null || result.GainedGold > 0 || result.DroppedItems is { Count: > 0 };
+            if (result.MonsterDied && hasReward)
+            {
+                await _killRewardPersister.SaveAsync(
+                    playerId,
+                    attacker.Level,
+                    attacker.Exp,
+                    result.GainedGold,
+                    result.DroppedItems ?? Array.Empty<(string ItemId, int Qty)>(),
+                    ct);
             }
         }
 
