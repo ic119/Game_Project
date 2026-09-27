@@ -19,15 +19,16 @@ namespace Incheol.Modules.Networking
         public float Z;
         public float RotationY;
 
-        // 전투 관련 값. Game_EnterRequest 시점에 자신의 PlayerCharacterModel(이미 ApplyUserSaveData로
-        // 초기화됨) 기준으로 채워 보낸다. 서버는 이 값을 그대로 신뢰/중계만 하고(Nickname과 동일한 신뢰 수준),
+        // 전투 관련 값. Game_EnterRequest 시점에 자신의 PlayerCharacterModel 기준으로 채워 보내지만, 서버는 이 값을
+        // 쓰지 않고 DB 원본으로 다시 계산해 덮어쓴다(닉네임/외형/레벨/경험치도 동일 - 서버가 쓰는 건 위치/맵뿐이다).
+        // 다른 접속자 정보(Game_EnterAck/Game_PlayerJoined)로 받은 값은 서버가 계산한 값이며,
         // 데미지의 방어력 차감은 각 클라이언트가 이 값(특히 Defense)으로 로컬 계산한다.
         public int MaxHp;
         public int CurrentHp;
         public int AttackPower;
         public int Defense;
 
-        // 경험치/레벨. Game_EnterRequest 시점에 세이브 데이터 기준으로 채워 보낸다(위 전투 스탯과 동일한 신뢰 수준).
+        // 경험치/레벨. Game_EnterRequest 시점에 세이브 데이터 기준으로 채워 보내지만 서버는 DB 원본을 쓴다(위 전투 스탯과 동일).
         // 서버가 몬스터 처치로 갱신한 최신값은 Game_ExpGainBroadcast로 돌려받는다(이 필드 자체는 재전송하지 않음).
         public int Level = 1;
         public int Exp;

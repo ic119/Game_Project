@@ -138,7 +138,7 @@ namespace GameServer.Networking
             var request = C2SEnterRequest.Decode(body);
             var info = request.Player;
 
-            CharacterCombatSnapshot? snapshot = await _authValidator.FetchOwnedCharacterAsync(request.AccessToken, info.PlayerId, ct);
+            CharacterSnapshot? snapshot = await _authValidator.FetchOwnedCharacterAsync(request.AccessToken, info.PlayerId, ct);
             if (snapshot is null)
             {
                 Console.WriteLine($"[GameServer] Game_EnterRequest 인증 실패 (PlayerId={info.PlayerId}) - 연결을 종료합니다.");
@@ -152,10 +152,20 @@ namespace GameServer.Networking
             _playerId = info.PlayerId;
             _accessToken = request.AccessToken;
 
-            // info.AttackPower/Defense는 클라이언트가 자기 세이브 데이터 기준으로 채워 보낸 값이라 위조 가능하다
-            // (PlayerInfo.cs 주석 참고). MainServer에서 방금 받아온 snapshot(str/agi/장착 아이템)으로 서버가
-            // 직접 재계산해 덮어쓴다 - 이후 이 값이 GameRoom에 저장되고, 다른 접속자에게도 이 값으로 브로드캐스트된다.
+            // info의 닉네임/외형/레벨/경험치/전투 스탯은 클라이언트가 채워 보낸 값이라 위조 가능하다(PlayerInfo.cs 주석 참고).
+            // MainServer에서 방금 받아온 snapshot(DB 원본)으로 전부 덮어쓰고, 클라이언트 값은 위치/맵만 사용한다 -
+            // 이후 이 값이 GameRoom에 저장되고, 경험치 계산(처치 보상)과 다른 접속자 브로드캐스트에 그대로 쓰인다.
+            info.Nickname = snapshot.Nickname;
+            info.HairIndex = snapshot.HairIndex;
+            info.EyeIndex = snapshot.EyeIndex;
+            info.MouthIndex = snapshot.MouthIndex;
+            info.Level = snapshot.Level;
+            info.Exp = snapshot.Exp;
             (info.AttackPower, info.Defense) = CombatStatCalculator.Calculate(snapshot);
+
+            // 체력은 DB에 저장하지 않고 입장할 때마다 가득 찬 상태로 시작한다(클라이언트 HealthComponent.ApplyFromUserStats와 동일).
+            info.MaxHp = CombatStatCalculator.CalculateMaxHp(snapshot);
+            info.CurrentHp = info.MaxHp;
 
             GameRoom room = _mapRooms.GetOrCreate(info.MapId);
             _room = room;
@@ -427,7 +437,7 @@ namespace GameServer.Networking
                 return;
             }
 
-            CharacterCombatSnapshot? snapshot = await _authValidator.FetchOwnedCharacterAsync(accessToken, playerId, ct);
+            CharacterSnapshot? snapshot = await _authValidator.FetchOwnedCharacterAsync(accessToken, playerId, ct);
             if (snapshot is null)
             {
                 // MainServer 순단 등으로 조회에 실패한 경우 - 이전에 검증된 값을 그대로 유지하고 이번 갱신만 건너뛴다.

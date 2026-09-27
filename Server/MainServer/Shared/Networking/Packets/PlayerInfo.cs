@@ -18,21 +18,19 @@ namespace Shared.Networking.Packets
         public float Z { get; set; }
         public float RotationY { get; set; }
 
-        // 전투 관련 값. 클라이언트가 Game_EnterRequest 시점에 자신의 세이브 데이터 기준으로 채워 보낸다.
-        // MaxHp/CurrentHp는 Nickname과 동일한 신뢰 수준(GameServer는 DB 접근 권한이 없어 직접 검증하지 못한다)
-        // 그대로 받아들이지만, AttackPower/Defense는 여기 채워진 값을 그대로 쓰지 않는다 - ClientSession이
-        // Game_EnterRequest/Game_StatUpdateRequest를 처리할 때마다 PlayerAuthValidator로 MainServer에서
-        // str/agi/장착 아이템을 다시 조회해 CombatStatCalculator로 직접 재계산한 값으로 항상 덮어쓴다
-        // (치트 방지 - 여기 채워지는 값은 서버가 실제로 사용하기 전 임시값일 뿐이다).
+        // 전투 관련 값. Game_EnterRequest로 클라이언트가 채워 보내는 값은 서버가 쓰지 않는다 - ClientSession이
+        // PlayerAuthValidator로 MainServer에서 받아온 DB 원본(CharacterSnapshot)으로 CombatStatCalculator가
+        // 계산한 값으로 항상 덮어쓴다(치트 방지). AttackPower/Defense는 Game_StatUpdateRequest 때도 같은 방식으로
+        // 다시 계산하고, MaxHp/CurrentHp는 입장할 때마다 가득 찬 체력으로 시작한다.
         public int MaxHp { get; set; }
         public int CurrentHp { get; set; }
         public int AttackPower { get; set; }
         public int Defense { get; set; }
 
-        // 경험치/레벨. 클라이언트가 Game_EnterRequest 시점에 자신의 세이브 데이터(DB 영속값) 기준으로
-        // 채워 보내며(위 전투 스탯과 동일한 신뢰 수준), 이후 세션 동안의 증가분은 GameRoom이 몬스터 처치 시
-        // 이 인스턴스를 직접 갱신한다(ExpTable 참고). 영속화는 클라이언트가 Game_ExpGainBroadcast를 받아
-        // MainServer(HTTP)에 별도로 저장한다 - GameServer 자체는 DB 접근 권한이 없다.
+        // 경험치/레벨. 위 전투 스탯과 마찬가지로 입장 시 DB 원본으로 덮어쓰고, 이후 세션 동안의 증가분은
+        // GameRoom이 몬스터 처치 시 이 인스턴스를 직접 갱신한다(ExpTable 참고). 영속화는 GameServer가
+        // KillRewardPersister로 MainServer 서버 간 API에 직접 저장한다.
+        // (Nickname/HairIndex/EyeIndex/MouthIndex도 입장 시 DB 원본으로 덮어쓴다 - 클라이언트 값은 위치/맵만 쓴다.)
         public int Level { get; set; } = 1;
         public int Exp { get; set; }
 
