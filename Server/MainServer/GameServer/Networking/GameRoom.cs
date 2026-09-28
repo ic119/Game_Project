@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using GameServer.Combat;
 using GameServer.Monsters;
 using Shared;
 using Shared.Networking;
@@ -155,7 +156,7 @@ namespace GameServer.Networking
         // 인벤토리에서 장비를 장착/해제해 바뀐 공격력/방어력을 반영한다(Game_StatUpdateRequest). PlayerInfo가
         // class(참조 타입)라 이 메서드로 값만 바꿔주면 ApplyMonsterAttackAsync/AttackPlayerAsync가 다음 판정부터
         // 곧바로 새 값을 쓴다 - Game_EnterRequest 스냅샷 이후 갱신 경로가 이것뿐이므로, 호출하지 않으면 세션 내내
-        // 접속 시점 스탯으로 고정된다. 다른 접속자에게 알릴 필요는 없다(PvP 피해는 각자 로컬 Defense로 계산).
+        // 접속 시점 스탯으로 고정된다. 다른 접속자에게 알릴 필요는 없다(PvP 피해도 서버가 이 값으로 계산해 결과만 보낸다).
         public bool TryUpdateCombatStats(long playerId, int attackPower, int defense)
         {
             if (!_players.TryGetValue(playerId, out var entry))
@@ -248,9 +249,15 @@ namespace GameServer.Networking
                 return new MonsterAttackResult { MonsterDied = true, GainedGold = gainedGold, DroppedItems = droppedItems };
             }
 
-            bool didLevelUp = level != attackerEntry.Info.Level;
+            int previousLevel = attackerEntry.Info.Level;
+            bool didLevelUp = level != previousLevel;
             attackerEntry.Info.Level = level;
             attackerEntry.Info.Exp = exp;
+
+            if (didLevelUp)
+            {
+                await ApplyLevelUpHealthAsync(attackerEntry.Info, level - previousLevel, ct);
+            }
 
             return new MonsterAttackResult
             {
@@ -360,6 +367,129 @@ namespace GameServer.Networking
                 HomeZ = homeZ;
             }
         }
+
+        #region Method - Player Health
+        // 플레이어 HP는 서버(이 GameRoom)가 유일한 권위다. 피해/레벨업/사망/부활은 모두 여기서 계산하고,
+        // 클라이언트에는 결과(최종 피해량, 남은 체력)만 보낸다 - 클라이언트가 계산하던 예전 방식은
+        // 피격을 무시하는 변조 클라이언트가 무적이 될 수 있었고, 서버/클라이언트 HP가 서로 어긋났다.
+        // HP는 AI 루프(몬스터 공격)와 여러 세션(PvP)이 동시에 바꿀 수 있으므로 PlayerInfo 인스턴스를 lock으로 쓴다.
+
+        // 사망 후 자동 부활까지 걸리는 시간.
+        private static readonly TimeSpan ReviveDelay = TimeSpan.FromSeconds(5);
+
+        // target에게 방어력 적용 전 피해(rawDamage)를 준다. 이미 사망한 대상이면 false(피해 없음).
+        // died는 이 피해로 체력이 0이 된 경우에만 true다 - 사망 처리(부활 예약)가 한 번만 일어나게 한다.
+        private static bool TryDamagePlayer(PlayerInfo target, int rawDamage, out int finalDamage, out int remainingHp, out bool died)
+        {
+            lock (target)
+            {
+                if (target.CurrentHp <= 0)
+                {
+                    finalDamage = 0;
+                    remainingHp = 0;
+                    died = false;
+                    return false;
+                }
+
+                finalDamage = CombatStatCalculator.ApplyDefense(rawDamage, target.Defense);
+                target.CurrentHp = Math.Max(0, target.CurrentHp - finalDamage);
+                remainingHp = target.CurrentHp;
+                died = remainingHp <= 0;
+                return true;
+            }
+        }
+
+        // PvP 공격. 사거리/쿨다운은 ClientSession이 검증한 뒤 호출한다. 공격자나 대상이 이미 사망했으면 무시한다.
+        public async Task ApplyPlayerAttackAsync(long attackerId, long targetId, long timestamp, CancellationToken ct)
+        {
+            if (!_players.TryGetValue(attackerId, out var attackerEntry) || attackerEntry.Info.CurrentHp <= 0
+                || !_players.TryGetValue(targetId, out var targetEntry))
+            {
+                return;
+            }
+
+            if (!TryDamagePlayer(targetEntry.Info, attackerEntry.Info.AttackPower, out int finalDamage, out int remainingHp, out bool died))
+            {
+                return;
+            }
+
+            var broadcast = new S2CDamageBroadcast
+            {
+                AttackerId = attackerId,
+                TargetId = targetId,
+                Damage = finalDamage,
+                RemainingHp = remainingHp,
+                Timestamp = timestamp
+            };
+            await BroadcastToAllAsync(OpCode.Game_DamageBroadcast, broadcast.Encode(), ct);
+
+            if (died)
+            {
+                _ = ReviveAfterDelayAsync(targetEntry.Info);
+            }
+        }
+
+        // 레벨업 시 최대 체력을 올리고 체력을 가득 채운다(클라이언트가 레벨업 때 하던 처리를 서버로 옮긴 것).
+        private async Task ApplyLevelUpHealthAsync(PlayerInfo player, int levelsGained, CancellationToken ct)
+        {
+            int currentHp;
+            int maxHp;
+            lock (player)
+            {
+                player.MaxHp += levelsGained * CombatStatCalculator.MaxHpPerLevel;
+                player.CurrentHp = player.MaxHp;
+                currentHp = player.CurrentHp;
+                maxHp = player.MaxHp;
+            }
+
+            var broadcast = new S2CPlayerHpBroadcast { PlayerId = player.PlayerId, CurrentHp = currentHp, MaxHp = maxHp };
+            await BroadcastToAllAsync(OpCode.Game_PlayerHpBroadcast, broadcast.Encode(), ct);
+        }
+
+        // 사망한 플레이어를 ReviveDelay 뒤 가득 찬 체력으로 부활시킨다. 그 사이 접속이 끊겼으면(방에서 빠짐)
+        // 아무 것도 하지 않는다 - 재접속하면 입장 처리에서 어차피 가득 찬 체력으로 시작한다.
+        // 사망 중에는 맵 이동이 막혀 있으므로(ClientSession.HandleMapChangeRequestAsync) 다른 방으로 옮겨 갔을 일은 없다.
+        private async Task ReviveAfterDelayAsync(PlayerInfo player)
+        {
+            try
+            {
+                await Task.Delay(ReviveDelay, _serverLifetimeCt);
+            }
+            catch (TaskCanceledException)
+            {
+                return;
+            }
+
+            if (!_players.TryGetValue(player.PlayerId, out var entry) || !ReferenceEquals(entry.Info, player))
+            {
+                return;
+            }
+
+            int currentHp;
+            int maxHp;
+            lock (player)
+            {
+                if (player.CurrentHp > 0)
+                {
+                    return;
+                }
+
+                player.CurrentHp = player.MaxHp;
+                currentHp = player.CurrentHp;
+                maxHp = player.MaxHp;
+            }
+
+            var revived = new S2CPlayerRevived { PlayerId = player.PlayerId, CurrentHp = currentHp, MaxHp = maxHp };
+            try
+            {
+                await BroadcastToAllAsync(OpCode.Game_PlayerRevived, revived.Encode(), _serverLifetimeCt);
+            }
+            catch (OperationCanceledException)
+            {
+                // 서버 종료 - 무시.
+            }
+        }
+        #endregion
 
         #region Method - Monster AI
         private static readonly TimeSpan AiTickInterval = TimeSpan.FromMilliseconds(150);
@@ -493,21 +623,21 @@ namespace GameServer.Networking
             return MoveToward(info, target.X, target.Z, runtime.Point.ChaseSpeed, deltaSeconds);
         }
 
-        // 근접 사거리 안에서 공격 쿨다운마다 호출된다. 몬스터는 소유 클라이언트가 없어 ApplyMonsterAttackAsync와
-        // 같은 이유로 서버가 최종 권위로 데미지를 계산한다. 다만 클라이언트에는 S2CDamageBroadcast(PvP)와
-        // 동일하게 방어력 적용 전 원본 Damage만 보내 각자 로컬 Defense로 다시 계산해 표시하게 한다 -
-        // target.CurrentHp 갱신은 TickChasing의 사망 판정(targetEntry.Info.CurrentHp <= 0)에 쓰기 위한
-        // 서버 내부 상태일 뿐, 클라이언트로는 전달하지 않는다.
+        // 근접 사거리 안에서 공격 쿨다운마다 호출된다. PvP(ApplyPlayerAttackAsync)와 같은 TryDamagePlayer로
+        // 서버가 최종 피해와 남은 체력을 계산하고, 클라이언트에는 그 결과만 보낸다(Player Health 영역 참고).
         private async Task AttackPlayerAsync(MonsterRuntime runtime, PlayerInfo target)
         {
-            int serverComputedDamage = Math.Max(1, runtime.Info.AttackPower - target.Defense);
-            target.CurrentHp = Math.Max(0, target.CurrentHp - serverComputedDamage);
+            if (!TryDamagePlayer(target, runtime.Info.AttackPower, out int finalDamage, out int remainingHp, out bool died))
+            {
+                return;
+            }
 
             var broadcast = new S2CMonsterAttackBroadcast
             {
                 MonsterId = runtime.Info.MonsterId,
                 TargetPlayerId = target.PlayerId,
-                Damage = runtime.Info.AttackPower,
+                Damage = finalDamage,
+                RemainingHp = remainingHp,
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
             };
 
@@ -518,6 +648,11 @@ namespace GameServer.Networking
             catch (OperationCanceledException)
             {
                 // 서버 종료 - 무시.
+            }
+
+            if (died)
+            {
+                _ = ReviveAfterDelayAsync(target);
             }
         }
 

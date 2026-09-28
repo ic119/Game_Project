@@ -29,6 +29,9 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnPlayerLeft += HandlePlayerLeft;
             GameServerConnectManager.Instance.OnPlayerMoved += HandlePlayerMoved;
             GameServerConnectManager.Instance.OnDamageReceived += HandlePlayerDamaged;
+            GameServerConnectManager.Instance.OnMonsterAttacked += HandleMonsterAttackedPlayer;
+            GameServerConnectManager.Instance.OnPlayerHpChanged += HandlePlayerHpChanged;
+            GameServerConnectManager.Instance.OnPlayerRevived += HandlePlayerRevived;
         }
 
         private void OnDisable()
@@ -42,6 +45,9 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnPlayerLeft -= HandlePlayerLeft;
             GameServerConnectManager.Instance.OnPlayerMoved -= HandlePlayerMoved;
             GameServerConnectManager.Instance.OnDamageReceived -= HandlePlayerDamaged;
+            GameServerConnectManager.Instance.OnMonsterAttacked -= HandleMonsterAttackedPlayer;
+            GameServerConnectManager.Instance.OnPlayerHpChanged -= HandlePlayerHpChanged;
+            GameServerConnectManager.Instance.OnPlayerRevived -= HandlePlayerRevived;
         }
         #endregion
 
@@ -93,7 +99,9 @@ namespace Incheol.Modules
                 if (instance.TryGetComponent(out PlayerCharacterModel playerModel))
                 {
                     playerModel.SetNickname(info.Nickname);
-                    playerModel.ApplyRemoteCombatState(info.MaxHp, info.CurrentHp, info.AttackPower, info.Defense);
+                    // 체력 0으로 들어왔으면(사망한 채 부활 대기 중) ApplyServerHp로 한 번 더 반영해 쓰러진 모습으로 시작한다.
+                    playerModel.ApplyRemoteCombatState(info.MaxHp, info.MaxHp, info.AttackPower, info.Defense);
+                    playerModel.ApplyServerHp(info.CurrentHp, info.MaxHp, false);
                 }
 
                 RemoteCharacterController controller = instance.AddComponent<RemoteCharacterController>();
@@ -157,19 +165,44 @@ namespace Incheol.Modules
 
         /// <summary>
         /// Game_DamageBroadcast는 전원에게 오지만, 여기서는 TargetId가 원격 플레이어인 경우만 처리한다
-        /// (로컬 플레이어가 맞은 경우는 GameSceneManager가 별도로 처리). Damage는 방어력 적용 전 원본값이라
-        /// PlayerCharacterModel.TakeDamage가 이 클라이언트가 들고 있는 target의 로컬 Defense로 직접 계산한다.
+        /// (로컬 플레이어가 맞은 경우는 GameSceneManager가 별도로 처리). 서버가 계산한 RemainingHp를 그대로 반영한다.
         /// </summary>
         private void HandlePlayerDamaged(GameDamageBroadcastPacket packet)
         {
-            if (!remotePlayers.TryGetValue(packet.TargetId, out RemoteCharacterController controller) || controller == null)
+            ApplyRemoteServerHp(packet.TargetId, packet.RemainingHp, null, true);
+        }
+
+        /// <summary>
+        /// 몬스터가 원격 플레이어를 공격한 경우의 체력 반영(몬스터 공격 애니메이션은 RemoteMonsterManager가 처리).
+        /// </summary>
+        private void HandleMonsterAttackedPlayer(GameMonsterAttackBroadcastPacket packet)
+        {
+            ApplyRemoteServerHp(packet.TargetPlayerId, packet.RemainingHp, null, true);
+        }
+
+        private void HandlePlayerHpChanged(GamePlayerHpBroadcastPacket packet)
+        {
+            ApplyRemoteServerHp(packet.PlayerId, packet.CurrentHp, packet.MaxHp, false);
+        }
+
+        // 부활 위치는 해당 플레이어가 RespawnPoint로 옮긴 뒤 보내는 Game_MoveBroadcast로 따라온다.
+        private void HandlePlayerRevived(GamePlayerRevivedPacket packet)
+        {
+            ApplyRemoteServerHp(packet.PlayerId, packet.CurrentHp, packet.MaxHp, false);
+        }
+
+        // maxHp가 null이면(피격 패킷에는 최대 체력이 없음) 현재 알고 있는 최대 체력을 유지한다.
+        // 로컬 플레이어 id면 remotePlayers에 없으므로 자연히 무시된다(GameSceneManager가 처리).
+        private void ApplyRemoteServerHp(long playerId, int currentHp, int? maxHp, bool wasHit)
+        {
+            if (!remotePlayers.TryGetValue(playerId, out RemoteCharacterController controller) || controller == null)
             {
                 return;
             }
 
             if (controller.TryGetComponent(out PlayerCharacterModel playerModel))
             {
-                playerModel.TakeDamage(new DamageInfo(packet.AttackerId, packet.Damage));
+                playerModel.ApplyServerHp(currentHp, maxHp ?? playerModel.MaxHp, wasHit);
             }
         }
         #endregion

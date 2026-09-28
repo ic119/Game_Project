@@ -101,6 +101,8 @@ namespace Incheol.Presenter.Scene
                 GameServerConnectManager.Instance.OnMonsterAttacked += HandleMonsterAttackReceived;
                 GameServerConnectManager.Instance.OnExpGained += HandleExpGained;
                 GameServerConnectManager.Instance.OnLootReceived += HandleLootReceived;
+                GameServerConnectManager.Instance.OnPlayerHpChanged += HandlePlayerHpChanged;
+                GameServerConnectManager.Instance.OnPlayerRevived += HandlePlayerRevived;
                 GameServerConnectManager.Instance.OnServerError += HandleGameServerError;
                 GameServerConnectManager.Instance.OnDisconnected += HandleGameServerDisconnected;
             }
@@ -123,6 +125,8 @@ namespace Incheol.Presenter.Scene
                 GameServerConnectManager.Instance.OnMonsterAttacked -= HandleMonsterAttackReceived;
                 GameServerConnectManager.Instance.OnExpGained -= HandleExpGained;
                 GameServerConnectManager.Instance.OnLootReceived -= HandleLootReceived;
+                GameServerConnectManager.Instance.OnPlayerHpChanged -= HandlePlayerHpChanged;
+                GameServerConnectManager.Instance.OnPlayerRevived -= HandlePlayerRevived;
                 GameServerConnectManager.Instance.OnServerError -= HandleGameServerError;
                 GameServerConnectManager.Instance.OnDisconnected -= HandleGameServerDisconnected;
             }
@@ -682,40 +686,142 @@ namespace Incheol.Presenter.Scene
         /// <summary>
         /// Game_DamageBroadcast는 전원(공격자 포함)에게 오지만, 이 메서드는 내(로컬 플레이어)가 맞은
         /// 경우만 처리한다. 다른 플레이어가 맞은 경우는 RemotePlayerManager가 별도로 구독해 처리한다.
-        /// Damage는 방어력 적용 전 원본값이므로 spawnedPlayerModel.TakeDamage가 로컬 Defense로 직접 계산한다.
+        /// 체력은 서버가 계산한 RemainingHp를 그대로 반영한다(0이면 사망).
         /// </summary>
         private void HandleDamageReceived(GameDamageBroadcastPacket packet)
         {
-            if (spawnedPlayerModel == null || SaveDataManager.Instance == null)
+            if (!IsLocalPlayer(packet.TargetId))
             {
                 return;
             }
 
-            if (packet.TargetId != SaveDataManager.Instance.SelectedCharacterId)
-            {
-                return;
-            }
-
-            spawnedPlayerModel.TakeDamage(new DamageInfo(packet.AttackerId, packet.Damage));
+            ApplyLocalServerHp(packet.RemainingHp, spawnedPlayerModel.MaxHp, true);
         }
 
         /// <summary>
         /// Game_MonsterAttackBroadcast는 전원에게 오지만(공격 애니메이션은 RemoteMonsterManager가 전원 재생),
-        /// 실제 데미지 적용은 내(로컬 플레이어)가 대상인 경우만 처리한다 - HandleDamageReceived(PvP)와 동일한 패턴.
+        /// 체력 반영은 내(로컬 플레이어)가 대상인 경우만 처리한다 - HandleDamageReceived(PvP)와 동일한 패턴.
         /// </summary>
         private void HandleMonsterAttackReceived(GameMonsterAttackBroadcastPacket packet)
         {
-            if (spawnedPlayerModel == null || SaveDataManager.Instance == null)
+            if (!IsLocalPlayer(packet.TargetPlayerId))
             {
                 return;
             }
 
-            if (packet.TargetPlayerId != SaveDataManager.Instance.SelectedCharacterId)
+            ApplyLocalServerHp(packet.RemainingHp, spawnedPlayerModel.MaxHp, true);
+        }
+
+        /// <summary>
+        /// 피격이 아닌 이유(레벨업 등)로 서버가 내 체력을 바꿨을 때(Game_PlayerHpBroadcast) 반영한다.
+        /// 다른 플레이어의 체력 변화는 RemotePlayerManager가 처리한다.
+        /// </summary>
+        private void HandlePlayerHpChanged(GamePlayerHpBroadcastPacket packet)
+        {
+            if (!IsLocalPlayer(packet.PlayerId))
             {
                 return;
             }
 
-            spawnedPlayerModel.TakeDamage(new DamageInfo(packet.MonsterId, packet.Damage));
+            ApplyLocalServerHp(packet.CurrentHp, packet.MaxHp, false);
+        }
+
+        /// <summary>
+        /// 서버가 나를 자동 부활시켰을 때(Game_PlayerRevived) 현재 맵의 RespawnPoint로 옮긴 뒤 체력을 반영하고
+        /// 조작을 다시 켠다. 옮긴 위치는 PlayerNetworkSender가 다음 전송 주기에 Game_MoveRequest로 알린다.
+        /// </summary>
+        private void HandlePlayerRevived(GamePlayerRevivedPacket packet)
+        {
+            if (!IsLocalPlayer(packet.PlayerId))
+            {
+                return;
+            }
+
+            MoveLocalPlayerToRespawnPoint();
+            ApplyLocalServerHp(packet.CurrentHp, packet.MaxHp, false);
+        }
+
+        private bool IsLocalPlayer(long playerId)
+        {
+            return spawnedPlayerModel != null && SaveDataManager.Instance != null
+                && playerId == SaveDataManager.Instance.SelectedCharacterId;
+        }
+
+        /// <summary>
+        /// 서버가 보낸 내 체력을 반영하고, 그 결과 사망/부활했다면 이동·공격 조작을 끄거나 다시 켠다.
+        /// 사망 중 조작을 막는 건 연출용이다 - 사망한 플레이어의 공격/맵 이동은 서버도 거부한다.
+        /// </summary>
+        private void ApplyLocalServerHp(int currentHp, int maxHp, bool wasHit)
+        {
+            bool wasDead = spawnedPlayerModel.IsDead;
+            spawnedPlayerModel.ApplyServerHp(currentHp, maxHp, wasHit);
+
+            if (wasDead == spawnedPlayerModel.IsDead)
+            {
+                return;
+            }
+
+            SetLocalPlayerControlEnabled(!spawnedPlayerModel.IsDead);
+
+            if (spawnedPlayerModel.IsDead)
+            {
+                chatView?.AddChatMessage("시스템", "사망했습니다. 잠시 후 부활합니다.");
+            }
+        }
+
+        private void SetLocalPlayerControlEnabled(bool isEnabled)
+        {
+            if (localPlayerInstance == null)
+            {
+                return;
+            }
+
+            if (localPlayerInstance.TryGetComponent(out PlayerMoveController moveController))
+            {
+                moveController.enabled = isEnabled;
+            }
+
+            if (localPlayerAttackController != null)
+            {
+                localPlayerAttackController.enabled = isEnabled;
+            }
+
+            // 이동 중에 쓰러지면 남은 속도로 미끄러지지 않게 멈춘다.
+            if (!isEnabled && localPlayerInstance.TryGetComponent(out Rigidbody rb))
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
+        }
+
+        /// <summary>
+        /// 부활 위치로 현재 맵의 "RespawnPoint"를 쓴다. 맵에 RespawnPoint가 없으면 쓰러진 자리에서 부활한다.
+        /// </summary>
+        private void MoveLocalPlayerToRespawnPoint()
+        {
+            if (localPlayerInstance == null || currentMapInstance == null)
+            {
+                return;
+            }
+
+            Transform respawnPoint = FindChildRecursive(currentMapInstance.transform, "RespawnPoint");
+            if (respawnPoint == null)
+            {
+                DebugLogManager.GenerateErrorMessage<GameSceneManager>($"{currentMapId} 맵에서 RespawnPoint를 찾을 수 없어 제자리에서 부활합니다.");
+                return;
+            }
+
+            if (localPlayerInstance.TryGetComponent(out Rigidbody rb))
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+                rb.position = respawnPoint.position;
+                rb.rotation = respawnPoint.rotation;
+            }
+            else
+            {
+                localPlayerInstance.transform.SetPositionAndRotation(respawnPoint.position, respawnPoint.rotation);
+            }
         }
 
         /// <summary>

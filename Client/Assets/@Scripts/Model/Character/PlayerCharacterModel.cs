@@ -38,7 +38,7 @@ public class PlayerCharacterModel : MonoBehaviour
     /// </summary>
     private long gold;
 
-    // 레벨업 시 MaxHp를 재계산(HealthComponent.ApplyFromUserStats)하려면 원본 스탯이 필요해 스폰 시점에 캐싱해둔다.
+    // 스폰 시점의 원본 스탯(str/agi/intel). 인벤토리 스탯 패널 표시용으로 캐싱해둔다.
     private UserStats cachedUserStats;
     private HealthComponent healthComponent;
     private CombatStatComponent combatStatComponent;
@@ -159,7 +159,7 @@ public class PlayerCharacterModel : MonoBehaviour
 
     /// <summary>
     /// 세이브 데이터의 체력값을 캐릭터에 반영한다(스폰 시 최초 1회). currentHp가 maxHp를 넘거나
-    /// 음수가 되지 않도록 보정한다. 이후 전투 중 체력 변화는 HealthComponent.TakeDamage(IDamageable 구현)로 처리된다.
+    /// 음수가 되지 않도록 보정한다. 이후 전투 중 체력 변화는 서버 결과를 ApplyServerHp로 반영한다.
     /// </summary>
     public void ApplyHealth(int newMaxHp, int newCurrentHp)
     {
@@ -214,13 +214,39 @@ public class PlayerCharacterModel : MonoBehaviour
         combatStatComponent.ApplyRaw(attackPower, defense);
     }
 
+    public bool IsDead => healthComponent.IsDead;
+
     /// <summary>
-    /// IDamageable(HealthComponent)로의 패스스루. Game_DamageBroadcast를 받은 쪽(로컬/원격 공용)이
-    /// PlayerCharacterModel만 알아도 데미지를 적용할 수 있도록 한다.
+    /// GameServer가 계산한 체력을 반영한다(로컬/원격 공용). 피격 브로드캐스트(Game_DamageBroadcast/
+    /// Game_MonsterAttackBroadcast)는 wasHit=true, 레벨업/부활은 false로 호출한다. 이 호출로 사망하거나
+    /// 부활하면 사망/기상 애니메이션도 함께 전환한다.
     /// </summary>
-    public void TakeDamage(DamageInfo damageInfo)
+    public void ApplyServerHp(int currentHp, int maxHp, bool wasHit)
     {
-        healthComponent.TakeDamage(damageInfo);
+        bool wasDead = healthComponent.IsDead;
+        healthComponent.ApplyServerHp(currentHp, maxHp, wasHit);
+
+        if (!wasDead && healthComponent.IsDead)
+        {
+            PlayStateAnimation(DieStateHash);
+        }
+        else if (wasDead && !healthComponent.IsDead)
+        {
+            PlayStateAnimation(IdleStateHash);
+        }
+    }
+
+    // BasicCharacterStance(Base Layer)의 Die 상태에는 들어오고 나가는 전이가 없어서, 파라미터 대신 상태를 직접
+    // 재생한다 - 한 번 Die로 들어가면 IsIdle/IsMove 값과 상관없이 부활 때 Idle을 다시 재생할 때까지 쓰러져 있다.
+    private static readonly int DieStateHash = Animator.StringToHash("Die");
+    private static readonly int IdleStateHash = Animator.StringToHash("Idle");
+
+    private void PlayStateAnimation(int stateHash)
+    {
+        if (TryGetComponent(out Animator animator))
+        {
+            animator.Play(stateHash, 0, 0f);
+        }
     }
 
     /// <summary>
@@ -253,7 +279,7 @@ public class PlayerCharacterModel : MonoBehaviour
     /// GameSceneManager가 Game_ExpGainBroadcast(서버 권위)를 받으면 호출한다. 델타를 누적하는 대신
     /// 서버가 계산한 최종 상태(총 경험치/레벨/다음 레벨까지 필요치)로 그대로 덮어쓴다 - 패킷 유실이 있어도
     /// 다음 패킷에서 자연히 복구된다(S2CMonsterDamageBroadcast.RemainingHp와 같은 이유).
-    /// 레벨이 올랐다면 MaxHp도 새 레벨 기준으로 다시 계산한다(HealthComponent.ApplyFromUserStats).
+    /// 레벨업에 따른 최대 체력 증가/회복은 서버가 계산해 Game_PlayerHpBroadcast로 따로 보내므로 여기서는 하지 않는다.
     /// </summary>
     public void ApplyExpGain(int totalExp, int newLevel, int newExpToNextLevel)
     {
@@ -263,10 +289,6 @@ public class PlayerCharacterModel : MonoBehaviour
         if (newLevel != level)
         {
             ApplyLevel(newLevel);
-            if (cachedUserStats != null)
-            {
-                healthComponent.ApplyFromUserStats(cachedUserStats, level);
-            }
         }
     }
 

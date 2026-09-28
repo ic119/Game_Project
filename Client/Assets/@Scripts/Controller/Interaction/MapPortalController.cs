@@ -235,6 +235,13 @@ namespace Incheol.Controller.Interaction
         /// </summary>
         private void ExecuteTeleport(GameObject player)
         {
+            // 텔레포트 연출 도중 사망했으면 이동하지 않는다 - 서버도 사망 중 맵 이동(Game_MapChangeRequest)을 거부하므로,
+            // 클라이언트만 새 맵으로 넘어가 서버와 맵이 어긋나는 것을 막는다.
+            if (player != null && player.TryGetComponent(out PlayerCharacterModel playerModel) && playerModel.IsDead)
+            {
+                return;
+            }
+
             switch (teleportType)
             {
                 case PortalTeleportType.CoordinateTeleport:

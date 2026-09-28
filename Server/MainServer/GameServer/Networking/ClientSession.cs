@@ -194,7 +194,9 @@ namespace GameServer.Networking
                 return;
             }
 
-            if (!previousRoom.TryGetInfo(playerId, out var info))
+            // 사망 중에는 맵을 옮기지 않는다 - 부활 예약(GameRoom.ReviveAfterDelayAsync)이 사망한 방에 걸려 있어,
+            // 다른 방으로 옮겨 가면 부활 알림이 새 방에 전달되지 않는다. 클라이언트도 사망 중에는 포탈을 막는다.
+            if (!previousRoom.TryGetInfo(playerId, out var info) || info.CurrentHp <= 0)
             {
                 return;
             }
@@ -290,10 +292,8 @@ namespace GameServer.Networking
             await room.BroadcastToAllAsync(OpCode.Game_ChatBroadcast, broadcast.Encode(), ct);
         }
 
-        // Damage 자체(방어력 적용 전 원본 공격력)는 GameServer가 계산하지 않는다 - 각 클라이언트가
-        // 로컬로 들고 있는 target의 실제 Defense로 계산해야 모든 클라이언트가 일관된 결과를 얻는다
-        // (attacker/target의 스탯은 Game_EnterRequest 시점에 이미 전원에게 동기화되어 있음).
-        // 여기서는 위조된 공격자 신원 차단, 최소 공격 간격, 사거리만 검증하고 그대로 중계한다.
+        // 여기서는 위조된 공격자 신원 차단, 최소 공격 간격, 사거리만 검증한다. 피해 계산(방어력 적용)과
+        // 대상 HP 갱신/사망 처리는 GameRoom.ApplyPlayerAttackAsync가 서버 권위로 수행한다.
         // 클라이언트 PlayerAttackController.comboInputGuard(150ms)가 지나면 2타 콤보 입력을 즉시 받아들여
         // 두 번째 Game_AttackRequest/Game_MonsterAttackRequest를 보낸다. 이 값이 그보다 크면(과거 300ms)
         // 정상적인 콤보 2타 요청까지 여기서 조용히 드롭되어 "애니메이션은 2콤보, 데미지는 1타"만 반영되는
@@ -333,21 +333,13 @@ namespace GameServer.Networking
                 return;
             }
 
-            var broadcast = new S2CDamageBroadcast
-            {
-                AttackerId = playerId,
-                TargetId = request.TargetId,
-                Damage = attacker.AttackPower,
-                Timestamp = request.Timestamp
-            };
-
-            await room.BroadcastToAllAsync(OpCode.Game_DamageBroadcast, broadcast.Encode(), ct);
+            await room.ApplyPlayerAttackAsync(playerId, request.TargetId, request.Timestamp, ct);
         }
 
         // 플레이어 공격(HandleAttackRequestAsync)과 같은 쿨다운(_lastAttackAtUtc)을 공유한다 - 그렇지 않으면
         // 플레이어 공격과 몬스터 공격 요청을 번갈아 보내 최소 공격 간격 제한을 우회할 수 있다.
-        // 데미지 계산 자체(공격력-방어력)는 GameRoom.ApplyMonsterAttackAsync가 서버 권위로 수행한다 -
-        // 몬스터는 소유 클라이언트가 없어 HandleAttackRequestAsync(PvP)처럼 "그대로 중계만" 할 수 없기 때문이다.
+        // 데미지 계산 자체(공격력-방어력)는 GameRoom.ApplyMonsterAttackAsync가 서버 권위로 수행한다.
+        // 사망한 플레이어는 몬스터를 공격할 수 없다(PvP는 GameRoom.ApplyPlayerAttackAsync가 같은 검사를 한다).
         private async Task HandleMonsterAttackRequestAsync(byte[] body, CancellationToken ct)
         {
             var request = C2SMonsterAttackRequest.Decode(body);
@@ -364,7 +356,8 @@ namespace GameServer.Networking
             }
             _lastAttackAtUtc = now;
 
-            if (!room.TryGetInfo(playerId, out var attacker) || !room.TryGetMonsterPosition(request.MonsterId, out var monsterPosition))
+            if (!room.TryGetInfo(playerId, out var attacker) || attacker.CurrentHp <= 0
+                || !room.TryGetMonsterPosition(request.MonsterId, out var monsterPosition))
             {
                 return;
             }

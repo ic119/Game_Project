@@ -6,14 +6,8 @@ using UnityEngine;
 /// </summary>
 public static class CombatCalculator
 {
-    /// <summary>
-    /// 방어력을 차감한 최종 데미지를 계산한다. 방어력이 아무리 높아도 최소 1은 들어가도록 해
-    /// 무한 방어로 인한 무적 상태를 막는다.
-    /// </summary>
-    public static int ApplyDefense(int rawDamage, int defense)
-    {
-        return Mathf.Max(1, rawDamage - defense);
-    }
+    // 피격 데미지(방어력 적용)는 GameServer가 계산한다(Server CombatStatCalculator.ApplyDefense) -
+    // 클라이언트는 서버가 보낸 최종 피해량/남은 체력을 표시만 하므로 여기에 데미지 공식을 두지 않는다.
 
     /// <summary>
     /// 최대체력의 healPercent(%)만큼 회복량을 계산한다. 물약 등 회복 아이템 전용 공식이며,

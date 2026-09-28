@@ -31,6 +31,8 @@ namespace Shared.Networking
         Game_MonsterAttackBroadcast = 0x0213,
         Game_LootBroadcast = 0x0214,
         Game_StatUpdateRequest = 0x0215,
+        Game_PlayerHpBroadcast = 0x0216,
+        Game_PlayerRevived = 0x0217,
 
         // 0x03XX = Dungeon
     }
