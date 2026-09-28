@@ -874,6 +874,26 @@ namespace Incheol.Presenter.Scene
             }
 
             spawnedPlayerModel.ApplyExpGain(packet.TotalExp, packet.Level, packet.ExpToNextLevel);
+
+            if (packet.DidLevelUp)
+            {
+                PlayLevelUpEffect();
+            }
+        }
+
+        /// <summary>
+        /// 레벨업 시 로컬 플레이어의 EffectBone(발 밑 앵커) 위치에 이펙트를 재생한다.
+        /// CharacterVfxManager가 ObjectPoolManager를 통해 대여/자동 반환을 처리하므로 여기서는 앵커만 넘겨주면 된다.
+        /// </summary>
+        private void PlayLevelUpEffect()
+        {
+            if (localPlayerInstance == null)
+            {
+                return;
+            }
+
+            Transform effectAnchor = localPlayerInstance.transform.Find("EffectBone");
+            CharacterVfxManager.Instance?.PlayLevelUpEffect(effectAnchor);
         }
 
         /// <summary>

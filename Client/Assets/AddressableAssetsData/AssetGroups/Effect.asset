@@ -35,6 +35,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 63f163a37adb45b4ebc755c42d2ff63b
+    m_Address: LevelUp01
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: bac16ef29dba2f444ac57a90ff1c1d96
     m_Address: SpearHit01
     m_ReadOnly: 0
