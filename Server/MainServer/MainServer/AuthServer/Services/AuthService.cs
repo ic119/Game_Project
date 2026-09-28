@@ -42,12 +42,8 @@ namespace MainServer.AuthServer.Services
 
             _loginAttempts.RecordSuccess(username);
 
-            // 캐릭터별 "마지막 접속시간" 갱신. 캐릭터 선택 단계가 아직 없어 계정 로그인 시점을 기준으로 삼는다.
-            // SaveChangesAsync는 아래 IssueTokensAsync 내부(RefreshToken 저장 시)에서 함께 호출된다.
-            var character = await _db.Characters.FirstOrDefaultAsync(c => c.UserId == user.Id);
-            if (character is not null)
-                character.LastLoginAt = DateTime.UtcNow;
-
+            // 캐릭터의 "마지막 접속시간"은 여기서 갱신하지 않는다 - 계정에 캐릭터가 여럿이라, 예전에는 로그인할 때마다 DB에서
+            // 처음 나온 캐릭터의 시간만 엉뚱하게 바뀌었다. 게임에서 나갈 때 선택했던 캐릭터에 기록한다(CharacterService.TouchLastLoginAsync).
             return await IssueTokensAsync(user);
         }
 

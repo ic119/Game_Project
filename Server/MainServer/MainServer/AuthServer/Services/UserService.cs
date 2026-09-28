@@ -33,7 +33,18 @@ namespace MainServer.AuthServer.Services
             };
 
             _db.Users.Add(user);
-            await _db.SaveChangesAsync();
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                // 같은 아이디로 동시에 가입해 위 확인을 둘 다 통과한 경우 - 아이디 유니크 인덱스에 걸린 쪽이다(예전에는 500).
+                if (await _db.Users.AsNoTracking().AnyAsync(u => u.Username == request._userName))
+                    throw new InvalidOperationException("이미 존재하는 아이디입니다.");
+
+                throw;
+            }
 
             return new UserResponse(user.Id, user.Username, user.Nickname, user.CreatedAt);
         }

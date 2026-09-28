@@ -3,6 +3,7 @@ using MainServer.CharacterServer.DTOs;
 using MainServer.CharacterServer.Entities;
 using MainServer.Validation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace MainServer.CharacterServer.Services
 {
@@ -49,6 +50,9 @@ namespace MainServer.CharacterServer.Services
             string nickname = InputRules.NormalizeNickname(request._nickname);
             InputRules.ValidateCustomization(request._hairIndex, request._eyeIndex, request._mouthIndex);
 
+            // 같은 계정의 생성/삭제를 한 번에 하나씩 처리한다 - 동시에 두 번 생성하면 둘 다 "슬롯 남음"을 보고 제한을 넘길 수 있었다.
+            await using var transaction = await BeginAccountLockAsync(userId);
+
             var slot = await GetOrCreateSlotAsync(userId);
             if (slot.CurrentCount >= slot.MaxSlotCount)
                 throw new InvalidOperationException("보유 가능한 캐릭터 슬롯을 모두 사용했습니다.");
@@ -76,6 +80,7 @@ namespace MainServer.CharacterServer.Services
             _db.Characters.Add(character);
             slot.CurrentCount++;
             await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return await ToResponseAsync(character);
         }
@@ -107,6 +112,8 @@ namespace MainServer.CharacterServer.Services
         // 보상 반영과 수령 기록(KillRewardReceipt)을 같은 SaveChangesAsync(트랜잭션)로 저장하므로 둘은 항상 함께 남거나 함께 빠진다.
         public async Task<CharacterResponse?> ApplyKillRewardsAsync(long characterId, ApplyKillRewardsRequest request)
         {
+            await using var transaction = await BeginCharacterLockAsync(characterId);
+
             var character = await _db.Characters.FirstOrDefaultAsync(c => c.Id == characterId);
             if (character is null)
                 return null;
@@ -152,11 +159,13 @@ namespace MainServer.CharacterServer.Services
             try
             {
                 await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
             }
             catch (DbUpdateException)
             {
                 // 재시도 요청이 앞선 요청(아직 처리 중이던)과 겹쳐, 저쪽이 먼저 같은 보상 id로 저장한 경우 - 기본 키 중복으로
-                // 이 트랜잭션 전체가 취소됐으므로 보상은 한 번만 반영됐다. 추적 중인 변경은 버리고 저장된 상태를 돌려준다.
+                // 이번 저장은 반영되지 않았으므로 보상은 한 번만 반영됐다. 추적 중인 변경은 버리고 저장된 상태를 돌려준다.
+                // (같은 캐릭터 요청은 위 잠금으로 차례로 처리되므로 보통은 앞의 수령 기록 확인에서 걸러진다.)
                 // 그 밖의 저장 실패는 그대로 던진다(500 - GameServer가 다시 보낸다).
                 if (!await IsKillRewardAlreadySavedAsync(request._rewardId))
                     throw;
@@ -176,10 +185,13 @@ namespace MainServer.CharacterServer.Services
         public static readonly IReadOnlySet<string> ValidEquipSlots = new HashSet<string> { "Weapon", "Armor", "Helmet", "Boots", "Accessory" };
 
         // 인벤토리 아이템을 장비 슬롯에 장착한다(소유자 검증 포함). 같은 슬롯에 이미 장착돼 있던 다른 아이템은
-        // 자동으로 해제한 뒤(먼저 커밋) 새 아이템을 장착한다 - (CharacterId, EquipSlot) 유니크 인덱스가 있어
+        // 자동으로 해제한 뒤(먼저 저장) 새 아이템을 장착한다 - (CharacterId, EquipSlot) 유니크 인덱스가 있어
         // 두 UPDATE를 한 SaveChangesAsync에 묶으면 EF가 실행 순서를 보장하지 않아 일시적으로 제약 위반이 날 수 있다.
+        // 두 저장은 한 트랜잭션이라, 두 번째가 실패하면 첫 번째 해제도 되돌려진다(예전에는 기존 장비만 풀린 채 남을 수 있었다).
         public async Task<CharacterResponse?> EquipItemAsync(long userId, long characterId, EquipItemRequest request)
         {
+            await using var transaction = await BeginCharacterLockAsync(characterId);
+
             var character = await FindOwnedCharacterAsync(userId, characterId);
             if (character is null)
                 return null;
@@ -214,6 +226,7 @@ namespace MainServer.CharacterServer.Services
 
             targetItem.EquipSlot = request._equipSlot;
             await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return await ToResponseAsync(character);
         }
@@ -221,6 +234,8 @@ namespace MainServer.CharacterServer.Services
         // 장비 슬롯을 해제한다(소유자 검증 포함). 해당 슬롯에 장착된 아이템이 없으면 아무 것도 하지 않고 현재 상태를 그대로 반환한다.
         public async Task<CharacterResponse?> UnequipItemAsync(long userId, long characterId, string equipSlot)
         {
+            await using var transaction = await BeginCharacterLockAsync(characterId);
+
             var character = await FindOwnedCharacterAsync(userId, characterId);
             if (character is null)
                 return null;
@@ -234,6 +249,7 @@ namespace MainServer.CharacterServer.Services
                 await _db.SaveChangesAsync();
             }
 
+            await transaction.CommitAsync();
             return await ToResponseAsync(character);
         }
 
@@ -243,6 +259,8 @@ namespace MainServer.CharacterServer.Services
         // 서버 간 API(InternalCharacterController) 전용이라 userId 소유권 검증을 하지 않는다(ApplyKillRewardsAsync와 동일).
         public async Task<CharacterResponse?> ConsumeItemAsync(long characterId, string itemId)
         {
+            await using var transaction = await BeginCharacterLockAsync(characterId);
+
             var character = await _db.Characters.FirstOrDefaultAsync(c => c.Id == characterId);
             if (character is null)
                 return null;
@@ -260,6 +278,7 @@ namespace MainServer.CharacterServer.Services
             }
 
             await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return await ToResponseAsync(character);
         }
@@ -268,6 +287,8 @@ namespace MainServer.CharacterServer.Services
         // 장비를 버리려면 먼저 해제해야 한다. DELETE 의미에 맞게 대상이 이미 없어도 에러 없이 현재 상태를 그대로 반환한다.
         public async Task<CharacterResponse?> RemoveItemAsync(long userId, long characterId, string itemId)
         {
+            await using var transaction = await BeginCharacterLockAsync(characterId);
+
             var character = await FindOwnedCharacterAsync(userId, characterId);
             if (character is null)
                 return null;
@@ -281,6 +302,7 @@ namespace MainServer.CharacterServer.Services
                 await _db.SaveChangesAsync();
             }
 
+            await transaction.CommitAsync();
             return await ToResponseAsync(character);
         }
 
@@ -299,6 +321,11 @@ namespace MainServer.CharacterServer.Services
 
         public async Task<bool> DeleteCharacterAsync(long userId, long characterId)
         {
+            // 생성과 같은 계정 잠금(슬롯 수 갱신), 그다음 캐릭터 잠금(진행 중인 보상 저장/아이템 처리가 끝난 뒤 지운다) 순서로 잡는다.
+            // 다른 작업은 캐릭터 잠금만 잡으므로 순서가 엇갈려 교착되지 않는다.
+            await using var transaction = await BeginAccountLockAsync(userId);
+            await LockCharacterRowAsync(characterId);
+
             var character = await FindOwnedCharacterAsync(userId, characterId);
             if (character is null)
                 return false;
@@ -309,8 +336,32 @@ namespace MainServer.CharacterServer.Services
             slot.CurrentCount = Math.Max(0, slot.CurrentCount - 1);
 
             await _db.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return true;
+        }
+
+        // 캐릭터 한 명의 골드/인벤토리/장비를 바꾸는 작업은 이 잠금 안에서 한 번에 하나씩 처리한다. 트랜잭션을 열고 캐릭터 행을
+        // SELECT ... FOR UPDATE로 잠그므로, 같은 캐릭터의 다른 요청은 이 트랜잭션이 끝날 때까지 기다린다.
+        // 예전에는 각 요청이 "읽고 -> 메모리에서 더하고/빼고 -> 쓰기"를 따로 해서, 처치 보상 저장(GameServer 백그라운드)과 물약 차감,
+        // 아이템 버리기가 겹치면 한쪽의 수량 변경이 사라지거나, 지워진 행을 갱신하려다 저장 자체가 실패했다.
+        // 잠금은 이 행에만 걸리고(다른 캐릭터와는 무관) 반드시 먼저 잡은 뒤 데이터를 읽어야 최신 값을 본다.
+        private async Task<IDbContextTransaction> BeginCharacterLockAsync(long characterId)
+        {
+            var transaction = await _db.Database.BeginTransactionAsync();
+            await LockCharacterRowAsync(characterId);
+            return transaction;
+        }
+
+        private Task LockCharacterRowAsync(long characterId) =>
+            _db.Database.ExecuteSqlInterpolatedAsync($"SELECT Id FROM characters WHERE Id = {characterId} FOR UPDATE");
+
+        // 계정 단위(캐릭터 생성/삭제 - 슬롯 수)로 한 번에 하나씩 처리하기 위한 잠금. 계정 행을 잠근다.
+        private async Task<IDbContextTransaction> BeginAccountLockAsync(long userId)
+        {
+            var transaction = await _db.Database.BeginTransactionAsync();
+            await _db.Database.ExecuteSqlInterpolatedAsync($"SELECT Id FROM users WHERE Id = {userId} FOR UPDATE");
+            return transaction;
         }
 
         // characterId가 실제로 이 계정(userId) 소유인지까지 함께 검증한다. 다중 캐릭터 환경에서
