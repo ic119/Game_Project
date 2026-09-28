@@ -11,6 +11,7 @@ namespace GameServer.Networking
         private readonly PlayerAuthValidator _authValidator;
         private readonly MainServerInternalApi _mainServerApi;
         private readonly KillRewardSaver _killRewardSaver;
+        private readonly DisconnectedPlayerStateStore _disconnectedStates = new();
         private readonly SessionRegistry _sessions = new();
         private readonly X509Certificate2 _serverCertificate;
 
@@ -41,7 +42,7 @@ namespace GameServer.Networking
                 while (!ct.IsCancellationRequested)
                 {
                     var tcpClient = await _listener.AcceptTcpClientAsync(ct);
-                    var session = new ClientSession(tcpClient, mapRooms, _authValidator, _mainServerApi, _killRewardSaver, _sessions, _serverCertificate);
+                    var session = new ClientSession(tcpClient, mapRooms, _authValidator, _mainServerApi, _killRewardSaver, _disconnectedStates, _sessions, _serverCertificate);
                     _ = session.RunAsync(ct);
                 }
             }

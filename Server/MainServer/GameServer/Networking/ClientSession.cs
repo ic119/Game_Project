@@ -26,6 +26,7 @@ namespace GameServer.Networking
         private readonly PlayerAuthValidator _authValidator;
         private readonly MainServerInternalApi _mainServerApi;
         private readonly KillRewardSaver _killRewardSaver;
+        private readonly DisconnectedPlayerStateStore _disconnectedStates;
         private readonly SessionRegistry _sessions;
         private readonly X509Certificate2 _serverCertificate;
 
@@ -70,7 +71,7 @@ namespace GameServer.Networking
         private GameRoom? _room;
         private string? _mapId;
 
-        public ClientSession(TcpClient tcpClient, MapRoomRegistry mapRooms, PlayerAuthValidator authValidator, MainServerInternalApi mainServerApi, KillRewardSaver killRewardSaver, SessionRegistry sessions, X509Certificate2 serverCertificate)
+        public ClientSession(TcpClient tcpClient, MapRoomRegistry mapRooms, PlayerAuthValidator authValidator, MainServerInternalApi mainServerApi, KillRewardSaver killRewardSaver, DisconnectedPlayerStateStore disconnectedStates, SessionRegistry sessions, X509Certificate2 serverCertificate)
         {
             _tcpClient = tcpClient;
             _stream = tcpClient.GetStream();
@@ -78,6 +79,7 @@ namespace GameServer.Networking
             _authValidator = authValidator;
             _mainServerApi = mainServerApi;
             _killRewardSaver = killRewardSaver;
+            _disconnectedStates = disconnectedStates;
             _sessions = sessions;
             _serverCertificate = serverCertificate;
         }
@@ -170,11 +172,18 @@ namespace GameServer.Networking
             {
                 if (_playerId is { } playerId)
                 {
-                    _sessions.Unregister(playerId, this);
-
                     // 이 플레이어를 보던 사람들에게 퇴장을 알리는 것까지 Remove가 한다. 같은 캐릭터가 새 세션으로 다시 입장해
-                    // 방의 항목이 이미 교체됐다면 Remove는 아무 것도 하지 않는다(새 세션이 그 캐릭터로 방에 있는 중이다).
-                    _room?.Remove(playerId, this);
+                    // 방의 항목이 이미 교체됐다면 Remove는 아무 것도 하지 않는다(새 세션이 그 캐릭터로 방에 있는 중이다 -
+                    // 그 세션은 입장할 때 이 세션의 상태를 직접 넘겨받았으므로 보관하지 않는다).
+                    // 실제로 빠졌으면 체력/위치를 보관해 다시 입장할 때 이어받게 한다. 등록 해제보다 먼저 보관해야, 해제 직후
+                    // 들어온 새 입장이 보관된 상태를 찾을 수 있다.
+                    PlayerStateSnapshot? lastState = CaptureState();
+                    if (_room is { } room && room.Remove(playerId, this) && lastState is not null)
+                    {
+                        _disconnectedStates.Save(playerId, lastState);
+                    }
+
+                    _sessions.Unregister(playerId, this);
                 }
 
                 // 더 이상 보낼 것이 없으니 대기열을 닫고, 남은 프레임(강제 종료/입장 거부 사유)이 나갈 때까지 잠깐 기다린 뒤
@@ -341,7 +350,8 @@ namespace GameServer.Networking
             info.Exp = snapshot.Exp;
             (info.AttackPower, info.Defense) = CombatStatCalculator.Calculate(snapshot);
 
-            // 체력은 DB에 저장하지 않고 입장할 때마다 가득 찬 상태로 시작한다(클라이언트 HealthComponent.ApplyFromUserStats와 동일).
+            // 체력은 DB에 저장하지 않는다. 기본은 가득 찬 상태로 시작하고(클라이언트 HealthComponent.ApplyFromUserStats와 동일),
+            // 최근에 끊긴 상태가 있으면 아래에서 이어받는다.
             info.MaxHp = CombatStatCalculator.CalculateMaxHp(snapshot);
             info.CurrentHp = info.MaxHp;
 
@@ -354,11 +364,18 @@ namespace GameServer.Networking
 
             // 같은 캐릭터로 이미 접속 중인 세션이 있으면 끊는다(새 접속이 우선). 이전 세션은 방 항목이 이 세션으로 교체된 뒤
             // 종료되더라도 GameRoom.Remove(playerId, session)가 자기 항목만 지우므로 새 세션에는 영향이 없다.
+            // 끊기 전에 그 세션의 현재 상태를 넘겨받는다 - 다른 곳에서 다시 접속하는 것으로 체력을 회복할 수 없게 한다.
+            PlayerStateSnapshot? previousState = null;
             if (_sessions.Register(info.PlayerId, this) is { } previousSession)
             {
                 Console.WriteLine($"[GameServer] 중복 접속 (PlayerId={info.PlayerId}) - 이전 세션을 종료합니다.");
+                previousState = previousSession.CaptureState();
                 previousSession.Kick("다른 곳에서 같은 캐릭터로 접속하여 연결이 종료되었습니다.");
             }
+
+            // 보관된 상태는 항상 꺼낸다(이전 세션에서 넘겨받았더라도 남은 옛 항목이 다음 입장에 쓰이지 않게).
+            PlayerStateSnapshot? storedState = _disconnectedStates.Take(info.PlayerId);
+            RestorePreviousState(info, previousState ?? storedState);
 
             GameRoom room = _mapRooms.GetOrCreate(info.MapId);
             _room = room;
@@ -368,6 +385,45 @@ namespace GameServer.Networking
 
             var ack = new S2CEnterAck { Self = info, ExistingPlayers = visiblePlayers, ExistingMonsters = visibleMonsters };
             Send(OpCode.Game_EnterAck, ack.Encode());
+        }
+
+        // 이 세션의 캐릭터가 지금 방에 있으면 그 체력/맵/위치를 돌려준다(없으면 null). 이 세션이 끊길 때와, 같은 캐릭터로
+        // 새로 접속한 세션이 이 세션을 밀어낼 때(다른 스레드) 호출된다.
+        public PlayerStateSnapshot? CaptureState()
+        {
+            if (_playerId is not { } playerId || _room is not { } room || _mapId is not { } mapId
+                || !room.TryGetInfo(playerId, out var info))
+            {
+                return null;
+            }
+
+            lock (info)
+            {
+                return new PlayerStateSnapshot(mapId, info.X, info.Y, info.Z, info.RotationY, info.CurrentHp);
+            }
+        }
+
+        // 입장하는 캐릭터에 이전 상태(끊기기 전, 또는 밀어낸 세션의 현재 상태)를 이어받게 한다. info는 가득 찬 체력과
+        // 요청한 맵의 부활 지점으로 채워진 상태로 들어온다.
+        // - 사망한 채 끊겼으면 그대로 둔다: 부활 지점에서 가득 찬 체력으로 시작하는 것은 사망 후 자동 부활과 같은 결과다.
+        // - 살아 있었으면 체력을 이어받는다(최대 체력을 넘지 않게). 같은 맵으로 들어오면 위치도 이어받는다 - 서버가 마지막으로
+        //   인정한 위치라 순간이동이 되지 않는다. 다른 맵으로 들어오면(로비에서 새로 시작 등) 그 맵의 부활 지점에서 시작한다.
+        private static void RestorePreviousState(PlayerInfo info, PlayerStateSnapshot? state)
+        {
+            if (state is null || state.CurrentHp <= 0)
+            {
+                return;
+            }
+
+            info.CurrentHp = Math.Min(state.CurrentHp, info.MaxHp);
+
+            if (state.MapId == info.MapId)
+            {
+                info.X = state.X;
+                info.Y = state.Y;
+                info.Z = state.Z;
+                info.RotationY = state.RotationY;
+            }
         }
 
         // mapId 맵에서 targetMapId로 가는 MapSwap 포탈 중 player가 범위 안에 있는 것을 찾는다(없으면 null).
