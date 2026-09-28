@@ -18,6 +18,15 @@ namespace Incheol.Controller
         [Tooltip("멈춘 뒤 이 시간(초)이 지나야 정지 애니메이션(IsIdle)으로 바꾼다 - 스냅샷 사이 짧은 정지로 애니메이션이 깜빡이지 않게 한다.")]
         [SerializeField, Min(0f)] private float idleDelay = 0.15f;
 
+        [Tooltip("지면을 찾을 때 서버 좌표보다 이만큼 위에서 아래로 레이를 쏜다 - 서버 높이보다 높은 언덕/계단 위에서도 지면을 찾기 위함.")]
+        [SerializeField, Min(0f)] private float groundProbeHeight = 2f;
+
+        [Tooltip("지면을 찾는 레이의 최대 길이(시작점부터). 이 안에 지면이 없으면 서버가 보낸 높이를 그대로 쓴다.")]
+        [SerializeField, Min(0.1f)] private float groundProbeDistance = 10f;
+
+        // 지면 탐색용 레이캐스트 결과 버퍼(매 프레임 할당하지 않도록 재사용).
+        private readonly RaycastHit[] groundHits = new RaycastHit[8];
+
         private static readonly int GetHitHash = Animator.StringToHash("Get Hit");
         private static readonly int DieHash = Animator.StringToHash("Die");
         private static readonly int IsIdleHash = Animator.StringToHash("IsIdle");
@@ -58,11 +67,21 @@ namespace Incheol.Controller
         {
             interpolation.Reset(transform.position, transform.eulerAngles.y);
             animator = GetComponent<Animator>();
+
+            // 위치는 서버가 정하고 이 컴포넌트가 매 프레임 transform에 직접 쓴다. 프리팹의 Rigidbody가 물리(중력/충돌)로 움직이는
+            // 상태면 매 프레임 되돌려지는 위치와 싸우기만 하고(중력으로 떨어져도 다음 프레임에 서버 높이로 복귀), 플레이어와 부딪히면
+            // 밀려났다 순간이동하듯 튄다. 콜라이더(공격 판정용)는 그대로 두고 물리 시뮬레이션에서만 뺀다.
+            if (TryGetComponent(out Rigidbody body))
+            {
+                body.isKinematic = true;
+                body.useGravity = false;
+            }
         }
 
         private void Update()
         {
             interpolation.Sample(ServerClock.NowMs - SnapshotInterpolationBuffer.InterpolationDelayMs, out Vector3 position, out float rotationY);
+            position = SnapToGround(position);
 
             float speed = Time.deltaTime > 0f ? Vector3.Distance(transform.position, position) / Time.deltaTime : 0f;
             if (speed > moveSpeedThreshold)
@@ -120,7 +139,37 @@ namespace Incheol.Controller
         public void Warp(Vector3 position, float rotationY)
         {
             interpolation.Reset(position, rotationY);
-            transform.SetPositionAndRotation(position, Quaternion.Euler(0f, rotationY, 0f));
+            transform.SetPositionAndRotation(SnapToGround(position), Quaternion.Euler(0f, rotationY, 0f));
+        }
+
+        /// <summary>
+        /// 서버 좌표의 높이(Y)를 발밑 지면 높이로 바꾼다. 서버(GameRoom)는 지형 정보가 없어 몬스터를 X/Z로만 움직이고, Y는 스폰 포인트
+        /// 마커 높이(맵 프리팹의 마커 위치 그대로 - 예: Floor001_MushroomForest는 지면보다 0.61m 위)에 고정돼 있다. 그 값을 그대로 쓰면
+        /// 몬스터가 떠 있거나, 경사를 따라 쫓아올 때 땅에 파묻힌다. 높이는 보이는 것에만 영향이 있으므로 클라이언트가 지면에 맞춘다.
+        /// 지면은 Rigidbody가 없는 고정 콜라이더로 본다 - 같은 레이에 걸린 플레이어/다른 몬스터(Rigidbody 보유)와 자기 자신은 건너뛴다.
+        /// </summary>
+        private Vector3 SnapToGround(Vector3 position)
+        {
+            Vector3 origin = position + Vector3.up * groundProbeHeight;
+            int hitCount = Physics.RaycastNonAlloc(origin, Vector3.down, groundHits, groundProbeDistance, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+
+            float nearestDistance = float.PositiveInfinity;
+            for (int i = 0; i < hitCount; i++)
+            {
+                RaycastHit hit = groundHits[i];
+                if (hit.rigidbody != null || hit.transform.IsChildOf(transform))
+                {
+                    continue;
+                }
+
+                if (hit.distance < nearestDistance)
+                {
+                    nearestDistance = hit.distance;
+                    position.y = hit.point.y;
+                }
+            }
+
+            return position;
         }
 
         /// <summary>
