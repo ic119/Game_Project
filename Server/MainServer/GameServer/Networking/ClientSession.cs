@@ -90,9 +90,9 @@ namespace GameServer.Networking
                 // 조용히 연결만 닫는다.
                 Console.WriteLine($"[GameServer] TLS 핸드셰이크 실패: {endpoint} - {ex.Message}");
             }
-            catch (EnterAuthFailedException)
+            catch (EnterRejectedException)
             {
-                // Game_EnterRequest 인증 실패로 HandleEnterRequestAsync가 의도적으로 연결을 종료한 경우.
+                // Game_EnterRequest 거부(인증 실패/알 수 없는 맵)로 HandleEnterRequestAsync가 의도적으로 연결을 종료한 경우.
             }
             finally
             {
@@ -144,12 +144,16 @@ namespace GameServer.Networking
             CharacterSnapshot? snapshot = await _authValidator.FetchOwnedCharacterAsync(request.AccessToken, info.PlayerId, ct);
             if (snapshot is null)
             {
-                Console.WriteLine($"[GameServer] Game_EnterRequest 인증 실패 (PlayerId={info.PlayerId}) - 연결을 종료합니다.");
-                byte[] errorBody = Encoding.UTF8.GetBytes("인증에 실패했습니다.");
-                await SendAsync(OpCode.System_Error, errorBody, ct);
-                // 소켓은 RunAsync의 finally에서 정리한다 - 여기서 직접 Close()하면 그 직후 루프가
-                // 다시 스트림을 읽으려 할 때 처리되지 않은 ObjectDisposedException이 발생한다.
-                throw new EnterAuthFailedException();
+                await RejectEnterAsync($"Game_EnterRequest 인증 실패 (PlayerId={info.PlayerId})", "인증에 실패했습니다.", ct);
+                return;
+            }
+
+            // 맵 데이터(MapData/{mapId}.json)에 등록된 맵에만 입장할 수 있다. 그렇지 않으면 임의의 mapId 문자열마다
+            // 새 GameRoom이 생겨(메모리/AI 루프 낭비), 서버가 좌표를 모르는 맵에서는 입장/부활/포탈 검증도 할 수 없다.
+            if (!MapDataCatalog.TryGet(info.MapId, out MapData mapData) || mapData.RespawnPoint is not { } respawnPoint)
+            {
+                await RejectEnterAsync($"Game_EnterRequest 알 수 없는 맵 (PlayerId={info.PlayerId}, MapId={info.MapId})", "알 수 없는 맵입니다.", ct);
+                return;
             }
 
             _playerId = info.PlayerId;
@@ -171,14 +175,11 @@ namespace GameServer.Networking
             info.CurrentHp = info.MaxHp;
 
             // 입장 위치도 서버가 맵 데이터로 정한다(클라이언트도 같은 RespawnPoint에 스폰한다). 클라이언트 좌표를 그대로
-            // 받으면 입장 순간에 원하는 곳으로 순간이동할 수 있다. 맵 데이터가 없으면(개발 중 미등록 맵) 클라이언트 좌표를 쓴다.
-            if (MapDataCatalog.TryGet(info.MapId, out MapData mapData) && mapData.RespawnPoint is { } respawnPoint)
-            {
-                info.X = respawnPoint.X;
-                info.Y = respawnPoint.Y;
-                info.Z = respawnPoint.Z;
-                info.RotationY = respawnPoint.RotationY;
-            }
+            // 받으면 입장 순간에 원하는 곳으로 순간이동할 수 있다.
+            info.X = respawnPoint.X;
+            info.Y = respawnPoint.Y;
+            info.Z = respawnPoint.Z;
+            info.RotationY = respawnPoint.RotationY;
 
             GameRoom room = _mapRooms.GetOrCreate(info.MapId);
             _room = room;
@@ -193,6 +194,60 @@ namespace GameServer.Networking
 
             var joined = new S2CPlayerJoined { Player = info };
             await room.BroadcastAsync(OpCode.Game_PlayerJoined, joined.Encode(), info.PlayerId, ct);
+        }
+
+        // mapId 맵에서 targetMapId로 가는 MapSwap 포탈 중 player가 범위 안에 있는 것을 찾는다(없으면 null).
+        private static MapPortal? FindMapSwapPortal(string mapId, string targetMapId, PlayerInfo player)
+        {
+            if (!MapDataCatalog.TryGet(mapId, out MapData mapData))
+            {
+                return null;
+            }
+
+            return mapData.Portals.FirstOrDefault(portal =>
+                portal.Type == MapPortal.MapSwapType
+                && portal.TargetMapId == targetMapId
+                && portal.IsWithinRange(player.X, player.Z));
+        }
+
+        // 같은 맵 안 좌표 이동 포탈을 탄 이동인지 확인한다: 서버가 마지막으로 인정한 위치가 CoordinateTeleport 포탈 범위 안이고,
+        // 요청한 위치가 그 포탈의 목적지 근처면 속도 검증 대상이 아닌 정상 순간이동으로 본다.
+        private const float TeleportDestinationTolerance = 2f;
+
+        private static bool IsCoordinateTeleport(string mapId, PlayerInfo lastAccepted, float x, float z)
+        {
+            if (!MapDataCatalog.TryGet(mapId, out MapData mapData))
+            {
+                return false;
+            }
+
+            foreach (MapPortal portal in mapData.Portals)
+            {
+                if (portal.Type != MapPortal.CoordinateTeleportType || portal.Destination is not { } destination
+                    || !portal.IsWithinRange(lastAccepted.X, lastAccepted.Z))
+                {
+                    continue;
+                }
+
+                float dx = x - destination.X;
+                float dz = z - destination.Z;
+                if (dx * dx + dz * dz <= TeleportDestinationTolerance * TeleportDestinationTolerance)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // 입장 거부: 사유를 System_Error로 알리고 연결을 끊는다.
+        // 소켓은 RunAsync의 finally에서 정리한다 - 여기서 직접 Close()하면 그 직후 루프가
+        // 다시 스트림을 읽으려 할 때 처리되지 않은 ObjectDisposedException이 발생한다.
+        private async Task RejectEnterAsync(string logMessage, string clientMessage, CancellationToken ct)
+        {
+            Console.WriteLine($"[GameServer] {logMessage} - 연결을 종료합니다.");
+            await SendAsync(OpCode.System_Error, Encoding.UTF8.GetBytes(clientMessage), ct);
+            throw new EnterRejectedException();
         }
 
         // 같은 접속을 유지한 채 다른 맵으로 옮긴다: 이전 맵 방에서 빠지며 Game_PlayerLeft를 알리고,
@@ -214,6 +269,18 @@ namespace GameServer.Networking
                 return;
             }
 
+            // 현재 맵에서 요청한 맵으로 가는 MapSwap 포탈 근처에 있을 때만 옮겨 준다. 도착 위치도 클라이언트가 보낸 좌표가 아니라
+            // 맵 데이터의 진입 지점으로 정한다 - 그렇지 않으면 아무 맵의 아무 좌표로나 순간이동할 수 있다.
+            MapPortal? portal = FindMapSwapPortal(previousMapId, request.MapId, info);
+            if (portal?.Destination is not { } destination || !MapDataCatalog.TryGet(request.MapId, out _))
+            {
+                Console.WriteLine($"[GameServer] 맵 이동 거부 (PlayerId={playerId}) : {previousMapId} -> {request.MapId}, 위치=({info.X:F1},{info.Z:F1})");
+                // 클라이언트는 이미 새 맵을 로드했으므로 조용히 무시하면 서버와 맵이 어긋난 채로 남는다 - 사유를 알린다.
+                // 정상 클라이언트는 같은 맵 데이터로 포탈을 타므로 여기에 오지 않는다(맵 데이터를 다시 내보내지 않은 경우 제외).
+                await SendAsync(OpCode.System_Error, Encoding.UTF8.GetBytes("맵 이동이 거부되었습니다."), ct);
+                return;
+            }
+
             previousRoom.Remove(playerId);
             var left = new S2CPlayerLeft { PlayerId = playerId };
             await previousRoom.BroadcastAsync(OpCode.Game_PlayerLeft, left.Encode(), playerId, ct);
@@ -221,10 +288,10 @@ namespace GameServer.Networking
 
             // HP 등 나머지 전투 스탯은 PlayerInfo 인스턴스를 그대로 재사용해 유지하고, 위치/맵만 갱신한다.
             info.MapId = request.MapId;
-            info.X = request.X;
-            info.Y = request.Y;
-            info.Z = request.Z;
-            info.RotationY = request.RotationY;
+            info.X = destination.X;
+            info.Y = destination.Y;
+            info.Z = destination.Z;
+            info.RotationY = destination.RotationY;
 
             GameRoom nextRoom = _mapRooms.GetOrCreate(request.MapId);
             var existingPlayers = nextRoom.SnapshotExcluding(playerId);
@@ -282,6 +349,12 @@ namespace GameServer.Networking
             float dx = request.X - info.X;
             float dz = request.Z - info.Z;
             float horizontalDistance = MathF.Sqrt(dx * dx + dz * dz);
+
+            // 같은 맵 안 좌표 이동 포탈은 예산과 무관하게 허용한다(예산도 쓰지 않는다).
+            if (horizontalDistance > _moveBudget && _mapId is { } mapId && IsCoordinateTeleport(mapId, info, request.X, request.Z))
+            {
+                horizontalDistance = 0f;
+            }
 
             if (horizontalDistance > _moveBudget)
             {
@@ -570,8 +643,8 @@ namespace GameServer.Networking
             }
         }
 
-        // Game_EnterRequest 인증 실패를 RunAsync의 루프 종료 신호로 쓰기 위한 내부 전용 예외.
-        private sealed class EnterAuthFailedException : Exception
+        // Game_EnterRequest 거부(인증 실패/알 수 없는 맵)를 RunAsync의 루프 종료 신호로 쓰기 위한 내부 전용 예외.
+        private sealed class EnterRejectedException : Exception
         {
         }
     }

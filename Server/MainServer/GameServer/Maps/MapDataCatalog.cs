@@ -49,6 +49,16 @@ namespace GameServer.Maps
                         throw new InvalidOperationException("respawnPoint가 없습니다.");
                     }
 
+                    foreach (MapPortal portal in data.Portals)
+                    {
+                        if (portal.Destination is null
+                            || (portal.Type != MapPortal.MapSwapType && portal.Type != MapPortal.CoordinateTeleportType)
+                            || (portal.Type == MapPortal.MapSwapType && string.IsNullOrEmpty(portal.TargetMapId)))
+                        {
+                            throw new InvalidOperationException($"포탈 데이터가 올바르지 않습니다(type={portal.Type}, targetMapId={portal.TargetMapId}).");
+                        }
+                    }
+
                     result[mapId] = data;
                     Console.WriteLine($"[GameServer] 맵 데이터 로드 완료 : {mapId}");
                 }
@@ -72,6 +82,42 @@ namespace GameServer.Maps
     {
         // 입장/부활 위치(클라이언트 GameSceneManager가 찾는 "RespawnPoint" 오브젝트와 같은 좌표).
         public MapPoint? RespawnPoint { get; init; }
+
+        // 이 맵에 배치된 포탈. 맵 이동(Game_MapChangeRequest)과 같은 맵 안 좌표 이동 포탈의 순간이동을 검증하는 기준이다.
+        public List<MapPortal> Portals { get; init; } = new();
+    }
+
+    public class MapPortal
+    {
+        public const string MapSwapType = "MapSwap";
+        public const string CoordinateTeleportType = "CoordinateTeleport";
+
+        public float X { get; init; }
+        public float Y { get; init; }
+        public float Z { get; init; }
+
+        // 포탈 콜라이더의 수평 반경(m).
+        public float Radius { get; init; }
+
+        public string Type { get; init; } = string.Empty;
+
+        // MapSwap일 때 도착 맵 id. CoordinateTeleport면 비어 있다.
+        public string TargetMapId { get; init; } = string.Empty;
+
+        // 도착 위치(MapSwap이면 도착 맵의 진입 지점, CoordinateTeleport면 같은 맵 안의 목적지).
+        public MapPoint? Destination { get; init; }
+
+        // 포탈 반경에 이 여유를 더한 거리 안에 있으면 포탈을 탄 것으로 인정한다 - 클라이언트는 이동을 0.1초마다만
+        // 보내고 포탈은 진입 후 지연(teleportDelay) 뒤에 동작하므로, 서버가 마지막으로 아는 위치가 반경을 조금 벗어날 수 있다.
+        private const float EntryTolerance = 2f;
+
+        public bool IsWithinRange(float x, float z)
+        {
+            float dx = x - X;
+            float dz = z - Z;
+            float range = Radius + EntryTolerance;
+            return dx * dx + dz * dz <= range * range;
+        }
     }
 
     public class MapPoint
