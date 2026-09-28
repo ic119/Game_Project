@@ -331,7 +331,7 @@ namespace GameServer.Networking
         // 피격을 무시하는 변조 클라이언트가 무적이 될 수 있었고, 서버/클라이언트 HP가 서로 어긋났다.
         // HP는 AI 루프(몬스터 공격)와 여러 세션(PvP)이 동시에 바꿀 수 있으므로 PlayerInfo 인스턴스를 lock으로 쓴다.
 
-        // 사망 후 자동 부활까지 걸리는 시간.
+        // 사망 후 자동 부활까지 걸리는 시간. 클라이언트 부활 팝업의 카운트다운(GameSceneManager.ReviveDelaySeconds)과 같아야 한다.
         private static readonly TimeSpan ReviveDelay = TimeSpan.FromSeconds(5);
 
         // target에게 방어력 적용 전 피해(rawDamage)를 준다. 이미 사망한 대상이면 false(피해 없음).

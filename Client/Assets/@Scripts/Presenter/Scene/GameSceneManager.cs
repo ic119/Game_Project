@@ -23,6 +23,13 @@ namespace Incheol.Presenter.Scene
         private UI_ChatView chatView;
         private UI_MonsterTargetView monsterTargetView;
         private UI_DropItemPopupView dropItemPopupView;
+        private UI_PlayerRespawnPopupView respawnPopupView;
+
+        /// <summary>
+        /// 사망 후 자동 부활까지 걸리는 시간(초). 서버 GameRoom.ReviveDelay와 같아야 한다 - 서버는 남은 시간을 보내지 않으므로
+        /// 부활 팝업(UI_PlayerRespawnPopupView)의 카운트다운에 이 값을 쓴다. 실제 부활은 서버의 Game_PlayerRevived를 받을 때 일어난다.
+        /// </summary>
+        private const float ReviveDelaySeconds = 5f;
         private float lastMonsterTargetedTime;
         private const float MonsterTargetLostTimeoutSeconds = 8f;
 
@@ -270,6 +277,7 @@ namespace Incheol.Presenter.Scene
                         instance.TryGetComponent(out chatView);
                         instance.TryGetComponent(out monsterTargetView);
                         instance.TryGetComponent(out dropItemPopupView);
+                        instance.TryGetComponent(out respawnPopupView);
 
                         if (gameSceneView != null)
                         {
@@ -779,9 +787,15 @@ namespace Incheol.Presenter.Scene
 
             SetLocalPlayerControlEnabled(!spawnedPlayerModel.IsDead);
 
+            // 사망하면 부활까지 남은 시간을 팝업으로 보여주고, 부활하면(서버 부활 알림, 또는 재접속으로 살아 있는 상태로 입장) 닫는다.
             if (spawnedPlayerModel.IsDead)
             {
                 chatView?.AddChatMessage("시스템", "사망했습니다. 잠시 후 부활합니다.");
+                respawnPopupView?.Show(ReviveDelaySeconds);
+            }
+            else
+            {
+                respawnPopupView?.Hide();
             }
         }
 
