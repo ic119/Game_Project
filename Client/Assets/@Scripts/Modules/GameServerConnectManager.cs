@@ -202,6 +202,7 @@ namespace Incheol.Modules
                 isConnected = true;
                 intentionalDisconnect = false;
                 wasKicked = false;
+                ServerClock.Reset();
                 heartbeatSendTimer = 0f;
                 timeSinceLastHeartbeatAck = 0f;
 
@@ -507,7 +508,13 @@ namespace Incheol.Modules
 
                 case GameOpCode.Game_WorldSnapshot:
                     var snapshot = GameWorldSnapshotPacket.Decode(body);
-                    pendingActions.Enqueue(() => OnWorldSnapshot?.Invoke(snapshot));
+                    // 서버 시각 추정(ServerClock)은 메인 스레드에서만 다루므로 이벤트와 같은 액션 안에서 먼저 갱신한다 -
+                    // 구독자(원격 개체 보간)가 이 스냅샷을 쓰는 시점에는 이미 반영돼 있다.
+                    pendingActions.Enqueue(() =>
+                    {
+                        ServerClock.Observe(snapshot.ServerTimeMs);
+                        OnWorldSnapshot?.Invoke(snapshot);
+                    });
                     break;
 
                 case GameOpCode.Game_MonsterLeaveView:

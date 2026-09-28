@@ -163,7 +163,7 @@ namespace Incheol.Modules
             {
                 if (remotePlayers.TryGetValue(player.Id, out RemoteCharacterController controller) && controller != null)
                 {
-                    controller.SetTarget(new Vector3(player.X, player.Y, player.Z), player.RotationY);
+                    controller.AddSnapshot(snapshot.ServerTimeMs, new Vector3(player.X, player.Y, player.Z), player.RotationY);
                 }
             }
         }

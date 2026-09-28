@@ -27,9 +27,12 @@ namespace Incheol.Modules
         private readonly Dictionary<long, RemoteMonsterController> remoteMonsters = new();
         private readonly Queue<GameMonsterInfo> pendingSpawnQueue = new();
 
-        // DB 로드 전(pendingSpawnQueue 대기 중)에 시야 이탈이 온 몬스터 id. 대기열의 스폰을 처리할 때 한 번 건너뛴다 -
+        // 아직 생성 전(DB 로드 대기열에 있거나 프리팹을 불러오는 중)에 시야 이탈이 온 몬스터 id. 생성할 차례에 한 번 건너뛴다 -
         // 그렇지 않으면 이미 시야 밖으로 나간 몬스터가 뒤늦게 생성돼 아무 갱신도 받지 않은 채 남는다.
         private readonly HashSet<long> leftViewWhilePending = new();
+
+        // 프리팹을 불러오는 중(SpawnMonster 호출 후 콜백 전)인 몬스터 id.
+        private readonly HashSet<long> loadingMonsterIds = new();
         private MonsterDatabaseSO database;
 
         #region LifeCycle
@@ -150,6 +153,7 @@ namespace Incheol.Modules
                 return;
             }
 
+            loadingMonsterIds.Add(info.MonsterId);
             AddressableAssetManager.Instance.LoadPrefabAddress<GameObject>(monsterData.monsterType.ToString(), prefab =>
             {
                 if (this == null)
@@ -157,14 +161,16 @@ namespace Incheol.Modules
                     return;
                 }
 
+                loadingMonsterIds.Remove(info.MonsterId);
+
                 if (prefab == null)
                 {
                     DebugLogManager.GenerateErrorMessage<RemoteMonsterManager>($"몬스터 로드 실패 Key : {monsterData.monsterType}");
                     return;
                 }
 
-                // 로딩 중 이미 스폰되었거나(중복 이벤트) 사망 처리된 경우 대비.
-                if (remoteMonsters.ContainsKey(info.MonsterId))
+                // 로딩 중 이미 스폰되었거나(중복 이벤트) 사망 처리된 경우, 또는 로딩 중 시야 밖으로 나간 경우 대비.
+                if (remoteMonsters.ContainsKey(info.MonsterId) || leftViewWhilePending.Remove(info.MonsterId))
                 {
                     return;
                 }
@@ -300,8 +306,8 @@ namespace Incheol.Modules
         {
             if (!remoteMonsters.TryGetValue(monsterId, out RemoteMonsterController controller))
             {
-                // 아직 DB 로드 대기열에만 있는 경우 - 나중에 스폰하지 않도록 표시해 둔다.
-                if (database == null)
+                // 아직 생성 전(DB 로드 대기열 또는 프리팹 로딩 중)인 경우 - 나중에 생성하지 않도록 표시해 둔다.
+                if (database == null || loadingMonsterIds.Contains(monsterId))
                 {
                     leftViewWhilePending.Add(monsterId);
                 }
@@ -321,7 +327,7 @@ namespace Incheol.Modules
             {
                 if (remoteMonsters.TryGetValue(monster.Id, out RemoteMonsterController controller) && controller != null)
                 {
-                    controller.SetTarget(new Vector3(monster.X, monster.Y, monster.Z), monster.RotationY);
+                    controller.AddSnapshot(snapshot.ServerTimeMs, new Vector3(monster.X, monster.Y, monster.Z), monster.RotationY);
                 }
             }
         }
