@@ -35,6 +35,7 @@ namespace Shared.Networking
         Game_PlayerRevived = 0x0217,
         Game_UseItemRequest = 0x0218,
         Game_UseItemResult = 0x0219,
+        Game_PositionCorrection = 0x021A,
 
         // 0x03XX = Dungeon
     }

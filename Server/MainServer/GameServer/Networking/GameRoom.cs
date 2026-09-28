@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using GameServer.Combat;
+using GameServer.Maps;
 using GameServer.Monsters;
 using Shared;
 using Shared.Networking;
@@ -43,8 +44,12 @@ namespace GameServer.Networking
         // 몬스터 생존 여부는 판단 기준에 포함하지 않는다 - 몬스터만 남고 플레이어가 없는 방은 정리 대상이다.
         public bool IsEmpty => _players.IsEmpty;
 
-        public GameRoom(List<MonsterSpawnPointDefinition> spawnPoints, CancellationToken serverLifetimeCt)
+        // 이 방의 맵 id. 부활 위치 등 맵 좌표 데이터(MapDataCatalog)를 찾는 키다.
+        private readonly string _mapId;
+
+        public GameRoom(string mapId, List<MonsterSpawnPointDefinition> spawnPoints, CancellationToken serverLifetimeCt)
         {
+            _mapId = mapId;
             _serverLifetimeCt = serverLifetimeCt;
 
             // 방이 만들어지는 시점(첫 플레이어 입장)에 각 포인트를 최대 개체수까지 즉시 채운다.
@@ -520,9 +525,28 @@ namespace GameServer.Networking
                 player.CurrentHp = player.MaxHp;
                 currentHp = player.CurrentHp;
                 maxHp = player.MaxHp;
+
+                // 부활 위치는 서버가 맵 데이터로 정한다(클라이언트가 옮긴 좌표를 받아주면 속도 검증을 우회하는 순간이동이 된다).
+                // 맵 데이터가 없으면 쓰러진 자리에서 부활한다. 사망 중에는 이동 요청이 거부되므로 여기서 위치를 바꿔도 경합이 없다.
+                if (MapDataCatalog.TryGet(_mapId, out MapData mapData) && mapData.RespawnPoint is { } respawnPoint)
+                {
+                    player.X = respawnPoint.X;
+                    player.Y = respawnPoint.Y;
+                    player.Z = respawnPoint.Z;
+                    player.RotationY = respawnPoint.RotationY;
+                }
             }
 
-            var revived = new S2CPlayerRevived { PlayerId = player.PlayerId, CurrentHp = currentHp, MaxHp = maxHp };
+            var revived = new S2CPlayerRevived
+            {
+                PlayerId = player.PlayerId,
+                CurrentHp = currentHp,
+                MaxHp = maxHp,
+                X = player.X,
+                Y = player.Y,
+                Z = player.Z,
+                RotationY = player.RotationY
+            };
             try
             {
                 await BroadcastToAllAsync(OpCode.Game_PlayerRevived, revived.Encode(), _serverLifetimeCt);

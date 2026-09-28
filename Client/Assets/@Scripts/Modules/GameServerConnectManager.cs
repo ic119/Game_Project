@@ -68,6 +68,7 @@ namespace Incheol.Modules
         public event Action<GamePlayerHpBroadcastPacket> OnPlayerHpChanged;
         public event Action<GamePlayerRevivedPacket> OnPlayerRevived;
         public event Action<GameUseItemResultPacket> OnUseItemResult;
+        public event Action<GamePositionCorrectionPacket> OnPositionCorrected;
         public event Action OnDisconnected;
         public event Action<string> OnServerError;
 
@@ -548,6 +549,11 @@ namespace Incheol.Modules
                 case GameOpCode.Game_UseItemResult:
                     var useItemResult = GameUseItemResultPacket.Decode(body);
                     pendingActions.Enqueue(() => OnUseItemResult?.Invoke(useItemResult));
+                    break;
+
+                case GameOpCode.Game_PositionCorrection:
+                    var positionCorrection = GamePositionCorrectionPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnPositionCorrected?.Invoke(positionCorrection));
                     break;
 
                 // 클라이언트가 주기적으로 보낸 System_Heartbeat에 대한 서버 응답이다 - 타임아웃 타이머를 초기화한다.

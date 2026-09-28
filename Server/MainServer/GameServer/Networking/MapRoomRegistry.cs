@@ -21,7 +21,7 @@ namespace GameServer.Networking
 
         public GameRoom GetOrCreate(string mapId)
         {
-            return _rooms.GetOrAdd(mapId, id => new GameRoom(MonsterSpawnCatalog.GetPointsForMap(id), _serverLifetimeCt));
+            return _rooms.GetOrAdd(mapId, id => new GameRoom(id, MonsterSpawnCatalog.GetPointsForMap(id), _serverLifetimeCt));
         }
 
         // 방금 나간 방이 비어있으면 레지스트리에서 제거한다. 그 사이 다른 세션이 같은 mapId로

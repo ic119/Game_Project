@@ -185,9 +185,14 @@ namespace Incheol.Modules
             ApplyRemoteServerHp(packet.PlayerId, packet.CurrentHp, packet.MaxHp, false);
         }
 
-        // 부활 위치는 해당 플레이어가 RespawnPoint로 옮긴 뒤 보내는 Game_MoveBroadcast로 따라온다.
+        // 부활 위치는 서버가 정해 패킷에 담아 보낸다 - 보간 없이 그 자리로 바로 옮긴다.
         private void HandlePlayerRevived(GamePlayerRevivedPacket packet)
         {
+            if (remotePlayers.TryGetValue(packet.PlayerId, out RemoteCharacterController controller) && controller != null)
+            {
+                controller.Warp(new Vector3(packet.X, packet.Y, packet.Z), packet.RotationY);
+            }
+
             ApplyRemoteServerHp(packet.PlayerId, packet.CurrentHp, packet.MaxHp, false);
         }
 

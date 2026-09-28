@@ -110,6 +110,7 @@ namespace Incheol.Presenter.Scene
                 GameServerConnectManager.Instance.OnPlayerHpChanged += HandlePlayerHpChanged;
                 GameServerConnectManager.Instance.OnPlayerRevived += HandlePlayerRevived;
                 GameServerConnectManager.Instance.OnUseItemResult += HandleUseItemResult;
+                GameServerConnectManager.Instance.OnPositionCorrected += HandlePositionCorrected;
                 GameServerConnectManager.Instance.OnServerError += HandleGameServerError;
                 GameServerConnectManager.Instance.OnDisconnected += HandleGameServerDisconnected;
             }
@@ -135,6 +136,7 @@ namespace Incheol.Presenter.Scene
                 GameServerConnectManager.Instance.OnPlayerHpChanged -= HandlePlayerHpChanged;
                 GameServerConnectManager.Instance.OnPlayerRevived -= HandlePlayerRevived;
                 GameServerConnectManager.Instance.OnUseItemResult -= HandleUseItemResult;
+                GameServerConnectManager.Instance.OnPositionCorrected -= HandlePositionCorrected;
                 GameServerConnectManager.Instance.OnServerError -= HandleGameServerError;
                 GameServerConnectManager.Instance.OnDisconnected -= HandleGameServerDisconnected;
             }
@@ -410,17 +412,7 @@ namespace Incheol.Presenter.Scene
                     return;
                 }
 
-                if (localPlayerInstance.TryGetComponent(out Rigidbody rb))
-                {
-                    rb.linearVelocity = Vector3.zero;
-                    rb.angularVelocity = Vector3.zero;
-                    rb.position = entryPoint.position;
-                    rb.rotation = entryPoint.rotation;
-                }
-                else
-                {
-                    localPlayerInstance.transform.SetPositionAndRotation(entryPoint.position, entryPoint.rotation);
-                }
+                WarpLocalPlayer(entryPoint.position, entryPoint.rotation);
 
                 GameServerConnectManager.Instance?.SendMapChange(newMapKeyString, entryPoint.position.x, entryPoint.position.y, entryPoint.position.z, entryPoint.eulerAngles.y);
 
@@ -735,8 +727,8 @@ namespace Incheol.Presenter.Scene
         }
 
         /// <summary>
-        /// 서버가 나를 자동 부활시켰을 때(Game_PlayerRevived) 현재 맵의 RespawnPoint로 옮긴 뒤 체력을 반영하고
-        /// 조작을 다시 켠다. 옮긴 위치는 PlayerNetworkSender가 다음 전송 주기에 Game_MoveRequest로 알린다.
+        /// 서버가 나를 자동 부활시켰을 때(Game_PlayerRevived) 서버가 정한 부활 위치로 옮긴 뒤 체력을 반영하고
+        /// 조작을 다시 켠다. 서버도 이미 그 위치를 내 위치로 알고 있으므로 이후 이동 검증의 기준점과 일치한다.
         /// </summary>
         private void HandlePlayerRevived(GamePlayerRevivedPacket packet)
         {
@@ -745,8 +737,16 @@ namespace Incheol.Presenter.Scene
                 return;
             }
 
-            MoveLocalPlayerToRespawnPoint();
+            WarpLocalPlayer(new Vector3(packet.X, packet.Y, packet.Z), Quaternion.Euler(0f, packet.RotationY, 0f));
             ApplyLocalServerHp(packet.CurrentHp, packet.MaxHp, false);
+        }
+
+        /// <summary>
+        /// 서버가 내 이동을 거부했을 때(Game_PositionCorrection, 허용 속도 초과) 서버가 마지막으로 인정한 위치로 되돌린다.
+        /// </summary>
+        private void HandlePositionCorrected(GamePositionCorrectionPacket packet)
+        {
+            WarpLocalPlayer(new Vector3(packet.X, packet.Y, packet.Z), Quaternion.Euler(0f, packet.RotationY, 0f));
         }
 
         private bool IsLocalPlayer(long playerId)
@@ -803,19 +803,13 @@ namespace Incheol.Presenter.Scene
         }
 
         /// <summary>
-        /// 부활 위치로 현재 맵의 "RespawnPoint"를 쓴다. 맵에 RespawnPoint가 없으면 쓰러진 자리에서 부활한다.
+        /// 로컬 플레이어를 지정한 위치/회전으로 즉시 옮긴다(맵 전환 진입, 서버 부활 위치, 서버 위치 보정 공용).
+        /// Rigidbody가 있으면 남은 속도를 없애고 물리 위치로 옮겨, 다음 물리 스텝에서 원래 자리로 끌려가지 않게 한다.
         /// </summary>
-        private void MoveLocalPlayerToRespawnPoint()
+        private void WarpLocalPlayer(Vector3 position, Quaternion rotation)
         {
-            if (localPlayerInstance == null || currentMapInstance == null)
+            if (localPlayerInstance == null)
             {
-                return;
-            }
-
-            Transform respawnPoint = FindChildRecursive(currentMapInstance.transform, "RespawnPoint");
-            if (respawnPoint == null)
-            {
-                DebugLogManager.GenerateErrorMessage<GameSceneManager>($"{currentMapId} 맵에서 RespawnPoint를 찾을 수 없어 제자리에서 부활합니다.");
                 return;
             }
 
@@ -823,12 +817,12 @@ namespace Incheol.Presenter.Scene
             {
                 rb.linearVelocity = Vector3.zero;
                 rb.angularVelocity = Vector3.zero;
-                rb.position = respawnPoint.position;
-                rb.rotation = respawnPoint.rotation;
+                rb.position = position;
+                rb.rotation = rotation;
             }
             else
             {
-                localPlayerInstance.transform.SetPositionAndRotation(respawnPoint.position, respawnPoint.rotation);
+                localPlayerInstance.transform.SetPositionAndRotation(position, rotation);
             }
         }
 

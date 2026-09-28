@@ -5,6 +5,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using GameServer.Combat;
 using GameServer.Items;
+using GameServer.Maps;
 using Shared.Networking;
 using Shared.Networking.Packets;
 
@@ -169,6 +170,16 @@ namespace GameServer.Networking
             info.MaxHp = CombatStatCalculator.CalculateMaxHp(snapshot);
             info.CurrentHp = info.MaxHp;
 
+            // 입장 위치도 서버가 맵 데이터로 정한다(클라이언트도 같은 RespawnPoint에 스폰한다). 클라이언트 좌표를 그대로
+            // 받으면 입장 순간에 원하는 곳으로 순간이동할 수 있다. 맵 데이터가 없으면(개발 중 미등록 맵) 클라이언트 좌표를 쓴다.
+            if (MapDataCatalog.TryGet(info.MapId, out MapData mapData) && mapData.RespawnPoint is { } respawnPoint)
+            {
+                info.X = respawnPoint.X;
+                info.Y = respawnPoint.Y;
+                info.Z = respawnPoint.Z;
+                info.RotationY = respawnPoint.RotationY;
+            }
+
             GameRoom room = _mapRooms.GetOrCreate(info.MapId);
             _room = room;
             _mapId = info.MapId;
@@ -230,6 +241,20 @@ namespace GameServer.Networking
             await nextRoom.BroadcastAsync(OpCode.Game_PlayerJoined, joined.Encode(), playerId, ct);
         }
 
+        // 이동 속도 검증 - "이동 거리 예산" 방식. 예산은 초당 MoveBudgetRefillPerSecond(m)씩 차고 최대 MoveBudgetCapacity(m)까지
+        // 쌓이며, 이동 요청마다 직전 인정 위치로부터의 수평 이동 거리만큼 쓴다. 클라이언트 PlayerMoveController 기본값
+        // (걷기 5m/s, 대시 0.25초에 3m + 쿨다운 1초 → 지속 최대 약 8m/s)보다 여유 있게 잡아 정상 이동과 네트워크
+        // 지연으로 몰려 들어온 패킷은 통과시키고, 스피드핵/순간이동만 거부한다. 이동 속도 버프 등이 생기면 함께 조정해야 한다.
+        // 높이(Y)는 서버에 지형 정보가 없어 검증하지 않는다(알려진 한계).
+        private const float MoveBudgetRefillPerSecond = 9f;
+        private const float MoveBudgetCapacity = 5f;
+        private float _moveBudget = MoveBudgetCapacity;
+        private DateTime _lastMoveBudgetRefillAtUtc = DateTime.UtcNow;
+
+        // 거부된 이동이 연달아 오면(보정 패킷이 도착하기 전 이미 보낸 이동들) 보정 패킷을 매번 보내지 않도록 제한한다.
+        private static readonly TimeSpan PositionCorrectionInterval = TimeSpan.FromMilliseconds(500);
+        private DateTime _lastPositionCorrectionAtUtc = DateTime.MinValue;
+
         // 룸의 위치를 갱신하고, 본인을 제외한 나머지 접속자에게 브로드캐스트한다.
         // request.PlayerId가 이 세션의 실제 플레이어와 같은지 검증한다 - 그렇지 않으면 다른 플레이어의
         // ID를 실어 보내는 것만으로 그 플레이어를 임의의 위치로 옮길 수 있다(다른 핸들러들과 동일한 검증).
@@ -237,11 +262,35 @@ namespace GameServer.Networking
         {
             var request = C2SMoveRequest.Decode(body);
 
-            if (_playerId is not { } playerId || request.PlayerId != playerId || _room is not { } room)
+            if (_playerId is not { } playerId || request.PlayerId != playerId || _room is not { } room
+                || !room.TryGetInfo(playerId, out var info))
             {
                 return;
             }
 
+            // 사망 중에는 움직일 수 없다(클라이언트도 조작을 막는다). 부활 위치는 서버가 정한다(GameRoom.ReviveAfterDelayAsync).
+            if (info.CurrentHp <= 0)
+            {
+                return;
+            }
+
+            var now = DateTime.UtcNow;
+            float elapsedSeconds = (float)(now - _lastMoveBudgetRefillAtUtc).TotalSeconds;
+            _lastMoveBudgetRefillAtUtc = now;
+            _moveBudget = Math.Min(MoveBudgetCapacity, _moveBudget + elapsedSeconds * MoveBudgetRefillPerSecond);
+
+            float dx = request.X - info.X;
+            float dz = request.Z - info.Z;
+            float horizontalDistance = MathF.Sqrt(dx * dx + dz * dz);
+
+            if (horizontalDistance > _moveBudget)
+            {
+                Console.WriteLine($"[GameServer] 이동 거부 (PlayerId={playerId}) : {horizontalDistance:F2}m > 허용 {_moveBudget:F2}m");
+                await SendPositionCorrectionAsync(info, now, ct);
+                return;
+            }
+
+            _moveBudget -= horizontalDistance;
             room.UpdatePosition(request.PlayerId, request.X, request.Y, request.Z, request.RotationY);
 
             var broadcast = new S2CMoveBroadcast
@@ -255,6 +304,19 @@ namespace GameServer.Networking
             };
 
             await room.BroadcastAsync(OpCode.Game_MoveBroadcast, broadcast.Encode(), request.PlayerId, ct);
+        }
+
+        // 거부된 이동을 되돌리도록 본인에게 서버가 마지막으로 인정한 위치를 보낸다(PositionCorrectionInterval로 제한).
+        private async Task SendPositionCorrectionAsync(PlayerInfo info, DateTime now, CancellationToken ct)
+        {
+            if (now - _lastPositionCorrectionAtUtc < PositionCorrectionInterval)
+            {
+                return;
+            }
+            _lastPositionCorrectionAtUtc = now;
+
+            var correction = new S2CPositionCorrection { X = info.X, Y = info.Y, Z = info.Z, RotationY = info.RotationY };
+            await SendAsync(OpCode.Game_PositionCorrection, correction.Encode(), ct);
         }
 
         // Move와 달리 발신자 본인 화면에도 같은 메시지가 떠야 하므로 BroadcastToAllAsync를 쓴다.
