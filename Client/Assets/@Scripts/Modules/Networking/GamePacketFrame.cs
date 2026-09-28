@@ -37,10 +37,12 @@ namespace Incheol.Modules.Networking
                 return null;
             }
 
+            // 규격을 벗어난 길이(OpCode조차 담을 수 없거나 상한 초과)는 손상된 스트림이라 이후 경계를 맞출 수 없다 -
+            // 정상 종료(null)와 구분해 원인을 로그로 남길 수 있도록 예외를 던진다(서버 Shared PacketFrame과 동일).
             uint payloadLength = BitConverter.ToUInt32(lengthBuffer, 0);
-            if (payloadLength > MaxPayloadSize)
+            if (payloadLength < OpCodeFieldSize || payloadLength > MaxPayloadSize)
             {
-                return null;
+                throw new InvalidDataException($"잘못된 프레임 길이: {payloadLength}");
             }
 
             var payloadBuffer = new byte[payloadLength];

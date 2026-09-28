@@ -109,7 +109,15 @@ namespace Incheol.Modules
         {
             while (pendingActions.TryDequeue(out Action action))
             {
-                action();
+                // 이벤트 구독자 하나가 예외를 던져도 나머지 대기 이벤트와 하트비트 처리는 이번 프레임에 계속 진행한다.
+                try
+                {
+                    action();
+                }
+                catch (Exception exception)
+                {
+                    DebugLogManager.GenerateErrorMessage<GameServerConnectManager>($"GameServer 이벤트 처리 중 오류 : {exception}");
+                }
             }
 
             if (!isConnected)
@@ -437,6 +445,9 @@ namespace Incheol.Modules
 
         private async Task ReadLoopAsync(CancellationToken ct)
         {
+            // 마지막으로 해석하던 프레임의 OpCode(오류 로그용).
+            ushort lastOpCode = 0;
+
             try
             {
                 while (!ct.IsCancellationRequested)
@@ -447,16 +458,28 @@ namespace Incheol.Modules
                         break;
                     }
 
+                    lastOpCode = frame.Value.OpCode;
                     HandleFrame(frame.Value.OpCode, frame.Value.Body);
                 }
             }
-            catch (Exception)
+            catch (Exception exception) when (exception is IOException and not EndOfStreamException
+                                               || exception is ObjectDisposedException or OperationCanceledException)
             {
-                // 서버 종료/네트워크 단절 - 정상적인 종료 경로로 취급한다.
+                // 서버 종료/네트워크 단절/직접 Disconnect() - 정상적인 종료 경로로 취급한다.
+            }
+            catch (Exception exception)
+            {
+                // 잘못된 프레임 길이(InvalidDataException), 형식이 맞지 않는 바디(EndOfStreamException 등). 서버와 클라이언트의
+                // 패킷 정의가 어긋났을 가능성이 크다 - 예전에는 이것도 "정상 종료"로 삼켜 원인을 알 수 없었다.
+                DebugLogManager.GenerateErrorMessage<GameServerConnectManager>($"GameServer 수신 데이터 처리 실패로 연결을 끊습니다 (opCode=0x{lastOpCode:X4}) : {exception}");
             }
             finally
             {
                 isConnected = false;
+
+                // 오류로 루프가 끝났을 때도 소켓을 확실히 닫는다(서버가 끊은 경우 다시 닫아도 무해하다).
+                stream?.Close();
+                tcpClient?.Close();
 
                 if (!intentionalDisconnect && !wasKicked)
                 {

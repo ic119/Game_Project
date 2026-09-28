@@ -94,6 +94,9 @@ namespace GameServer.Networking
             // 반쯤 끊긴 연결이나 핸드셰이크만 걸어 두고 아무 것도 보내지 않는 연결이 서버 자원을 계속 차지했다.
             using var idleCts = CancellationTokenSource.CreateLinkedTokenSource(sessionCt);
 
+            // 마지막으로 처리하던 요청의 OpCode(오류 로그용).
+            ushort lastOpCode = 0;
+
             try
             {
                 // 프레임을 하나라도 주고받기 전에 TLS 핸드셰이크부터 마친다 - 이후 _stream을 쓰는 모든 코드
@@ -119,8 +122,19 @@ namespace GameServer.Networking
                     if (frame is null)
                         break;
 
+                    lastOpCode = frame.Value.OpCode;
                     await DispatchAsync(frame.Value.OpCode, frame.Value.Body, sessionCt);
                 }
+            }
+            catch (InvalidDataException ex)
+            {
+                // 프레임 길이가 규격을 벗어남(PacketFrame.ReadFrameAsync) - 손상/조작된 스트림이라 끊는다.
+                Console.WriteLine($"[GameServer] 잘못된 프레임으로 연결 종료: {endpoint}, PlayerId={_playerId} - {ex.Message}");
+            }
+            catch (EndOfStreamException ex)
+            {
+                // 바디가 OpCode가 기대하는 형식보다 짧음(BinaryReader) - 잘못 만들어진/조작된 패킷이라 끊는다.
+                Console.WriteLine($"[GameServer] 잘못된 패킷으로 연결 종료: {endpoint}, PlayerId={_playerId}, OpCode=0x{lastOpCode:X4} - {ex.Message}");
             }
             catch (OperationCanceledException) when (idleCts.IsCancellationRequested && !sessionCt.IsCancellationRequested)
             {
@@ -143,6 +157,12 @@ namespace GameServer.Networking
             catch (EnterRejectedException)
             {
                 // Game_EnterRequest 거부(인증 실패/알 수 없는 맵)로 HandleEnterRequestAsync가 의도적으로 연결을 종료한 경우.
+            }
+            catch (Exception ex)
+            {
+                // 그 밖의 예외(요청 처리 중 서버 버그, 예상 못 한 해석 오류 등). 예전에는 여기서 잡지 않아 세션 Task가 관찰되지 않은
+                // 예외로 끝났다(GameTcpServer가 기다리지 않는 fire-and-forget) - 원인을 남기고 이 연결만 정리한다.
+                Console.WriteLine($"[GameServer] 요청 처리 중 오류로 연결 종료: {endpoint}, PlayerId={_playerId}, OpCode=0x{lastOpCode:X4} - {ex}");
             }
             finally
             {

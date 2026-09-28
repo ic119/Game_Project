@@ -36,6 +36,8 @@ namespace Shared.Networking
         }
 
         // 스트림에서 프레임 하나를 비동기로 읽는다. 스트림이 끊기면 null을 반환한다.
+        // Length가 규격을 벗어나면(OpCode조차 담을 수 없거나 상한 초과) InvalidDataException을 던진다 - 손상/조작된 스트림은
+        // 이후 경계를 맞출 방법이 없어 연결을 끊어야 하고, 정상 종료(null)와 구분해 원인을 로그로 남길 수 있게 하기 위함이다.
         public static async Task<(ushort OpCode, byte[] Body)?> ReadFrameAsync(Stream stream, CancellationToken ct)
         {
             var lengthBuffer = new byte[LengthFieldSize];
@@ -43,8 +45,8 @@ namespace Shared.Networking
                 return null;
 
             uint payloadLength = BitConverter.ToUInt32(lengthBuffer, 0);
-            if (payloadLength > MaxPayloadSize)
-                return null;
+            if (payloadLength < OpCodeFieldSize || payloadLength > MaxPayloadSize)
+                throw new InvalidDataException($"잘못된 프레임 길이: {payloadLength}");
 
             var payloadBuffer = new byte[payloadLength];
             if (!await ReadExactAsync(stream, payloadBuffer, ct))
