@@ -59,13 +59,17 @@ namespace GameServer.Networking
                 }
             }
 
-            _ = RunMonsterAiLoopAsync(_serverLifetimeCt);
+            _ = RunTickLoopAsync(_serverLifetimeCt);
         }
 
         public void Add(PlayerInfo info, ClientSession session)
         {
             _players[info.PlayerId] = (info, session);
         }
+
+        // 직전 틱 이후 위치가 바뀐 플레이어 id. 이동 요청은 위치만 갱신하고 여기에 표시하며, 실제 전송은 다음 틱의
+        // 스냅샷(S2CWorldSnapshot)에 모아서 한다(RunTickLoopAsync). 값은 쓰지 않는다(ConcurrentDictionary를 집합으로 사용).
+        private readonly ConcurrentDictionary<long, byte> _movedPlayerIds = new();
 
         public void UpdatePosition(long playerId, float x, float y, float z, float rotationY)
         {
@@ -75,6 +79,7 @@ namespace GameServer.Networking
                 entry.Info.Y = y;
                 entry.Info.Z = z;
                 entry.Info.RotationY = rotationY;
+                _movedPlayerIds[playerId] = 0;
             }
         }
 
@@ -550,45 +555,84 @@ namespace GameServer.Networking
         }
         #endregion
 
-        #region Method - Monster AI
-        private static readonly TimeSpan AiTickInterval = TimeSpan.FromMilliseconds(150);
+        #region Method - Room Tick / Monster AI
+        // 방 틱 주기(20Hz). 스냅샷 전송과 몬스터 AI 갱신이 이 주기로 돈다. 클라이언트 이동 전송(10Hz)보다 촘촘해 추가 지연이 작다.
+        private static readonly TimeSpan TickInterval = TimeSpan.FromMilliseconds(50);
         private const float ArrivalThreshold = 0.1f;
 
-        // 몬스터 추적 AI 틱 루프. 방이 생성되는 시점(첫 입장자)에 시작해 서버가 종료될 때까지 돈다.
-        // 개별 요청과 무관한 방의 백그라운드 작업이라 리스폰 타이머(RespawnAfterDelayAsync)와 같은
-        // 서버 전체 수명 토큰을 쓴다 - 방은 비어도 제거되지 않고(MapRoomRegistry, 맵마다 하나) 이 루프도 멈추지 않지만, 플레이어가 없으면
-        // 감지 대상이 없어 순회 비용만 남는다(몬스터 수가 매우 적은 MVP 규모라 무시할 만하다).
-        private async Task RunMonsterAiLoopAsync(CancellationToken ct)
+        // 방 틱 루프(20Hz). 방이 생성되는 시점(첫 입장자)에 시작해 서버가 종료될 때까지 돈다. 틱마다
+        // (1) 몬스터 AI를 갱신하고 (2) 직전 틱 이후 위치가 바뀐 플레이어/몬스터를 스냅샷 하나로 묶어 보낸다(SendSnapshot).
+        // 개별 요청과 무관한 방의 백그라운드 작업이라 리스폰 타이머(RespawnAfterDelayAsync)와 같은 서버 전체 수명 토큰을 쓴다 -
+        // 방은 비어도 제거되지 않고(MapRoomRegistry, 맵마다 하나) 이 루프도 멈추지 않지만, 플레이어가 없으면 감지 대상도 받을 사람도
+        // 없어 순회 비용만 남는다(몬스터 수가 매우 적은 MVP 규모라 무시할 만하다).
+        // PeriodicTimer는 처리 시간과 무관하게 주기를 유지하고(Task.Delay 반복처럼 밀리지 않는다), AI 이동량은 실제 경과 시간으로 계산한다.
+        private async Task RunTickLoopAsync(CancellationToken ct)
         {
+            using var timer = new PeriodicTimer(TickInterval);
+            var elapsed = System.Diagnostics.Stopwatch.StartNew();
+
             try
             {
-                while (!ct.IsCancellationRequested)
+                while (await timer.WaitForNextTickAsync(ct))
                 {
-                    await Task.Delay(AiTickInterval, ct);
+                    float deltaSeconds = (float)elapsed.Elapsed.TotalSeconds;
+                    elapsed.Restart();
 
-                    // 한 틱에서 예상치 못한 예외가 나도 루프 자체는 계속 돈다 - 그렇지 않으면 이 방의 몬스터 AI가
+                    // 한 틱에서 예상치 못한 예외가 나도 루프 자체는 계속 돈다 - 그렇지 않으면 이 방의 몬스터 AI와 이동 전송이
                     // 서버가 재시작될 때까지 영구히 멈춘다(fire-and-forget이라 예외를 받아줄 호출측도 없다).
                     try
                     {
-                        TickMonsterAi((float)AiTickInterval.TotalSeconds);
+                        List<EntityTransform> movedMonsters = TickMonsterAi(deltaSeconds);
+                        SendSnapshot(movedMonsters);
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"[GameServer] 몬스터 AI 틱 오류 ({_mapId}) : {ex}");
+                        Console.WriteLine($"[GameServer] 방 틱 오류 ({_mapId}) : {ex}");
                     }
                 }
             }
-            catch (TaskCanceledException)
+            catch (OperationCanceledException)
             {
                 // 서버 종료로 인한 정상 취소.
             }
         }
 
+        // 직전 틱 이후 이동한 플레이어(_movedPlayerIds)와 이번 틱에 움직인 몬스터를 스냅샷 하나로 보낸다. 바뀐 게 없으면 보내지 않는다.
+        // 받는 쪽 자신의 이동도 포함되지만 클라이언트는 로컬 플레이어 id를 원격 목록에서 찾지 못해 자연히 무시한다.
+        private void SendSnapshot(List<EntityTransform> movedMonsters)
+        {
+            var movedPlayers = new List<EntityTransform>();
+            foreach (long playerId in _movedPlayerIds.Keys)
+            {
+                // 이번 틱에 읽은 id만 지운다 - 읽는 사이 새로 들어온 이동 표시는 다음 틱으로 넘어간다.
+                _movedPlayerIds.TryRemove(playerId, out _);
+                if (_players.TryGetValue(playerId, out var entry))
+                {
+                    PlayerInfo info = entry.Info;
+                    movedPlayers.Add(new EntityTransform(playerId, info.X, info.Y, info.Z, info.RotationY));
+                }
+            }
+
+            if (movedPlayers.Count == 0 && movedMonsters.Count == 0)
+            {
+                return;
+            }
+
+            var snapshot = new S2CWorldSnapshot
+            {
+                ServerTimeMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Players = movedPlayers,
+                Monsters = movedMonsters
+            };
+            BroadcastToAll(OpCode.Game_WorldSnapshot, snapshot.Encode());
+        }
+
         // 몬스터 종류에 관계없이 공통으로 동작한다 - 몬스터별 분기 없이 MonsterSpawnPointDefinition의
         // DetectionRange/ChaseSpeed/LeashRange 값만으로 감지/추적/복귀를 판단하므로, 새 몬스터 타입을
-        // 추가해도 이 로직은 수정할 필요가 없다.
-        private void TickMonsterAi(float deltaSeconds)
+        // 추가해도 이 로직은 수정할 필요가 없다. 이번 틱에 위치/방향이 바뀐 몬스터 목록을 돌려준다(스냅샷용).
+        private List<EntityTransform> TickMonsterAi(float deltaSeconds)
         {
+            var moved = new List<EntityTransform>();
             foreach (var runtime in _monsters.Values)
             {
                 // 이 순회 도중 ApplyMonsterAttack이 처치해 목록에서 뺀 몬스터가 아직 보일 수 있다 -
@@ -603,18 +647,10 @@ namespace GameServer.Networking
                     continue;
                 }
 
-                var broadcast = new S2CMonsterMoveBroadcast
-                {
-                    MonsterId = runtime.Info.MonsterId,
-                    X = runtime.Info.X,
-                    Y = runtime.Info.Y,
-                    Z = runtime.Info.Z,
-                    RotationY = runtime.Info.RotationY,
-                    Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-                };
-
-                BroadcastToAll(OpCode.Game_MonsterMoveBroadcast, broadcast.Encode());
+                MonsterInfo info = runtime.Info;
+                moved.Add(new EntityTransform(info.MonsterId, info.X, info.Y, info.Z, info.RotationY));
             }
+            return moved;
         }
 
         // 몬스터 한 마리의 상태를 한 틱만큼 갱신한다. 위치가 실제로 바뀌었으면 true를 반환해

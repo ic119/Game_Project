@@ -44,7 +44,7 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnMonsterSpawned += HandleMonsterSpawned;
             GameServerConnectManager.Instance.OnMonsterDamaged += HandleMonsterDamaged;
             GameServerConnectManager.Instance.OnMonsterDied += HandleMonsterDied;
-            GameServerConnectManager.Instance.OnMonsterMoved += HandleMonsterMoved;
+            GameServerConnectManager.Instance.OnWorldSnapshot += HandleWorldSnapshot;
             GameServerConnectManager.Instance.OnMonsterAttacked += HandleMonsterAttacked;
         }
 
@@ -58,7 +58,7 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnMonsterSpawned -= HandleMonsterSpawned;
             GameServerConnectManager.Instance.OnMonsterDamaged -= HandleMonsterDamaged;
             GameServerConnectManager.Instance.OnMonsterDied -= HandleMonsterDied;
-            GameServerConnectManager.Instance.OnMonsterMoved -= HandleMonsterMoved;
+            GameServerConnectManager.Instance.OnWorldSnapshot -= HandleWorldSnapshot;
             GameServerConnectManager.Instance.OnMonsterAttacked -= HandleMonsterAttacked;
         }
         #endregion
@@ -282,18 +282,19 @@ namespace Incheol.Modules
         }
 
         /// <summary>
-        /// Game_MonsterMoveBroadcast는 GameRoom의 AI 틱(추적/복귀)이 몬스터 위치를 바꿀 때마다 온다.
+        /// 서버 방 틱(20Hz)마다 오는 스냅샷(Game_WorldSnapshot)에서 이번 틱에 움직인 몬스터(추적/복귀) 위치만 반영한다.
         /// RemoteCharacterController(원격 플레이어)와 동일하게 목표 위치/회전만 갱신하고, 실제 이동은
         /// RemoteMonsterController.Update()에서 매 프레임 보간한다.
         /// </summary>
-        private void HandleMonsterMoved(GameMonsterMoveBroadcastPacket packet)
+        private void HandleWorldSnapshot(GameWorldSnapshotPacket snapshot)
         {
-            if (!remoteMonsters.TryGetValue(packet.MonsterId, out RemoteMonsterController controller) || controller == null)
+            foreach (GameEntityTransform monster in snapshot.Monsters)
             {
-                return;
+                if (remoteMonsters.TryGetValue(monster.Id, out RemoteMonsterController controller) && controller != null)
+                {
+                    controller.SetTarget(new Vector3(monster.X, monster.Y, monster.Z), monster.RotationY);
+                }
             }
-
-            controller.SetTarget(new Vector3(packet.X, packet.Y, packet.Z), packet.RotationY);
         }
         #endregion
     }

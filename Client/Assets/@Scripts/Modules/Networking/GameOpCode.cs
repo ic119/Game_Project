@@ -8,7 +8,7 @@ namespace Incheol.Modules.Networking
         System_Kicked = 0x0003,
 
         Game_MoveRequest = 0x0201,
-        Game_MoveBroadcast = 0x0202,
+        // 0x0202(Game_MoveBroadcast)는 Game_WorldSnapshot으로 대체되어 사용하지 않는다(번호 재사용 금지).
         Game_EnterRequest = 0x0203,
         Game_EnterAck = 0x0204,
         Game_PlayerJoined = 0x0205,
@@ -24,7 +24,7 @@ namespace Incheol.Modules.Networking
         Game_MonsterDieBroadcast = 0x020F,
         Game_MonsterSpawnBroadcast = 0x0210,
         Game_ExpGainBroadcast = 0x0211,
-        Game_MonsterMoveBroadcast = 0x0212,
+        // 0x0212(Game_MonsterMoveBroadcast)는 Game_WorldSnapshot으로 대체되어 사용하지 않는다(번호 재사용 금지).
         Game_MonsterAttackBroadcast = 0x0213,
         Game_LootBroadcast = 0x0214,
         Game_StatUpdateRequest = 0x0215,
@@ -32,6 +32,7 @@ namespace Incheol.Modules.Networking
         Game_PlayerRevived = 0x0217,
         Game_UseItemRequest = 0x0218,
         Game_UseItemResult = 0x0219,
-        Game_PositionCorrection = 0x021A
+        Game_PositionCorrection = 0x021A,
+        Game_WorldSnapshot = 0x021B
     }
 }

@@ -4,7 +4,7 @@ namespace Incheol.Controller
 {
     /// <summary>
     /// 다른 플레이어의 캐릭터를 표현한다. 입력을 직접 받는 PlayerMoveController와 달리,
-    /// GameServerConnectManager가 수신한 Game_MoveBroadcast로 전달받은 목표 위치/회전을 향해
+    /// GameServerConnectManager가 수신한 Game_WorldSnapshot으로 전달받은 목표 위치/회전을 향해
     /// 매 프레임 보간(Lerp/Slerp)만 한다 - 네트워크 지연으로 인한 순간이동을 완화한다.
     /// </summary>
     public class RemoteCharacterController : MonoBehaviour
@@ -51,7 +51,7 @@ namespace Incheol.Controller
         }
 
         /// <summary>
-        /// GameServerConnectManager.OnPlayerMoved(Game_MoveBroadcast)로 전달받은 목표 위치/회전을 갱신한다.
+        /// GameServerConnectManager.OnWorldSnapshot(Game_WorldSnapshot)으로 전달받은 목표 위치/회전을 갱신한다.
         /// </summary>
         public void SetTarget(Vector3 position, float rotationY)
         {

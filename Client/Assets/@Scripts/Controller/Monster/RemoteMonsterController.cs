@@ -101,7 +101,7 @@ namespace Incheol.Controller
         }
 
         /// <summary>
-        /// Game_MonsterMoveBroadcast(서버 AI 틱의 추적/복귀 이동)로 전달받은 목표 위치/회전을 갱신한다.
+        /// Game_WorldSnapshot(서버 방 틱의 추적/복귀 이동)으로 전달받은 목표 위치/회전을 갱신한다.
         /// </summary>
         public void SetTarget(Vector3 position, float rotationY)
         {

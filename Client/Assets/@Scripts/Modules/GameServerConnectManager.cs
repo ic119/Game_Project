@@ -59,13 +59,15 @@ namespace Incheol.Modules
 
         public event Action<GamePlayerInfo> OnPlayerJoined;
         public event Action<long> OnPlayerLeft;
-        public event Action<GameMoveBroadcastPacket> OnPlayerMoved;
+        /// <summary>
+        /// 서버 방 틱(20Hz)마다 위치가 바뀐 원격 플레이어/몬스터 목록이 묶여 온다(Game_WorldSnapshot).
+        /// </summary>
+        public event Action<GameWorldSnapshotPacket> OnWorldSnapshot;
         public event Action<GameChatBroadcastPacket> OnChatReceived;
         public event Action<GameDamageBroadcastPacket> OnDamageReceived;
         public event Action<GameMonsterInfo> OnMonsterSpawned;
         public event Action<GameMonsterDamageBroadcastPacket> OnMonsterDamaged;
         public event Action<GameMonsterDieBroadcastPacket> OnMonsterDied;
-        public event Action<GameMonsterMoveBroadcastPacket> OnMonsterMoved;
         public event Action<GameMonsterAttackBroadcastPacket> OnMonsterAttacked;
         public event Action<GameExpGainBroadcastPacket> OnExpGained;
         public event Action<GameLootBroadcastPacket> OnLootReceived;
@@ -497,9 +499,9 @@ namespace Incheol.Modules
                     pendingActions.Enqueue(() => OnPlayerLeft?.Invoke(left.PlayerId));
                     break;
 
-                case GameOpCode.Game_MoveBroadcast:
-                    var move = GameMoveBroadcastPacket.Decode(body);
-                    pendingActions.Enqueue(() => OnPlayerMoved?.Invoke(move));
+                case GameOpCode.Game_WorldSnapshot:
+                    var snapshot = GameWorldSnapshotPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnWorldSnapshot?.Invoke(snapshot));
                     break;
 
                 case GameOpCode.Game_ChatBroadcast:
@@ -525,11 +527,6 @@ namespace Incheol.Modules
                 case GameOpCode.Game_MonsterDieBroadcast:
                     var monsterDie = GameMonsterDieBroadcastPacket.Decode(body);
                     pendingActions.Enqueue(() => OnMonsterDied?.Invoke(monsterDie));
-                    break;
-
-                case GameOpCode.Game_MonsterMoveBroadcast:
-                    var monsterMove = GameMonsterMoveBroadcastPacket.Decode(body);
-                    pendingActions.Enqueue(() => OnMonsterMoved?.Invoke(monsterMove));
                     break;
 
                 case GameOpCode.Game_MonsterAttackBroadcast:

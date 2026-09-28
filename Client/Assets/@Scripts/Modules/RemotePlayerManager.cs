@@ -9,7 +9,7 @@ namespace Incheol.Modules
 {
     /// <summary>
     /// GameServerConnectManager가 수신한 다른 플레이어의 입장(Game_PlayerJoined)/퇴장(Game_PlayerLeft)/
-    /// 이동(Game_MoveBroadcast) 이벤트를 받아 BasicCharacter 프리팹을 스폰/제거/갱신한다.
+    /// 이동(Game_WorldSnapshot) 이벤트를 받아 BasicCharacter 프리팹을 스폰/제거/갱신한다.
     /// GameServerConnectManager와 달리 GameScene 동안만 존재하면 되므로 PersistAcrossScenes를 쓰지 않는다 -
     /// 씬이 언로드되면 이 매니저와 그 자식으로 스폰된 원격 캐릭터들도 함께 파괴된다.
     /// </summary>
@@ -27,7 +27,7 @@ namespace Incheol.Modules
 
             GameServerConnectManager.Instance.OnPlayerJoined += HandlePlayerJoined;
             GameServerConnectManager.Instance.OnPlayerLeft += HandlePlayerLeft;
-            GameServerConnectManager.Instance.OnPlayerMoved += HandlePlayerMoved;
+            GameServerConnectManager.Instance.OnWorldSnapshot += HandleWorldSnapshot;
             GameServerConnectManager.Instance.OnDamageReceived += HandlePlayerDamaged;
             GameServerConnectManager.Instance.OnMonsterAttacked += HandleMonsterAttackedPlayer;
             GameServerConnectManager.Instance.OnPlayerHpChanged += HandlePlayerHpChanged;
@@ -43,7 +43,7 @@ namespace Incheol.Modules
 
             GameServerConnectManager.Instance.OnPlayerJoined -= HandlePlayerJoined;
             GameServerConnectManager.Instance.OnPlayerLeft -= HandlePlayerLeft;
-            GameServerConnectManager.Instance.OnPlayerMoved -= HandlePlayerMoved;
+            GameServerConnectManager.Instance.OnWorldSnapshot -= HandleWorldSnapshot;
             GameServerConnectManager.Instance.OnDamageReceived -= HandlePlayerDamaged;
             GameServerConnectManager.Instance.OnMonsterAttacked -= HandleMonsterAttackedPlayer;
             GameServerConnectManager.Instance.OnPlayerHpChanged -= HandlePlayerHpChanged;
@@ -153,14 +153,19 @@ namespace Incheol.Modules
             }
         }
 
-        private void HandlePlayerMoved(GameMoveBroadcastPacket move)
+        /// <summary>
+        /// 서버 방 틱마다 오는 스냅샷에서 원격 플레이어 위치만 반영한다(몬스터는 RemoteMonsterManager가 같은 패킷을 따로 처리).
+        /// 내 캐릭터 id는 remotePlayers에 없으므로 자연히 건너뛴다.
+        /// </summary>
+        private void HandleWorldSnapshot(GameWorldSnapshotPacket snapshot)
         {
-            if (!remotePlayers.TryGetValue(move.PlayerId, out RemoteCharacterController controller) || controller == null)
+            foreach (GameEntityTransform player in snapshot.Players)
             {
-                return;
+                if (remotePlayers.TryGetValue(player.Id, out RemoteCharacterController controller) && controller != null)
+                {
+                    controller.SetTarget(new Vector3(player.X, player.Y, player.Z), player.RotationY);
+                }
             }
-
-            controller.SetTarget(new Vector3(move.X, move.Y, move.Z), move.RotationY);
         }
 
         /// <summary>

@@ -51,6 +51,9 @@ namespace GameServer.Networking
         // 대기열이 가득 차 끊긴 경우 1. 이때는 남은 프레임을 보내려고 기다리지 않고 바로 닫는다.
         private int _abortedSlowClient;
 
+        // 전송 대기열을 닫았으면 1(CloseOutgoing). 이후 Send의 TryWrite 실패는 "가득 참"이 아니라 "종료 중"이다.
+        private int _outgoingClosed;
+
         private Task? _sendLoop;
 
         // 이 세션이 Game_EnterRequest로 등록한 플레이어 id. 등록 전이면 null.
@@ -148,7 +151,7 @@ namespace GameServer.Networking
                 // 더 이상 보낼 것이 없으니 대기열을 닫고, 남은 프레임(강제 종료/입장 거부 사유)이 나갈 때까지 잠깐 기다린 뒤
                 // 소켓을 닫는다. 느린 클라이언트로 끊는 경우는 기다리지 않는다. 소켓을 닫으면 진행 중이던 쓰기도 실패하며
                 // 전송 루프가 끝난다.
-                _outgoing.Writer.TryComplete();
+                CloseOutgoing();
                 if (_sendLoop is not null && Volatile.Read(ref _abortedSlowClient) == 0)
                 {
                     await Task.WhenAny(_sendLoop, Task.Delay(FlushTimeoutOnClose));
@@ -170,10 +173,18 @@ namespace GameServer.Networking
 
             // TryWrite는 대기열이 닫혔거나(종료 중) 가득 찼을 때 실패한다. 닫힌 경우는 버리면 되고, 가득 찬 경우는
             // 클라이언트가 받아 가는 속도가 보내는 속도를 따라오지 못하는 것이라 연결을 끊는다.
-            if (!_outgoing.Reader.Completion.IsCompleted)
+            // (Reader.Completion은 남은 프레임까지 다 보낸 뒤에야 완료되므로 "닫혔는지" 판단에 쓸 수 없다 - 별도 플래그를 본다.)
+            if (Volatile.Read(ref _outgoingClosed) == 0)
             {
                 AbortSlowClient();
             }
+        }
+
+        // 전송 대기열을 닫는다(더 이상 넣지 않음). 이미 들어 있는 프레임은 전송 루프가 마저 보낸다.
+        private void CloseOutgoing()
+        {
+            Volatile.Write(ref _outgoingClosed, 1);
+            _outgoing.Writer.TryComplete();
         }
 
         private void AbortSlowClient()
@@ -184,7 +195,7 @@ namespace GameServer.Networking
             }
 
             Console.WriteLine($"[GameServer] 전송 대기열 초과({MaxQueuedFrames}) - 느린 클라이언트 연결을 종료합니다 (PlayerId={_playerId}).");
-            _outgoing.Writer.TryComplete();
+            CloseOutgoing();
             _kickCts.Cancel();
         }
 
@@ -370,7 +381,7 @@ namespace GameServer.Networking
         public void Kick(string reason)
         {
             Send(OpCode.System_Kicked, Encoding.UTF8.GetBytes(reason));
-            _outgoing.Writer.TryComplete();
+            CloseOutgoing();
             _kickCts.Cancel();
         }
 
@@ -460,7 +471,7 @@ namespace GameServer.Networking
         private static readonly TimeSpan PositionCorrectionInterval = TimeSpan.FromMilliseconds(500);
         private DateTime _lastPositionCorrectionAtUtc = DateTime.MinValue;
 
-        // 룸의 위치를 갱신하고, 본인을 제외한 나머지 접속자에게 브로드캐스트한다.
+        // 룸의 위치를 갱신한다(다른 접속자에게는 방 틱의 스냅샷으로 전달된다).
         // request.PlayerId가 이 세션의 실제 플레이어와 같은지 검증한다 - 그렇지 않으면 다른 플레이어의
         // ID를 실어 보내는 것만으로 그 플레이어를 임의의 위치로 옮길 수 있다(다른 핸들러들과 동일한 검증).
         // 클라이언트 PlayerNetworkSender는 0.1초마다(초당 10회) 보낸다. 그보다 여유 있게 허용하고, 초과분은 브로드캐스트 없이 버린다 -
@@ -510,20 +521,9 @@ namespace GameServer.Networking
                 return;
             }
 
+            // 위치만 갱신한다. 다른 접속자에게는 방 틱이 다음 스냅샷(S2CWorldSnapshot)에 모아서 보낸다.
             _moveBudget -= horizontalDistance;
             room.UpdatePosition(request.PlayerId, request.X, request.Y, request.Z, request.RotationY);
-
-            var broadcast = new S2CMoveBroadcast
-            {
-                PlayerId = request.PlayerId,
-                X = request.X,
-                Y = request.Y,
-                Z = request.Z,
-                RotationY = request.RotationY,
-                Timestamp = request.Timestamp
-            };
-
-            room.Broadcast(OpCode.Game_MoveBroadcast, broadcast.Encode(), request.PlayerId);
         }
 
         // 거부된 이동을 되돌리도록 본인에게 서버가 마지막으로 인정한 위치를 보낸다(PositionCorrectionInterval로 제한).
