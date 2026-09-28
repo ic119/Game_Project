@@ -1,6 +1,7 @@
  using Incheol.Utils;
 using System;
 using System.Text;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -20,6 +21,23 @@ namespace Incheol.Modules
         public UserInfo CurrentUser { get; private set; }
 
         /// <summary>
+        /// RefreshToken까지 만료/폐기되어 재발급에 실패했을 때 발생한다. 로컬 세션은 이미 정리된 상태이므로,
+        /// 구독측(GameManager)은 다시 로그인하도록 로그인 화면으로 보내면 된다.
+        /// </summary>
+        public event Action OnSessionExpired;
+
+        // AccessToken(서버 발급 30분)이 이 시간 안에 만료되면 요청 전에 미리 재발급한다 - 요청이 서버에 닿는 사이 만료되는 경우를 줄인다.
+        private const int AccessTokenRefreshMarginSeconds = 60;
+
+        // 진행 중인 재발급. 여러 요청이 동시에 만료를 발견해도 재발급 요청은 하나만 보낸다 - RefreshToken은 한 번 쓰면 폐기되는
+        // 일회용(로테이션)이라, 두 번 보내면 늦게 도착한 쪽이 폐기된 토큰으로 실패해 멀쩡한 세션이 끊긴다.
+        private Task<bool> refreshInFlight;
+
+        // 미리 재발급(만료 임박)을 이미 시도한 AccessToken. 기기 시계가 서버보다 빠르면 새로 받은 토큰도 곧 만료로 보이므로,
+        // 같은 토큰으로는 한 번만 미리 재발급한다(실제로 만료됐다면 서버의 401을 보고 다시 재발급한다).
+        private string proactiveRefreshAttemptedToken;
+
+        /// <summary>
         /// 로그인 세션(AccessToken/RefreshToken)은 씬이 전환되어도 유지되어야 하므로 파괴되지 않는다.
         /// </summary>
         protected override bool PersistAcrossScenes => true;
@@ -27,6 +45,7 @@ namespace Incheol.Modules
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         private const string MasterAccountUsername = "admin";
         private const string MasterAccountPassword = "admin1234";
+        private const string MasterDevRefreshToken = "MASTER_DEV_REFRESH_TOKEN";
 #endif
         #endregion
 
@@ -61,6 +80,7 @@ namespace Incheol.Modules
         [Serializable] private class RefreshRequestBody { public string _refreshToken; }
         [Serializable] private class LoginResponseBody { public string _accessToken; public string _refreshToken; public UserInfo _user; }
         [Serializable] private class ErrorResponseBody { public string message; }
+        [Serializable] private class JwtPayloadBody { public long exp; }
         #endregion
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -107,10 +127,32 @@ namespace Incheol.Modules
 
         /// <summary>
         /// 저장된 RefreshToken으로 토큰을 재발급받는다(POST /api/auth/refresh, 토큰 로테이션 — RefreshToken도 함께 갱신됨).
+        /// 인증이 필요한 요청(SendAuthorizedJsonRequestAsync)은 만료 시 알아서 재발급하므로 보통 직접 호출할 필요가 없다.
         /// </summary>
         public void Refresh(Action<bool, string> _onComplete = null)
         {
-            _ = RefreshAsync(_onComplete);
+            _ = RefreshWithCallbackAsync(_onComplete);
+        }
+
+        /// <summary>
+        /// 지금 쓸 수 있는 AccessToken을 돌려준다. 곧 만료되면 먼저 재발급한다. 로그인 상태가 아니거나 재발급에 실패하면 null.
+        /// 401 재시도가 없는 경로(GameServer 입장 등)에서 토큰을 꺼낼 때 AccessToken 속성 대신 사용한다.
+        /// </summary>
+        public async Awaitable<string> GetValidAccessTokenAsync()
+        {
+            if (string.IsNullOrEmpty(AccessToken))
+            {
+                return null;
+            }
+
+            if (AccessToken == proactiveRefreshAttemptedToken || !IsAccessTokenExpiringSoon(AccessToken))
+            {
+                return AccessToken;
+            }
+
+            proactiveRefreshAttemptedToken = AccessToken;
+            bool refreshed = await RefreshSessionAsync(AccessToken);
+            return refreshed ? AccessToken : null;
         }
 
         /// <summary>
@@ -123,15 +165,31 @@ namespace Incheol.Modules
         /// <summary>
         /// 로그인 상태(AccessToken)가 필요한 API를 다른 매니저(예: SaveDataManager)가 호출할 때 사용하는 공용 헬퍼.
         /// AccessToken이 없으면(비로그인 상태) 요청을 보내지 않고 즉시 실패를 반환한다.
+        /// AccessToken은 30분이면 만료된다. 만료가 임박하면 보내기 전에 재발급하고, 그래도 401이 오면(기기/서버 시계 차이 등)
+        /// 한 번 재발급한 뒤 다시 보낸다 - 예전에는 재발급을 아무도 호출하지 않아, 로그인 30분 뒤부터 장비 장착/아이템 버리기 등
+        /// 모든 요청이 401로 실패했다.
         /// </summary>
         public async Awaitable<(bool success, string body, string error)> SendAuthorizedJsonRequestAsync(string _path, string _method, string _jsonBody = null)
         {
-            if (string.IsNullOrEmpty(AccessToken))
+            string accessToken = await GetValidAccessTokenAsync();
+            if (string.IsNullOrEmpty(accessToken))
             {
                 return (false, null, "로그인이 필요합니다.");
             }
 
-            return await SendJsonRequestAsync(_path, _method, _jsonBody, AccessToken);
+            (bool success, string body, string error, long statusCode) = await SendJsonRequestAsync(_path, _method, _jsonBody, accessToken);
+            if (statusCode != 401)
+            {
+                return (success, body, error);
+            }
+
+            if (!await RefreshSessionAsync(accessToken))
+            {
+                return (false, body, "로그인이 만료되었습니다. 다시 로그인해 주세요.");
+            }
+
+            (bool retrySuccess, string retryBody, string retryError, long _) = await SendJsonRequestAsync(_path, _method, _jsonBody, AccessToken);
+            return (retrySuccess, retryBody, retryError);
         }
 
         #endregion
@@ -140,7 +198,7 @@ namespace Incheol.Modules
         private async Awaitable RegisterAsync(string _userName, string _password, string _nickname, Action<bool, string> _onComplete)
         {
             string json = JsonUtility.ToJson(new RegisterRequestBody { _userName = _userName, _password = _password, _nickname = _nickname });
-            (bool success, string _, string error) = await SendJsonRequestAsync("/api/users/register", "POST", json);
+            (bool success, string _, string error, long _) = await SendJsonRequestAsync("/api/users/register", "POST", json);
 
             _onComplete?.Invoke(success, error);
         }
@@ -148,7 +206,7 @@ namespace Incheol.Modules
         private async Awaitable LoginAsync(string _username, string _password, Action<bool, string> _onComplete)
         {
             string json = JsonUtility.ToJson(new LoginRequestBody { _username = _username, _password = _password });
-            (bool success, string body, string error) = await SendJsonRequestAsync("/api/auth/login", "POST", json);
+            (bool success, string body, string error, long _) = await SendJsonRequestAsync("/api/auth/login", "POST", json);
 
             if (!success)
             {
@@ -160,27 +218,94 @@ namespace Incheol.Modules
             _onComplete?.Invoke(true, null);
         }
 
-        private async Awaitable RefreshAsync(Action<bool, string> _onComplete)
+        private async Awaitable RefreshWithCallbackAsync(Action<bool, string> _onComplete)
         {
+            bool refreshed = await RefreshSessionAsync();
+            _onComplete?.Invoke(refreshed, refreshed ? null : "로그인이 만료되었습니다. 다시 로그인해 주세요.");
+        }
+
+        /// <summary>
+        /// 재발급을 요청하되, 이미 진행 중이면 그 결과를 함께 기다린다(재발급 요청은 항상 하나). _staleAccessToken은 호출측이
+        /// 만료됐다고 본 토큰으로, 그 사이 다른 요청이 이미 재발급해 AccessToken이 바뀌었다면 다시 보내지 않고 성공으로 본다.
+        /// </summary>
+        private Task<bool> RefreshSessionAsync(string _staleAccessToken = null)
+        {
+            if (_staleAccessToken != null && !string.IsNullOrEmpty(AccessToken) && AccessToken != _staleAccessToken)
+            {
+                return Task.FromResult(true);
+            }
+
+            if (refreshInFlight == null || refreshInFlight.IsCompleted)
+            {
+                refreshInFlight = RunRefreshAsync();
+            }
+
+            return refreshInFlight;
+        }
+
+        private async Task<bool> RunRefreshAsync()
+        {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            // 마스터 계정은 서버가 발급한 토큰이 아니라 재발급할 수 없다. 세션을 끊지도 않는다(서버 요청이 실패하는 건 원래 그렇다).
+            if (RefreshToken == MasterDevRefreshToken)
+            {
+                return false;
+            }
+#endif
             if (string.IsNullOrEmpty(RefreshToken))
             {
                 DebugLogManager.GenerateErrorMessage<ServerConnectManager>("저장된 RefreshToken이 없어 재발급을 요청할 수 없습니다.");
-                _onComplete?.Invoke(false, "로그인이 필요합니다.");
-                return;
+                return false;
             }
 
             string json = JsonUtility.ToJson(new RefreshRequestBody { _refreshToken = RefreshToken });
-            (bool success, string body, string error) = await SendJsonRequestAsync("/api/auth/refresh", "POST", json);
+            (bool success, string body, string error, long statusCode) = await SendJsonRequestAsync("/api/auth/refresh", "POST", json);
 
-            if (!success)
+            if (success)
             {
-                ClearSession();
-                _onComplete?.Invoke(false, error);
-                return;
+                ApplyLoginResponse(body);
+                return true;
             }
 
-            ApplyLoginResponse(body);
-            _onComplete?.Invoke(true, null);
+            // 서버가 RefreshToken을 거부했다(만료/폐기, 401) - 다시 로그인하는 수밖에 없다. 네트워크 오류나 서버 오류(5xx)로
+            // 응답을 못 받은 경우는 세션을 유지한다 - 잠깐의 끊김으로 로그아웃시키지 않고, 다음 요청에서 다시 재발급을 시도한다.
+            if (statusCode == 401)
+            {
+                DebugLogManager.GenerateErrorMessage<ServerConnectManager>($"RefreshToken이 만료되어 세션을 종료합니다 : {error}");
+                ClearSession();
+                OnSessionExpired?.Invoke();
+            }
+
+            return false;
+        }
+
+        // AccessToken(JWT)의 exp(만료 시각, 유닉스 초)를 읽어 AccessTokenRefreshMarginSeconds 안에 만료되는지 본다.
+        // 서명은 검증하지 않는다(서버가 한다) - 언제 재발급할지 정하는 데만 쓴다. 읽을 수 없는 토큰이면 false(서버의 401에 맡긴다).
+        private static bool IsAccessTokenExpiringSoon(string _accessToken)
+        {
+            string[] parts = _accessToken.Split('.');
+            if (parts.Length != 3)
+            {
+                return false;
+            }
+
+            try
+            {
+                string payload = parts[1].Replace('-', '+').Replace('_', '/');
+                payload = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
+
+                JwtPayloadBody body = JsonUtility.FromJson<JwtPayloadBody>(Encoding.UTF8.GetString(Convert.FromBase64String(payload)));
+                if (body == null || body.exp <= 0)
+                {
+                    return false;
+                }
+
+                return DateTimeOffset.UtcNow.ToUnixTimeSeconds() >= body.exp - AccessTokenRefreshMarginSeconds;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
 
         private async Awaitable LogoutAsync(Action<bool> _onComplete)
@@ -193,7 +318,7 @@ namespace Incheol.Modules
             }
 
             string json = JsonUtility.ToJson(new RefreshRequestBody { _refreshToken = RefreshToken });
-            (bool success, string _, string error) = await SendJsonRequestAsync("/api/auth/logout", "POST", json);
+            (bool success, string _, string error, long _) = await SendJsonRequestAsync("/api/auth/logout", "POST", json);
 
             ClearSession();
 
@@ -224,7 +349,7 @@ namespace Incheol.Modules
         private void ApplyMasterLogin()
         {
             AccessToken = "MASTER_DEV_ACCESS_TOKEN";
-            RefreshToken = "MASTER_DEV_REFRESH_TOKEN";
+            RefreshToken = MasterDevRefreshToken;
             CurrentUser = new UserInfo
             {
                 _id = -1,
@@ -248,8 +373,9 @@ namespace Incheol.Modules
         /// JSON Body로 서버에 요청을 보내고 완료될 때까지 매 프레임 대기한다.
         /// HTTP 상태 코드가 에러(4xx/5xx)이거나 네트워크 오류인 경우 success=false와 함께
         /// 서버가 { message: "..." } 형식으로 내려준 에러 메시지를 파싱해 반환한다.
+        /// statusCode는 HTTP 상태 코드이며, 응답을 받지 못했으면(연결 실패/타임아웃) 0이다.
         /// </summary>
-        private async Awaitable<(bool success, string body, string error)> SendJsonRequestAsync(string _path, string _method, string _jsonBody, string _accessToken = null)
+        private async Awaitable<(bool success, string body, string error, long statusCode)> SendJsonRequestAsync(string _path, string _method, string _jsonBody, string _accessToken = null)
         {
             string url = serverBaseUrl.TrimEnd('/') + _path;
 
@@ -281,10 +407,10 @@ namespace Incheol.Modules
             {
                 string errorMessage = ExtractErrorMessage(request);
                 DebugLogManager.GenerateErrorMessage<ServerConnectManager>($"요청 실패 [{_method} {_path}] : {errorMessage}");
-                return (false, request.downloadHandler.text, errorMessage);
+                return (false, request.downloadHandler.text, errorMessage, request.responseCode);
             }
 
-            return (true, request.downloadHandler.text, null);
+            return (true, request.downloadHandler.text, null, request.responseCode);
         }
 
         private static string ExtractErrorMessage(UnityWebRequest _request)

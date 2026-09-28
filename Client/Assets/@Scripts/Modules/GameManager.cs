@@ -272,7 +272,39 @@ namespace Incheol.Modules
         // Start is called once before the first execution of Update after the MonoBehaviour is created
         void Start()
         {
+            // 로그인 세션이 끝나는 건 어느 씬에서든 일어날 수 있으므로(RefreshToken 만료), 씬 전환에도 남는 GameManager가 받아 처리한다.
+            if (ServerConnectManager.Instance != null)
+            {
+                ServerConnectManager.Instance.OnSessionExpired += HandleSessionExpired;
+            }
+        }
 
+        protected override void OnDestroy()
+        {
+            // 종료 중에는 Instance가 null을 돌려준다(새 인스턴스를 만들지 않는다).
+            if (ServerConnectManager.Instance != null)
+            {
+                ServerConnectManager.Instance.OnSessionExpired -= HandleSessionExpired;
+            }
+
+            base.OnDestroy();
+        }
+
+        /// <summary>
+        /// RefreshToken까지 만료되어 로그인 세션이 끝났을 때 호출된다(ServerConnectManager.OnSessionExpired). 로컬 세션은 이미
+        /// 정리됐으므로 알린 뒤 로그인 화면으로 보낸다. GameServer 연결은 GameScene이 언로드되며 끊긴다(GameSceneManager.OnDestroy).
+        /// </summary>
+        private void HandleSessionExpired()
+        {
+            ShowAlarmPopup("로그인 만료", "로그인이 만료되었습니다. 다시 로그인해 주세요.");
+
+            if (SceneLoadManager.Instance == null)
+            {
+                DebugLogManager.GenerateErrorMessage<GameManager>("SceneLoadManager.Instance가 null입니다.");
+                return;
+            }
+
+            SceneLoadManager.Instance.LoadSceneByTags("LoginScene");
         }
 
         // Update is called once per frame

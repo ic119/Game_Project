@@ -187,7 +187,9 @@ namespace Incheol.Modules
                 return;
             }
 
-            string accessToken = ServerConnectManager.Instance != null ? ServerConnectManager.Instance.AccessToken : null;
+            // GameServer는 입장 시 이 토큰으로 MainServer에 캐릭터 소유권을 확인한다. 로비에 오래 머물렀으면 이미 만료됐을 수
+            // 있어(30분) AccessToken 속성을 그대로 쓰지 않고, 만료가 임박하면 재발급한 토큰을 받는다.
+            string accessToken = ServerConnectManager.Instance != null ? await ServerConnectManager.Instance.GetValidAccessTokenAsync() : null;
             if (string.IsNullOrEmpty(accessToken))
             {
                 DebugLogManager.GenerateErrorMessage<GameServerConnectManager>("로그인 세션이 없어 GameServer에 접속할 수 없습니다.");
