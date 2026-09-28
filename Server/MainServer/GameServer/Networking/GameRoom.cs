@@ -40,10 +40,6 @@ namespace GameServer.Networking
         // 방 자체의 백그라운드 작업이라 서버 전체 수명 토큰을 별도로 받아 둔다.
         private readonly CancellationToken _serverLifetimeCt;
 
-        // 방에 아무도 없으면 MapRoomRegistry가 이 방을 정리(제거)할 수 있도록 알려준다.
-        // 몬스터 생존 여부는 판단 기준에 포함하지 않는다 - 몬스터만 남고 플레이어가 없는 방은 정리 대상이다.
-        public bool IsEmpty => _players.IsEmpty;
-
         // 이 방의 맵 id. 부활 위치 등 맵 좌표 데이터(MapDataCatalog)를 찾는 키다.
         private readonly string _mapId;
 
@@ -571,7 +567,7 @@ namespace GameServer.Networking
 
         // 몬스터 추적 AI 틱 루프. 방이 생성되는 시점(첫 입장자)에 시작해 서버가 종료될 때까지 돈다.
         // 개별 요청과 무관한 방의 백그라운드 작업이라 리스폰 타이머(RespawnAfterDelayAsync)와 같은
-        // 서버 전체 수명 토큰을 쓴다 - 방이 비어도 이 루프 자체는 멈추지 않지만, 플레이어가 없으면
+        // 서버 전체 수명 토큰을 쓴다 - 방은 비어도 제거되지 않고(MapRoomRegistry, 맵마다 하나) 이 루프도 멈추지 않지만, 플레이어가 없으면
         // 감지 대상이 없어 순회 비용만 남는다(몬스터 수가 매우 적은 MVP 규모라 무시할 만하다).
         private async Task RunMonsterAiLoopAsync(CancellationToken ct)
         {

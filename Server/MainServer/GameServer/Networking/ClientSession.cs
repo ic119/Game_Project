@@ -111,15 +111,10 @@ namespace GameServer.Networking
 
                     // 같은 캐릭터가 새 세션으로 다시 입장해 방의 항목이 이미 교체됐다면 Remove가 false다 - 이때는 새 세션이
                     // 그 캐릭터로 방에 있는 중이므로 다른 접속자에게 퇴장을 알리지 않는다.
-                    if (_room is { } room && _mapId is { } mapId)
+                    if (_room is { } room && room.Remove(playerId, this))
                     {
-                        if (room.Remove(playerId, this))
-                        {
-                            var left = new S2CPlayerLeft { PlayerId = playerId };
-                            await room.BroadcastAsync(OpCode.Game_PlayerLeft, left.Encode(), playerId, ct);
-                        }
-
-                        _mapRooms.RemoveIfEmpty(mapId, room);
+                        var left = new S2CPlayerLeft { PlayerId = playerId };
+                        await room.BroadcastAsync(OpCode.Game_PlayerLeft, left.Encode(), playerId, ct);
                     }
                 }
 
@@ -340,7 +335,6 @@ namespace GameServer.Networking
 
             var left = new S2CPlayerLeft { PlayerId = playerId };
             await previousRoom.BroadcastAsync(OpCode.Game_PlayerLeft, left.Encode(), playerId, ct);
-            _mapRooms.RemoveIfEmpty(previousMapId, previousRoom);
 
             // HP 등 나머지 전투 스탯은 PlayerInfo 인스턴스를 그대로 재사용해 유지하고, 위치/맵만 갱신한다.
             info.MapId = request.MapId;
