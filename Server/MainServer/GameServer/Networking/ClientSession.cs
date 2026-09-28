@@ -366,7 +366,7 @@ namespace GameServer.Networking
 
             var (visiblePlayers, visibleMonsters) = room.Join(info, this);
 
-            var ack = new S2CEnterAck { ExistingPlayers = visiblePlayers, ExistingMonsters = visibleMonsters };
+            var ack = new S2CEnterAck { Self = info, ExistingPlayers = visiblePlayers, ExistingMonsters = visibleMonsters };
             Send(OpCode.Game_EnterAck, ack.Encode());
         }
 
@@ -484,7 +484,7 @@ namespace GameServer.Networking
             _room = nextRoom;
             _mapId = request.MapId;
 
-            var ack = new S2CEnterAck { ExistingPlayers = visiblePlayers, ExistingMonsters = visibleMonsters };
+            var ack = new S2CEnterAck { Self = info, ExistingPlayers = visiblePlayers, ExistingMonsters = visibleMonsters };
             Send(OpCode.Game_MapChangeAck, ack.Encode());
         }
 

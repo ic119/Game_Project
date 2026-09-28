@@ -114,6 +114,9 @@ namespace Incheol.Presenter.Scene
                 GameServerConnectManager.Instance.OnServerError += HandleGameServerError;
                 GameServerConnectManager.Instance.OnKicked += HandleSessionKicked;
                 GameServerConnectManager.Instance.OnDisconnected += HandleGameServerDisconnected;
+                GameServerConnectManager.Instance.OnEntered += HandleGameServerEntered;
+                GameServerConnectManager.Instance.OnReconnecting += HandleGameServerReconnecting;
+                GameServerConnectManager.Instance.OnReconnected += HandleGameServerReconnected;
             }
 
             // ItemDatabaseSO는 Addressables로 비동기 로드되므로, 씬 진입 직후 인벤토리를 처음 열면 로드가
@@ -141,6 +144,9 @@ namespace Incheol.Presenter.Scene
                 GameServerConnectManager.Instance.OnServerError -= HandleGameServerError;
                 GameServerConnectManager.Instance.OnKicked -= HandleSessionKicked;
                 GameServerConnectManager.Instance.OnDisconnected -= HandleGameServerDisconnected;
+                GameServerConnectManager.Instance.OnEntered -= HandleGameServerEntered;
+                GameServerConnectManager.Instance.OnReconnecting -= HandleGameServerReconnecting;
+                GameServerConnectManager.Instance.OnReconnected -= HandleGameServerReconnected;
             }
 
             if (ItemDatabaseManager.Instance != null)
@@ -1277,15 +1283,80 @@ private void TryEquipItem(string _itemId)
         }
 
         /// <summary>
-        /// 하트비트 타임아웃 등으로 GameServer 연결이 예기치 않게 끊어졌을 때(씬 전환 등으로 직접 Disconnect()를
-        /// 호출한 경우는 포함되지 않음) 알림 팝업으로 사용자에게 알린다.
+        /// GameServer 입장(최초/재접속)이 받아들여졌을 때 서버가 정한 내 위치/체력으로 맞춘다. 최초 입장은 클라이언트도 같은
+        /// RespawnPoint에 가득 찬 체력으로 시작해 사실상 변화가 없고, 재접속은 끊기기 전과 달라진 위치/체력을 여기서 맞춘다.
+        /// </summary>
+        private void HandleGameServerEntered(GamePlayerInfo self)
+        {
+            if (spawnedPlayerModel == null || !IsLocalPlayer(self.PlayerId))
+            {
+                return;
+            }
+
+            WarpLocalPlayer(new Vector3(self.X, self.Y, self.Z), Quaternion.Euler(0f, self.RotationY, 0f));
+            ApplyLocalServerHp(self.CurrentHp, self.MaxHp, false);
+        }
+
+        /// <summary>
+        /// GameServer 연결이 예기치 않게 끊겨 자동 재접속을 시도할 때마다 호출된다. 서버와 주고받을 수 없는 동안 조작을 막고
+        /// 로딩바로 안내한다. 화면의 원격 플레이어/몬스터는 끊긴 시점 그대로라 믿을 수 없으므로 첫 시도에서 비운다 -
+        /// 재접속하면 Game_EnterAck이 시야 안의 목록으로 다시 채운다.
+        /// </summary>
+        private void HandleGameServerReconnecting(int attempt, int maxAttempts)
+        {
+            if (attempt == 1)
+            {
+                // 응답을 받을 수 없게 됐으므로 대기 상태를 풀어준다.
+                isUseItemPending = false;
+
+                SetLocalPlayerControlEnabled(false);
+                RemotePlayerManager.Instance?.ClearAll();
+                RemoteMonsterManager.Instance?.ClearAll();
+                monsterTargetView?.ClearTarget();
+                GameManager.Instance?.ShowLoadingBar();
+            }
+
+            GameManager.Instance?.LoadingBarView?.UpdateTitle($"게임 서버에 다시 연결하는 중... ({attempt}/{maxAttempts})");
+        }
+
+        /// <summary>
+        /// 자동 재접속에 성공했을 때 호출된다. 위치/체력은 바로 앞의 HandleGameServerEntered가 이미 맞췄다.
+        /// </summary>
+        private void HandleGameServerReconnected()
+        {
+            GameManager.Instance?.LoadingBarView?.UpdateTitle(string.Empty);
+            GameManager.Instance?.HideLoadingBar();
+
+            if (spawnedPlayerModel != null)
+            {
+                SetLocalPlayerControlEnabled(!spawnedPlayerModel.IsDead);
+            }
+
+            chatView?.AddChatMessage("시스템", "게임 서버에 다시 연결되었습니다.");
+        }
+
+        /// <summary>
+        /// GameServer 연결이 예기치 않게 끊기고 자동 재접속도 모두 실패했을 때(또는 입장 자체를 하지 못했을 때) 호출된다
+        /// (씬 전환 등으로 직접 Disconnect()를 호출한 경우는 포함되지 않음). 서버 없이는 진행할 수 없으므로 알린 뒤
+        /// 로비로 돌아간다 - 로비에서 다시 시작하면 새로 입장한다.
         /// </summary>
         private void HandleGameServerDisconnected()
         {
             // 응답을 받을 수 없게 됐으므로 대기 상태를 풀어준다.
             isUseItemPending = false;
+            SetLocalPlayerControlEnabled(false);
 
-            GameManager.Instance?.ShowAlarmPopup("연결 끊김", "게임 서버와의 연결이 끊어졌습니다.");
+            GameManager.Instance?.LoadingBarView?.UpdateTitle(string.Empty);
+            GameManager.Instance?.HideLoadingBar();
+            GameManager.Instance?.ShowAlarmPopup("연결 끊김", "게임 서버에 연결할 수 없어 로비로 돌아갑니다.");
+
+            if (SceneLoadManager.Instance == null)
+            {
+                DebugLogManager.GenerateErrorMessage<GameSceneManager>("SceneLoadManager.Instance가 null입니다.");
+                return;
+            }
+
+            SceneLoadManager.Instance.LoadSceneByTags("LobbyScene");
         }
 
         /// <summary>

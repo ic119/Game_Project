@@ -54,8 +54,27 @@ namespace Incheol.Modules
         private bool intentionalDisconnect;
 
         // 서버가 System_Kicked(중복 접속 등)로 끊은 경우. 이때는 OnKicked로 사유를 이미 알렸으므로, 뒤이은 연결 종료에서
-        // OnDisconnected("연결이 끊어졌습니다")를 또 발화하지 않는다. ReadLoopAsync(백그라운드)에서 쓰고 finally에서 읽는다.
+        // 재접속하거나 OnDisconnected("연결이 끊어졌습니다")를 또 발화하지 않는다. ReadLoopAsync(백그라운드)에서 쓰고 finally에서 읽는다.
         private volatile bool wasKicked;
+
+        // 연결을 새로 맺거나 Disconnect()할 때마다 1씩 늘린다. 이전 연결의 수신 루프가 늦게 끝나면서 새 연결을 닫거나
+        // 재접속을 또 시작하지 않도록, 각 연결은 자기 번호가 여전히 최신일 때만 정리/재접속을 진행한다.
+        private int connectionGeneration;
+
+        // 예기치 않게 끊겼을 때의 자동 재접속. 시도 사이 대기 시간이 곧 최대 시도 횟수다(약 23초 동안 5번).
+        // 서버는 30초 동안 응답 없는 연결을 끊으므로, 짧은 네트워크 끊김이면 이 안에 다시 들어간다.
+        private static readonly float[] ReconnectDelaysSeconds = { 1f, 2f, 4f, 8f, 8f };
+
+        // 진행 중인 재접속 시도 번호(1부터). 0이면 재접속 중이 아니다. 메인 스레드에서만 읽고 쓴다.
+        private int reconnectAttempt;
+
+        // 재접속 때 다시 보낼 입장 정보(최초 ConnectAndEnter 값 + 맵 이동 시 MapId 갱신). 서버는 이 중 PlayerId/MapId만 쓰고
+        // 나머지(위치/체력/스탯)는 DB와 맵 데이터로 다시 정한다.
+        private GamePlayerInfo lastEnterInfo;
+
+        // 이번 게임 입장(ConnectAndEnter)에서 한 번이라도 입장이 받아들여졌으면 true. 입장조차 못 한 연결(인증 실패 등)은
+        // 재접속하지 않고 바로 OnDisconnected로 알린다. 메인 스레드에서만 읽고 쓴다.
+        private bool hasEntered;
 
         public event Action<GamePlayerInfo> OnPlayerJoined;
         public event Action<long> OnPlayerLeft;
@@ -81,6 +100,26 @@ namespace Incheol.Modules
         public event Action<GamePlayerRevivedPacket> OnPlayerRevived;
         public event Action<GameUseItemResultPacket> OnUseItemResult;
         public event Action<GamePositionCorrectionPacket> OnPositionCorrected;
+
+        /// <summary>
+        /// 입장(최초/재접속)이 받아들여졌을 때(Game_EnterAck) 서버가 정한 본인 상태와 함께 발생한다. 같은 응답의
+        /// 원격 플레이어/몬스터(OnPlayerJoined/OnMonsterSpawned)보다 먼저 온다.
+        /// </summary>
+        public event Action<GamePlayerInfo> OnEntered;
+
+        /// <summary>
+        /// 예기치 않게 끊겨 자동 재접속을 시도할 때마다 (시도 번호, 최대 횟수)와 함께 발생한다.
+        /// </summary>
+        public event Action<int, int> OnReconnecting;
+
+        /// <summary>
+        /// 자동 재접속에 성공해 다시 입장했을 때 발생한다(같은 응답의 OnEntered/OnPlayerJoined/OnMonsterSpawned 뒤).
+        /// </summary>
+        public event Action OnReconnected;
+
+        /// <summary>
+        /// 연결이 예기치 않게 끊겼고 자동 재접속도 모두 실패했을 때 발생한다.
+        /// </summary>
         public event Action OnDisconnected;
         public event Action<string> OnServerError;
 
@@ -176,15 +215,20 @@ namespace Incheol.Modules
         /// </summary>
         public void ConnectAndEnter(GamePlayerInfo localInfo)
         {
-            _ = ConnectAndEnterAsync(localInfo);
+            lastEnterInfo = localInfo;
+            reconnectAttempt = 0;
+            hasEntered = false;
+            _ = ConnectAndEnterAsync(localInfo, ++connectionGeneration);
         }
 
-        private async Awaitable ConnectAndEnterAsync(GamePlayerInfo localInfo)
+        // 접속과 입장 요청 전송까지 성공하면 true. 입장이 받아들여졌는지는 Game_EnterAck(OnEntered)로 안다.
+        // 그 사이 Disconnect()나 새 접속으로 generation이 바뀌었으면 만든 연결을 닫고 false를 반환한다.
+        private async Awaitable<bool> ConnectAndEnterAsync(GamePlayerInfo localInfo, int generation)
         {
             if (isConnected)
             {
                 DebugLogManager.GenerateErrorMessage<GameServerConnectManager>("이미 GameServer에 접속되어 있습니다.");
-                return;
+                return false;
             }
 
             // GameServer는 입장 시 이 토큰으로 MainServer에 캐릭터 소유권을 확인한다. 로비에 오래 머물렀으면 이미 만료됐을 수
@@ -193,20 +237,29 @@ namespace Incheol.Modules
             if (string.IsNullOrEmpty(accessToken))
             {
                 DebugLogManager.GenerateErrorMessage<GameServerConnectManager>("로그인 세션이 없어 GameServer에 접속할 수 없습니다.");
-                return;
+                return false;
             }
 
+            var newTcpClient = new TcpClient();
             try
             {
-                tcpClient = new TcpClient();
-                await tcpClient.ConnectAsync(host, port);
+                await newTcpClient.ConnectAsync(host, port);
 
                 // GameServer(ClientSession.RunAsync)가 접속을 받자마자 TLS 핸드셰이크부터 요구하므로,
                 // 프레임을 하나라도 보내기 전에 SslStream으로 감싸고 인증을 마쳐야 한다.
-                var sslStream = new SslStream(tcpClient.GetStream(), leaveInnerStreamOpen: false, ValidateServerCertificate);
+                var sslStream = new SslStream(newTcpClient.GetStream(), leaveInnerStreamOpen: false, ValidateServerCertificate);
                 await sslStream.AuthenticateAsClientAsync(host);
-                stream = sslStream;
 
+                if (generation != connectionGeneration)
+                {
+                    // 접속하는 사이 Disconnect()(씬 전환 등)가 호출됐다 - 이 연결은 쓰지 않는다.
+                    sslStream.Close();
+                    newTcpClient.Close();
+                    return false;
+                }
+
+                tcpClient = newTcpClient;
+                stream = sslStream;
                 cts = new CancellationTokenSource();
                 localPlayerId = localInfo.PlayerId;
                 isConnected = true;
@@ -216,17 +269,58 @@ namespace Incheol.Modules
                 heartbeatSendTimer = 0f;
                 timeSinceLastHeartbeatAck = 0f;
 
-                _ = ReadLoopAsync(cts.Token);
+                _ = ReadLoopAsync(sslStream, newTcpClient, generation, cts.Token);
 
                 // AccessToken은 본인 인증에만 쓰이므로 다른 플레이어에게도 브로드캐스트되는 GamePlayerInfo가 아니라
                 // Game_EnterRequest 전용 래퍼(GameEnterRequestPacket)에만 담아 보낸다.
                 var enterRequest = new GameEnterRequestPacket { AccessToken = accessToken, Player = localInfo };
                 await SendAsync(GameOpCode.Game_EnterRequest, enterRequest.Encode());
+                return true;
             }
             catch (Exception exception)
             {
                 DebugLogManager.GenerateErrorMessage<GameServerConnectManager>($"GameServer 접속 실패 : {exception.Message}");
-                isConnected = false;
+                newTcpClient.Close();
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 연결이 예기치 않게 끊겼을 때(메인 스레드) 다음 재접속을 예약한다. 시도를 다 썼거나, 이번 게임에서 한 번도 입장하지
+        /// 못했으면(인증 실패 등 - 다시 시도해도 같다) OnDisconnected로 알린다.
+        /// </summary>
+        private void ScheduleReconnect()
+        {
+            if (lastEnterInfo == null || !hasEntered || reconnectAttempt >= ReconnectDelaysSeconds.Length)
+            {
+                reconnectAttempt = 0;
+                OnDisconnected?.Invoke();
+                return;
+            }
+
+            float delay = ReconnectDelaysSeconds[reconnectAttempt];
+            reconnectAttempt++;
+            OnReconnecting?.Invoke(reconnectAttempt, ReconnectDelaysSeconds.Length);
+            _ = ReconnectAfterDelayAsync(delay, connectionGeneration);
+        }
+
+        private async Awaitable ReconnectAfterDelayAsync(float delaySeconds, int generation)
+        {
+            await Awaitable.WaitForSecondsAsync(delaySeconds);
+
+            // 기다리는 사이 Disconnect()(씬 전환/로그아웃)가 호출됐으면 재접속하지 않는다.
+            if (this == null || generation != connectionGeneration)
+            {
+                return;
+            }
+
+            DebugLogManager.GenerateLogMessage<GameServerConnectManager>($"GameServer 재접속 시도 ({reconnectAttempt}/{ReconnectDelaysSeconds.Length})");
+
+            // 접속 자체가 실패하면 수신 루프가 없어 끊김 알림도 오지 않으므로 여기서 바로 다음 시도를 예약한다.
+            // 접속은 됐지만 입장이 거부되면(서버가 System_Error 후 연결을 닫음) 수신 루프 종료가 다음 시도를 예약한다.
+            if (!await ConnectAndEnterAsync(lastEnterInfo, ++connectionGeneration) && generation + 1 == connectionGeneration)
+            {
+                ScheduleReconnect();
             }
         }
 
@@ -284,6 +378,12 @@ namespace Incheol.Modules
             if (!isConnected)
             {
                 return;
+            }
+
+            // 재접속하면 지금 있는 맵으로 다시 입장해야 한다.
+            if (lastEnterInfo != null)
+            {
+                lastEnterInfo.MapId = mapId;
             }
 
             var request = new GameMapChangeRequestPacket
@@ -385,6 +485,11 @@ namespace Incheol.Modules
 
         public void Disconnect()
         {
+            // 연결이 없어도(재접속 대기 중) 번호를 바꿔 예약된 재접속을 취소한다.
+            connectionGeneration++;
+            reconnectAttempt = 0;
+            lastEnterInfo = null;
+
             if (!isConnected)
             {
                 return;
@@ -445,7 +550,9 @@ namespace Incheol.Modules
             }
         }
 
-        private async Task ReadLoopAsync(CancellationToken ct)
+        // 연결 하나의 수신 루프. 그 연결의 스트림/소켓과 번호(generation)를 직접 받는다 - 필드(stream/tcpClient)는 재접속하면
+        // 새 연결로 바뀌므로, 늦게 끝난 이전 루프가 필드를 닫으면 새 연결이 끊긴다.
+        private async Task ReadLoopAsync(Stream connectionStream, TcpClient connectionClient, int generation, CancellationToken ct)
         {
             // 마지막으로 해석하던 프레임의 OpCode(오류 로그용).
             ushort lastOpCode = 0;
@@ -454,7 +561,7 @@ namespace Incheol.Modules
             {
                 while (!ct.IsCancellationRequested)
                 {
-                    var frame = await GamePacketFrame.ReadFrameAsync(stream, ct);
+                    var frame = await GamePacketFrame.ReadFrameAsync(connectionStream, ct);
                     if (frame is null)
                     {
                         break;
@@ -477,16 +584,27 @@ namespace Incheol.Modules
             }
             finally
             {
-                isConnected = false;
-
                 // 오류로 루프가 끝났을 때도 소켓을 확실히 닫는다(서버가 끊은 경우 다시 닫아도 무해하다).
-                stream?.Close();
-                tcpClient?.Close();
+                connectionStream.Close();
+                connectionClient.Close();
 
-                if (!intentionalDisconnect && !wasKicked)
+                // 번호 확인은 메인 스레드에서 한다(connectionGeneration은 메인 스레드에서만 바뀐다). 그 사이 Disconnect()나
+                // 새 연결로 번호가 바뀌었으면 이 연결은 이미 버려진 것이라 아무 것도 하지 않는다.
+                bool endedUnexpectedly = !intentionalDisconnect && !wasKicked;
+                pendingActions.Enqueue(() =>
                 {
-                    pendingActions.Enqueue(() => OnDisconnected?.Invoke());
-                }
+                    if (generation != connectionGeneration)
+                    {
+                        return;
+                    }
+
+                    isConnected = false;
+
+                    if (endedUnexpectedly)
+                    {
+                        ScheduleReconnect();
+                    }
+                });
             }
         }
 
@@ -496,6 +614,11 @@ namespace Incheol.Modules
             {
                 case GameOpCode.Game_EnterAck:
                     var ack = GameEnterAckPacket.Decode(body);
+                    pendingActions.Enqueue(() =>
+                    {
+                        hasEntered = true;
+                        OnEntered?.Invoke(ack.Self);
+                    });
                     foreach (GamePlayerInfo player in ack.ExistingPlayers)
                     {
                         pendingActions.Enqueue(() => OnPlayerJoined?.Invoke(player));
@@ -504,6 +627,14 @@ namespace Incheol.Modules
                     {
                         pendingActions.Enqueue(() => OnMonsterSpawned?.Invoke(monster));
                     }
+                    pendingActions.Enqueue(() =>
+                    {
+                        if (reconnectAttempt > 0)
+                        {
+                            reconnectAttempt = 0;
+                            OnReconnected?.Invoke();
+                        }
+                    });
                     break;
 
                 // 페이로드 구조가 Game_EnterAck과 동일하므로(새 맵의 기존 접속자/몬스터 목록) 같은 디코더를 재사용한다.
