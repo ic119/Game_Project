@@ -1,8 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Threading.Channels;
 using GameServer.Combat;
 using GameServer.Items;
 using GameServer.Maps;
@@ -11,24 +13,45 @@ using Shared.Networking.Packets;
 
 namespace GameServer.Networking
 {
-    // 접속 클라이언트 1개를 담당: TLS 핸드셰이크 + 프레임 수신 루프 + OpCode 디스패치
+    // 접속 클라이언트 1개를 담당: TLS 핸드셰이크 + 프레임 수신 루프 + OpCode 디스패치 + 전송 대기열/전송 루프
     public class ClientSession
     {
         private readonly TcpClient _tcpClient;
 
         // 생성 시점에는 아직 평문 NetworkStream이다. RunAsync가 TLS 핸드셰이크에 성공하면 이 필드를
         // SslStream으로 교체한다(암/복호화는 SslStream이 내부적으로 처리하고, 이후 코드는 Stream API만 사용하므로
-        // PacketFrame.ReadFrameAsync/SendAsync 쪽은 손댈 필요가 없다).
+        // PacketFrame.ReadFrameAsync/SendLoopAsync 쪽은 손댈 필요가 없다).
         private Stream _stream;
         private readonly MapRoomRegistry _mapRooms;
         private readonly PlayerAuthValidator _authValidator;
         private readonly MainServerInternalApi _mainServerApi;
         private readonly SessionRegistry _sessions;
         private readonly X509Certificate2 _serverCertificate;
-        private readonly SemaphoreSlim _writeLock = new(1, 1);
 
-        // 다른 세션이 이 세션을 강제로 끊을 때(같은 캐릭터 중복 접속, KickAsync) 수신 루프를 멈추는 데 쓴다.
+        // 다른 세션이 이 세션을 강제로 끊을 때(같은 캐릭터 중복 접속, Kick)나 전송이 실패/적체됐을 때 수신 루프를 멈추는 데 쓴다.
         private readonly CancellationTokenSource _kickCts = new();
+
+        // 이 세션으로 보낼 프레임 대기열. Send는 여기에 넣기만 하고(누가 호출하든 즉시 반환), 실제 소켓 쓰기는 SendLoopAsync
+        // 하나만 한다 - 예전에는 브로드캐스트가 세션마다 쓰기를 await해서, 느린 클라이언트 한 명이 방 전체 전송과 AI 틱을
+        // 붙잡았고, 한 세션의 쓰기 예외가 브로드캐스트를 호출한 다른 플레이어의 요청 처리/AI 루프로 번졌다.
+        // 가득 찰 만큼 못 받아 가는 클라이언트는 끊는다(AbortSlowClient) - 무한정 쌓아 두면 서버 메모리가 계속 는다.
+        // 정상 트래픽(주변 플레이어 이동 초당 10회 x 인원 + 몬스터 이동)이 몇 초간 막혀도 견딜 만큼 넉넉히 잡는다.
+        // 한 명의 도배로 이 대기열이 차지 않도록 방 전체로 퍼지는 요청(채팅/이동)은 세션별로 빈도를 제한한다(RequestRateLimiter).
+        private const int MaxQueuedFrames = 8192;
+        private readonly Channel<byte[]> _outgoing = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(MaxQueuedFrames)
+        {
+            SingleReader = true,
+            SingleWriter = false,
+            FullMode = BoundedChannelFullMode.Wait
+        });
+
+        // 연결을 닫기 전에 대기열에 남은 프레임(강제 종료 사유, 입장 거부 사유 등)을 보내도록 기다리는 최대 시간.
+        private static readonly TimeSpan FlushTimeoutOnClose = TimeSpan.FromSeconds(2);
+
+        // 대기열이 가득 차 끊긴 경우 1. 이때는 남은 프레임을 보내려고 기다리지 않고 바로 닫는다.
+        private int _abortedSlowClient;
+
+        private Task? _sendLoop;
 
         // 이 세션이 Game_EnterRequest로 등록한 플레이어 id. 등록 전이면 null.
         private long? _playerId;
@@ -59,14 +82,14 @@ namespace GameServer.Networking
             var endpoint = _tcpClient.Client.RemoteEndPoint;
             Console.WriteLine($"[GameServer] 클라이언트 접속: {endpoint}");
 
-            // 서버 종료(ct) 또는 강제 종료(KickAsync) 중 먼저 오는 쪽으로 수신 루프와 요청 처리를 멈춘다.
+            // 서버 종료(ct) 또는 강제 종료(Kick/전송 실패) 중 먼저 오는 쪽으로 수신 루프와 요청 처리를 멈춘다.
             using var sessionCts = CancellationTokenSource.CreateLinkedTokenSource(ct, _kickCts.Token);
             CancellationToken sessionCt = sessionCts.Token;
 
             try
             {
                 // 프레임을 하나라도 주고받기 전에 TLS 핸드셰이크부터 마친다 - 이후 _stream을 쓰는 모든 코드
-                // (PacketFrame.ReadFrameAsync/SendAsync)는 암호화 여부를 몰라도 되도록 Stream 인터페이스만 본다.
+                // (PacketFrame.ReadFrameAsync/SendLoopAsync)는 암호화 여부를 몰라도 되도록 Stream 인터페이스만 본다.
                 var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false);
                 await sslStream.AuthenticateAsServerAsync(
                     new SslServerAuthenticationOptions
@@ -75,6 +98,10 @@ namespace GameServer.Networking
                         ClientCertificateRequired = false
                     }, sessionCt);
                 _stream = sslStream;
+
+                // 전송 루프는 강제 종료 토큰이 아니라 서버 수명 토큰(ct)으로 돈다 - 강제 종료 시에도 대기열의 마지막
+                // 프레임(종료 사유)을 보낸 뒤 끝나야 하기 때문이다. 끝내는 신호는 대기열 완료(finally)다.
+                _sendLoop = SendLoopAsync(ct);
 
                 while (!sessionCt.IsCancellationRequested)
                 {
@@ -87,7 +114,7 @@ namespace GameServer.Networking
             }
             catch (OperationCanceledException)
             {
-                // 서버 종료 또는 강제 종료(KickAsync)로 인한 정상 취소
+                // 서버 종료 또는 강제 종료(Kick/전송 실패)로 인한 정상 취소
             }
             catch (IOException)
             {
@@ -114,8 +141,17 @@ namespace GameServer.Networking
                     if (_room is { } room && room.Remove(playerId, this))
                     {
                         var left = new S2CPlayerLeft { PlayerId = playerId };
-                        await room.BroadcastAsync(OpCode.Game_PlayerLeft, left.Encode(), playerId, ct);
+                        room.Broadcast(OpCode.Game_PlayerLeft, left.Encode(), playerId);
                     }
+                }
+
+                // 더 이상 보낼 것이 없으니 대기열을 닫고, 남은 프레임(강제 종료/입장 거부 사유)이 나갈 때까지 잠깐 기다린 뒤
+                // 소켓을 닫는다. 느린 클라이언트로 끊는 경우는 기다리지 않는다. 소켓을 닫으면 진행 중이던 쓰기도 실패하며
+                // 전송 루프가 끝난다.
+                _outgoing.Writer.TryComplete();
+                if (_sendLoop is not null && Volatile.Read(ref _abortedSlowClient) == 0)
+                {
+                    await Task.WhenAny(_sendLoop, Task.Delay(FlushTimeoutOnClose));
                 }
 
                 Console.WriteLine($"[GameServer] 클라이언트 종료: {endpoint}");
@@ -123,27 +159,87 @@ namespace GameServer.Networking
             }
         }
 
-        private Task DispatchAsync(ushort opCode, byte[] body, CancellationToken ct)
+        // 이 세션으로 프레임 하나를 보낸다. 대기열에 넣기만 하고 즉시 반환하므로 어느 스레드에서 몇 번을 호출해도
+        // 호출측이 막히거나 이 세션의 전송 오류를 받지 않는다. 이미 닫힌 세션이면 조용히 버린다.
+        public void Send(OpCode opCode, byte[] body)
         {
-            return (OpCode)opCode switch
+            if (_outgoing.Writer.TryWrite(PacketFrame.Encode((ushort)opCode, body)))
             {
-                OpCode.System_Heartbeat => SendAsync(OpCode.System_Heartbeat, Array.Empty<byte>(), ct),
-                OpCode.Game_EnterRequest => HandleEnterRequestAsync(body, ct),
-                OpCode.Game_MoveRequest => HandleMoveRequestAsync(body, ct),
-                OpCode.Game_ChatRequest => HandleChatRequestAsync(body, ct),
-                OpCode.Game_AttackRequest => HandleAttackRequestAsync(body, ct),
-                OpCode.Game_MapChangeRequest => HandleMapChangeRequestAsync(body, ct),
-                OpCode.Game_MonsterAttackRequest => HandleMonsterAttackRequestAsync(body, ct),
-                OpCode.Game_StatUpdateRequest => HandleStatUpdateRequestAsync(body, ct),
-                OpCode.Game_UseItemRequest => HandleUseItemRequestAsync(body, ct),
-                _ => LogUnhandledAsync(opCode)
-            };
+                return;
+            }
+
+            // TryWrite는 대기열이 닫혔거나(종료 중) 가득 찼을 때 실패한다. 닫힌 경우는 버리면 되고, 가득 찬 경우는
+            // 클라이언트가 받아 가는 속도가 보내는 속도를 따라오지 못하는 것이라 연결을 끊는다.
+            if (!_outgoing.Reader.Completion.IsCompleted)
+            {
+                AbortSlowClient();
+            }
         }
 
-        private Task LogUnhandledAsync(ushort opCode)
+        private void AbortSlowClient()
         {
-            Console.WriteLine($"[GameServer] 처리되지 않은 OpCode: 0x{opCode:X4}");
-            return Task.CompletedTask;
+            if (Interlocked.Exchange(ref _abortedSlowClient, 1) != 0)
+            {
+                return;
+            }
+
+            Console.WriteLine($"[GameServer] 전송 대기열 초과({MaxQueuedFrames}) - 느린 클라이언트 연결을 종료합니다 (PlayerId={_playerId}).");
+            _outgoing.Writer.TryComplete();
+            _kickCts.Cancel();
+        }
+
+        // 대기열의 프레임을 순서대로 소켓에 쓴다(이 세션의 유일한 writer). 대기열이 닫히고(finally) 비면 끝난다.
+        // 쓰기가 실패하면(연결 끊김) 수신 루프도 멈춰 세션 정리가 곧바로 진행되게 한다.
+        private async Task SendLoopAsync(CancellationToken ct)
+        {
+            try
+            {
+                await foreach (byte[] frame in _outgoing.Reader.ReadAllAsync(ct))
+                {
+                    await _stream.WriteAsync(frame, ct);
+                }
+            }
+            catch (Exception ex) when (ex is OperationCanceledException or IOException or ObjectDisposedException)
+            {
+                // 서버 종료, 연결 끊김, 또는 finally에서 소켓을 닫은 경우.
+            }
+            finally
+            {
+                _kickCts.Cancel();
+            }
+        }
+
+        private Task DispatchAsync(ushort opCode, byte[] body, CancellationToken ct)
+        {
+            switch ((OpCode)opCode)
+            {
+                case OpCode.System_Heartbeat:
+                    Send(OpCode.System_Heartbeat, Array.Empty<byte>());
+                    return Task.CompletedTask;
+                case OpCode.Game_EnterRequest:
+                    return HandleEnterRequestAsync(body, ct);
+                case OpCode.Game_MoveRequest:
+                    HandleMoveRequest(body);
+                    return Task.CompletedTask;
+                case OpCode.Game_ChatRequest:
+                    HandleChatRequest(body);
+                    return Task.CompletedTask;
+                case OpCode.Game_AttackRequest:
+                    HandleAttackRequest(body);
+                    return Task.CompletedTask;
+                case OpCode.Game_MapChangeRequest:
+                    HandleMapChangeRequest(body);
+                    return Task.CompletedTask;
+                case OpCode.Game_MonsterAttackRequest:
+                    return HandleMonsterAttackRequestAsync(body, ct);
+                case OpCode.Game_StatUpdateRequest:
+                    return HandleStatUpdateRequestAsync(body, ct);
+                case OpCode.Game_UseItemRequest:
+                    return HandleUseItemRequestAsync(body, ct);
+                default:
+                    Console.WriteLine($"[GameServer] 처리되지 않은 OpCode: 0x{opCode:X4}");
+                    return Task.CompletedTask;
+            }
         }
 
         // mapId에 해당하는 GameRoom(없으면 새로 생성)에 자신을 등록하고, 본인에게는 그 방의 기존
@@ -164,7 +260,7 @@ namespace GameServer.Networking
             CharacterSnapshot? snapshot = await _authValidator.FetchOwnedCharacterAsync(request.AccessToken, info.PlayerId, ct);
             if (snapshot is null)
             {
-                await RejectEnterAsync($"Game_EnterRequest 인증 실패 (PlayerId={info.PlayerId})", "인증에 실패했습니다.", ct);
+                RejectEnter($"Game_EnterRequest 인증 실패 (PlayerId={info.PlayerId})", "인증에 실패했습니다.");
                 return;
             }
 
@@ -172,7 +268,7 @@ namespace GameServer.Networking
             // 새 GameRoom이 생겨(메모리/AI 루프 낭비), 서버가 좌표를 모르는 맵에서는 입장/부활/포탈 검증도 할 수 없다.
             if (!MapDataCatalog.TryGet(info.MapId, out MapData mapData) || mapData.RespawnPoint is not { } respawnPoint)
             {
-                await RejectEnterAsync($"Game_EnterRequest 알 수 없는 맵 (PlayerId={info.PlayerId}, MapId={info.MapId})", "알 수 없는 맵입니다.", ct);
+                RejectEnter($"Game_EnterRequest 알 수 없는 맵 (PlayerId={info.PlayerId}, MapId={info.MapId})", "알 수 없는 맵입니다.");
                 return;
             }
 
@@ -206,7 +302,7 @@ namespace GameServer.Networking
             if (_sessions.Register(info.PlayerId, this) is { } previousSession)
             {
                 Console.WriteLine($"[GameServer] 중복 접속 (PlayerId={info.PlayerId}) - 이전 세션을 종료합니다.");
-                await previousSession.KickAsync("다른 곳에서 같은 캐릭터로 접속하여 연결이 종료되었습니다.");
+                previousSession.Kick("다른 곳에서 같은 캐릭터로 접속하여 연결이 종료되었습니다.");
             }
 
             GameRoom room = _mapRooms.GetOrCreate(info.MapId);
@@ -218,10 +314,10 @@ namespace GameServer.Networking
             room.Add(info, this);
 
             var ack = new S2CEnterAck { ExistingPlayers = existingPlayers, ExistingMonsters = existingMonsters };
-            await SendAsync(OpCode.Game_EnterAck, ack.Encode(), ct);
+            Send(OpCode.Game_EnterAck, ack.Encode());
 
             var joined = new S2CPlayerJoined { Player = info };
-            await room.BroadcastAsync(OpCode.Game_PlayerJoined, joined.Encode(), info.PlayerId, ct);
+            room.Broadcast(OpCode.Game_PlayerJoined, joined.Encode(), info.PlayerId);
         }
 
         // mapId 맵에서 targetMapId로 가는 MapSwap 포탈 중 player가 범위 안에 있는 것을 찾는다(없으면 null).
@@ -268,37 +364,29 @@ namespace GameServer.Networking
             return false;
         }
 
-        // 다른 세션이 이 세션을 강제로 끊는다(같은 캐릭터 중복 접속). 사유를 System_Kicked로 알린 뒤 수신 루프를 취소하면
-        // RunAsync의 finally가 방/레지스트리 정리와 소켓 종료를 맡는다. 응답 없는 클라이언트 때문에 새 접속이 오래 막히지
-        // 않도록 사유 전송은 짧게 기다린다.
-        public async Task KickAsync(string reason)
+        // 다른 세션이 이 세션을 강제로 끊는다(같은 캐릭터 중복 접속). 사유(System_Kicked)를 대기열에 넣고 대기열을 닫은 뒤
+        // 수신 루프를 취소한다 - 전송 루프는 사유까지 보내고 끝나며, 방/레지스트리 정리와 소켓 종료는 RunAsync의 finally가 맡는다.
+        // 호출측(새 세션의 입장 처리)을 기다리게 하지 않는다.
+        public void Kick(string reason)
         {
-            try
-            {
-                using var sendTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-                await SendAsync(OpCode.System_Kicked, Encoding.UTF8.GetBytes(reason), sendTimeout.Token);
-            }
-            catch (Exception ex) when (ex is OperationCanceledException or IOException or ObjectDisposedException)
-            {
-                // 이미 끊겼거나 응답이 없는 연결 - 사유 전달 없이 종료만 한다.
-            }
-
+            Send(OpCode.System_Kicked, Encoding.UTF8.GetBytes(reason));
+            _outgoing.Writer.TryComplete();
             _kickCts.Cancel();
         }
 
-        // 입장 거부: 사유를 System_Error로 알리고 연결을 끊는다.
-        // 소켓은 RunAsync의 finally에서 정리한다 - 여기서 직접 Close()하면 그 직후 루프가
-        // 다시 스트림을 읽으려 할 때 처리되지 않은 ObjectDisposedException이 발생한다.
-        private async Task RejectEnterAsync(string logMessage, string clientMessage, CancellationToken ct)
+        // 입장 거부: 사유를 System_Error로 알리고 연결을 끊는다. 사유는 RunAsync의 finally가 소켓을 닫기 전에 전송 대기열을
+        // 비우면서 나간다. 소켓을 여기서 직접 닫지 않는 건 수신 루프가 닫힌 스트림을 읽다 예외를 내지 않게 하기 위함이다.
+        [DoesNotReturn]
+        private void RejectEnter(string logMessage, string clientMessage)
         {
             Console.WriteLine($"[GameServer] {logMessage} - 연결을 종료합니다.");
-            await SendAsync(OpCode.System_Error, Encoding.UTF8.GetBytes(clientMessage), ct);
+            Send(OpCode.System_Error, Encoding.UTF8.GetBytes(clientMessage));
             throw new EnterRejectedException();
         }
 
         // 같은 접속을 유지한 채 다른 맵으로 옮긴다: 이전 맵 방에서 빠지며 Game_PlayerLeft를 알리고,
         // 새 맵 방에 들어가며 그 방의 기존 접속자 목록(Game_MapChangeAck)을 받고 자신의 입장을 알린다.
-        private async Task HandleMapChangeRequestAsync(byte[] body, CancellationToken ct)
+        private void HandleMapChangeRequest(byte[] body)
         {
             var request = C2SMapChangeRequest.Decode(body);
 
@@ -323,7 +411,7 @@ namespace GameServer.Networking
                 Console.WriteLine($"[GameServer] 맵 이동 거부 (PlayerId={playerId}) : {previousMapId} -> {request.MapId}, 위치=({info.X:F1},{info.Z:F1})");
                 // 클라이언트는 이미 새 맵을 로드했으므로 조용히 무시하면 서버와 맵이 어긋난 채로 남는다 - 사유를 알린다.
                 // 정상 클라이언트는 같은 맵 데이터로 포탈을 타므로 여기에 오지 않는다(맵 데이터를 다시 내보내지 않은 경우 제외).
-                await SendAsync(OpCode.System_Error, Encoding.UTF8.GetBytes("맵 이동이 거부되었습니다."), ct);
+                Send(OpCode.System_Error, Encoding.UTF8.GetBytes("맵 이동이 거부되었습니다."));
                 return;
             }
 
@@ -334,7 +422,7 @@ namespace GameServer.Networking
             }
 
             var left = new S2CPlayerLeft { PlayerId = playerId };
-            await previousRoom.BroadcastAsync(OpCode.Game_PlayerLeft, left.Encode(), playerId, ct);
+            previousRoom.Broadcast(OpCode.Game_PlayerLeft, left.Encode(), playerId);
 
             // HP 등 나머지 전투 스탯은 PlayerInfo 인스턴스를 그대로 재사용해 유지하고, 위치/맵만 갱신한다.
             info.MapId = request.MapId;
@@ -352,10 +440,10 @@ namespace GameServer.Networking
             _mapId = request.MapId;
 
             var ack = new S2CEnterAck { ExistingPlayers = existingPlayers, ExistingMonsters = existingMonsters };
-            await SendAsync(OpCode.Game_MapChangeAck, ack.Encode(), ct);
+            Send(OpCode.Game_MapChangeAck, ack.Encode());
 
             var joined = new S2CPlayerJoined { Player = info };
-            await nextRoom.BroadcastAsync(OpCode.Game_PlayerJoined, joined.Encode(), playerId, ct);
+            nextRoom.Broadcast(OpCode.Game_PlayerJoined, joined.Encode(), playerId);
         }
 
         // 이동 속도 검증 - "이동 거리 예산" 방식. 예산은 초당 MoveBudgetRefillPerSecond(m)씩 차고 최대 MoveBudgetCapacity(m)까지
@@ -375,8 +463,17 @@ namespace GameServer.Networking
         // 룸의 위치를 갱신하고, 본인을 제외한 나머지 접속자에게 브로드캐스트한다.
         // request.PlayerId가 이 세션의 실제 플레이어와 같은지 검증한다 - 그렇지 않으면 다른 플레이어의
         // ID를 실어 보내는 것만으로 그 플레이어를 임의의 위치로 옮길 수 있다(다른 핸들러들과 동일한 검증).
-        private async Task HandleMoveRequestAsync(byte[] body, CancellationToken ct)
+        // 클라이언트 PlayerNetworkSender는 0.1초마다(초당 10회) 보낸다. 그보다 여유 있게 허용하고, 초과분은 브로드캐스트 없이 버린다 -
+        // 이동은 방 전체로 퍼지므로 거리 0짜리 이동을 도배해도 다른 세션들의 전송 대기열이 찬다.
+        private readonly RequestRateLimiter _moveRateLimiter = new(capacity: 20, refillPerSecond: 15);
+
+        private void HandleMoveRequest(byte[] body)
         {
+            if (!_moveRateLimiter.TryAcquire())
+            {
+                return;
+            }
+
             var request = C2SMoveRequest.Decode(body);
 
             if (_playerId is not { } playerId || request.PlayerId != playerId || _room is not { } room
@@ -409,7 +506,7 @@ namespace GameServer.Networking
             if (horizontalDistance > _moveBudget)
             {
                 Console.WriteLine($"[GameServer] 이동 거부 (PlayerId={playerId}) : {horizontalDistance:F2}m > 허용 {_moveBudget:F2}m");
-                await SendPositionCorrectionAsync(info, now, ct);
+                SendPositionCorrection(info, now);
                 return;
             }
 
@@ -426,11 +523,11 @@ namespace GameServer.Networking
                 Timestamp = request.Timestamp
             };
 
-            await room.BroadcastAsync(OpCode.Game_MoveBroadcast, broadcast.Encode(), request.PlayerId, ct);
+            room.Broadcast(OpCode.Game_MoveBroadcast, broadcast.Encode(), request.PlayerId);
         }
 
         // 거부된 이동을 되돌리도록 본인에게 서버가 마지막으로 인정한 위치를 보낸다(PositionCorrectionInterval로 제한).
-        private async Task SendPositionCorrectionAsync(PlayerInfo info, DateTime now, CancellationToken ct)
+        private void SendPositionCorrection(PlayerInfo info, DateTime now)
         {
             if (now - _lastPositionCorrectionAtUtc < PositionCorrectionInterval)
             {
@@ -439,15 +536,23 @@ namespace GameServer.Networking
             _lastPositionCorrectionAtUtc = now;
 
             var correction = new S2CPositionCorrection { X = info.X, Y = info.Y, Z = info.Z, RotationY = info.RotationY };
-            await SendAsync(OpCode.Game_PositionCorrection, correction.Encode(), ct);
+            Send(OpCode.Game_PositionCorrection, correction.Encode());
         }
 
-        // Move와 달리 발신자 본인 화면에도 같은 메시지가 떠야 하므로 BroadcastToAllAsync를 쓴다.
+        // Move와 달리 발신자 본인 화면에도 같은 메시지가 떠야 하므로 BroadcastToAll을 쓴다.
         // 닉네임은 클라이언트를 신뢰하지 않고 룸에 등록된(Game_EnterRequest 시점) 값을 서버가 직접 채운다.
         private const int MaxChatMessageLength = 200;
 
-        private async Task HandleChatRequestAsync(byte[] body, CancellationToken ct)
+        // 채팅 도배 제한: 연달아 5개까지, 이후 초당 1개. 초과분은 조용히 버린다(방 전체로 퍼지는 요청이라 대기열 보호 목적도 있다).
+        private readonly RequestRateLimiter _chatRateLimiter = new(capacity: 5, refillPerSecond: 1);
+
+        private void HandleChatRequest(byte[] body)
         {
+            if (!_chatRateLimiter.TryAcquire())
+            {
+                return;
+            }
+
             var request = C2SChatRequest.Decode(body);
 
             if (_playerId is not { } playerId || request.PlayerId != playerId || _room is not { } room)
@@ -476,11 +581,11 @@ namespace GameServer.Networking
                 Timestamp = request.Timestamp
             };
 
-            await room.BroadcastToAllAsync(OpCode.Game_ChatBroadcast, broadcast.Encode(), ct);
+            room.BroadcastToAll(OpCode.Game_ChatBroadcast, broadcast.Encode());
         }
 
         // 여기서는 위조된 공격자 신원 차단, 최소 공격 간격, 사거리만 검증한다. 피해 계산(방어력 적용)과
-        // 대상 HP 갱신/사망 처리는 GameRoom.ApplyPlayerAttackAsync가 서버 권위로 수행한다.
+        // 대상 HP 갱신/사망 처리는 GameRoom.ApplyPlayerAttack이 서버 권위로 수행한다.
         // 클라이언트 PlayerAttackController.comboInputGuard(150ms)가 지나면 2타 콤보 입력을 즉시 받아들여
         // 두 번째 Game_AttackRequest/Game_MonsterAttackRequest를 보낸다. 이 값이 그보다 크면(과거 300ms)
         // 정상적인 콤보 2타 요청까지 여기서 조용히 드롭되어 "애니메이션은 2콤보, 데미지는 1타"만 반영되는
@@ -490,7 +595,7 @@ namespace GameServer.Networking
         private const float MaxAttackRangeSquared = 5f * 5f;
         private DateTime _lastAttackAtUtc = DateTime.MinValue;
 
-        private async Task HandleAttackRequestAsync(byte[] body, CancellationToken ct)
+        private void HandleAttackRequest(byte[] body)
         {
             var request = C2SAttackRequest.Decode(body);
 
@@ -520,13 +625,13 @@ namespace GameServer.Networking
                 return;
             }
 
-            await room.ApplyPlayerAttackAsync(playerId, request.TargetId, request.Timestamp, ct);
+            room.ApplyPlayerAttack(playerId, request.TargetId, request.Timestamp);
         }
 
-        // 플레이어 공격(HandleAttackRequestAsync)과 같은 쿨다운(_lastAttackAtUtc)을 공유한다 - 그렇지 않으면
+        // 플레이어 공격(HandleAttackRequest)과 같은 쿨다운(_lastAttackAtUtc)을 공유한다 - 그렇지 않으면
         // 플레이어 공격과 몬스터 공격 요청을 번갈아 보내 최소 공격 간격 제한을 우회할 수 있다.
-        // 데미지 계산 자체(공격력-방어력)는 GameRoom.ApplyMonsterAttackAsync가 서버 권위로 수행한다.
-        // 사망한 플레이어는 몬스터를 공격할 수 없다(PvP는 GameRoom.ApplyPlayerAttackAsync가 같은 검사를 한다).
+        // 데미지 계산 자체(공격력-방어력)는 GameRoom.ApplyMonsterAttack이 서버 권위로 수행한다.
+        // 사망한 플레이어는 몬스터를 공격할 수 없다(PvP는 GameRoom.ApplyPlayerAttack이 같은 검사를 한다).
         private async Task HandleMonsterAttackRequestAsync(byte[] body, CancellationToken ct)
         {
             var request = C2SMonsterAttackRequest.Decode(body);
@@ -557,7 +662,7 @@ namespace GameServer.Networking
                 return;
             }
 
-            MonsterAttackResult result = await room.ApplyMonsterAttackAsync(request.MonsterId, playerId, attacker.AttackPower, request.Timestamp, ct);
+            MonsterAttackResult result = room.ApplyMonsterAttack(request.MonsterId, playerId, attacker.AttackPower, request.Timestamp);
 
             // 방 전체가 아니라 처치자 본인에게만 보낸다 - 다른 접속자는 이 몬스터를 잡은 게 아니므로 경험치와 무관하다.
             if (result is { MonsterDied: true, GainedExp: { } gainedExp })
@@ -571,7 +676,7 @@ namespace GameServer.Networking
                     DidLevelUp = result.DidLevelUp,
                     ExpToNextLevel = result.ExpToNextLevel
                 };
-                await SendAsync(OpCode.Game_ExpGainBroadcast, expGain.Encode(), ct);
+                Send(OpCode.Game_ExpGainBroadcast, expGain.Encode());
             }
 
             // 골드/아이템도 처치자 본인에게만 보낸다. 만렙이라 GainedExp가 없는 경우에도 드롭은 지급되므로
@@ -584,7 +689,7 @@ namespace GameServer.Networking
                     GoldGained = result.GainedGold,
                     Items = result.DroppedItems?.ToList() ?? new List<(string, int)>()
                 };
-                await SendAsync(OpCode.Game_LootBroadcast, loot.Encode(), ct);
+                Send(OpCode.Game_LootBroadcast, loot.Encode());
             }
 
             // 위 두 패킷은 클라이언트 화면 표시용일 뿐이고, DB 저장은 GameServer가 MainServer 서버 간 API로 직접 한다 -
@@ -648,7 +753,7 @@ namespace GameServer.Networking
             bool success = await TryUseItemAsync(playerId, room, request.ItemId, ct);
 
             var result = new S2CUseItemResult { ItemId = request.ItemId, Success = success };
-            await SendAsync(OpCode.Game_UseItemResult, result.Encode(), ct);
+            Send(OpCode.Game_UseItemResult, result.Encode());
         }
 
         private async Task<bool> TryUseItemAsync(long playerId, GameRoom room, string itemId, CancellationToken ct)
@@ -674,23 +779,7 @@ namespace GameServer.Networking
 
             // 차감과 회복 사이에 사망/만피가 되면 아이템만 소모된다 - 두 호출 사이(MainServer 왕복 동안)의 짧은 틈이라
             // 드물고, 반대로 회복 먼저 하면 차감 실패 시 공짜 회복이 되므로 차감을 먼저 한다.
-            return await room.TryHealPlayerAsync(playerId, definition.HealPercent, ct);
-        }
-
-        // 여러 세션이 동시에(다른 플레이어의 브로드캐스트로) 같은 스트림에 쓸 수 있으므로 직렬화한다.
-        public async Task SendAsync(OpCode opCode, byte[] body, CancellationToken ct)
-        {
-            var frame = PacketFrame.Encode((ushort)opCode, body);
-
-            await _writeLock.WaitAsync(ct);
-            try
-            {
-                await _stream.WriteAsync(frame, ct);
-            }
-            finally
-            {
-                _writeLock.Release();
-            }
+            return room.TryHealPlayer(playerId, definition.HealPercent);
         }
 
         // Game_EnterRequest 거부(인증 실패/알 수 없는 맵)를 RunAsync의 루프 종료 신호로 쓰기 위한 내부 전용 예외.

@@ -9,7 +9,7 @@ using Shared.Networking.Packets;
 
 namespace GameServer.Networking
 {
-    // ApplyMonsterAttackAsync의 결과. GainedExp가 채워져 있으면(몬스터가 죽고 공격자를 찾은 경우)
+    // ApplyMonsterAttack의 결과. GainedExp가 채워져 있으면(몬스터가 죽고 공격자를 찾은 경우)
     // 호출측(ClientSession)이 공격자 본인에게만 Game_ExpGainBroadcast를 보내야 한다는 뜻이다.
     public readonly struct MonsterAttackResult
     {
@@ -127,7 +127,10 @@ namespace GameServer.Networking
             return false;
         }
 
-        public async Task BroadcastAsync(OpCode opCode, byte[] body, long excludePlayerId, CancellationToken ct)
+        // 브로드캐스트는 각 세션의 전송 대기열에 넣기만 하고 바로 돌아온다(ClientSession.Send). 실제 소켓 쓰기는 세션마다
+        // 전송 루프가 따로 하므로, 느린 클라이언트 한 명이 방 전체 전송이나 AI 틱을 붙잡거나, 한 세션의 전송 오류가
+        // 호출측(다른 플레이어의 요청 처리, AI 루프)으로 번지지 않는다.
+        public void Broadcast(OpCode opCode, byte[] body, long excludePlayerId)
         {
             foreach (var (info, session) in _players.Values)
             {
@@ -136,16 +139,16 @@ namespace GameServer.Networking
                     continue;
                 }
 
-                await session.SendAsync(opCode, body, ct);
+                session.Send(opCode, body);
             }
         }
 
         // 채팅처럼 발신자 본인에게도 동일한 메시지를 보여줘야 하는 이벤트용 (Move와 달리 제외 대상이 없다).
-        public async Task BroadcastToAllAsync(OpCode opCode, byte[] body, CancellationToken ct)
+        public void BroadcastToAll(OpCode opCode, byte[] body)
         {
             foreach (var (_, session) in _players.Values)
             {
-                await session.SendAsync(opCode, body, ct);
+                session.Send(opCode, body);
             }
         }
 
@@ -162,7 +165,7 @@ namespace GameServer.Networking
         }
 
         // 인벤토리에서 장비를 장착/해제해 바뀐 공격력/방어력을 반영한다(Game_StatUpdateRequest). PlayerInfo가
-        // class(참조 타입)라 이 메서드로 값만 바꿔주면 ApplyMonsterAttackAsync/AttackPlayerAsync가 다음 판정부터
+        // class(참조 타입)라 이 메서드로 값만 바꿔주면 ApplyMonsterAttack/AttackPlayer가 다음 판정부터
         // 곧바로 새 값을 쓴다 - Game_EnterRequest 스냅샷 이후 갱신 경로가 이것뿐이므로, 호출하지 않으면 세션 내내
         // 접속 시점 스탯으로 고정된다. 다른 접속자에게 알릴 필요는 없다(PvP 피해도 서버가 이 값으로 계산해 결과만 보낸다).
         public bool TryUpdateCombatStats(long playerId, int attackPower, int defense)
@@ -179,9 +182,9 @@ namespace GameServer.Networking
 
         // 공격 판정 자체(사거리/쿨다운 등)는 ClientSession이 검증한 뒤 이 메서드를 호출한다.
         // 데미지 계산(공격력-방어력)과 사망/리스폰 판정, 브로드캐스트까지 전부 여기서 처리한다 -
-        // 몬스터의 Defense/HP를 아는 유일한 주체가 GameRoom(서버)이기 때문에, 클라이언트가 각자
-        // 델타를 계산하는 플레이어 간 전투와 달리 여기서는 서버가 최종 결과(RemainingHp)를 직접 만들어 중계한다.
-        public async Task<MonsterAttackResult> ApplyMonsterAttackAsync(long monsterId, long attackerId, int attackerAttackPower, long timestamp, CancellationToken ct)
+        // 몬스터의 Defense/HP를 아는 유일한 주체가 GameRoom(서버)이기 때문에, 서버가 최종 결과(RemainingHp)를
+        // 직접 만들어 중계한다(플레이어 간 전투도 ApplyPlayerAttack에서 같은 방식으로 처리한다).
+        public MonsterAttackResult ApplyMonsterAttack(long monsterId, long attackerId, int attackerAttackPower, long timestamp)
         {
             if (!_monsters.TryGetValue(monsterId, out var runtime))
             {
@@ -189,7 +192,7 @@ namespace GameServer.Networking
             }
 
             // 여러 세션(다른 플레이어)이 같은 몬스터를 동시에 공격할 수 있으므로, HP 차감과 "이 공격으로 죽었는가"
-            // 판정을 한 번에 원자적으로 처리한다. 예전에는 HP 차감 -> 피격 브로드캐스트(await) -> 사망 처리 순서라,
+            // 판정을 한 번에 원자적으로 처리한다. 예전에는 HP 차감 -> 피격 브로드캐스트(당시 await) -> 사망 처리 순서라,
             // 그 await 사이에 들어온 다른 공격도 HP 0을 보고 사망 처리를 반복해 드롭/리스폰이 중복됐다.
             // 이제 HP가 0이 되는 순간을 만든 공격 하나만 killedByThisAttack = true가 된다.
             int damage;
@@ -211,7 +214,7 @@ namespace GameServer.Networking
 
             if (killedByThisAttack)
             {
-                // 첫 await 전에 목록에서 빼서, 브로드캐스트 도중 들어온 공격/AI 틱/신규 입장자 스냅샷이
+                // 브로드캐스트 전에 목록에서 빼서, 그 사이 들어온 공격/AI 틱/신규 입장자 스냅샷이
                 // 이미 죽은 몬스터를 더 이상 보지 않게 한다.
                 _monsters.TryRemove(monsterId, out _);
             }
@@ -224,7 +227,7 @@ namespace GameServer.Networking
                 RemainingHp = remainingHp,
                 Timestamp = timestamp
             };
-            await BroadcastToAllAsync(OpCode.Game_MonsterDamageBroadcast, damageBroadcast.Encode(), ct);
+            BroadcastToAll(OpCode.Game_MonsterDamageBroadcast, damageBroadcast.Encode());
 
             if (!killedByThisAttack)
             {
@@ -236,7 +239,7 @@ namespace GameServer.Networking
             (int gainedGold, List<(string ItemId, int Qty)> droppedItems) = DropTableCatalog.Roll(runtime.Info.MonsterType);
 
             var dieBroadcast = new S2CMonsterDieBroadcast { MonsterId = monsterId, Timestamp = timestamp };
-            await BroadcastToAllAsync(OpCode.Game_MonsterDieBroadcast, dieBroadcast.Encode(), ct);
+            BroadcastToAll(OpCode.Game_MonsterDieBroadcast, dieBroadcast.Encode());
 
             // 리스폰은 이 공격 요청 처리와 독립적인 타이머이므로 기다리지 않고 흘려보낸다(fire-and-forget).
             _ = RespawnAfterDelayAsync(runtime.Point);
@@ -264,7 +267,7 @@ namespace GameServer.Networking
 
             if (didLevelUp)
             {
-                await ApplyLevelUpHealthAsync(attackerEntry.Info, level - previousLevel, ct);
+                ApplyLevelUpHealth(attackerEntry.Info, level - previousLevel);
             }
 
             return new MonsterAttackResult
@@ -294,14 +297,7 @@ namespace GameServer.Networking
             MonsterInfo spawned = SpawnMonsterAtPoint(point);
 
             var broadcast = new S2CMonsterSpawnBroadcast { Monster = spawned };
-            try
-            {
-                await BroadcastToAllAsync(OpCode.Game_MonsterSpawnBroadcast, broadcast.Encode(), _serverLifetimeCt);
-            }
-            catch (OperationCanceledException)
-            {
-                // 서버 종료 - 무시.
-            }
+            BroadcastToAll(OpCode.Game_MonsterSpawnBroadcast, broadcast.Encode());
         }
 
         // 같은 포인트에서 maxAlive > 1로 여러 마리가 스폰될 때 한 좌표에 겹쳐 뭉치지 않도록,
@@ -356,7 +352,7 @@ namespace GameServer.Networking
             public float HomeZ { get; }
 
             // 스폰 시 선택된 엔트리의 경험치. Point.Entries 중 어느 것이 뽑혔는지는 리스폰마다 달라질 수 있어
-            // Point가 아니라 이 인스턴스에 따로 저장해둔다(ApplyMonsterAttackAsync가 처치 시 참조).
+            // Point가 아니라 이 인스턴스에 따로 저장해둔다(ApplyMonsterAttack이 처치 시 참조).
             public int ExpReward { get; }
 
             public MonsterAiState AiState { get; set; } = MonsterAiState.Idle;
@@ -408,7 +404,7 @@ namespace GameServer.Networking
         }
 
         // PvP 공격. 사거리/쿨다운은 ClientSession이 검증한 뒤 호출한다. 공격자나 대상이 이미 사망했으면 무시한다.
-        public async Task ApplyPlayerAttackAsync(long attackerId, long targetId, long timestamp, CancellationToken ct)
+        public void ApplyPlayerAttack(long attackerId, long targetId, long timestamp)
         {
             if (!_players.TryGetValue(attackerId, out var attackerEntry) || attackerEntry.Info.CurrentHp <= 0
                 || !_players.TryGetValue(targetId, out var targetEntry))
@@ -429,7 +425,7 @@ namespace GameServer.Networking
                 RemainingHp = remainingHp,
                 Timestamp = timestamp
             };
-            await BroadcastToAllAsync(OpCode.Game_DamageBroadcast, broadcast.Encode(), ct);
+            BroadcastToAll(OpCode.Game_DamageBroadcast, broadcast.Encode());
 
             if (died)
             {
@@ -453,7 +449,7 @@ namespace GameServer.Networking
         }
 
         // 최대 체력의 healPercent%만큼 회복하고 방 전체에 새 체력을 알린다. 그 사이 사망했거나 이미 가득 찼으면 false.
-        public async Task<bool> TryHealPlayerAsync(long playerId, int healPercent, CancellationToken ct)
+        public bool TryHealPlayer(long playerId, int healPercent)
         {
             if (!_players.TryGetValue(playerId, out var entry))
             {
@@ -476,12 +472,12 @@ namespace GameServer.Networking
             }
 
             var broadcast = new S2CPlayerHpBroadcast { PlayerId = playerId, CurrentHp = currentHp, MaxHp = maxHp };
-            await BroadcastToAllAsync(OpCode.Game_PlayerHpBroadcast, broadcast.Encode(), ct);
+            BroadcastToAll(OpCode.Game_PlayerHpBroadcast, broadcast.Encode());
             return true;
         }
 
         // 레벨업 시 최대 체력을 올리고 체력을 가득 채운다(클라이언트가 레벨업 때 하던 처리를 서버로 옮긴 것).
-        private async Task ApplyLevelUpHealthAsync(PlayerInfo player, int levelsGained, CancellationToken ct)
+        private void ApplyLevelUpHealth(PlayerInfo player, int levelsGained)
         {
             int currentHp;
             int maxHp;
@@ -494,12 +490,12 @@ namespace GameServer.Networking
             }
 
             var broadcast = new S2CPlayerHpBroadcast { PlayerId = player.PlayerId, CurrentHp = currentHp, MaxHp = maxHp };
-            await BroadcastToAllAsync(OpCode.Game_PlayerHpBroadcast, broadcast.Encode(), ct);
+            BroadcastToAll(OpCode.Game_PlayerHpBroadcast, broadcast.Encode());
         }
 
         // 사망한 플레이어를 ReviveDelay 뒤 가득 찬 체력으로 부활시킨다. 그 사이 접속이 끊겼으면(방에서 빠짐)
         // 아무 것도 하지 않는다 - 재접속하면 입장 처리에서 어차피 가득 찬 체력으로 시작한다.
-        // 사망 중에는 맵 이동이 막혀 있으므로(ClientSession.HandleMapChangeRequestAsync) 다른 방으로 옮겨 갔을 일은 없다.
+        // 사망 중에는 맵 이동이 막혀 있으므로(ClientSession.HandleMapChangeRequest) 다른 방으로 옮겨 갔을 일은 없다.
         private async Task ReviveAfterDelayAsync(PlayerInfo player)
         {
             try
@@ -550,14 +546,7 @@ namespace GameServer.Networking
                 Z = player.Z,
                 RotationY = player.RotationY
             };
-            try
-            {
-                await BroadcastToAllAsync(OpCode.Game_PlayerRevived, revived.Encode(), _serverLifetimeCt);
-            }
-            catch (OperationCanceledException)
-            {
-                // 서버 종료 - 무시.
-            }
+            BroadcastToAll(OpCode.Game_PlayerRevived, revived.Encode());
         }
         #endregion
 
@@ -576,7 +565,17 @@ namespace GameServer.Networking
                 while (!ct.IsCancellationRequested)
                 {
                     await Task.Delay(AiTickInterval, ct);
-                    await TickMonsterAiAsync((float)AiTickInterval.TotalSeconds, ct);
+
+                    // 한 틱에서 예상치 못한 예외가 나도 루프 자체는 계속 돈다 - 그렇지 않으면 이 방의 몬스터 AI가
+                    // 서버가 재시작될 때까지 영구히 멈춘다(fire-and-forget이라 예외를 받아줄 호출측도 없다).
+                    try
+                    {
+                        TickMonsterAi((float)AiTickInterval.TotalSeconds);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[GameServer] 몬스터 AI 틱 오류 ({_mapId}) : {ex}");
+                    }
                 }
             }
             catch (TaskCanceledException)
@@ -588,11 +587,11 @@ namespace GameServer.Networking
         // 몬스터 종류에 관계없이 공통으로 동작한다 - 몬스터별 분기 없이 MonsterSpawnPointDefinition의
         // DetectionRange/ChaseSpeed/LeashRange 값만으로 감지/추적/복귀를 판단하므로, 새 몬스터 타입을
         // 추가해도 이 로직은 수정할 필요가 없다.
-        private async Task TickMonsterAiAsync(float deltaSeconds, CancellationToken ct)
+        private void TickMonsterAi(float deltaSeconds)
         {
             foreach (var runtime in _monsters.Values)
             {
-                // 이 순회 도중 ApplyMonsterAttackAsync가 처치해 목록에서 뺀 몬스터가 아직 보일 수 있다 -
+                // 이 순회 도중 ApplyMonsterAttack이 처치해 목록에서 뺀 몬스터가 아직 보일 수 있다 -
                 // 죽은 몬스터가 한 번 더 이동/공격하지 않도록 건너뛴다.
                 if (runtime.Info.CurrentHp <= 0)
                 {
@@ -614,7 +613,7 @@ namespace GameServer.Networking
                     Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                 };
 
-                await BroadcastToAllAsync(OpCode.Game_MonsterMoveBroadcast, broadcast.Encode(), ct);
+                BroadcastToAll(OpCode.Game_MonsterMoveBroadcast, broadcast.Encode());
             }
         }
 
@@ -644,7 +643,7 @@ namespace GameServer.Networking
             }
         }
 
-        // 근접 사거리(공격 판정 자체는 서버 권위 - ApplyMonsterAttackAsync/HandleMonsterAttackRequestAsync와
+        // 근접 사거리(공격 판정 자체는 서버 권위 - ApplyMonsterAttack/HandleMonsterAttackRequestAsync와
         // 같은 이유로 몬스터는 신뢰할 공격 요청 주체가 없다) 및 공격 쿨다운.
         private const float MeleeAttackRange = 1.5f;
         private const float AttackIntervalSeconds = 1.5f;
@@ -684,7 +683,7 @@ namespace GameServer.Networking
                 if (runtime.AttackCooldownRemaining <= 0f)
                 {
                     runtime.AttackCooldownRemaining = AttackIntervalSeconds;
-                    _ = AttackPlayerAsync(runtime, target);
+                    AttackPlayer(runtime, target);
                 }
 
                 return true;
@@ -693,9 +692,9 @@ namespace GameServer.Networking
             return MoveToward(info, target.X, target.Z, runtime.Point.ChaseSpeed, deltaSeconds);
         }
 
-        // 근접 사거리 안에서 공격 쿨다운마다 호출된다. PvP(ApplyPlayerAttackAsync)와 같은 TryDamagePlayer로
+        // 근접 사거리 안에서 공격 쿨다운마다 호출된다. PvP(ApplyPlayerAttack)와 같은 TryDamagePlayer로
         // 서버가 최종 피해와 남은 체력을 계산하고, 클라이언트에는 그 결과만 보낸다(Player Health 영역 참고).
-        private async Task AttackPlayerAsync(MonsterRuntime runtime, PlayerInfo target)
+        private void AttackPlayer(MonsterRuntime runtime, PlayerInfo target)
         {
             if (!TryDamagePlayer(target, runtime.Info.AttackPower, out int finalDamage, out int remainingHp, out bool died))
             {
@@ -711,14 +710,7 @@ namespace GameServer.Networking
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
             };
 
-            try
-            {
-                await BroadcastToAllAsync(OpCode.Game_MonsterAttackBroadcast, broadcast.Encode(), _serverLifetimeCt);
-            }
-            catch (OperationCanceledException)
-            {
-                // 서버 종료 - 무시.
-            }
+            BroadcastToAll(OpCode.Game_MonsterAttackBroadcast, broadcast.Encode());
 
             if (died)
             {
