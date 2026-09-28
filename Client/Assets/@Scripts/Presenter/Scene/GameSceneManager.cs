@@ -112,6 +112,7 @@ namespace Incheol.Presenter.Scene
                 GameServerConnectManager.Instance.OnUseItemResult += HandleUseItemResult;
                 GameServerConnectManager.Instance.OnPositionCorrected += HandlePositionCorrected;
                 GameServerConnectManager.Instance.OnServerError += HandleGameServerError;
+                GameServerConnectManager.Instance.OnKicked += HandleSessionKicked;
                 GameServerConnectManager.Instance.OnDisconnected += HandleGameServerDisconnected;
             }
 
@@ -138,6 +139,7 @@ namespace Incheol.Presenter.Scene
                 GameServerConnectManager.Instance.OnUseItemResult -= HandleUseItemResult;
                 GameServerConnectManager.Instance.OnPositionCorrected -= HandlePositionCorrected;
                 GameServerConnectManager.Instance.OnServerError -= HandleGameServerError;
+                GameServerConnectManager.Instance.OnKicked -= HandleSessionKicked;
                 GameServerConnectManager.Instance.OnDisconnected -= HandleGameServerDisconnected;
             }
 
@@ -1239,6 +1241,39 @@ private void TryEquipItem(string _itemId)
         private void HandleGameServerError(string message)
         {
             GameManager.Instance?.ShowAlarmPopup("서버 오류", message);
+        }
+
+        /// <summary>
+        /// 서버가 이 접속을 강제로 끊었을 때(Game System_Kicked, 같은 캐릭터로 다른 곳에서 접속 등) 호출된다.
+        /// 게임 서버 연결은 이미 끊겼으므로 조작을 막고, UI_GameSceneView에 연결된 전용 팝업(UI_SessionKickedPopupView)으로
+        /// 사유를 보여준 뒤 확인을 누르면 로그아웃해 로그인 화면으로 돌아간다. 이 기기의 refresh token만 폐기하므로
+        /// 새로 접속한 쪽의 로그인에는 영향이 없다. 팝업이 연결돼 있지 않으면 공용 알림 팝업으로 알리고 바로 돌아간다.
+        /// 마지막 접속시간(TouchLastLogin)은 기록하지 않는다 - 캐릭터는 다른 곳에서 계속 접속 중이기 때문이다.
+        /// </summary>
+        private void HandleSessionKicked(string reason)
+        {
+            SetLocalPlayerControlEnabled(false);
+
+            UI_SessionKickedPopupView popup = gameSceneView != null ? gameSceneView.SessionKickedPopup : null;
+            if (popup != null)
+            {
+                popup.Show(reason, LogoutWithoutTouchingLastLogin);
+                return;
+            }
+
+            GameManager.Instance?.ShowAlarmPopup("접속 종료", reason);
+            LogoutWithoutTouchingLastLogin();
+        }
+
+        private void LogoutWithoutTouchingLastLogin()
+        {
+            if (isLoggingOut || ServerConnectManager.Instance == null)
+            {
+                return;
+            }
+
+            isLoggingOut = true;
+            PerformLogout();
         }
 
         /// <summary>

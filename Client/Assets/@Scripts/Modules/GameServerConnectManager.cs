@@ -53,6 +53,10 @@ namespace Incheol.Modules
         // 자발적으로 Disconnect()를 호출한 경우(씬 전환 등) OnDisconnected를 쓰지 않기 위한 구분값.
         private bool intentionalDisconnect;
 
+        // 서버가 System_Kicked(중복 접속 등)로 끊은 경우. 이때는 OnKicked로 사유를 이미 알렸으므로, 뒤이은 연결 종료에서
+        // OnDisconnected("연결이 끊어졌습니다")를 또 발화하지 않는다. ReadLoopAsync(백그라운드)에서 쓰고 finally에서 읽는다.
+        private volatile bool wasKicked;
+
         public event Action<GamePlayerInfo> OnPlayerJoined;
         public event Action<long> OnPlayerLeft;
         public event Action<GameMoveBroadcastPacket> OnPlayerMoved;
@@ -71,6 +75,12 @@ namespace Incheol.Modules
         public event Action<GamePositionCorrectionPacket> OnPositionCorrected;
         public event Action OnDisconnected;
         public event Action<string> OnServerError;
+
+        /// <summary>
+        /// 서버가 이 연결을 강제로 끊었을 때(같은 캐릭터로 다른 곳에서 접속 등) 사유 문자열과 함께 발생한다.
+        /// 이 경우 OnDisconnected는 발생하지 않는다.
+        /// </summary>
+        public event Action<string> OnKicked;
 
         #region LifeCycle
         protected override void Awake()
@@ -183,6 +193,7 @@ namespace Incheol.Modules
                 localPlayerId = localInfo.PlayerId;
                 isConnected = true;
                 intentionalDisconnect = false;
+                wasKicked = false;
                 heartbeatSendTimer = 0f;
                 timeSinceLastHeartbeatAck = 0f;
 
@@ -438,7 +449,7 @@ namespace Incheol.Modules
             {
                 isConnected = false;
 
-                if (!intentionalDisconnect)
+                if (!intentionalDisconnect && !wasKicked)
                 {
                     pendingActions.Enqueue(() => OnDisconnected?.Invoke());
                 }
@@ -565,6 +576,14 @@ namespace Incheol.Modules
                 case GameOpCode.System_Error:
                     string errorMessage = Encoding.UTF8.GetString(body);
                     pendingActions.Enqueue(() => OnServerError?.Invoke(errorMessage));
+                    break;
+
+                // 서버가 이 연결을 강제로 끊기 직전에 보낸다(현재는 같은 캐릭터 중복 접속). 곧 연결이 닫히지만
+                // OnDisconnected 대신 이 사유만 알린다.
+                case GameOpCode.System_Kicked:
+                    wasKicked = true;
+                    string kickReason = Encoding.UTF8.GetString(body);
+                    pendingActions.Enqueue(() => OnKicked?.Invoke(kickReason));
                     break;
             }
         }

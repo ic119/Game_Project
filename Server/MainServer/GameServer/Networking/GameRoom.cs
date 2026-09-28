@@ -82,9 +82,16 @@ namespace GameServer.Networking
             }
         }
 
-        public void Remove(long playerId)
+        // session이 등록한 항목일 때만 제거하고, 실제로 제거했으면 true. 같은 캐릭터가 새 세션으로 다시 입장해 항목이
+        // 교체된 뒤에는 이전 세션이 종료되면서 호출해도 새 세션의 항목을 지우지 않는다 - 이때 호출측은 퇴장 알림도 보내면 안 된다.
+        public bool Remove(long playerId, ClientSession session)
         {
-            _players.TryRemove(playerId, out _);
+            if (!_players.TryGetValue(playerId, out var entry) || !ReferenceEquals(entry.Session, session))
+            {
+                return false;
+            }
+
+            return _players.TryRemove(new KeyValuePair<long, (PlayerInfo Info, ClientSession Session)>(playerId, entry));
         }
 
         // playerId를 제외한 현재 접속자 스냅샷(신규 입장자에게 Game_EnterAck으로 보내줄 목록).

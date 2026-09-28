@@ -23,8 +23,12 @@ namespace GameServer.Networking
         private readonly MapRoomRegistry _mapRooms;
         private readonly PlayerAuthValidator _authValidator;
         private readonly MainServerInternalApi _mainServerApi;
+        private readonly SessionRegistry _sessions;
         private readonly X509Certificate2 _serverCertificate;
         private readonly SemaphoreSlim _writeLock = new(1, 1);
+
+        // 다른 세션이 이 세션을 강제로 끊을 때(같은 캐릭터 중복 접속, KickAsync) 수신 루프를 멈추는 데 쓴다.
+        private readonly CancellationTokenSource _kickCts = new();
 
         // 이 세션이 Game_EnterRequest로 등록한 플레이어 id. 등록 전이면 null.
         private long? _playerId;
@@ -39,13 +43,14 @@ namespace GameServer.Networking
         private GameRoom? _room;
         private string? _mapId;
 
-        public ClientSession(TcpClient tcpClient, MapRoomRegistry mapRooms, PlayerAuthValidator authValidator, MainServerInternalApi mainServerApi, X509Certificate2 serverCertificate)
+        public ClientSession(TcpClient tcpClient, MapRoomRegistry mapRooms, PlayerAuthValidator authValidator, MainServerInternalApi mainServerApi, SessionRegistry sessions, X509Certificate2 serverCertificate)
         {
             _tcpClient = tcpClient;
             _stream = tcpClient.GetStream();
             _mapRooms = mapRooms;
             _authValidator = authValidator;
             _mainServerApi = mainServerApi;
+            _sessions = sessions;
             _serverCertificate = serverCertificate;
         }
 
@@ -53,6 +58,10 @@ namespace GameServer.Networking
         {
             var endpoint = _tcpClient.Client.RemoteEndPoint;
             Console.WriteLine($"[GameServer] 클라이언트 접속: {endpoint}");
+
+            // 서버 종료(ct) 또는 강제 종료(KickAsync) 중 먼저 오는 쪽으로 수신 루프와 요청 처리를 멈춘다.
+            using var sessionCts = CancellationTokenSource.CreateLinkedTokenSource(ct, _kickCts.Token);
+            CancellationToken sessionCt = sessionCts.Token;
 
             try
             {
@@ -64,21 +73,21 @@ namespace GameServer.Networking
                     {
                         ServerCertificate = _serverCertificate,
                         ClientCertificateRequired = false
-                    }, ct);
+                    }, sessionCt);
                 _stream = sslStream;
 
-                while (!ct.IsCancellationRequested)
+                while (!sessionCt.IsCancellationRequested)
                 {
-                    var frame = await PacketFrame.ReadFrameAsync(_stream, ct);
+                    var frame = await PacketFrame.ReadFrameAsync(_stream, sessionCt);
                     if (frame is null)
                         break;
 
-                    await DispatchAsync(frame.Value.OpCode, frame.Value.Body, ct);
+                    await DispatchAsync(frame.Value.OpCode, frame.Value.Body, sessionCt);
                 }
             }
             catch (OperationCanceledException)
             {
-                // 서버 종료로 인한 정상 취소
+                // 서버 종료 또는 강제 종료(KickAsync)로 인한 정상 취소
             }
             catch (IOException)
             {
@@ -96,12 +105,22 @@ namespace GameServer.Networking
             }
             finally
             {
-                if (_playerId is { } playerId && _room is { } room && _mapId is { } mapId)
+                if (_playerId is { } playerId)
                 {
-                    room.Remove(playerId);
-                    var left = new S2CPlayerLeft { PlayerId = playerId };
-                    await room.BroadcastAsync(OpCode.Game_PlayerLeft, left.Encode(), playerId, ct);
-                    _mapRooms.RemoveIfEmpty(mapId, room);
+                    _sessions.Unregister(playerId, this);
+
+                    // 같은 캐릭터가 새 세션으로 다시 입장해 방의 항목이 이미 교체됐다면 Remove가 false다 - 이때는 새 세션이
+                    // 그 캐릭터로 방에 있는 중이므로 다른 접속자에게 퇴장을 알리지 않는다.
+                    if (_room is { } room && _mapId is { } mapId)
+                    {
+                        if (room.Remove(playerId, this))
+                        {
+                            var left = new S2CPlayerLeft { PlayerId = playerId };
+                            await room.BroadcastAsync(OpCode.Game_PlayerLeft, left.Encode(), playerId, ct);
+                        }
+
+                        _mapRooms.RemoveIfEmpty(mapId, room);
+                    }
                 }
 
                 Console.WriteLine($"[GameServer] 클라이언트 종료: {endpoint}");
@@ -138,6 +157,12 @@ namespace GameServer.Networking
         // 확인한다 - 그렇지 않으면 누구나 임의의 PlayerId를 자칭해 접속/조작할 수 있기 때문이다.
         private async Task HandleEnterRequestAsync(byte[] body, CancellationToken ct)
         {
+            // 한 세션은 한 번만 입장한다(이미 입장한 세션의 재요청은 무시).
+            if (_playerId is not null)
+            {
+                return;
+            }
+
             var request = C2SEnterRequest.Decode(body);
             var info = request.Player;
 
@@ -180,6 +205,14 @@ namespace GameServer.Networking
             info.Y = respawnPoint.Y;
             info.Z = respawnPoint.Z;
             info.RotationY = respawnPoint.RotationY;
+
+            // 같은 캐릭터로 이미 접속 중인 세션이 있으면 끊는다(새 접속이 우선). 이전 세션은 방 항목이 이 세션으로 교체된 뒤
+            // 종료되더라도 GameRoom.Remove(playerId, session)가 자기 항목만 지우므로 새 세션에는 영향이 없다.
+            if (_sessions.Register(info.PlayerId, this) is { } previousSession)
+            {
+                Console.WriteLine($"[GameServer] 중복 접속 (PlayerId={info.PlayerId}) - 이전 세션을 종료합니다.");
+                await previousSession.KickAsync("다른 곳에서 같은 캐릭터로 접속하여 연결이 종료되었습니다.");
+            }
 
             GameRoom room = _mapRooms.GetOrCreate(info.MapId);
             _room = room;
@@ -240,6 +273,24 @@ namespace GameServer.Networking
             return false;
         }
 
+        // 다른 세션이 이 세션을 강제로 끊는다(같은 캐릭터 중복 접속). 사유를 System_Kicked로 알린 뒤 수신 루프를 취소하면
+        // RunAsync의 finally가 방/레지스트리 정리와 소켓 종료를 맡는다. 응답 없는 클라이언트 때문에 새 접속이 오래 막히지
+        // 않도록 사유 전송은 짧게 기다린다.
+        public async Task KickAsync(string reason)
+        {
+            try
+            {
+                using var sendTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                await SendAsync(OpCode.System_Kicked, Encoding.UTF8.GetBytes(reason), sendTimeout.Token);
+            }
+            catch (Exception ex) when (ex is OperationCanceledException or IOException or ObjectDisposedException)
+            {
+                // 이미 끊겼거나 응답이 없는 연결 - 사유 전달 없이 종료만 한다.
+            }
+
+            _kickCts.Cancel();
+        }
+
         // 입장 거부: 사유를 System_Error로 알리고 연결을 끊는다.
         // 소켓은 RunAsync의 finally에서 정리한다 - 여기서 직접 Close()하면 그 직후 루프가
         // 다시 스트림을 읽으려 할 때 처리되지 않은 ObjectDisposedException이 발생한다.
@@ -281,7 +332,12 @@ namespace GameServer.Networking
                 return;
             }
 
-            previousRoom.Remove(playerId);
+            // 같은 캐릭터의 새 세션이 방 항목을 이미 차지했다면(이 세션은 곧 끊긴다) 옮기지 않는다.
+            if (!previousRoom.Remove(playerId, this))
+            {
+                return;
+            }
+
             var left = new S2CPlayerLeft { PlayerId = playerId };
             await previousRoom.BroadcastAsync(OpCode.Game_PlayerLeft, left.Encode(), playerId, ct);
             _mapRooms.RemoveIfEmpty(previousMapId, previousRoom);

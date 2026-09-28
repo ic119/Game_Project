@@ -10,6 +10,7 @@ namespace GameServer.Networking
         private readonly TcpListener _listener;
         private readonly PlayerAuthValidator _authValidator;
         private readonly MainServerInternalApi _mainServerApi;
+        private readonly SessionRegistry _sessions = new();
         private readonly X509Certificate2 _serverCertificate;
 
         public GameTcpServer(int port, IConfiguration configuration)
@@ -35,7 +36,7 @@ namespace GameServer.Networking
                 while (!ct.IsCancellationRequested)
                 {
                     var tcpClient = await _listener.AcceptTcpClientAsync(ct);
-                    var session = new ClientSession(tcpClient, mapRooms, _authValidator, _mainServerApi, _serverCertificate);
+                    var session = new ClientSession(tcpClient, mapRooms, _authValidator, _mainServerApi, _sessions, _serverCertificate);
                     _ = session.RunAsync(ct);
                 }
             }

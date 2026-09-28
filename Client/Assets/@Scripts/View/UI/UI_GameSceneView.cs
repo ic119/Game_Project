@@ -1,6 +1,7 @@
 using System;
 using Incheol.Controller;
 using Incheol.Utils;
+using Incheol.View.UI;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -26,6 +27,10 @@ public class UI_GameSceneView : MonoBehaviour
     [Header("Mini Map")]
     [SerializeField] private RawImage miniMapView;
     [SerializeField] private Sprite playerMiniMapIcon;
+
+    [Header("Session Kicked Popup")]
+    [Tooltip("같은 캐릭터로 다른 곳에서 접속해 이 접속이 끊겼을 때 띄울 팝업(UI_SessionKickedPopupView). 비워두면 공용 알림 팝업으로 대신한다.")]
+    [SerializeField] private UI_SessionKickedPopupView sessionKickedPopup;
 
     private PlayerCharacterModel playerModel;
     #endregion
@@ -143,6 +148,11 @@ public class UI_GameSceneView : MonoBehaviour
     /// MiniMapController가 플레이어 위치 아이콘을 만들 때 사용할 스프라이트.
     /// </summary>
     public Sprite PlayerMiniMapIcon => playerMiniMapIcon;
+
+    /// <summary>
+    /// 서버가 이 접속을 강제로 끊었을 때 GameSceneManager가 띄울 팝업. 인스펙터에 연결하지 않았으면 null.
+    /// </summary>
+    public UI_SessionKickedPopupView SessionKickedPopup => sessionKickedPopup;
 
     public bool IsMainPopupActive => mainPopup != null && mainPopup.activeSelf;
 

@@ -5,6 +5,7 @@ namespace Incheol.Modules.Networking
     {
         System_Heartbeat = 0x0001,
         System_Error = 0x0002,
+        System_Kicked = 0x0003,
 
         Game_MoveRequest = 0x0201,
         Game_MoveBroadcast = 0x0202,

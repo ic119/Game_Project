@@ -7,6 +7,10 @@ namespace Shared.Networking
         System_Heartbeat = 0x0001,
         System_Error = 0x0002,
 
+        // 서버가 이 연결을 강제로 끊기 직전에 보낸다(현재는 같은 캐릭터 중복 접속). 바디는 UTF-8 사유 문자열.
+        // 일반 오류(System_Error)와 구분해, 클라이언트가 "연결 끊김" 대신 전용 안내(로그인 화면 복귀 등)를 하게 한다.
+        System_Kicked = 0x0003,
+
         // 0x01XX = Auth 관련 (참고용, 실제 인증은 HTTP)
 
         // 0x02XX = Game
