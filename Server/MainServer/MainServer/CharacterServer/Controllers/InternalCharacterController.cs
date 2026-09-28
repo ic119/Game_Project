@@ -31,6 +31,10 @@ namespace MainServer.CharacterServer.Controllers
         [HttpPost("{characterId:long}/kill-rewards")]
         public async Task<IActionResult> ApplyKillRewards(long characterId, [FromBody] ApplyKillRewardsRequest request)
         {
+            // 보상 id가 없으면 중복 반영을 막을 수 없다 - 모든 보상이 같은 id(빈 값)로 묶여 첫 보상 이후 전부 무시되기도 한다.
+            if (request._rewardId == Guid.Empty)
+                return BadRequest(new { message = "보상 id가 없습니다." }); // 400
+
             var result = await _characterService.ApplyKillRewardsAsync(characterId, request);
             return result is null
                 ? NotFound(new { message = "캐릭터를 찾을 수 없습니다." }) // 404

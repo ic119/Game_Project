@@ -90,11 +90,23 @@ namespace MainServer.CharacterServer.Services
         // 상태가 어긋날 수 있어, 하나의 SaveChangesAsync로 묶어 반영한다.
         // 서버 간 API(InternalCharacterController) 전용이라 userId 소유권 검증을 하지 않는다 - GameServer가
         // 입장 시점에 이미 소유권을 확인한 세션의 characterId만 넘긴다.
+        // GameServer는 저장 실패(타임아웃 등) 시 같은 _rewardId로 다시 보낸다. 이미 반영한 보상이면 다시 더하지 않고 성공으로 응답한다 -
+        // 보상 반영과 수령 기록(KillRewardReceipt)을 같은 SaveChangesAsync(트랜잭션)로 저장하므로 둘은 항상 함께 남거나 함께 빠진다.
         public async Task<CharacterResponse?> ApplyKillRewardsAsync(long characterId, ApplyKillRewardsRequest request)
         {
             var character = await _db.Characters.FirstOrDefaultAsync(c => c.Id == characterId);
             if (character is null)
                 return null;
+
+            if (await _db.KillRewardReceipts.AnyAsync(r => r.Id == request._rewardId))
+                return await ToResponseAsync(character);
+
+            _db.KillRewardReceipts.Add(new KillRewardReceipt
+            {
+                Id = request._rewardId,
+                CharacterId = characterId,
+                CreatedAt = DateTime.UtcNow
+            });
 
             character.Level = request._level;
             character.Exp = request._exp;
@@ -124,10 +136,28 @@ namespace MainServer.CharacterServer.Services
                 }
             }
 
-            await _db.SaveChangesAsync();
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                // 재시도 요청이 앞선 요청(아직 처리 중이던)과 겹쳐, 저쪽이 먼저 같은 보상 id로 저장한 경우 - 기본 키 중복으로
+                // 이 트랜잭션 전체가 취소됐으므로 보상은 한 번만 반영됐다. 추적 중인 변경은 버리고 저장된 상태를 돌려준다.
+                // 그 밖의 저장 실패는 그대로 던진다(500 - GameServer가 다시 보낸다).
+                if (!await IsKillRewardAlreadySavedAsync(request._rewardId))
+                    throw;
+
+                _db.ChangeTracker.Clear();
+                character = await _db.Characters.FirstAsync(c => c.Id == characterId);
+            }
 
             return await ToResponseAsync(character);
         }
+
+        // 추적 중인(저장 실패한) 엔티티가 아니라 DB에 실제로 있는지 확인한다.
+        private Task<bool> IsKillRewardAlreadySavedAsync(Guid rewardId) =>
+            _db.KillRewardReceipts.AsNoTracking().AnyAsync(r => r.Id == rewardId);
 
         // 인벤토리 UI에서 장착 가능한 슬롯 이름. 클라이언트 EquipmentSlotType(None 제외)과 철자를 맞춘다.
         private static readonly HashSet<string> ValidEquipSlots = new() { "Weapon", "Armor", "Helmet", "Boots", "Accessory" };

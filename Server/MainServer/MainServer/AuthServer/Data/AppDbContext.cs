@@ -13,6 +13,7 @@ namespace MainServer.AuthServer.Data
         public DbSet<Character> Characters => Set<Character>();
         public DbSet<CharacterSlot> CharacterSlots => Set<CharacterSlot>();
         public DbSet<CharacterItem> CharacterItems => Set<CharacterItem>();
+        public DbSet<KillRewardReceipt> KillRewardReceipts => Set<KillRewardReceipt>();
 
         protected override void OnModelCreating(ModelBuilder _modelBuilder)
         {
@@ -64,6 +65,17 @@ namespace MainServer.AuthServer.Data
                 entity.HasOne(ci => ci.Character)
                       .WithMany()
                       .HasForeignKey(ci => ci.CharacterId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            _modelBuilder.Entity<KillRewardReceipt>(entity =>
+            {
+                entity.ToTable("kill_reward_receipts");
+                // Id(보상 id)가 기본 키라, 같은 보상이 동시에 두 번 들어와도(재시도가 앞선 요청과 겹침) 하나만 저장된다.
+                entity.Property(r => r.Id).ValueGeneratedNever();
+                entity.HasOne(r => r.Character)
+                      .WithMany()
+                      .HasForeignKey(r => r.CharacterId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
         }

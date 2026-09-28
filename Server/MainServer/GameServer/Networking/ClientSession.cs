@@ -25,6 +25,7 @@ namespace GameServer.Networking
         private readonly MapRoomRegistry _mapRooms;
         private readonly PlayerAuthValidator _authValidator;
         private readonly MainServerInternalApi _mainServerApi;
+        private readonly KillRewardSaver _killRewardSaver;
         private readonly SessionRegistry _sessions;
         private readonly X509Certificate2 _serverCertificate;
 
@@ -69,13 +70,14 @@ namespace GameServer.Networking
         private GameRoom? _room;
         private string? _mapId;
 
-        public ClientSession(TcpClient tcpClient, MapRoomRegistry mapRooms, PlayerAuthValidator authValidator, MainServerInternalApi mainServerApi, SessionRegistry sessions, X509Certificate2 serverCertificate)
+        public ClientSession(TcpClient tcpClient, MapRoomRegistry mapRooms, PlayerAuthValidator authValidator, MainServerInternalApi mainServerApi, KillRewardSaver killRewardSaver, SessionRegistry sessions, X509Certificate2 serverCertificate)
         {
             _tcpClient = tcpClient;
             _stream = tcpClient.GetStream();
             _mapRooms = mapRooms;
             _authValidator = authValidator;
             _mainServerApi = mainServerApi;
+            _killRewardSaver = killRewardSaver;
             _sessions = sessions;
             _serverCertificate = serverCertificate;
         }
@@ -273,7 +275,8 @@ namespace GameServer.Networking
                     HandleMapChangeRequest(body);
                     return Task.CompletedTask;
                 case OpCode.Game_MonsterAttackRequest:
-                    return HandleMonsterAttackRequestAsync(body, ct);
+                    HandleMonsterAttackRequest(body);
+                    return Task.CompletedTask;
                 case OpCode.Game_StatUpdateRequest:
                     HandleStatUpdateRequest(body, ct);
                     return Task.CompletedTask;
@@ -289,6 +292,8 @@ namespace GameServer.Networking
         // 접속자/몬스터 목록(Game_EnterAck)을 보낸다. 주변 플레이어는 다음 방 틱에 "시야 진입"(Game_PlayerJoined)으로 받는다.
         // 등록 전에 AccessToken이 info.PlayerId(characterId)를 실제로 소유한 계정의 것인지 AuthServer에
         // 확인한다 - 그렇지 않으면 누구나 임의의 PlayerId를 자칭해 접속/조작할 수 있기 때문이다.
+        private static readonly TimeSpan PendingRewardWaitTimeout = TimeSpan.FromSeconds(10);
+
         private async Task HandleEnterRequestAsync(byte[] body, CancellationToken ct)
         {
             // 한 세션은 한 번만 입장한다(이미 입장한 세션의 재요청은 무시).
@@ -299,6 +304,14 @@ namespace GameServer.Networking
 
             var request = C2SEnterRequest.Decode(body);
             var info = request.Player;
+
+            // 이 캐릭터의 이전 세션에서 저장이 끝나지 않은 처치 보상이 있으면 먼저 기다린다 - 그 전에 DB를 읽으면 옛 level/exp로
+            // 시작하고, 이후 이 세션의 처치 보상이 옛 값 기준의 최종 level/exp로 저장돼 진행도가 되돌아간다(KillRewardSaver 참고).
+            if (!await _killRewardSaver.WaitForPendingAsync(info.PlayerId, PendingRewardWaitTimeout, ct))
+            {
+                RejectEnter($"Game_EnterRequest 이전 처치 보상 저장 대기 시간 초과 (PlayerId={info.PlayerId})",
+                    "이전 플레이 기록을 저장하는 중입니다. 잠시 후 다시 접속해 주세요.");
+            }
 
             CharacterSnapshot? snapshot = await _authValidator.FetchOwnedCharacterAsync(request.AccessToken, info.PlayerId, ct);
             if (snapshot is null)
@@ -650,7 +663,7 @@ namespace GameServer.Networking
         // 플레이어 공격과 몬스터 공격 요청을 번갈아 보내 최소 공격 간격 제한을 우회할 수 있다.
         // 데미지 계산 자체(공격력-방어력)는 GameRoom.ApplyMonsterAttack이 서버 권위로 수행한다.
         // 사망한 플레이어는 몬스터를 공격할 수 없다(PvP는 GameRoom.ApplyPlayerAttack이 같은 검사를 한다).
-        private async Task HandleMonsterAttackRequestAsync(byte[] body, CancellationToken ct)
+        private void HandleMonsterAttackRequest(byte[] body)
         {
             var request = C2SMonsterAttackRequest.Decode(body);
 
@@ -712,18 +725,17 @@ namespace GameServer.Networking
 
             // 위 두 패킷은 클라이언트 화면 표시용일 뿐이고, DB 저장은 GameServer가 MainServer 서버 간 API로 직접 한다 -
             // 클라이언트가 저장을 대신 요청하던 방식은 보상 값을 위조할 수 있었다(MainServerInternalApi 참고).
-            // 클라이언트 표시를 먼저 보낸 뒤 저장을 기다린다. 같은 세션의 처치가 연달아 와도 이 await 덕분에
-            // 저장 순서가 처치 순서와 같아져, 최종값인 level/exp가 이전 값으로 덮어써지지 않는다.
+            // 저장은 기다리지 않고 KillRewardSaver에 맡긴다. 캐릭터별로 처치 순서대로 저장하고 실패하면 다시 보내며,
+            // 이 세션이 끊겨도 계속 진행한다 - 최종값인 level/exp가 이전 값으로 덮어써지지 않는다.
             bool hasReward = result.GainedExp is not null || result.GainedGold > 0 || result.DroppedItems is { Count: > 0 };
             if (result.MonsterDied && hasReward)
             {
-                await _mainServerApi.SaveKillRewardsAsync(
+                _killRewardSaver.Enqueue(
                     playerId,
                     attacker.Level,
                     attacker.Exp,
                     result.GainedGold,
-                    result.DroppedItems ?? Array.Empty<(string ItemId, int Qty)>(),
-                    ct);
+                    result.DroppedItems ?? Array.Empty<(string ItemId, int Qty)>());
             }
         }
 
