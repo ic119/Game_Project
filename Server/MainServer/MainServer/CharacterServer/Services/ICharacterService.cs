@@ -6,6 +6,7 @@ namespace MainServer.CharacterServer.Services
     {
         Task<IReadOnlyList<CharacterResponse>> GetMyCharactersAsync(long userId);
         Task<CharacterResponse?> GetCharacterAsync(long userId, long characterId);
+        Task<CharacterResponse?> GetCharacterForServerAsync(long characterId);
         Task<CharacterResponse> CreateAsync(long userId, CreateCharacterRequest request);
         Task<CharacterResponse?> UpdateCustomizationAsync(long userId, long characterId, UpdateCharacterCustomizationRequest request);
         Task<CharacterResponse?> ApplyKillRewardsAsync(long characterId, ApplyKillRewardsRequest request);

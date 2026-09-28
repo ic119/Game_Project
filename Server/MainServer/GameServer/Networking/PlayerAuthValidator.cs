@@ -1,12 +1,10 @@
 using System.Net.Http.Headers;
-using System.Text.Json;
 using GameServer.Combat;
 using Microsoft.Extensions.Configuration;
-using System.Linq;
 
 namespace GameServer.Networking
 {
-    // Game_EnterRequest/Game_StatUpdateRequest로 들어온 AccessToken이 실제로 요청한 characterId(PlayerId)의
+    // Game_EnterRequest로 들어온 AccessToken이 실제로 요청한 characterId(PlayerId)의
     // 소유 계정인지 MainServer(AuthServer)에 위임해 확인하고, 성공하면 응답 바디에서 닉네임/외형/레벨/경험치와
     // 전투 스탯 계산에 필요한 원본 데이터(str/agi/장착 중인 아이템)도 함께 파싱해 반환한다.
     // GameServer는 JWT 서명 키나 DB에 직접 접근하지 않는다 - MainServer의 CharacterController가 이미
@@ -14,14 +12,10 @@ namespace GameServer.Networking
     // 그대로 재사용한다. 이렇게 하면 두 서버가 서명 키를 이중으로 들고 있다가 어긋나는 사고를 피하고,
     // AttackPower/Defense를 클라이언트 자기 보고가 아니라 DB 원본에서 직접 가져와 위조를 막을 수 있다
     // (CombatStatCalculator 참고).
+    // 입장 이후(장비 변경 등)의 재조회는 사용자 토큰(30분 만료)이 아니라 MainServerInternalApi.FetchCharacterAsync로 한다.
     public class PlayerAuthValidator
     {
         private readonly HttpClient _httpClient;
-
-        private static readonly JsonSerializerOptions JsonOptions = new()
-        {
-            PropertyNameCaseInsensitive = true
-        };
 
         public PlayerAuthValidator(IConfiguration configuration)
         {
@@ -60,27 +54,7 @@ namespace GameServer.Networking
                 }
 
                 string json = await response.Content.ReadAsStringAsync(ct);
-                var body = JsonSerializer.Deserialize<CharacterResponseBody>(json, JsonOptions);
-                if (body is null)
-                {
-                    return null;
-                }
-
-                List<string> equippedItemIds = (body._items ?? new List<CharacterItemResponseBody>())
-                    .Where(item => !string.IsNullOrEmpty(item._equipSlot))
-                    .Select(item => item._itemId)
-                    .ToList();
-
-                return new CharacterSnapshot(
-                    body._nickname,
-                    body._hairIndex,
-                    body._eyeIndex,
-                    body._mouthIndex,
-                    body._level,
-                    body._exp,
-                    body._str,
-                    body._agi,
-                    equippedItemIds);
+                return CharacterSnapshot.FromCharacterResponseJson(json);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -88,28 +62,6 @@ namespace GameServer.Networking
                 Console.WriteLine($"[GameServer] AuthServer 소유권/스탯 확인 실패 : {ex.Message}");
                 return null;
             }
-        }
-
-        // MainServer.CharacterServer.DTOs.CharacterResponse의 부분 집합. GameServer는 MainServer 프로젝트를
-        // 참조하지 않으므로(별도 배포 단위) GameServer가 쓰는 필드만 별도로 선언해 파싱한다.
-        // MainServer 쪽 DTO 필드명이 바뀌면 이 클래스도 함께 맞춰야 한다.
-        private class CharacterResponseBody
-        {
-            public string _nickname { get; set; } = string.Empty;
-            public int _hairIndex { get; set; }
-            public int _eyeIndex { get; set; }
-            public int _mouthIndex { get; set; }
-            public int _level { get; set; }
-            public int _exp { get; set; }
-            public int _str { get; set; }
-            public int _agi { get; set; }
-            public List<CharacterItemResponseBody>? _items { get; set; }
-        }
-
-        private class CharacterItemResponseBody
-        {
-            public string _itemId { get; set; } = string.Empty;
-            public string? _equipSlot { get; set; }
         }
     }
 }

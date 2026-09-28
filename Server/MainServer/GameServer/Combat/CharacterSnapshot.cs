@@ -1,9 +1,11 @@
+using System.Text.Json;
+
 namespace GameServer.Combat
 {
-    // MainServer(AuthServer)의 GET /api/characters/{id} 응답에서 GameServer가 쓰는 부분만 뽑아낸 값.
-    // PlayerAuthValidator.FetchOwnedCharacterAsync가 채워주며, ClientSession이 Game_EnterRequest 때 PlayerInfo의
-    // 닉네임/외형/레벨/경험치를 이 값으로 덮어쓰고, CombatStatCalculator가 전투 스탯(공격력/방어력/최대 체력)을
-    // 서버 권위로 계산한다. 모두 MainServer DB가 원본이라 클라이언트가 위조할 수 없다.
+    // MainServer(AuthServer)의 캐릭터 조회 응답(GET /api/characters/{id} 또는 서버 간 GET /api/internal/characters/{id})에서
+    // GameServer가 쓰는 부분만 뽑아낸 값. ClientSession이 Game_EnterRequest 때 PlayerInfo의 닉네임/외형/레벨/경험치를
+    // 이 값으로 덮어쓰고, CombatStatCalculator가 전투 스탯(공격력/방어력/최대 체력)을 서버 권위로 계산한다.
+    // 모두 MainServer DB가 원본이라 클라이언트가 위조할 수 없다.
     public record CharacterSnapshot(
         string Nickname,
         int HairIndex,
@@ -13,5 +15,59 @@ namespace GameServer.Combat
         int Exp,
         int Str,
         int Agi,
-        IReadOnlyList<string> EquippedItemIds);
+        IReadOnlyList<string> EquippedItemIds)
+    {
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        // MainServer CharacterResponse JSON을 파싱한다(두 조회 경로가 같은 응답 형식을 쓴다). 파싱할 수 없으면 null.
+        public static CharacterSnapshot? FromCharacterResponseJson(string json)
+        {
+            var body = JsonSerializer.Deserialize<CharacterResponseBody>(json, JsonOptions);
+            if (body is null)
+            {
+                return null;
+            }
+
+            List<string> equippedItemIds = (body._items ?? new List<CharacterItemResponseBody>())
+                .Where(item => !string.IsNullOrEmpty(item._equipSlot))
+                .Select(item => item._itemId)
+                .ToList();
+
+            return new CharacterSnapshot(
+                body._nickname,
+                body._hairIndex,
+                body._eyeIndex,
+                body._mouthIndex,
+                body._level,
+                body._exp,
+                body._str,
+                body._agi,
+                equippedItemIds);
+        }
+
+        // MainServer.CharacterServer.DTOs.CharacterResponse의 부분 집합. GameServer는 MainServer 프로젝트를
+        // 참조하지 않으므로(별도 배포 단위) GameServer가 쓰는 필드만 별도로 선언해 파싱한다.
+        // MainServer 쪽 DTO 필드명이 바뀌면 이 클래스도 함께 맞춰야 한다.
+        private class CharacterResponseBody
+        {
+            public string _nickname { get; set; } = string.Empty;
+            public int _hairIndex { get; set; }
+            public int _eyeIndex { get; set; }
+            public int _mouthIndex { get; set; }
+            public int _level { get; set; }
+            public int _exp { get; set; }
+            public int _str { get; set; }
+            public int _agi { get; set; }
+            public List<CharacterItemResponseBody>? _items { get; set; }
+        }
+
+        private class CharacterItemResponseBody
+        {
+            public string _itemId { get; set; } = string.Empty;
+            public string? _equipSlot { get; set; }
+        }
+    }
 }

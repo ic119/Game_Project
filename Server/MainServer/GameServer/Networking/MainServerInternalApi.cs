@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using GameServer.Combat;
 using Microsoft.Extensions.Configuration;
 
 namespace GameServer.Networking
@@ -54,6 +55,31 @@ namespace GameServer.Networking
         public Task<bool> ConsumeItemAsync(long characterId, string itemId, CancellationToken ct)
         {
             return PostAsync($"/api/internal/characters/{characterId}/items/{Uri.EscapeDataString(itemId)}/consume", null, "아이템 차감", characterId, ct);
+        }
+
+        // 캐릭터 원본 데이터 조회(장비 변경 후 전투 스탯 재계산용). 사용자 AccessToken은 30분이면 만료되므로 입장 이후의
+        // 재조회는 이 서버 간 경로로 한다. 실패하면 null(호출측은 이전 값을 유지한다).
+        public async Task<CharacterSnapshot?> FetchCharacterAsync(long characterId, CancellationToken ct)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/internal/characters/{characterId}");
+            request.Headers.Add(InternalApiKeyHeader, _internalApiKey);
+
+            try
+            {
+                using HttpResponseMessage response = await _httpClient.SendAsync(request, ct);
+                if (!response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"[GameServer] 캐릭터 조회 실패 (CharacterId={characterId}) : HTTP {(int)response.StatusCode}");
+                    return null;
+                }
+
+                return CharacterSnapshot.FromCharacterResponseJson(await response.Content.ReadAsStringAsync(ct));
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+            {
+                Console.WriteLine($"[GameServer] 캐릭터 조회 실패 (CharacterId={characterId}) : {ex.Message}");
+                return null;
+            }
         }
 
         // 실패해도 예외를 던지지 않고 false만 반환한다 - MainServer 호출 실패로 게임 세션 자체가 끊기면 안 되기 때문이다.

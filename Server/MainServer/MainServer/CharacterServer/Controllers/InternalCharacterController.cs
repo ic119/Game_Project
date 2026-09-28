@@ -17,6 +17,16 @@ namespace MainServer.CharacterServer.Controllers
 
         public InternalCharacterController(ICharacterService characterService) => _characterService = characterService;
 
+        // GET /api/internal/characters/{characterId} — 캐릭터 조회(GameServer가 장비 변경 후 전투 스탯을 다시 계산할 때)
+        [HttpGet("{characterId:long}")]
+        public async Task<IActionResult> GetCharacter(long characterId)
+        {
+            var result = await _characterService.GetCharacterForServerAsync(characterId);
+            return result is null
+                ? NotFound(new { message = "캐릭터를 찾을 수 없습니다." }) // 404
+                : Ok(result); // 200
+        }
+
         // POST /api/internal/characters/{characterId}/kill-rewards — GameServer가 계산한 몬스터 처치 보상(경험치/레벨/골드/아이템) 저장
         [HttpPost("{characterId:long}/kill-rewards")]
         public async Task<IActionResult> ApplyKillRewards(long characterId, [FromBody] ApplyKillRewardsRequest request)

@@ -34,6 +34,14 @@ namespace MainServer.CharacterServer.Services
             return character is null ? null : await ToResponseAsync(character);
         }
 
+        // 서버 간 API(InternalCharacterController) 전용 조회 - 소유권 검증 없이 id로 찾는다. GameServer가 입장 시점에 이미
+        // 소유권을 확인한 세션의 캐릭터 스탯을 다시 읽을 때 쓴다(사용자 AccessToken은 30분이면 만료돼 세션 중에 쓸 수 없다).
+        public async Task<CharacterResponse?> GetCharacterForServerAsync(long characterId)
+        {
+            var character = await _db.Characters.FirstOrDefaultAsync(c => c.Id == characterId);
+            return character is null ? null : await ToResponseAsync(character);
+        }
+
         public async Task<CharacterResponse> CreateAsync(long userId, CreateCharacterRequest request)
         {
             var slot = await GetOrCreateSlotAsync(userId);

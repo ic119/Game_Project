@@ -48,6 +48,11 @@ namespace GameServer.Networking
         // 연결을 닫기 전에 대기열에 남은 프레임(강제 종료 사유, 입장 거부 사유 등)을 보내도록 기다리는 최대 시간.
         private static readonly TimeSpan FlushTimeoutOnClose = TimeSpan.FromSeconds(2);
 
+        // TLS 핸드셰이크를 마쳐야 하는 시간과, 프레임 없이 기다려 주는 최대 시간(클라이언트 하트비트 10초의 세 배).
+        // 클라이언트 GameServerConnectManager.heartbeatInterval을 이보다 길게 바꾸면 정상 연결도 끊긴다.
+        private static readonly TimeSpan HandshakeTimeout = TimeSpan.FromSeconds(10);
+        private static readonly TimeSpan IdleTimeout = TimeSpan.FromSeconds(30);
+
         // 대기열이 가득 차 끊긴 경우 1. 이때는 남은 프레임을 보내려고 기다리지 않고 바로 닫는다.
         private int _abortedSlowClient;
 
@@ -58,11 +63,6 @@ namespace GameServer.Networking
 
         // 이 세션이 Game_EnterRequest로 등록한 플레이어 id. 등록 전이면 null.
         private long? _playerId;
-
-        // Game_EnterRequest에서 소유권 검증에 성공한 AccessToken. Game_StatUpdateRequest가 올 때마다
-        // MainServer에서 전투 스탯 원본(str/agi/장착 아이템)을 다시 조회하는 데 재사용한다 - 매번 새
-        // 토큰을 받을 방법이 없어(C2SStatUpdateRequest에는 AccessToken이 없음) 세션에 보관해둔다.
-        private string? _accessToken;
 
         // 현재 속한 맵의 GameRoom과 그 mapId. Game_EnterRequest 전이면 null.
         // Game_MapChangeRequest로 다른 맵으로 옮길 때 이 필드 자체를 교체한다(GameRoom은 수정하지 않음).
@@ -89,17 +89,23 @@ namespace GameServer.Networking
             using var sessionCts = CancellationTokenSource.CreateLinkedTokenSource(ct, _kickCts.Token);
             CancellationToken sessionCt = sessionCts.Token;
 
+            // 핸드셰이크/수신 대기 시간 제한. 받을 때마다 다시 CancelAfter로 연장한다 - 이 시간 동안 아무 프레임도 오지 않으면
+            // (클라이언트는 10초마다 하트비트를 보낸다) 끊긴 연결로 보고 정리한다. 예전에는 서버가 먼저 끊지 않아, 응답 없이
+            // 반쯤 끊긴 연결이나 핸드셰이크만 걸어 두고 아무 것도 보내지 않는 연결이 서버 자원을 계속 차지했다.
+            using var idleCts = CancellationTokenSource.CreateLinkedTokenSource(sessionCt);
+
             try
             {
                 // 프레임을 하나라도 주고받기 전에 TLS 핸드셰이크부터 마친다 - 이후 _stream을 쓰는 모든 코드
                 // (PacketFrame.ReadFrameAsync/SendLoopAsync)는 암호화 여부를 몰라도 되도록 Stream 인터페이스만 본다.
+                idleCts.CancelAfter(HandshakeTimeout);
                 var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false);
                 await sslStream.AuthenticateAsServerAsync(
                     new SslServerAuthenticationOptions
                     {
                         ServerCertificate = _serverCertificate,
                         ClientCertificateRequired = false
-                    }, sessionCt);
+                    }, idleCts.Token);
                 _stream = sslStream;
 
                 // 전송 루프는 강제 종료 토큰이 아니라 서버 수명 토큰(ct)으로 돈다 - 강제 종료 시에도 대기열의 마지막
@@ -108,12 +114,17 @@ namespace GameServer.Networking
 
                 while (!sessionCt.IsCancellationRequested)
                 {
-                    var frame = await PacketFrame.ReadFrameAsync(_stream, sessionCt);
+                    idleCts.CancelAfter(IdleTimeout);
+                    var frame = await PacketFrame.ReadFrameAsync(_stream, idleCts.Token);
                     if (frame is null)
                         break;
 
                     await DispatchAsync(frame.Value.OpCode, frame.Value.Body, sessionCt);
                 }
+            }
+            catch (OperationCanceledException) when (idleCts.IsCancellationRequested && !sessionCt.IsCancellationRequested)
+            {
+                Console.WriteLine($"[GameServer] 응답 없는 연결 종료(시간 초과): {endpoint}, PlayerId={_playerId}");
             }
             catch (OperationCanceledException)
             {
@@ -244,7 +255,8 @@ namespace GameServer.Networking
                 case OpCode.Game_MonsterAttackRequest:
                     return HandleMonsterAttackRequestAsync(body, ct);
                 case OpCode.Game_StatUpdateRequest:
-                    return HandleStatUpdateRequestAsync(body, ct);
+                    HandleStatUpdateRequest(body, ct);
+                    return Task.CompletedTask;
                 case OpCode.Game_UseItemRequest:
                     return HandleUseItemRequestAsync(body, ct);
                 default:
@@ -284,7 +296,6 @@ namespace GameServer.Networking
             }
 
             _playerId = info.PlayerId;
-            _accessToken = request.AccessToken;
 
             // info의 닉네임/외형/레벨/경험치/전투 스탯은 클라이언트가 채워 보낸 값이라 위조 가능하다(PlayerInfo.cs 주석 참고).
             // MainServer에서 방금 받아온 snapshot(DB 원본)으로 전부 덮어쓰고, 클라이언트 값은 위치/맵만 사용한다 -
@@ -696,29 +707,77 @@ namespace GameServer.Networking
             }
         }
 
+        // 스탯 재조회(MainServer 호출) 최소 간격. 장비를 연달아 바꾸면 요청이 몰리는데, 그만큼 MainServer를 호출하지 않고
+        // 하나로 합친다(아래 RunStatRefreshLoopAsync).
+        private static readonly TimeSpan MinStatRefreshInterval = TimeSpan.FromSeconds(1);
+
+        // 재조회 루프가 돌고 있으면 1. 루프 밖(수신 루프)과 루프 안(백그라운드)에서 함께 읽고 쓰므로 Interlocked로 다룬다.
+        private int _statRefreshRunning;
+
+        // 마지막 재조회 이후 새 요청이 들어왔으면 1.
+        private int _statRefreshPending;
+
         // 인벤토리에서 장비를 장착/해제해 공격력/방어력이 바뀌었을 때 클라이언트가 보낸다. request.AttackPower/
         // Defense(클라이언트 자기 계산값)는 신뢰하지 않고 트리거로만 쓴다 - Game_EnterRequest 때와 동일하게
         // MainServer에서 str/agi/장착 아이템을 다시 조회해 서버가 직접 재계산한다(CombatStatCalculator).
         // 브로드캐스트는 필요 없어(GameRoom.TryUpdateCombatStats 주석 참고) 응답 없이 서버 캐시만 갱신한다.
-        private async Task HandleStatUpdateRequestAsync(byte[] body, CancellationToken ct)
+        // 요청마다 바로 조회하지 않고 "갱신 필요" 표시만 한 뒤, 재조회 루프가 최소 간격을 지키며 한 번에 처리한다 - 요청을 그냥
+        // 버리면 마지막 장비 상태가 반영되지 않을 수 있어서, 버리는 대신 합친다(마지막 상태는 항상 반영된다).
+        private void HandleStatUpdateRequest(byte[] body, CancellationToken ct)
         {
             var request = C2SStatUpdateRequest.Decode(body);
 
-            if (_playerId is not { } playerId || request.PlayerId != playerId || _room is not { } room || _accessToken is not { } accessToken)
+            if (_playerId is not { } playerId || request.PlayerId != playerId)
             {
                 return;
             }
 
-            CharacterSnapshot? snapshot = await _authValidator.FetchOwnedCharacterAsync(accessToken, playerId, ct);
-            if (snapshot is null)
+            Volatile.Write(ref _statRefreshPending, 1);
+            if (Interlocked.CompareExchange(ref _statRefreshRunning, 1, 0) == 0)
             {
-                // MainServer 순단 등으로 조회에 실패한 경우 - 이전에 검증된 값을 그대로 유지하고 이번 갱신만 건너뛴다.
-                Console.WriteLine($"[GameServer] Game_StatUpdateRequest 스탯 재조회 실패 (PlayerId={playerId}) - 이전 값을 유지합니다.");
-                return;
+                _ = RunStatRefreshLoopAsync(playerId, ct);
             }
+        }
 
-            (int attackPower, int defense) = CombatStatCalculator.Calculate(snapshot);
-            room.TryUpdateCombatStats(playerId, attackPower, defense);
+        // 수신 루프를 막지 않도록 백그라운드에서 돈다. 사용자 AccessToken(30분 만료)이 아니라 서버 간 API로 조회하므로
+        // 오래 접속해 있어도 장비 변경이 계속 반영된다.
+        private async Task RunStatRefreshLoopAsync(long playerId, CancellationToken ct)
+        {
+            try
+            {
+                while (Interlocked.Exchange(ref _statRefreshPending, 0) == 1)
+                {
+                    CharacterSnapshot? snapshot = await _mainServerApi.FetchCharacterAsync(playerId, ct);
+                    if (snapshot is null)
+                    {
+                        // MainServer 순단 등으로 조회에 실패한 경우 - 이전에 검증된 값을 그대로 유지하고 이번 갱신만 건너뛴다.
+                        Console.WriteLine($"[GameServer] Game_StatUpdateRequest 스탯 재조회 실패 (PlayerId={playerId}) - 이전 값을 유지합니다.");
+                    }
+                    else if (_room is { } room)
+                    {
+                        (int attackPower, int defense) = CombatStatCalculator.Calculate(snapshot);
+                        room.TryUpdateCombatStats(playerId, attackPower, defense);
+                    }
+
+                    await Task.Delay(MinStatRefreshInterval, ct);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // 세션 종료.
+            }
+            finally
+            {
+                Volatile.Write(ref _statRefreshRunning, 0);
+
+                // 루프가 "대기 요청 없음"을 확인한 직후 새 요청이 들어오면, 그 요청은 루프가 돌고 있다고 보고 새로 시작하지 않았다 -
+                // 여기서 한 번 더 확인해 놓치지 않게 한다.
+                if (!ct.IsCancellationRequested && Volatile.Read(ref _statRefreshPending) == 1
+                    && Interlocked.CompareExchange(ref _statRefreshRunning, 1, 0) == 0)
+                {
+                    _ = RunStatRefreshLoopAsync(playerId, ct);
+                }
+            }
         }
 
         // 물약 연타로 MainServer 차감 요청이 몰리지 않게 하는 최소 사용 간격.
