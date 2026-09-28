@@ -42,6 +42,10 @@ namespace MainServer.CharacterServer.Controllers
                 var result = await _characterService.CreateAsync(GetUserId(), request);
                 return Ok(result); // 200
             }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message }); // 400 - 입력값 규칙 위반(InputRules)
+            }
             catch (InvalidOperationException ex)
             {
                 return Conflict(new { message = ex.Message }); // 409
@@ -52,10 +56,17 @@ namespace MainServer.CharacterServer.Controllers
         [HttpPut("{characterId:long}")]
         public async Task<IActionResult> UpdateCustomization(long characterId, [FromBody] UpdateCharacterCustomizationRequest request)
         {
-            var result = await _characterService.UpdateCustomizationAsync(GetUserId(), characterId, request);
-            return result is null
-                ? NotFound(new { message = "캐릭터를 찾을 수 없습니다." }) // 404
-                : Ok(result); // 200
+            try
+            {
+                var result = await _characterService.UpdateCustomizationAsync(GetUserId(), characterId, request);
+                return result is null
+                    ? NotFound(new { message = "캐릭터를 찾을 수 없습니다." }) // 404
+                    : Ok(result); // 200
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message }); // 400 - 존재하지 않는 외형(InputRules)
+            }
         }
 
         // 레벨/경험치/골드/처치 드롭 저장은 클라이언트용 API로 열지 않는다 - 클라이언트가 값을 임의로 정해 보낼 수 있기

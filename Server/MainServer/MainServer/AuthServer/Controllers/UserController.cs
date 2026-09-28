@@ -21,6 +21,10 @@ namespace MainServer.AuthServer.Controllers
                 var result = await _userService.RegisterAsync(request);
                 return Ok(result); // 200
             }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message }); // 400 - 입력값 규칙 위반(InputRules)
+            }
             catch (InvalidOperationException ex)
             {
                 return Conflict(new { message = ex.Message }); // 409

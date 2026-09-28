@@ -1,6 +1,7 @@
 using MainServer.AuthServer.Data;
 using MainServer.CharacterServer.DTOs;
 using MainServer.CharacterServer.Entities;
+using MainServer.Validation;
 using Microsoft.EntityFrameworkCore;
 
 namespace MainServer.CharacterServer.Services
@@ -42,16 +43,26 @@ namespace MainServer.CharacterServer.Services
             return character is null ? null : await ToResponseAsync(character);
         }
 
+        // 입력값이 규칙에 맞지 않으면 ArgumentException(400), 슬롯이 가득 찼거나 닉네임이 이미 쓰이면 InvalidOperationException(409).
         public async Task<CharacterResponse> CreateAsync(long userId, CreateCharacterRequest request)
         {
+            string nickname = InputRules.NormalizeNickname(request._nickname);
+            InputRules.ValidateCustomization(request._hairIndex, request._eyeIndex, request._mouthIndex);
+
             var slot = await GetOrCreateSlotAsync(userId);
             if (slot.CurrentCount >= slot.MaxSlotCount)
                 throw new InvalidOperationException("보유 가능한 캐릭터 슬롯을 모두 사용했습니다.");
 
+            // 다른 플레이어 머리 위와 채팅에 이 닉네임이 그대로 보이므로, 같은 닉네임의 캐릭터가 둘 생기지 않게 한다.
+            // (DB 유니크 인덱스는 두지 않았다 - 기존 데이터에 중복이 있으면 마이그레이션이 실패하므로. 동시에 같은 닉네임으로
+            // 생성하는 드문 경우는 막지 못한다.)
+            if (await _db.Characters.AnyAsync(c => c.Nickname == nickname))
+                throw new InvalidOperationException("이미 사용 중인 닉네임입니다.");
+
             var character = new Character
             {
                 UserId = userId,
-                Nickname = request._nickname,
+                Nickname = nickname,
                 HairIndex = request._hairIndex,
                 EyeIndex = request._eyeIndex,
                 MouthIndex = request._mouthIndex,
@@ -71,6 +82,8 @@ namespace MainServer.CharacterServer.Services
 
         public async Task<CharacterResponse?> UpdateCustomizationAsync(long userId, long characterId, UpdateCharacterCustomizationRequest request)
         {
+            InputRules.ValidateCustomization(request._hairIndex, request._eyeIndex, request._mouthIndex);
+
             var character = await FindOwnedCharacterAsync(userId, characterId);
             if (character is null)
                 return null;
@@ -160,7 +173,7 @@ namespace MainServer.CharacterServer.Services
             _db.KillRewardReceipts.AsNoTracking().AnyAsync(r => r.Id == rewardId);
 
         // 인벤토리 UI에서 장착 가능한 슬롯 이름. 클라이언트 EquipmentSlotType(None 제외)과 철자를 맞춘다.
-        private static readonly HashSet<string> ValidEquipSlots = new() { "Weapon", "Armor", "Helmet", "Boots", "Accessory" };
+        public static readonly IReadOnlySet<string> ValidEquipSlots = new HashSet<string> { "Weapon", "Armor", "Helmet", "Boots", "Accessory" };
 
         // 인벤토리 아이템을 장비 슬롯에 장착한다(소유자 검증 포함). 같은 슬롯에 이미 장착돼 있던 다른 아이템은
         // 자동으로 해제한 뒤(먼저 커밋) 새 아이템을 장착한다 - (CharacterId, EquipSlot) 유니크 인덱스가 있어
@@ -179,6 +192,9 @@ namespace MainServer.CharacterServer.Services
 
             if (targetItem is null)
                 throw new InvalidOperationException("보유하지 않은 아이템은 장착할 수 없습니다.");
+
+            if (!ItemEquipSlotCatalog.CanEquip(request._itemId, request._equipSlot))
+                throw new InvalidOperationException("이 아이템은 해당 슬롯에 장착할 수 없습니다.");
 
             if (targetItem.EquipSlot == request._equipSlot)
                 return await ToResponseAsync(character); // 이미 장착 중

@@ -341,6 +341,9 @@ namespace Incheol.Modules
             if (!success || string.IsNullOrEmpty(body))
             {
                 DebugLogManager.GenerateErrorMessage<SaveDataManager>($"캐릭터 생성 저장 실패 : {error}");
+
+                // 서버가 거부한 사유(닉네임 중복, 슬롯 초과 등)를 알린다 - 예전에는 실패해도 화면에 아무 표시가 없었다.
+                GameManager.Instance?.ShowAlarmPopup("캐릭터 생성 실패", string.IsNullOrEmpty(error) ? "캐릭터를 생성하지 못했습니다." : error);
                 OnCharacterCreateResult?.Invoke(false);
                 return;
             }

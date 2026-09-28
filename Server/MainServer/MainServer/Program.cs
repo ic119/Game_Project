@@ -45,6 +45,9 @@ builder.Services.AddAuthorization();
 if (string.IsNullOrEmpty(builder.Configuration["InternalApi:Key"]))
     throw new InvalidOperationException("InternalApi:Key 설정이 없습니다.");
 
+// 장비 장착 검증에 쓰는 아이템 정의(GameServer와 같은 파일). 없거나 잘못됐으면 첫 장착 요청이 아니라 기동 시점에 실패시킨다.
+ItemEquipSlotCatalog.EnsureLoaded(CharacterService.ValidEquipSlots);
+
 var app = builder.Build();
 
 // 컨테이너/클라우드 배포 시 DB에 스키마가 없는 상태로 최초 기동되므로, 시작 시점에 대기 중인 마이그레이션을 적용한다.

@@ -15,5 +15,9 @@ namespace GameServer.Items
 
         // 사용 시 최대 체력 대비 회복 비율(%). 0이면 회복 아이템이 아니다(Game_UseItemRequest 거부).
         public int HealPercent { get; init; } = 0;
+
+        // 장착 가능한 슬롯("Weapon"/"Armor"/"Helmet"/"Boots"/"Accessory", 클라이언트 ItemData.equipSlotType과 같은 이름).
+        // 없으면 장비가 아니다. GameServer는 쓰지 않고, MainServer가 같은 파일을 읽어 장착 요청을 검증한다(ItemEquipSlotCatalog).
+        public string? EquipSlot { get; init; }
     }
 }

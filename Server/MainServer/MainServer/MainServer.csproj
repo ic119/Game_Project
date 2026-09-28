@@ -19,4 +19,11 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.22.0" />
   </ItemGroup>
 
+  <!-- 장비 장착 검증(ItemEquipSlotCatalog)에 GameServer와 같은 아이템 정의 파일을 쓴다. 복사본을 따로 두면 두 서버가 어긋나므로 원본을 링크한다. -->
+  <ItemGroup>
+    <None Include="..\GameServer\Items\ItemDefinitions.json" Link="Items\ItemDefinitions.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

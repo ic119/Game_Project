@@ -8,6 +8,8 @@ COPY MainServer/MainServer.csproj MainServer/
 RUN dotnet restore MainServer/MainServer.csproj
 
 COPY MainServer/ MainServer/
+# 장비 장착 검증에 GameServer의 아이템 정의를 함께 쓴다(MainServer.csproj가 이 경로를 링크한다).
+COPY GameServer/Items/ItemDefinitions.json GameServer/Items/
 RUN dotnet publish MainServer/MainServer.csproj -c Release -o /app/publish --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
