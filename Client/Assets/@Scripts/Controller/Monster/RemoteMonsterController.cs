@@ -58,6 +58,12 @@ namespace Incheol.Controller
         public int CurrentHp { get; private set; }
 
         /// <summary>
+        /// 서버 사망 알림을 받아 사망 연출 중이면 true(PlayDeath). 오브젝트는 연출이 끝날 때까지 남아 있으므로
+        /// 공격 대상 판정은 이 값으로 걸러야 한다.
+        /// </summary>
+        public bool IsDead { get; private set; }
+
+        /// <summary>
         /// CurrentHp가 바뀔 때(피격) 발생한다. 몬스터 정보 UI가 매 프레임 폴링하지 않고 이 이벤트만
         /// 구독하면 되도록 하기 위함이다. 인자는 (CurrentHp, MaxHp).
         /// </summary>
@@ -204,6 +210,16 @@ namespace Incheol.Controller
         /// </summary>
         public void PlayDeath()
         {
+            IsDead = true;
+
+            // 사망 연출 동안(RemoteMonsterManager.dieAnimationDuration) 오브젝트는 남지만 이미 죽은 몬스터다. 콜라이더를 그대로 두면
+            // 공격 판정(PlayerAttackController.TryFindNearestTarget)이 이 시체를 가장 가까운 대상으로 골라, 바로 뒤의 살아 있는
+            // 몬스터 대신 죽은 몬스터에 공격 요청을 보내고(서버는 무시) 타겟 HUD도 켜지지 않았다. 판정에서 빠지도록 끈다.
+            foreach (Collider bodyCollider in GetComponentsInChildren<Collider>())
+            {
+                bodyCollider.enabled = false;
+            }
+
             if (animator != null)
             {
                 animator.SetTrigger(DieHash);

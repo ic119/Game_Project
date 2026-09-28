@@ -362,8 +362,9 @@ namespace Incheol.Controller
                     continue;
                 }
 
+                // 사망 연출 중인 몬스터는 대상에서 뺀다(콜라이더는 PlayDeath에서 꺼지지만, 같은 프레임에 걸린 경우까지 막는다).
                 RemoteMonsterController remoteMonster = hit.GetComponentInParent<RemoteMonsterController>();
-                if (remoteMonster != null)
+                if (remoteMonster != null && !remoteMonster.IsDead)
                 {
                     float distanceSqr = (remoteMonster.transform.position - transform.position).sqrMagnitude;
                     if (distanceSqr < bestDistanceSqr)
