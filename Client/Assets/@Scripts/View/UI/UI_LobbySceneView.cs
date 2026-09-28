@@ -70,8 +70,6 @@ namespace Incheol.View.UI
                 maskImage.SetActive(false);
             }
 
-            // 팝업(CharacterCreatePopup)이 열려있을 때만 배경을 어둡게 하는 용도로, 평소(로비 씬 진입 직후)에는 꺼져 있어야 한다.
-            // 프리팹 기본값이 활성으로 남아있어 로비 UI 전체가 거의 검정으로 가려지는 버그가 있었다.
             if (dimMaskImage != null)
             {
                 dimMaskImage.SetActive(false);
@@ -100,7 +98,7 @@ namespace Incheol.View.UI
             RefreshCharacterList();
         }
 
-private void OnDestroy()
+        private void OnDestroy()
         {
             if (startButton != null) startButton.onClick.RemoveAllListeners();
             if (createButton != null) createButton.onClick.RemoveAllListeners();
