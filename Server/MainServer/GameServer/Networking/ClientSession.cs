@@ -4,6 +4,7 @@ using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using GameServer.Combat;
+using GameServer.Items;
 using Shared.Networking;
 using Shared.Networking.Packets;
 
@@ -20,7 +21,7 @@ namespace GameServer.Networking
         private Stream _stream;
         private readonly MapRoomRegistry _mapRooms;
         private readonly PlayerAuthValidator _authValidator;
-        private readonly KillRewardPersister _killRewardPersister;
+        private readonly MainServerInternalApi _mainServerApi;
         private readonly X509Certificate2 _serverCertificate;
         private readonly SemaphoreSlim _writeLock = new(1, 1);
 
@@ -37,13 +38,13 @@ namespace GameServer.Networking
         private GameRoom? _room;
         private string? _mapId;
 
-        public ClientSession(TcpClient tcpClient, MapRoomRegistry mapRooms, PlayerAuthValidator authValidator, KillRewardPersister killRewardPersister, X509Certificate2 serverCertificate)
+        public ClientSession(TcpClient tcpClient, MapRoomRegistry mapRooms, PlayerAuthValidator authValidator, MainServerInternalApi mainServerApi, X509Certificate2 serverCertificate)
         {
             _tcpClient = tcpClient;
             _stream = tcpClient.GetStream();
             _mapRooms = mapRooms;
             _authValidator = authValidator;
-            _killRewardPersister = killRewardPersister;
+            _mainServerApi = mainServerApi;
             _serverCertificate = serverCertificate;
         }
 
@@ -119,6 +120,7 @@ namespace GameServer.Networking
                 OpCode.Game_MapChangeRequest => HandleMapChangeRequestAsync(body, ct),
                 OpCode.Game_MonsterAttackRequest => HandleMonsterAttackRequestAsync(body, ct),
                 OpCode.Game_StatUpdateRequest => HandleStatUpdateRequestAsync(body, ct),
+                OpCode.Game_UseItemRequest => HandleUseItemRequestAsync(body, ct),
                 _ => LogUnhandledAsync(opCode)
             };
         }
@@ -401,13 +403,13 @@ namespace GameServer.Networking
             }
 
             // 위 두 패킷은 클라이언트 화면 표시용일 뿐이고, DB 저장은 GameServer가 MainServer 서버 간 API로 직접 한다 -
-            // 클라이언트가 저장을 대신 요청하던 방식은 보상 값을 위조할 수 있었다(KillRewardPersister 참고).
+            // 클라이언트가 저장을 대신 요청하던 방식은 보상 값을 위조할 수 있었다(MainServerInternalApi 참고).
             // 클라이언트 표시를 먼저 보낸 뒤 저장을 기다린다. 같은 세션의 처치가 연달아 와도 이 await 덕분에
             // 저장 순서가 처치 순서와 같아져, 최종값인 level/exp가 이전 값으로 덮어써지지 않는다.
             bool hasReward = result.GainedExp is not null || result.GainedGold > 0 || result.DroppedItems is { Count: > 0 };
             if (result.MonsterDied && hasReward)
             {
-                await _killRewardPersister.SaveAsync(
+                await _mainServerApi.SaveKillRewardsAsync(
                     playerId,
                     attacker.Level,
                     attacker.Exp,
@@ -440,6 +442,54 @@ namespace GameServer.Networking
 
             (int attackPower, int defense) = CombatStatCalculator.Calculate(snapshot);
             room.TryUpdateCombatStats(playerId, attackPower, defense);
+        }
+
+        // 물약 연타로 MainServer 차감 요청이 몰리지 않게 하는 최소 사용 간격.
+        private const double MinUseItemIntervalMs = 300;
+        private DateTime _lastUseItemAtUtc = DateTime.MinValue;
+
+        // 소비 아이템(현재는 회복 물약) 사용. 예전에는 클라이언트가 로컬에서 회복하고 MainServer에 차감만 따로 요청해
+        // 서버 HP에는 회복이 반영되지 않았다. 이제 서버가 효과 여부를 확인 -> MainServer에서 1개 차감 -> 회복 순서로
+        // 처리하고, 결과를 요청자에게(Game_UseItemResult), 바뀐 체력을 방 전체에(Game_PlayerHpBroadcast) 알린다.
+        private async Task HandleUseItemRequestAsync(byte[] body, CancellationToken ct)
+        {
+            var request = C2SUseItemRequest.Decode(body);
+
+            if (_playerId is not { } playerId || request.PlayerId != playerId || _room is not { } room)
+            {
+                return;
+            }
+
+            bool success = await TryUseItemAsync(playerId, room, request.ItemId, ct);
+
+            var result = new S2CUseItemResult { ItemId = request.ItemId, Success = success };
+            await SendAsync(OpCode.Game_UseItemResult, result.Encode(), ct);
+        }
+
+        private async Task<bool> TryUseItemAsync(long playerId, GameRoom room, string itemId, CancellationToken ct)
+        {
+            var now = DateTime.UtcNow;
+            if ((now - _lastUseItemAtUtc).TotalMilliseconds < MinUseItemIntervalMs)
+            {
+                return false;
+            }
+            _lastUseItemAtUtc = now;
+
+            // 회복 아이템이 아니거나, 써도 효과가 없는 상태(사망/만피)면 차감하지 않는다.
+            if (!ItemCatalog.TryGet(itemId, out ItemDefinition definition) || definition.HealPercent <= 0
+                || !room.CanBeHealed(playerId))
+            {
+                return false;
+            }
+
+            if (!await _mainServerApi.ConsumeItemAsync(playerId, itemId, ct))
+            {
+                return false;
+            }
+
+            // 차감과 회복 사이에 사망/만피가 되면 아이템만 소모된다 - 두 호출 사이(MainServer 왕복 동안)의 짧은 틈이라
+            // 드물고, 반대로 회복 먼저 하면 차감 실패 시 공짜 회복이 되므로 차감을 먼저 한다.
+            return await room.TryHealPlayerAsync(playerId, definition.HealPercent, ct);
         }
 
         // 여러 세션이 동시에(다른 플레이어의 브로드캐스트로) 같은 스트림에 쓸 수 있으므로 직렬화한다.

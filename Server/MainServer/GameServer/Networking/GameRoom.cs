@@ -429,6 +429,49 @@ namespace GameServer.Networking
             }
         }
 
+        // 회복 아이템을 써도 효과가 있는 상태인지(살아 있고 체력이 가득 차지 않음). 아이템을 차감하기 전에 확인해
+        // "효과 없는 사용"으로 아이템만 사라지는 것을 막는다.
+        public bool CanBeHealed(long playerId)
+        {
+            if (!_players.TryGetValue(playerId, out var entry))
+            {
+                return false;
+            }
+
+            lock (entry.Info)
+            {
+                return entry.Info.CurrentHp > 0 && entry.Info.CurrentHp < entry.Info.MaxHp;
+            }
+        }
+
+        // 최대 체력의 healPercent%만큼 회복하고 방 전체에 새 체력을 알린다. 그 사이 사망했거나 이미 가득 찼으면 false.
+        public async Task<bool> TryHealPlayerAsync(long playerId, int healPercent, CancellationToken ct)
+        {
+            if (!_players.TryGetValue(playerId, out var entry))
+            {
+                return false;
+            }
+
+            PlayerInfo player = entry.Info;
+            int currentHp;
+            int maxHp;
+            lock (player)
+            {
+                if (player.CurrentHp <= 0 || player.CurrentHp >= player.MaxHp)
+                {
+                    return false;
+                }
+
+                player.CurrentHp = Math.Min(player.MaxHp, player.CurrentHp + CombatStatCalculator.CalculateHealAmount(player.MaxHp, healPercent));
+                currentHp = player.CurrentHp;
+                maxHp = player.MaxHp;
+            }
+
+            var broadcast = new S2CPlayerHpBroadcast { PlayerId = playerId, CurrentHp = currentHp, MaxHp = maxHp };
+            await BroadcastToAllAsync(OpCode.Game_PlayerHpBroadcast, broadcast.Encode(), ct);
+            return true;
+        }
+
         // 레벨업 시 최대 체력을 올리고 체력을 가득 채운다(클라이언트가 레벨업 때 하던 처리를 서버로 옮긴 것).
         private async Task ApplyLevelUpHealthAsync(PlayerInfo player, int levelsGained, CancellationToken ct)
         {

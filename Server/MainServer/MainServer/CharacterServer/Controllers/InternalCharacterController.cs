@@ -26,5 +26,23 @@ namespace MainServer.CharacterServer.Controllers
                 ? NotFound(new { message = "캐릭터를 찾을 수 없습니다." }) // 404
                 : NoContent(); // 204 - GameServer는 응답 바디를 쓰지 않는다
         }
+
+        // POST /api/internal/characters/{characterId}/items/{itemId}/consume — 소비 아이템(물약 등) 1개 차감.
+        // GameServer가 효과(회복)를 적용하기 직전에 호출한다. 보유하지 않은 아이템이면 400.
+        [HttpPost("{characterId:long}/items/{itemId}/consume")]
+        public async Task<IActionResult> ConsumeItem(long characterId, string itemId)
+        {
+            try
+            {
+                var result = await _characterService.ConsumeItemAsync(characterId, itemId);
+                return result is null
+                    ? NotFound(new { message = "캐릭터를 찾을 수 없습니다." }) // 404
+                    : NoContent(); // 204
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message }); // 400
+            }
+        }
     }
 }

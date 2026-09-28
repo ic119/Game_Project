@@ -49,6 +49,12 @@ namespace Incheol.Presenter.Scene
         private bool isSwappingMap;
 
         /// <summary>
+        /// 물약 사용 요청(Game_UseItemRequest)을 보내고 결과(Game_UseItemResult)를 기다리는 중이면 true.
+        /// 응답 전 연타로 같은 요청이 여러 번 나가지 않게 막는다.
+        /// </summary>
+        private bool isUseItemPending;
+
+        /// <summary>
         /// 로컬 플레이어 인스턴스. SpawnPlayerCharacter가 이 GameSceneManager(transform) 밑에 생성하고
         /// RespawnPoint의 위치/회전값만 가져다 쓰므로, 맵 프리팹(및 그 안의 RespawnPoint)이 파괴돼도
         /// 함께 파괴되지 않는다.
@@ -103,6 +109,7 @@ namespace Incheol.Presenter.Scene
                 GameServerConnectManager.Instance.OnLootReceived += HandleLootReceived;
                 GameServerConnectManager.Instance.OnPlayerHpChanged += HandlePlayerHpChanged;
                 GameServerConnectManager.Instance.OnPlayerRevived += HandlePlayerRevived;
+                GameServerConnectManager.Instance.OnUseItemResult += HandleUseItemResult;
                 GameServerConnectManager.Instance.OnServerError += HandleGameServerError;
                 GameServerConnectManager.Instance.OnDisconnected += HandleGameServerDisconnected;
             }
@@ -127,6 +134,7 @@ namespace Incheol.Presenter.Scene
                 GameServerConnectManager.Instance.OnLootReceived -= HandleLootReceived;
                 GameServerConnectManager.Instance.OnPlayerHpChanged -= HandlePlayerHpChanged;
                 GameServerConnectManager.Instance.OnPlayerRevived -= HandlePlayerRevived;
+                GameServerConnectManager.Instance.OnUseItemResult -= HandleUseItemResult;
                 GameServerConnectManager.Instance.OnServerError -= HandleGameServerError;
                 GameServerConnectManager.Instance.OnDisconnected -= HandleGameServerDisconnected;
             }
@@ -1090,21 +1098,47 @@ private void TryEquipItem(string _itemId)
         }
 
 /// <summary>
-        /// 물약(ItemType.Potion) 하나를 사용해 체력을 회복시키고 인벤토리에서 1개 소모한다. TryEquipItem과 동일하게
-        /// 로컬 상태(체력/인벤토리 수량)를 먼저 낙관적으로 갱신해 즉시 반영하고, 서버 저장은 백그라운드로 요청한다
-        /// (POST api/characters/{id}/items/{itemId}/consume). UseHealthPotion이 실제로 체력을 회복시키지 못했다면
-        /// (사망 상태, 만피, healPercent 미설정 등) 아이템을 소모하지 않고 그대로 둔다 - 효과 없는 사용으로
-        /// 아이템만 낭비되는 것을 막기 위함이다.
+        /// 물약(ItemType.Potion) 사용을 GameServer에 요청한다(Game_UseItemRequest). 체력은 서버가 회복시키고,
+        /// 아이템도 서버가 MainServer에서 차감한다 - 클라이언트는 결과(HandleUseItemResult)를 받은 뒤에만 인벤토리
+        /// 수량을 줄이고, 회복된 체력은 Game_PlayerHpBroadcast(HandlePlayerHpChanged)로 반영된다.
+        /// 사망/만피처럼 서버가 어차피 거절할 요청은 여기서 미리 거른다(효과 없는 사용으로 아이템이 사라지지 않는 건 서버가 보장).
+        /// 응답을 받기 전에는 다음 사용을 막아, 연타로 같은 아이템이 여러 번 차감 요청되지 않게 한다.
         /// </summary>
         private void TryUseHealthPotion(string _itemId, ItemData _itemData)
         {
+            if (isUseItemPending || spawnedPlayerModel == null)
+            {
+                return;
+            }
+
             InventoryItemStack targetStack = localInventoryItems.Find(stack => stack.itemId == _itemId && string.IsNullOrEmpty(stack.equipSlot));
             if (targetStack == null || targetStack.count <= 0)
             {
                 return;
             }
 
-            if (!spawnedPlayerModel.UseHealthPotion(_itemData))
+            if (_itemData.healPercent <= 0 || spawnedPlayerModel.IsDead || spawnedPlayerModel.CurrentHp >= spawnedPlayerModel.MaxHp)
+            {
+                return;
+            }
+
+            isUseItemPending = GameServerConnectManager.Instance != null && GameServerConnectManager.Instance.SendUseItem(_itemId);
+        }
+
+        /// <summary>
+        /// Game_UseItemResult(내 요청에 대한 결과). 서버에서 실제로 차감됐을 때만 로컬 인벤토리 수량을 1 줄인다.
+        /// </summary>
+        private void HandleUseItemResult(GameUseItemResultPacket packet)
+        {
+            isUseItemPending = false;
+
+            if (!packet.Success)
+            {
+                return;
+            }
+
+            InventoryItemStack targetStack = localInventoryItems.Find(stack => stack.itemId == packet.ItemId && string.IsNullOrEmpty(stack.equipSlot));
+            if (targetStack == null)
             {
                 return;
             }
@@ -1116,14 +1150,6 @@ private void TryEquipItem(string _itemId)
             }
 
             RefreshInventoryDisplay();
-
-            SaveDataManager.Instance?.ConsumeItem(_itemId, success =>
-            {
-                if (!success)
-                {
-                    DebugLogManager.GenerateErrorMessage<GameSceneManager>($"아이템 사용 저장 실패 : {_itemId}");
-                }
-            });
         }
 
 /// <summary>
@@ -1227,6 +1253,9 @@ private void TryEquipItem(string _itemId)
         /// </summary>
         private void HandleGameServerDisconnected()
         {
+            // 응답을 받을 수 없게 됐으므로 대기 상태를 풀어준다.
+            isUseItemPending = false;
+
             GameManager.Instance?.ShowAlarmPopup("연결 끊김", "게임 서버와의 연결이 끊어졌습니다.");
         }
 

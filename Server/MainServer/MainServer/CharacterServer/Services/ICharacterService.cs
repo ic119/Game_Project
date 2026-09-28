@@ -11,7 +11,7 @@ namespace MainServer.CharacterServer.Services
         Task<CharacterResponse?> ApplyKillRewardsAsync(long characterId, ApplyKillRewardsRequest request);
         Task<CharacterResponse?> EquipItemAsync(long userId, long characterId, EquipItemRequest request);
         Task<CharacterResponse?> UnequipItemAsync(long userId, long characterId, string equipSlot);
-        Task<CharacterResponse?> ConsumeItemAsync(long userId, long characterId, string itemId);
+        Task<CharacterResponse?> ConsumeItemAsync(long characterId, string itemId);
         Task<CharacterResponse?> RemoveItemAsync(long userId, long characterId, string itemId);
         Task<CharacterResponse?> TouchLastLoginAsync(long userId, long characterId);
         Task<bool> DeleteCharacterAsync(long userId, long characterId);

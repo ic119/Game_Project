@@ -163,23 +163,6 @@ namespace Incheol.Modules
         }
 
         /// <summary>
-        /// 소비 아이템(물약 등) 1개를 사용한다(POST api/characters/{id}/items/{itemId}/consume). GameSceneManager가
-        /// 로컬 상태(체력/인벤토리 수량)를 먼저 낙관적으로 갱신한 뒤 이 메서드로 서버에 반영을 요청하는 흐름이라,
-        /// 여기서는 성공 여부만 콜백으로 알린다.
-        /// </summary>
-        public void ConsumeItem(string _itemId, Action<bool> _onComplete = null)
-        {
-            if (!SelectedCharacterId.HasValue)
-            {
-                DebugLogManager.GenerateErrorMessage<SaveDataManager>("선택된 캐릭터가 없어 아이템을 사용할 수 없습니다.");
-                _onComplete?.Invoke(false);
-                return;
-            }
-
-            _ = ConsumeItemAsyncInternal(SelectedCharacterId.Value, _itemId, _onComplete);
-        }
-
-        /// <summary>
         /// 인벤토리 아이템을 버린다(DELETE api/characters/{id}/items/{itemId}). EquipItem/ConsumeItem과 동일하게
         /// 로컬 낙관적 갱신 이후 서버 반영만 요청하는 패스스루다.
         /// </summary>
@@ -441,25 +424,6 @@ namespace Incheol.Modules
             if (!success)
             {
                 DebugLogManager.GenerateErrorMessage<SaveDataManager>($"장비 해제 저장 실패 : {error}");
-            }
-
-            _onComplete?.Invoke(success);
-        }
-
-        private async Awaitable ConsumeItemAsyncInternal(long _characterId, string _itemId, Action<bool> _onComplete)
-        {
-            if (ServerConnectManager.Instance == null)
-            {
-                DebugLogManager.GenerateErrorMessage<SaveDataManager>("ServerConnectManager.Instance가 null입니다.");
-                _onComplete?.Invoke(false);
-                return;
-            }
-
-            (bool success, string _, string error) = await ServerConnectManager.Instance.SendAuthorizedJsonRequestAsync($"{CharacterApiPath}/{_characterId}/items/{_itemId}/consume", "POST");
-
-            if (!success)
-            {
-                DebugLogManager.GenerateErrorMessage<SaveDataManager>($"아이템 사용 저장 실패 : {error}");
             }
 
             _onComplete?.Invoke(success);

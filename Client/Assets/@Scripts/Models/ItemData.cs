@@ -50,7 +50,8 @@ public class ItemData
     public int bonusDefense = 0;
 
     [Range(0, 100)]
-    [Tooltip("itemType이 Potion일 때만 의미가 있다. 사용 시 최대체력의 이 비율(%)만큼 현재체력을 회복시킨다" +
-        "(HealthComponent.HealByPercent). 예) potion_health_small=10, potion_health_medium=30, potion_health_large=50.")]
+    [Tooltip("itemType이 Potion일 때만 의미가 있다. 사용 시 최대체력의 이 비율(%)만큼 현재체력을 회복시킨다. " +
+        "실제 회복은 GameServer가 서버 ItemDefinitions.json의 healPercent로 계산하므로 두 값을 반드시 같게 맞춘다 - " +
+        "클라이언트 값은 사용 가능 여부(0이면 회복 아이템 아님) 판단에만 쓴다. 예) potion_hp_small=10.")]
     public int healPercent = 0;
 }

@@ -67,6 +67,7 @@ namespace Incheol.Modules
         public event Action<GameLootBroadcastPacket> OnLootReceived;
         public event Action<GamePlayerHpBroadcastPacket> OnPlayerHpChanged;
         public event Action<GamePlayerRevivedPacket> OnPlayerRevived;
+        public event Action<GameUseItemResultPacket> OnUseItemResult;
         public event Action OnDisconnected;
         public event Action<string> OnServerError;
 
@@ -334,6 +335,23 @@ namespace Incheol.Modules
             _ = SendAsync(GameOpCode.Game_StatUpdateRequest, request.Encode());
         }
 
+        /// <summary>
+        /// 소비 아이템(물약 등) 사용을 GameServer에 요청한다(Game_UseItemRequest). 회복과 아이템 차감은 서버가 하고,
+        /// 결과는 OnUseItemResult(차감 여부), 회복된 체력은 OnPlayerHpChanged로 돌아온다.
+        /// 접속 전이면 보내지 않고 false를 반환한다 - 호출측이 응답을 기다리는 상태로 남지 않게 하기 위함이다.
+        /// </summary>
+        public bool SendUseItem(string itemId)
+        {
+            if (!isConnected)
+            {
+                return false;
+            }
+
+            var request = new GameUseItemRequestPacket { PlayerId = localPlayerId, ItemId = itemId };
+            _ = SendAsync(GameOpCode.Game_UseItemRequest, request.Encode());
+            return true;
+        }
+
         public void Disconnect()
         {
             if (!isConnected)
@@ -525,6 +543,11 @@ namespace Incheol.Modules
                 case GameOpCode.Game_PlayerRevived:
                     var revived = GamePlayerRevivedPacket.Decode(body);
                     pendingActions.Enqueue(() => OnPlayerRevived?.Invoke(revived));
+                    break;
+
+                case GameOpCode.Game_UseItemResult:
+                    var useItemResult = GameUseItemResultPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnUseItemResult?.Invoke(useItemResult));
                     break;
 
                 // 클라이언트가 주기적으로 보낸 System_Heartbeat에 대한 서버 응답이다 - 타임아웃 타이머를 초기화한다.

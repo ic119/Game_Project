@@ -28,6 +28,8 @@ namespace Incheol.Modules.Networking
         Game_LootBroadcast = 0x0214,
         Game_StatUpdateRequest = 0x0215,
         Game_PlayerHpBroadcast = 0x0216,
-        Game_PlayerRevived = 0x0217
+        Game_PlayerRevived = 0x0217,
+        Game_UseItemRequest = 0x0218,
+        Game_UseItemResult = 0x0219
     }
 }

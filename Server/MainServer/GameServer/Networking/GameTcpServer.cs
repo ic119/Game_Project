@@ -9,14 +9,14 @@ namespace GameServer.Networking
     {
         private readonly TcpListener _listener;
         private readonly PlayerAuthValidator _authValidator;
-        private readonly KillRewardPersister _killRewardPersister;
+        private readonly MainServerInternalApi _mainServerApi;
         private readonly X509Certificate2 _serverCertificate;
 
         public GameTcpServer(int port, IConfiguration configuration)
         {
             _listener = new TcpListener(IPAddress.Any, port);
             _authValidator = new PlayerAuthValidator(configuration);
-            _killRewardPersister = new KillRewardPersister(configuration);
+            _mainServerApi = new MainServerInternalApi(configuration);
             // 접속마다 새로 로드하지 않도록 서버 수명 동안 한 번만 준비해 모든 ClientSession이 공유한다.
             _serverCertificate = GameServerCertificateProvider.Load(configuration);
         }
@@ -35,7 +35,7 @@ namespace GameServer.Networking
                 while (!ct.IsCancellationRequested)
                 {
                     var tcpClient = await _listener.AcceptTcpClientAsync(ct);
-                    var session = new ClientSession(tcpClient, mapRooms, _authValidator, _killRewardPersister, _serverCertificate);
+                    var session = new ClientSession(tcpClient, mapRooms, _authValidator, _mainServerApi, _serverCertificate);
                     _ = session.RunAsync(ct);
                 }
             }

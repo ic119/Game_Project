@@ -183,12 +183,13 @@ namespace MainServer.CharacterServer.Services
             return await ToResponseAsync(character);
         }
 
-        // 소비 아이템(물약 등) 1개를 사용한다(소유자 검증 포함). 장착 중인 스택(EquipSlot != null)은 대상에서
-        // 제외한다 - 장비류는 이 경로로 소모될 일이 없고, 혹시 클라이언트가 잘못된 요청을 보내도 장착 중인
-        // 아이템이 실수로 사라지지 않도록 방어한다. 수량이 0 이하가 되면 스택 자체를 삭제한다.
-        public async Task<CharacterResponse?> ConsumeItemAsync(long userId, long characterId, string itemId)
+        // 소비 아이템(물약 등) 1개를 차감한다. 장착 중인 스택(EquipSlot != null)은 대상에서 제외한다 -
+        // 장비류는 이 경로로 소모될 일이 없고, 혹시 잘못된 요청이 와도 장착 중인 아이템이 실수로 사라지지
+        // 않도록 방어한다. 수량이 0 이하가 되면 스택 자체를 삭제한다.
+        // 서버 간 API(InternalCharacterController) 전용이라 userId 소유권 검증을 하지 않는다(ApplyKillRewardsAsync와 동일).
+        public async Task<CharacterResponse?> ConsumeItemAsync(long characterId, string itemId)
         {
-            var character = await FindOwnedCharacterAsync(userId, characterId);
+            var character = await _db.Characters.FirstOrDefaultAsync(c => c.Id == characterId);
             if (character is null)
                 return null;
 

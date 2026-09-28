@@ -29,7 +29,7 @@ namespace Shared.Networking.Packets
 
         // 경험치/레벨. 위 전투 스탯과 마찬가지로 입장 시 DB 원본으로 덮어쓰고, 이후 세션 동안의 증가분은
         // GameRoom이 몬스터 처치 시 이 인스턴스를 직접 갱신한다(ExpTable 참고). 영속화는 GameServer가
-        // KillRewardPersister로 MainServer 서버 간 API에 직접 저장한다.
+        // MainServerInternalApi로 MainServer 서버 간 API에 직접 저장한다.
         // (Nickname/HairIndex/EyeIndex/MouthIndex도 입장 시 DB 원본으로 덮어쓴다 - 클라이언트 값은 위치/맵만 쓴다.)
         public int Level { get; set; } = 1;
         public int Exp { get; set; }
