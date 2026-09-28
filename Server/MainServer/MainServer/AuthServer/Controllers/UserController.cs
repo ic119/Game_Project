@@ -1,6 +1,9 @@
 using MainServer.AuthServer.DTOs;
 using MainServer.AuthServer.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
 
 namespace MainServer.AuthServer.Controllers
 {
@@ -14,6 +17,7 @@ namespace MainServer.AuthServer.Controllers
 
         // POST /api/users/register → 회원가입
         [HttpPost("register")]
+        [EnableRateLimiting(RateLimitPolicies.Auth)] // IP당 요청 수 제한(Program.cs) - 계정 대량 생성 방지
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
             try
@@ -31,11 +35,14 @@ namespace MainServer.AuthServer.Controllers
             }
         }
 
-        // GET /api/users/{id} → 사용자 조회
-        [HttpGet("{id:long}")]
-        public async Task<IActionResult> GetById(long id)
+        // GET /api/users/me → 로그인한 본인 계정 조회. 예전에는 GET /api/users/{id}로 로그인 없이 아무 계정의 아이디를
+        // 조회할 수 있어, id를 1부터 늘려 가며 가입된 아이디 목록을 모을 수 있었다(비밀번호 대입의 표적 수집).
+        [HttpGet("me")]
+        [Authorize]
+        public async Task<IActionResult> GetMe()
         {
-            var user = await _userService.GetByIdAsync(id);
+            long userId = long.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var user = await _userService.GetByIdAsync(userId);
             return user is null
                 ? NotFound(new { message = "사용자를 찾을 수 없습니다." }) // 404
                 : Ok(new UserResponse(user.Id, user.Username, user.Nickname, user.CreatedAt)); // 200

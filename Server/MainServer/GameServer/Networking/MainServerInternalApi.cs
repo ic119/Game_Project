@@ -22,6 +22,13 @@ namespace GameServer.Networking
             _internalApiKey = configuration["InternalApi:Key"] is { Length: > 0 } key
                 ? key
                 : throw new InvalidOperationException("InternalApi:Key 설정이 없습니다.");
+#if !DEBUG
+            // 배포 빌드(Release, Docker)에서는 예시 값으로 기동하지 않는다 - 저장소에 공개된 값이라 누구나 내부 API를 호출할 수 있다.
+            if (_internalApiKey.Contains("CHANGE_ME", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("예시 InternalApi:Key(CHANGE_ME...)를 쓰고 있습니다. INTERNAL_API_KEY를 실제 랜덤 값으로 설정하세요.");
+            }
+#endif
 
             var handler = new HttpClientHandler();
 #if DEBUG
