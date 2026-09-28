@@ -63,6 +63,12 @@ namespace Incheol.Modules
         /// 서버 방 틱(20Hz)마다 위치가 바뀐 원격 플레이어/몬스터 목록이 묶여 온다(Game_WorldSnapshot).
         /// </summary>
         public event Action<GameWorldSnapshotPacket> OnWorldSnapshot;
+
+        /// <summary>
+        /// 몬스터가 내 관심 영역(시야) 밖으로 나갔을 때 발생한다(Game_MonsterLeaveView). 시야에 들어올 때는 OnMonsterSpawned,
+        /// 원격 플레이어의 시야 진입/이탈은 기존 OnPlayerJoined/OnPlayerLeft로 온다.
+        /// </summary>
+        public event Action<long> OnMonsterLeftView;
         public event Action<GameChatBroadcastPacket> OnChatReceived;
         public event Action<GameDamageBroadcastPacket> OnDamageReceived;
         public event Action<GameMonsterInfo> OnMonsterSpawned;
@@ -502,6 +508,11 @@ namespace Incheol.Modules
                 case GameOpCode.Game_WorldSnapshot:
                     var snapshot = GameWorldSnapshotPacket.Decode(body);
                     pendingActions.Enqueue(() => OnWorldSnapshot?.Invoke(snapshot));
+                    break;
+
+                case GameOpCode.Game_MonsterLeaveView:
+                    var monsterLeaveView = GameMonsterLeaveViewPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnMonsterLeftView?.Invoke(monsterLeaveView.MonsterId));
                     break;
 
                 case GameOpCode.Game_ChatBroadcast:

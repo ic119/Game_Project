@@ -26,6 +26,10 @@ namespace Incheol.Modules
 
         private readonly Dictionary<long, RemoteMonsterController> remoteMonsters = new();
         private readonly Queue<GameMonsterInfo> pendingSpawnQueue = new();
+
+        // DB 로드 전(pendingSpawnQueue 대기 중)에 시야 이탈이 온 몬스터 id. 대기열의 스폰을 처리할 때 한 번 건너뛴다 -
+        // 그렇지 않으면 이미 시야 밖으로 나간 몬스터가 뒤늦게 생성돼 아무 갱신도 받지 않은 채 남는다.
+        private readonly HashSet<long> leftViewWhilePending = new();
         private MonsterDatabaseSO database;
 
         #region LifeCycle
@@ -45,6 +49,7 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnMonsterDamaged += HandleMonsterDamaged;
             GameServerConnectManager.Instance.OnMonsterDied += HandleMonsterDied;
             GameServerConnectManager.Instance.OnWorldSnapshot += HandleWorldSnapshot;
+            GameServerConnectManager.Instance.OnMonsterLeftView += HandleMonsterLeftView;
             GameServerConnectManager.Instance.OnMonsterAttacked += HandleMonsterAttacked;
         }
 
@@ -59,6 +64,7 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnMonsterDamaged -= HandleMonsterDamaged;
             GameServerConnectManager.Instance.OnMonsterDied -= HandleMonsterDied;
             GameServerConnectManager.Instance.OnWorldSnapshot -= HandleWorldSnapshot;
+            GameServerConnectManager.Instance.OnMonsterLeftView -= HandleMonsterLeftView;
             GameServerConnectManager.Instance.OnMonsterAttacked -= HandleMonsterAttacked;
         }
         #endregion
@@ -127,7 +133,7 @@ namespace Incheol.Modules
         /// </summary>
         private void SpawnMonster(GameMonsterInfo info)
         {
-            if (remoteMonsters.ContainsKey(info.MonsterId))
+            if (remoteMonsters.ContainsKey(info.MonsterId) || leftViewWhilePending.Remove(info.MonsterId))
             {
                 return;
             }
@@ -286,6 +292,29 @@ namespace Incheol.Modules
         /// RemoteCharacterController(원격 플레이어)와 동일하게 목표 위치/회전만 갱신하고, 실제 이동은
         /// RemoteMonsterController.Update()에서 매 프레임 보간한다.
         /// </summary>
+        /// <summary>
+        /// 몬스터가 내 관심 영역 밖으로 나갔다(Game_MonsterLeaveView). 죽은 게 아니므로 사망 연출 없이 바로 제거한다.
+        /// 다시 시야에 들어오면 서버가 Game_MonsterSpawnBroadcast로 현재 상태(위치/HP)를 다시 보내 새로 생성된다.
+        /// </summary>
+        private void HandleMonsterLeftView(long monsterId)
+        {
+            if (!remoteMonsters.TryGetValue(monsterId, out RemoteMonsterController controller))
+            {
+                // 아직 DB 로드 대기열에만 있는 경우 - 나중에 스폰하지 않도록 표시해 둔다.
+                if (database == null)
+                {
+                    leftViewWhilePending.Add(monsterId);
+                }
+                return;
+            }
+
+            remoteMonsters.Remove(monsterId);
+            if (controller != null)
+            {
+                Destroy(controller.gameObject);
+            }
+        }
+
         private void HandleWorldSnapshot(GameWorldSnapshotPacket snapshot)
         {
             foreach (GameEntityTransform monster in snapshot.Monsters)

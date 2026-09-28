@@ -139,13 +139,9 @@ namespace GameServer.Networking
                 {
                     _sessions.Unregister(playerId, this);
 
-                    // 같은 캐릭터가 새 세션으로 다시 입장해 방의 항목이 이미 교체됐다면 Remove가 false다 - 이때는 새 세션이
-                    // 그 캐릭터로 방에 있는 중이므로 다른 접속자에게 퇴장을 알리지 않는다.
-                    if (_room is { } room && room.Remove(playerId, this))
-                    {
-                        var left = new S2CPlayerLeft { PlayerId = playerId };
-                        room.Broadcast(OpCode.Game_PlayerLeft, left.Encode(), playerId);
-                    }
+                    // 이 플레이어를 보던 사람들에게 퇴장을 알리는 것까지 Remove가 한다. 같은 캐릭터가 새 세션으로 다시 입장해
+                    // 방의 항목이 이미 교체됐다면 Remove는 아무 것도 하지 않는다(새 세션이 그 캐릭터로 방에 있는 중이다).
+                    _room?.Remove(playerId, this);
                 }
 
                 // 더 이상 보낼 것이 없으니 대기열을 닫고, 남은 프레임(강제 종료/입장 거부 사유)이 나갈 때까지 잠깐 기다린 뒤
@@ -196,7 +192,11 @@ namespace GameServer.Networking
 
             Console.WriteLine($"[GameServer] 전송 대기열 초과({MaxQueuedFrames}) - 느린 클라이언트 연결을 종료합니다 (PlayerId={_playerId}).");
             CloseOutgoing();
-            _kickCts.Cancel();
+
+            // Send는 GameRoom이 시야 목록 락(_viewLock)을 잡고 순회하는 중에 호출될 수 있다. 취소 콜백은 Cancel을 호출한 스레드에서
+            // 동기로 돌 수 있어, 그 자리에서 세션 정리(GameRoom.Remove -> 같은 락 재진입 -> 순회 중인 목록 수정)가 일어나지 않도록
+            // 취소는 다른 스레드에서 한다.
+            _ = Task.Run(() => _kickCts.Cancel());
         }
 
         // 대기열의 프레임을 순서대로 소켓에 쓴다(이 세션의 유일한 writer). 대기열이 닫히고(finally) 비면 끝난다.
@@ -253,8 +253,8 @@ namespace GameServer.Networking
             }
         }
 
-        // mapId에 해당하는 GameRoom(없으면 새로 생성)에 자신을 등록하고, 본인에게는 그 방의 기존
-        // 접속자 목록(Game_EnterAck)을, 나머지에게는 자신의 입장(Game_PlayerJoined)을 알린다.
+        // mapId에 해당하는 GameRoom(없으면 새로 생성)에 자신을 등록하고, 본인에게는 시야 안의 기존
+        // 접속자/몬스터 목록(Game_EnterAck)을 보낸다. 주변 플레이어는 다음 방 틱에 "시야 진입"(Game_PlayerJoined)으로 받는다.
         // 등록 전에 AccessToken이 info.PlayerId(characterId)를 실제로 소유한 계정의 것인지 AuthServer에
         // 확인한다 - 그렇지 않으면 누구나 임의의 PlayerId를 자칭해 접속/조작할 수 있기 때문이다.
         private async Task HandleEnterRequestAsync(byte[] body, CancellationToken ct)
@@ -320,15 +320,10 @@ namespace GameServer.Networking
             _room = room;
             _mapId = info.MapId;
 
-            var existingPlayers = room.SnapshotExcluding(info.PlayerId);
-            var existingMonsters = room.SnapshotMonsters();
-            room.Add(info, this);
+            var (visiblePlayers, visibleMonsters) = room.Join(info, this);
 
-            var ack = new S2CEnterAck { ExistingPlayers = existingPlayers, ExistingMonsters = existingMonsters };
+            var ack = new S2CEnterAck { ExistingPlayers = visiblePlayers, ExistingMonsters = visibleMonsters };
             Send(OpCode.Game_EnterAck, ack.Encode());
-
-            var joined = new S2CPlayerJoined { Player = info };
-            room.Broadcast(OpCode.Game_PlayerJoined, joined.Encode(), info.PlayerId);
         }
 
         // mapId 맵에서 targetMapId로 가는 MapSwap 포탈 중 player가 범위 안에 있는 것을 찾는다(없으면 null).
@@ -395,8 +390,8 @@ namespace GameServer.Networking
             throw new EnterRejectedException();
         }
 
-        // 같은 접속을 유지한 채 다른 맵으로 옮긴다: 이전 맵 방에서 빠지며 Game_PlayerLeft를 알리고,
-        // 새 맵 방에 들어가며 그 방의 기존 접속자 목록(Game_MapChangeAck)을 받고 자신의 입장을 알린다.
+        // 같은 접속을 유지한 채 다른 맵으로 옮긴다: 이전 맵 방에서 빠지며(보던 사람들에게 Game_PlayerLeft) 새 맵 방에 들어가
+        // 시야 안의 기존 접속자/몬스터 목록(Game_MapChangeAck)을 받는다. 새 맵의 주변 플레이어는 다음 틱에 "시야 진입"으로 받는다.
         private void HandleMapChangeRequest(byte[] body)
         {
             var request = C2SMapChangeRequest.Decode(body);
@@ -432,9 +427,6 @@ namespace GameServer.Networking
                 return;
             }
 
-            var left = new S2CPlayerLeft { PlayerId = playerId };
-            previousRoom.Broadcast(OpCode.Game_PlayerLeft, left.Encode(), playerId);
-
             // HP 등 나머지 전투 스탯은 PlayerInfo 인스턴스를 그대로 재사용해 유지하고, 위치/맵만 갱신한다.
             info.MapId = request.MapId;
             info.X = destination.X;
@@ -443,18 +435,13 @@ namespace GameServer.Networking
             info.RotationY = destination.RotationY;
 
             GameRoom nextRoom = _mapRooms.GetOrCreate(request.MapId);
-            var existingPlayers = nextRoom.SnapshotExcluding(playerId);
-            var existingMonsters = nextRoom.SnapshotMonsters();
-            nextRoom.Add(info, this);
+            var (visiblePlayers, visibleMonsters) = nextRoom.Join(info, this);
 
             _room = nextRoom;
             _mapId = request.MapId;
 
-            var ack = new S2CEnterAck { ExistingPlayers = existingPlayers, ExistingMonsters = existingMonsters };
+            var ack = new S2CEnterAck { ExistingPlayers = visiblePlayers, ExistingMonsters = visibleMonsters };
             Send(OpCode.Game_MapChangeAck, ack.Encode());
-
-            var joined = new S2CPlayerJoined { Player = info };
-            nextRoom.Broadcast(OpCode.Game_PlayerJoined, joined.Encode(), playerId);
         }
 
         // 이동 속도 검증 - "이동 거리 예산" 방식. 예산은 초당 MoveBudgetRefillPerSecond(m)씩 차고 최대 MoveBudgetCapacity(m)까지

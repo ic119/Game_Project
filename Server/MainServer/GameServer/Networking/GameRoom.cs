@@ -26,9 +26,10 @@ namespace GameServer.Networking
     }
 
     // 하나의 맵(mapId)에 속한 접속자들의 그룹. MapRoomRegistry가 맵마다 이 인스턴스를 하나씩 관리한다.
-    // 접속자 레지스트리 + "본인 제외 전원 브로드캐스트" 헬퍼에 더해, 이 맵의 몬스터 스폰/전투/리스폰까지 담당한다.
+    // 접속자 레지스트리에 더해 이 맵의 몬스터 스폰/전투/리스폰, 방 틱(스냅샷 전송)까지 담당한다.
     // 몬스터는 소유 클라이언트가 없으므로(플레이어와 달리) 스탯/HP를 GameServer가 직접 들고 권위를 가진다.
-    public class GameRoom
+    // 누가 누구를 보는지(관심 영역, 입장/퇴장/시야 진입·이탈, 대상별 알림)는 GameRoom.Visibility.cs에 있다.
+    public partial class GameRoom
     {
         private readonly ConcurrentDictionary<long, (PlayerInfo Info, ClientSession Session)> _players = new();
 
@@ -49,8 +50,8 @@ namespace GameServer.Networking
             _serverLifetimeCt = serverLifetimeCt;
 
             // 방이 만들어지는 시점(첫 플레이어 입장)에 각 포인트를 최대 개체수까지 즉시 채운다.
-            // 아직 아무도 접속하지 않은 시점이라 브로드캐스트가 필요 없다 - 첫 입장자는 S2CEnterAck의
-            // ExistingMonsters로 이 초기 스폰 결과를 그대로 받는다.
+            // 아직 아무도 접속하지 않은 시점이라 브로드캐스트가 필요 없다 - 입장자는 S2CEnterAck의
+            // ExistingMonsters(시야 안의 몬스터)로 받는다.
             foreach (var point in spawnPoints)
             {
                 for (int i = 0; i < point.MaxAlive; i++)
@@ -60,11 +61,6 @@ namespace GameServer.Networking
             }
 
             _ = RunTickLoopAsync(_serverLifetimeCt);
-        }
-
-        public void Add(PlayerInfo info, ClientSession session)
-        {
-            _players[info.PlayerId] = (info, session);
         }
 
         // 직전 틱 이후 위치가 바뀐 플레이어 id. 이동 요청은 위치만 갱신하고 여기에 표시하며, 실제 전송은 다음 틱의
@@ -83,43 +79,6 @@ namespace GameServer.Networking
             }
         }
 
-        // session이 등록한 항목일 때만 제거하고, 실제로 제거했으면 true. 같은 캐릭터가 새 세션으로 다시 입장해 항목이
-        // 교체된 뒤에는 이전 세션이 종료되면서 호출해도 새 세션의 항목을 지우지 않는다 - 이때 호출측은 퇴장 알림도 보내면 안 된다.
-        public bool Remove(long playerId, ClientSession session)
-        {
-            if (!_players.TryGetValue(playerId, out var entry) || !ReferenceEquals(entry.Session, session))
-            {
-                return false;
-            }
-
-            return _players.TryRemove(new KeyValuePair<long, (PlayerInfo Info, ClientSession Session)>(playerId, entry));
-        }
-
-        // playerId를 제외한 현재 접속자 스냅샷(신규 입장자에게 Game_EnterAck으로 보내줄 목록).
-        public List<PlayerInfo> SnapshotExcluding(long playerId)
-        {
-            var result = new List<PlayerInfo>();
-            foreach (var (info, _) in _players.Values)
-            {
-                if (info.PlayerId != playerId)
-                {
-                    result.Add(info);
-                }
-            }
-            return result;
-        }
-
-        // 현재 이 방(맵)에 살아있는 몬스터 전체 스냅샷. S2CEnterAck.ExistingMonsters로 그대로 쓰인다.
-        public List<MonsterInfo> SnapshotMonsters()
-        {
-            var result = new List<MonsterInfo>();
-            foreach (var runtime in _monsters.Values)
-            {
-                result.Add(runtime.Info);
-            }
-            return result;
-        }
-
         public bool TryGetMonsterPosition(long monsterId, out (float X, float Y, float Z) position)
         {
             if (_monsters.TryGetValue(monsterId, out var runtime))
@@ -132,23 +91,11 @@ namespace GameServer.Networking
             return false;
         }
 
+        // 맵 전체(발신자 포함)에 보낸다 - 현재는 채팅만 쓴다. 나머지 알림은 관심 영역 안의 사람에게만 보낸다
+        // (GameRoom.Visibility.cs의 SendToViewersOfPlayer/SendToViewersOfMonster).
         // 브로드캐스트는 각 세션의 전송 대기열에 넣기만 하고 바로 돌아온다(ClientSession.Send). 실제 소켓 쓰기는 세션마다
         // 전송 루프가 따로 하므로, 느린 클라이언트 한 명이 방 전체 전송이나 AI 틱을 붙잡거나, 한 세션의 전송 오류가
         // 호출측(다른 플레이어의 요청 처리, AI 루프)으로 번지지 않는다.
-        public void Broadcast(OpCode opCode, byte[] body, long excludePlayerId)
-        {
-            foreach (var (info, session) in _players.Values)
-            {
-                if (info.PlayerId == excludePlayerId)
-                {
-                    continue;
-                }
-
-                session.Send(opCode, body);
-            }
-        }
-
-        // 채팅처럼 발신자 본인에게도 동일한 메시지를 보여줘야 하는 이벤트용 (Move와 달리 제외 대상이 없다).
         public void BroadcastToAll(OpCode opCode, byte[] body)
         {
             foreach (var (_, session) in _players.Values)
@@ -232,7 +179,7 @@ namespace GameServer.Networking
                 RemainingHp = remainingHp,
                 Timestamp = timestamp
             };
-            BroadcastToAll(OpCode.Game_MonsterDamageBroadcast, damageBroadcast.Encode());
+            SendToViewersOfMonster(monsterId, OpCode.Game_MonsterDamageBroadcast, damageBroadcast.Encode(), alsoToPlayerId: attackerId);
 
             if (!killedByThisAttack)
             {
@@ -243,8 +190,11 @@ namespace GameServer.Networking
             // 대한 보상이므로, 아래 조기 반환 분기들과 상관없이 항상 한 번만 굴려 결과에 실어 보낸다.
             (int gainedGold, List<(string ItemId, int Qty)> droppedItems) = DropTableCatalog.Roll(runtime.Info.MonsterType);
 
+            // 이 몬스터를 보던 사람에게만 사망을 알리고 시야 목록에서 지운다 - 다음 틱이 "시야 이탈"로 오인해
+            // 사망 연출 없이 즉시 지우는 알림(MonsterLeaveView)을 보내지 않게 하기 위함이다.
             var dieBroadcast = new S2CMonsterDieBroadcast { MonsterId = monsterId, Timestamp = timestamp };
-            BroadcastToAll(OpCode.Game_MonsterDieBroadcast, dieBroadcast.Encode());
+            SendToViewersOfMonster(monsterId, OpCode.Game_MonsterDieBroadcast, dieBroadcast.Encode(), alsoToPlayerId: attackerId);
+            ForgetMonsterInAllViews(monsterId);
 
             // 리스폰은 이 공격 요청 처리와 독립적인 타이머이므로 기다리지 않고 흘려보낸다(fire-and-forget).
             _ = RespawnAfterDelayAsync(runtime.Point);
@@ -299,10 +249,8 @@ namespace GameServer.Networking
                 return;
             }
 
-            MonsterInfo spawned = SpawnMonsterAtPoint(point);
-
-            var broadcast = new S2CMonsterSpawnBroadcast { Monster = spawned };
-            BroadcastToAll(OpCode.Game_MonsterSpawnBroadcast, broadcast.Encode());
+            // 스폰만 한다. 근처 플레이어에게는 다음 틱의 시야 갱신이 "시야 진입"(Game_MonsterSpawnBroadcast)으로 알린다.
+            SpawnMonsterAtPoint(point);
         }
 
         // 같은 포인트에서 maxAlive > 1로 여러 마리가 스폰될 때 한 좌표에 겹쳐 뭉치지 않도록,
@@ -430,7 +378,7 @@ namespace GameServer.Networking
                 RemainingHp = remainingHp,
                 Timestamp = timestamp
             };
-            BroadcastToAll(OpCode.Game_DamageBroadcast, broadcast.Encode());
+            SendToViewersOfPlayer(targetId, OpCode.Game_DamageBroadcast, broadcast.Encode(), alsoToPlayerId: attackerId);
 
             if (died)
             {
@@ -453,7 +401,7 @@ namespace GameServer.Networking
             }
         }
 
-        // 최대 체력의 healPercent%만큼 회복하고 방 전체에 새 체력을 알린다. 그 사이 사망했거나 이미 가득 찼으면 false.
+        // 최대 체력의 healPercent%만큼 회복하고 본인과 주변(시야 안) 플레이어에게 새 체력을 알린다. 그 사이 사망했거나 이미 가득 찼으면 false.
         public bool TryHealPlayer(long playerId, int healPercent)
         {
             if (!_players.TryGetValue(playerId, out var entry))
@@ -477,7 +425,7 @@ namespace GameServer.Networking
             }
 
             var broadcast = new S2CPlayerHpBroadcast { PlayerId = playerId, CurrentHp = currentHp, MaxHp = maxHp };
-            BroadcastToAll(OpCode.Game_PlayerHpBroadcast, broadcast.Encode());
+            SendToViewersOfPlayer(broadcast.PlayerId, OpCode.Game_PlayerHpBroadcast, broadcast.Encode());
             return true;
         }
 
@@ -495,7 +443,7 @@ namespace GameServer.Networking
             }
 
             var broadcast = new S2CPlayerHpBroadcast { PlayerId = player.PlayerId, CurrentHp = currentHp, MaxHp = maxHp };
-            BroadcastToAll(OpCode.Game_PlayerHpBroadcast, broadcast.Encode());
+            SendToViewersOfPlayer(broadcast.PlayerId, OpCode.Game_PlayerHpBroadcast, broadcast.Encode());
         }
 
         // 사망한 플레이어를 ReviveDelay 뒤 가득 찬 체력으로 부활시킨다. 그 사이 접속이 끊겼으면(방에서 빠짐)
@@ -551,7 +499,7 @@ namespace GameServer.Networking
                 Z = player.Z,
                 RotationY = player.RotationY
             };
-            BroadcastToAll(OpCode.Game_PlayerRevived, revived.Encode());
+            SendToViewersOfPlayer(player.PlayerId, OpCode.Game_PlayerRevived, revived.Encode());
         }
         #endregion
 
@@ -561,7 +509,7 @@ namespace GameServer.Networking
         private const float ArrivalThreshold = 0.1f;
 
         // 방 틱 루프(20Hz). 방이 생성되는 시점(첫 입장자)에 시작해 서버가 종료될 때까지 돈다. 틱마다
-        // (1) 몬스터 AI를 갱신하고 (2) 직전 틱 이후 위치가 바뀐 플레이어/몬스터를 스냅샷 하나로 묶어 보낸다(SendSnapshot).
+        // (1) 몬스터 AI를 갱신하고 (2) 받는 사람별 시야를 갱신한 뒤 시야 안에서 움직인 것만 스냅샷 하나로 묶어 보낸다(UpdateViewsAndSendSnapshots).
         // 개별 요청과 무관한 방의 백그라운드 작업이라 리스폰 타이머(RespawnAfterDelayAsync)와 같은 서버 전체 수명 토큰을 쓴다 -
         // 방은 비어도 제거되지 않고(MapRoomRegistry, 맵마다 하나) 이 루프도 멈추지 않지만, 플레이어가 없으면 감지 대상도 받을 사람도
         // 없어 순회 비용만 남는다(몬스터 수가 매우 적은 MVP 규모라 무시할 만하다).
@@ -583,7 +531,7 @@ namespace GameServer.Networking
                     try
                     {
                         List<EntityTransform> movedMonsters = TickMonsterAi(deltaSeconds);
-                        SendSnapshot(movedMonsters);
+                        UpdateViewsAndSendSnapshots(CollectMovedPlayers(), movedMonsters);
                     }
                     catch (Exception ex)
                     {
@@ -597,9 +545,8 @@ namespace GameServer.Networking
             }
         }
 
-        // 직전 틱 이후 이동한 플레이어(_movedPlayerIds)와 이번 틱에 움직인 몬스터를 스냅샷 하나로 보낸다. 바뀐 게 없으면 보내지 않는다.
-        // 받는 쪽 자신의 이동도 포함되지만 클라이언트는 로컬 플레이어 id를 원격 목록에서 찾지 못해 자연히 무시한다.
-        private void SendSnapshot(List<EntityTransform> movedMonsters)
+        // 직전 틱 이후 이동한 플레이어(_movedPlayerIds)의 현재 위치를 모은다. 받는 사람별로 걸러 보내는 건 UpdateViewsAndSendSnapshots가 한다.
+        private List<EntityTransform> CollectMovedPlayers()
         {
             var movedPlayers = new List<EntityTransform>();
             foreach (long playerId in _movedPlayerIds.Keys)
@@ -612,19 +559,7 @@ namespace GameServer.Networking
                     movedPlayers.Add(new EntityTransform(playerId, info.X, info.Y, info.Z, info.RotationY));
                 }
             }
-
-            if (movedPlayers.Count == 0 && movedMonsters.Count == 0)
-            {
-                return;
-            }
-
-            var snapshot = new S2CWorldSnapshot
-            {
-                ServerTimeMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-                Players = movedPlayers,
-                Monsters = movedMonsters
-            };
-            BroadcastToAll(OpCode.Game_WorldSnapshot, snapshot.Encode());
+            return movedPlayers;
         }
 
         // 몬스터 종류에 관계없이 공통으로 동작한다 - 몬스터별 분기 없이 MonsterSpawnPointDefinition의
@@ -746,7 +681,7 @@ namespace GameServer.Networking
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
             };
 
-            BroadcastToAll(OpCode.Game_MonsterAttackBroadcast, broadcast.Encode());
+            SendToViewersOfMonster(runtime.Info.MonsterId, OpCode.Game_MonsterAttackBroadcast, broadcast.Encode(), alsoToPlayerId: target.PlayerId);
 
             if (died)
             {
