@@ -24,7 +24,8 @@ namespace Incheol.Models.Define
         SpearHit01 = 17,
         TwoHandedHit01 = 18,
         Dash01 = 20,
-        LevelUp01 = 21
+        LevelUp01 = 21,
+        HpPotion01 = 22
     }
 
     /// <summary>

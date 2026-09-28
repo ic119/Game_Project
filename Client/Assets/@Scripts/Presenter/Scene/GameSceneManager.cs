@@ -896,6 +896,23 @@ namespace Incheol.Presenter.Scene
             CharacterVfxManager.Instance?.PlayLevelUpEffect(effectAnchor);
         }
 
+
+        /// <summary>
+        /// 회복포션 사용이 서버에서 성공으로 확인될 때마다(HandleUseItemResult) 로컬 플레이어의
+        /// EffectBone 위치에 이펙트를 재생한다.
+        /// </summary>
+        private void PlayHpPotionEffect()
+        {
+            if (localPlayerInstance == null)
+            {
+                return;
+            }
+
+            Transform effectAnchor = localPlayerInstance.transform.Find("EffectBone");
+            CharacterVfxManager.Instance?.PlayHpPotionEffect(effectAnchor);
+        }
+
+
         /// <summary>
         /// 내가 몬스터를 처치해 GameServer가 굴린 골드/아이템 드롭(Game_LootBroadcast, 처치자 본인에게만 옴)을 화면에 반영한다.
         /// HandleExpGained와 마찬가지로 DB 저장은 GameServer가 직접 하므로 여기서는 표시만 한다.
@@ -1164,7 +1181,7 @@ private void TryEquipItem(string _itemId)
         /// <summary>
         /// Game_UseItemResult(내 요청에 대한 결과). 서버에서 실제로 차감됐을 때만 로컬 인벤토리 수량을 1 줄인다.
         /// </summary>
-        private void HandleUseItemResult(GameUseItemResultPacket packet)
+private void HandleUseItemResult(GameUseItemResultPacket packet)
         {
             isUseItemPending = false;
 
@@ -1172,6 +1189,8 @@ private void TryEquipItem(string _itemId)
             {
                 return;
             }
+
+            PlayHpPotionEffect();
 
             InventoryItemStack targetStack = localInventoryItems.Find(stack => stack.itemId == packet.ItemId && string.IsNullOrEmpty(stack.equipSlot));
             if (targetStack == null)

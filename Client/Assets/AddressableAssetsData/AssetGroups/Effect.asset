@@ -15,6 +15,11 @@ MonoBehaviour:
   m_GroupName: Effect
   m_GUID: 4470c7b6cc249854c8cdf322ae2201ae
   m_SerializeEntries:
+  - m_GUID: 13293aabd503676499084fde3bb72094
+    m_Address: HpPotion01
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 34cabc2ff66c44e418162dcaddb45eac
     m_Address: TwoHandedHit01
     m_ReadOnly: 0
