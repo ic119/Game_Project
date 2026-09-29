@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Text.RegularExpressions;
 using Incheol.Models.SO;
 using UnityEditor;
@@ -9,9 +10,10 @@ namespace Incheol.Editor
 {
     /// <summary>
     /// 아이템 정의는 Client(ItemDatabaseSO)와 Server(GameServer/Items/ItemDefinitions.json) 양쪽에
-    /// 수동으로 중복 입력된다(ItemDefinition.cs 주석 참고 - "장비/물약 아이템을 추가할 때 ItemDatabaseSO와
-    /// ItemDefinitions.json을 함께 갱신해야 한다"). 사람이 한쪽만 고치고 잊어버리면 조용히 어긋나므로,
-    /// 커밋/빌드 전에 이 메뉴로 두 정의가 일치하는지 확인한다.
+    /// 존재해야 한다(ItemDefinition.cs 주석 참고). 예전에는 둘 다 손으로 입력해서 한쪽만 고치고 잊어버리면
+    /// 조용히 어긋났다 - 이제 ItemDatabaseSO를 원본으로 삼고 Generate()로 서버 JSON을 그 내용으로 새로
+    /// 써서 중복 입력 자체를 없앤다. Validate()는 그래도 남겨둔다 - 누군가 서버 JSON을 손으로 고치거나
+    /// Generate를 깜빡하고 커밋한 경우를 잡아내는 안전망이다.
     /// </summary>
     public static class ItemDefinitionValidator
     {
@@ -104,6 +106,98 @@ namespace Incheol.Editor
             {
                 Debug.LogError($"[ItemDefinitionValidator] 불일치 {mismatchCount}건 발견.");
             }
+        }
+
+        /// <summary>
+        /// ItemDatabaseSO의 내용으로 서버 ItemDefinitions.json을 새로 쓴다. 기존 파일 내용은 무시하고
+        /// 완전히 덮어쓰므로, 서버 JSON을 손으로 고친 게 있었다면 이 실행으로 사라진다(그게 목적이다 -
+        /// ItemDatabaseSO만 원본으로 남긴다). 실행 뒤 바로 Validate()로 결과를 재확인한다.
+        /// </summary>
+        [MenuItem("Tools/아이템 정의 서버 JSON 생성")]
+        public static void Generate()
+        {
+            ItemDatabaseSO database = FindItemDatabase();
+            if (database == null)
+            {
+                Debug.LogError("[ItemDefinitionValidator] ItemDatabaseSO 에셋을 찾지 못했습니다.");
+                return;
+            }
+
+            string jsonPath = Path.GetFullPath(Application.dataPath + ServerItemDefinitionsRelativePath);
+            string json = BuildServerDefinitionsJson(database);
+            File.WriteAllText(jsonPath, json);
+
+            int itemCount = 0;
+            foreach (ItemData item in database.items)
+            {
+                if (item != null && !string.IsNullOrEmpty(item.itemId))
+                {
+                    itemCount++;
+                }
+            }
+
+            Debug.Log($"[ItemDefinitionValidator] 서버 아이템 정의 생성 완료 : {jsonPath} ({itemCount}종)");
+            Validate();
+        }
+
+        private static string BuildServerDefinitionsJson(ItemDatabaseSO database)
+        {
+            var builder = new StringBuilder();
+            builder.Append("{\n");
+
+            bool isFirstEntry = true;
+            foreach (ItemData item in database.items)
+            {
+                if (item == null || string.IsNullOrEmpty(item.itemId))
+                {
+                    continue;
+                }
+
+                if (!isFirstEntry)
+                {
+                    builder.Append(",\n");
+                }
+
+                isFirstEntry = false;
+                AppendItemEntry(builder, item);
+            }
+
+            builder.Append("\n}\n");
+            return builder.ToString();
+        }
+
+        // ItemDefinition.cs의 기본값과 같은 필드는 생략한다 - 기존 ItemDefinitions.json이 손으로 작성되던
+        // 시절부터 그렇게 써왔고(예: 물약이 아니면 healPercent를 안 씀), 그 스타일을 그대로 따른다.
+        private static void AppendItemEntry(StringBuilder builder, ItemData item)
+        {
+            builder.Append($"  \"{item.itemId}\": {{ \"name\": \"{EscapeJsonString(item.itemName)}\", \"maxStack\": {item.maxStackCount}");
+
+            if (item.itemType == ItemType.Potion && item.healPercent > 0)
+            {
+                builder.Append($", \"healPercent\": {item.healPercent}");
+            }
+
+            if (item.itemType == ItemType.Eqiupment && item.equipSlotType != EquipmentSlotType.None)
+            {
+                if (item.bonusAttackPower != 0)
+                {
+                    builder.Append($", \"bonusAttackPower\": {item.bonusAttackPower}");
+                }
+
+                if (item.bonusDefense != 0)
+                {
+                    builder.Append($", \"bonusDefense\": {item.bonusDefense}");
+                }
+
+                builder.Append($", \"equipSlot\": \"{item.equipSlotType}\"");
+            }
+
+            builder.Append(" }");
+        }
+
+        private static string EscapeJsonString(string value)
+        {
+            return string.IsNullOrEmpty(value) ? string.Empty : value.Replace("\\", "\\\\").Replace("\"", "\\\"");
         }
 
         private static ItemDatabaseSO FindItemDatabase()
