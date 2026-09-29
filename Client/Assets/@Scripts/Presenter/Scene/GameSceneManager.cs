@@ -1143,10 +1143,33 @@ private void TryEquipItem(string _itemId)
 
             SaveDataManager.Instance?.EquipItem(_itemId, itemData.equipSlotType, success =>
             {
-                if (!success)
+                if (success)
                 {
-                    DebugLogManager.GenerateErrorMessage<GameSceneManager>($"장비 장착 저장 실패 : {_itemId}");
+                    return;
                 }
+
+                DebugLogManager.GenerateErrorMessage<GameSceneManager>($"장비 장착 저장 실패 : {_itemId}");
+
+                // 서버 저장이 실패했으니 로컬 상태를 장착 시도 이전으로 되돌린다(낙관적 갱신 롤백).
+                targetStack.equipSlot = null;
+
+                if (previouslyEquipped != null)
+                {
+                    previouslyEquipped.equipSlot = slotKey;
+                    ItemData previousItemData = ItemDatabaseManager.Instance?.FindById(previouslyEquipped.itemId);
+                    if (previousItemData != null)
+                    {
+                        spawnedPlayerModel.EquipItem(previousItemData);
+                    }
+                }
+                else
+                {
+                    spawnedPlayerModel.UnequipItem(itemData.equipSlotType);
+                }
+
+                RecalculateEquipmentStats();
+                RefreshInventoryDisplay();
+                GameManager.Instance?.ShowAlarmPopup("장비 장착 실패", "서버 저장에 실패해 장착을 되돌렸습니다.");
             });
         }
 
@@ -1226,7 +1249,7 @@ private void HandleUseItemResult(GameUseItemResultPacket packet)
         /// TryEquipItem/TryUseHealthPotion과 동일한 낙관적 로컬 갱신 패턴을 따른다 - 로컬 상태를 먼저 갱신해
         /// UI에 즉시 반영하고, 서버 저장은 백그라운드로 요청한다(DELETE api/characters/{id}/items/{itemId}).
         /// </summary>
-        private void TryDropItem(string _itemId)
+private void TryDropItem(string _itemId)
         {
             InventoryItemStack targetStack = localInventoryItems.Find(stack => stack.itemId == _itemId && string.IsNullOrEmpty(stack.equipSlot));
             if (targetStack == null)
@@ -1239,10 +1262,17 @@ private void HandleUseItemResult(GameUseItemResultPacket packet)
 
             SaveDataManager.Instance?.RemoveItem(_itemId, success =>
             {
-                if (!success)
+                if (success)
                 {
-                    DebugLogManager.GenerateErrorMessage<GameSceneManager>($"아이템 버리기 저장 실패 : {_itemId}");
+                    return;
                 }
+
+                DebugLogManager.GenerateErrorMessage<GameSceneManager>($"아이템 버리기 저장 실패 : {_itemId}");
+
+                // 서버 저장이 실패했으니 로컬 상태를 버리기 이전으로 되돌린다(낙관적 갱신 롤백).
+                localInventoryItems.Add(targetStack);
+                RefreshInventoryDisplay();
+                GameManager.Instance?.ShowAlarmPopup("아이템 버리기 실패", "서버 저장에 실패해 아이템을 되돌렸습니다.");
             });
         }
 
@@ -1251,7 +1281,7 @@ private void HandleUseItemResult(GameUseItemResultPacket packet)
         /// <summary>
         /// 지정한 장비 슬롯을 해제한다. TryEquipItem과 대칭되는 낙관적 갱신 흐름을 따른다.
         /// </summary>
-        private void TryUnequipSlot(EquipmentSlotType _slotType)
+private void TryUnequipSlot(EquipmentSlotType _slotType)
         {
             if (_slotType == EquipmentSlotType.None)
             {
@@ -1273,10 +1303,25 @@ private void HandleUseItemResult(GameUseItemResultPacket packet)
 
             SaveDataManager.Instance?.UnequipItem(_slotType, success =>
             {
-                if (!success)
+                if (success)
                 {
-                    DebugLogManager.GenerateErrorMessage<GameSceneManager>($"장비 해제 저장 실패 : {_slotType}");
+                    return;
                 }
+
+                DebugLogManager.GenerateErrorMessage<GameSceneManager>($"장비 해제 저장 실패 : {_slotType}");
+
+                // 서버 저장이 실패했으니 로컬 상태를 해제 시도 이전으로 되돌린다(낙관적 갱신 롤백).
+                equippedStack.equipSlot = slotKey;
+
+                ItemData itemData = ItemDatabaseManager.Instance?.FindById(equippedStack.itemId);
+                if (itemData != null)
+                {
+                    spawnedPlayerModel.EquipItem(itemData);
+                }
+
+                RecalculateEquipmentStats();
+                RefreshInventoryDisplay();
+                GameManager.Instance?.ShowAlarmPopup("장비 해제 실패", "서버 저장에 실패해 해제를 되돌렸습니다.");
             });
         }
 
