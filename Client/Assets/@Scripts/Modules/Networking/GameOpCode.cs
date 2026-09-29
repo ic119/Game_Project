@@ -36,6 +36,8 @@ namespace Incheol.Modules.Networking
         Game_WorldSnapshot = 0x021B,
         Game_MonsterLeaveView = 0x021C,
         Game_AttackAnimationRequest = 0x021D,
-        Game_AttackAnimationBroadcast = 0x021E
+        Game_AttackAnimationBroadcast = 0x021E,
+        Game_ChestOpenRequest = 0x021F,
+        Game_ChestOpenBroadcast = 0x0220
     }
 }

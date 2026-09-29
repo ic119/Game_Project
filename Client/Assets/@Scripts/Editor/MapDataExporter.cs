@@ -49,10 +49,26 @@ namespace Incheol.Editor
         }
 
         [System.Serializable]
+        private class ChestJson
+        {
+            public string id;
+            public float x;
+            public float y;
+            public float z;
+
+            // 상자 콜라이더(UI_InteractionPrompt의 트리거)의 수평 반경(m). 서버는 여기에 여유 거리를 더해 판정한다.
+            public float radius;
+
+            // Drops/DropTables.json의 키(TreasureChestInteractionController.lootTableKey 그대로).
+            public string lootTableKey;
+        }
+
+        [System.Serializable]
         private class MapDataJson
         {
             public PointJson respawnPoint;
             public List<PortalJson> portals = new();
+            public List<ChestJson> chests = new();
         }
 
         [MenuItem("Tools/Map/Export Map Data From Selected Prefab")]
@@ -99,13 +115,29 @@ namespace Incheol.Editor
                     fileData.portals.Add(portalJson);
                 }
 
+                var seenChestIds = new HashSet<string>();
+                foreach (TreasureChestInteractionController chest in root.GetComponentsInChildren<TreasureChestInteractionController>(true))
+                {
+                    if (!TryBuildChestJson(chest, out ChestJson chestJson, out string error))
+                    {
+                        return Fail(showDialogs, $"'{mapId}'의 상자 '{chest.gameObject.name}' : {error}");
+                    }
+
+                    if (!seenChestIds.Add(chestJson.id))
+                    {
+                        return Fail(showDialogs, $"'{mapId}'에 중복된 상자 id가 있습니다 : {chestJson.id}");
+                    }
+
+                    fileData.chests.Add(chestJson);
+                }
+
                 string json = JsonUtility.ToJson(fileData, true);
                 string outputDirectory = Path.GetFullPath(Path.Combine(Application.dataPath, ServerMapDataRelativePath));
                 Directory.CreateDirectory(outputDirectory);
                 string outputPath = Path.Combine(outputDirectory, $"{mapId}.json");
                 File.WriteAllText(outputPath, json);
 
-                Debug.Log($"[MapDataExporter] '{mapId}' 맵 데이터(포탈 {fileData.portals.Count}개)를 내보냈습니다 : {outputPath}");
+                Debug.Log($"[MapDataExporter] '{mapId}' 맵 데이터(포탈 {fileData.portals.Count}개, 상자 {fileData.chests.Count}개)를 내보냈습니다 : {outputPath}");
                 return true;
             }
             finally
@@ -219,7 +251,12 @@ namespace Incheol.Editor
         // 포탈 콜라이더(Portal.prefab은 CapsuleCollider)의 월드 bounds에서 수평 반경을 구한다. 콜라이더가 없으면 1m.
         private static float GetHorizontalRadius(MapPortalController portal)
         {
-            Collider collider = portal.GetComponentInChildren<Collider>(true);
+            return GetHorizontalRadius(portal.GetComponentInChildren<Collider>(true));
+        }
+
+        // TreasureChestInteractionController가 요구하는 UI_InteractionPrompt의 콜라이더 반경을 그대로 쓴다.
+        private static float GetHorizontalRadius(Collider collider)
+        {
             if (collider == null)
             {
                 return 1f;
@@ -227,6 +264,49 @@ namespace Incheol.Editor
 
             Vector3 extents = collider.bounds.extents;
             return Mathf.Max(extents.x, extents.z);
+        }
+
+        // TreasureChestInteractionController의 chestId/lootTableKey는 private [SerializeField]라 SerializedObject로 읽는다.
+        private static bool TryBuildChestJson(TreasureChestInteractionController chest, out ChestJson chestJson, out string error)
+        {
+            chestJson = null;
+            var serialized = new SerializedObject(chest);
+            string id = serialized.FindProperty("chestId").stringValue;
+            string lootTableKey = serialized.FindProperty("lootTableKey").stringValue;
+
+            if (string.IsNullOrEmpty(id))
+            {
+                error = "chestId가 비어 있습니다(인스펙터에서 고유 id를 지정하세요).";
+                return false;
+            }
+
+            if (string.IsNullOrEmpty(lootTableKey))
+            {
+                error = "lootTableKey가 비어 있습니다.";
+                return false;
+            }
+
+            // UI_InteractionPrompt(같은 오브젝트에 RequireComponent로 붙어 있음)의 트리거 콜라이더 반경을 그대로 쓴다 -
+            // "언제 프롬프트가 뜨는지"와 "언제 서버가 사거리 안으로 인정하는지"가 어긋나면 안 되기 때문이다.
+            Collider collider = chest.GetComponent<Collider>();
+            if (collider == null)
+            {
+                error = "UI_InteractionPrompt의 콜라이더를 찾지 못했습니다.";
+                return false;
+            }
+
+            Vector3 position = chest.transform.position;
+            chestJson = new ChestJson
+            {
+                id = id,
+                x = position.x,
+                y = position.y,
+                z = position.z,
+                radius = GetHorizontalRadius(collider),
+                lootTableKey = lootTableKey
+            };
+            error = null;
+            return true;
         }
 
         private static PointJson ToPointJson(Transform transform)

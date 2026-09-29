@@ -447,6 +447,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 83d3f796cfc70a546b181c1f9e9e0733, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TreasureChestInteractionController
+  chestId: chest_floor001_01
+  lootTableKey: TreasureChestBasic
   chestLid: {fileID: 8670551537897252993}
   openAngle: -130
   openDuration: 0.6

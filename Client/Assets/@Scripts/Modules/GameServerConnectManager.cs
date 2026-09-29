@@ -96,6 +96,13 @@ namespace Incheol.Modules
         /// 로컬에서 즉시 재생하므로 이 이벤트로 오지 않는다 - 원격 캐릭터 전용이다.
         /// </summary>
         public event Action<GameAttackAnimationBroadcastPacket> OnAttackAnimationReceived;
+
+        /// <summary>
+        /// 보물상자가 열렸을 때(Game_ChestOpenBroadcast) 발생한다. 본인이 방금 연 경우/다른 플레이어가 연 경우/
+        /// 방에 새로 입장해 이미 열린 상자를 따라잡는 경우를 구분하지 않고 전부 이 이벤트로 온다 - 해당 ChestId를
+        /// 가진 TreasureChestInteractionController가 알아서 자기 것인지 판단한다.
+        /// </summary>
+        public event Action<GameChestOpenBroadcastPacket> OnChestOpened;
         public event Action<GameMonsterInfo> OnMonsterSpawned;
         public event Action<GameMonsterDamageBroadcastPacket> OnMonsterDamaged;
         public event Action<GameMonsterDieBroadcastPacket> OnMonsterDied;
@@ -452,6 +459,22 @@ namespace Incheol.Modules
         }
 
         /// <summary>
+        /// 보물상자 개봉을 GameServer에 요청한다(Game_ChestOpenRequest). chestId는 MapData/{mapId}.json의
+        /// chests[].id와 정확히 일치해야 한다(TreasureChestInteractionController.chestId, MapDataExporter가 내보낸 값).
+        /// 결과는 즉시 돌아오지 않고 OnChestOpened(성공 시) 또는 아무 반응 없음(실패 시 - 이미 열렸거나 사거리 밖)으로 온다.
+        /// </summary>
+        public void SendChestOpenRequest(string chestId)
+        {
+            if (!isConnected || string.IsNullOrEmpty(chestId))
+            {
+                return;
+            }
+
+            var request = new GameChestOpenRequestPacket { ChestId = chestId };
+            _ = SendAsync(GameOpCode.Game_ChestOpenRequest, request.Encode());
+        }
+
+        /// <summary>
         /// 몬스터에 대한 공격 의사를 GameServer에 보낸다(Game_MonsterAttackRequest). 플레이어 공격(SendAttack)과
         /// 달리 데미지 계산은 서버가 직접 수행한다 - 몬스터는 소유 클라이언트가 없어 로컬 Defense로 계산할
         /// 대상이 없기 때문이다. 결과는 OnMonsterDamaged(RemainingHp 포함)로 돌아온다.
@@ -721,6 +744,11 @@ namespace Incheol.Modules
                 case GameOpCode.Game_AttackAnimationBroadcast:
                     var attackAnimation = GameAttackAnimationBroadcastPacket.Decode(body);
                     pendingActions.Enqueue(() => OnAttackAnimationReceived?.Invoke(attackAnimation));
+                    break;
+
+                case GameOpCode.Game_ChestOpenBroadcast:
+                    var chestOpened = GameChestOpenBroadcastPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnChestOpened?.Invoke(chestOpened));
                     break;
 
                 case GameOpCode.Game_MonsterSpawnBroadcast:
