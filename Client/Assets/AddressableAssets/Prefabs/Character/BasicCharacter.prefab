@@ -527,6 +527,7 @@ GameObject:
   - component: {fileID: 744454520712539269}
   - component: {fileID: 6260624096849693529}
   - component: {fileID: 139876071836541513}
+  - component: {fileID: 7363766923165947295}
   m_Layer: 0
   m_Name: NameLabel
   m_TagString: Untagged
@@ -632,6 +633,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.View.UI.UI_NameLabel
   nicknameText: {fileID: 1746620928006696313}
+--- !u!114 &7363766923165947295
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 174901879495188136}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3623c053ffb91294bae83237ced6fb29, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Incheol.View.UI.BillboardRotator
   billboardMode: 0
   targetCamera: {fileID: 0}
   useFixedYAxis: 0
