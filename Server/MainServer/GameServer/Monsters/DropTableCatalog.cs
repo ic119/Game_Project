@@ -17,6 +17,8 @@ namespace GameServer.Monsters
             PropertyNameCaseInsensitive = true
         };
 
+        private static readonly HashSet<string> ValidGrades = new() { "Common", "Rare", "Epic", "Legendary" };
+
         private static Dictionary<string, MonsterDropTable>? _tablesByMonsterType;
 
         public static void EnsureLoaded()
@@ -68,11 +70,31 @@ namespace GameServer.Monsters
                         throw new InvalidOperationException($"드롭 테이블 '{monsterType}'의 아이템 '{entry.ItemId}' 수량 범위가 잘못되었습니다 (MinQty={entry.MinQty}, MaxQty={entry.MaxQty}).");
                     }
 
+                    bool hasItemId = !string.IsNullOrEmpty(entry.ItemId);
+                    bool hasGrade = !string.IsNullOrEmpty(entry.Grade);
+
+                    if (hasItemId == hasGrade)
+                    {
+                        throw new InvalidOperationException($"드롭 테이블 '{monsterType}' 항목은 ItemId 또는 Grade 중 정확히 하나만 지정해야 합니다 (ItemId='{entry.ItemId}', Grade='{entry.Grade}').");
+                    }
+
                     // 오타로 존재하지 않는 ItemId를 참조하면 클라이언트가 처치 순간 알 수 없는 아이템을
                     // 받게 되므로, 부팅 시점에 ItemCatalog와 대조해 바로 막는다.
-                    if (!ItemCatalog.Exists(entry.ItemId))
+                    if (hasItemId && !ItemCatalog.Exists(entry.ItemId))
                     {
                         throw new InvalidOperationException($"드롭 테이블 '{monsterType}'의 아이템 '{entry.ItemId}'이 ItemDefinitions.json에 존재하지 않습니다.");
+                    }
+
+                    if (hasGrade && !ValidGrades.Contains(entry.Grade!))
+                    {
+                        throw new InvalidOperationException($"드롭 테이블 '{monsterType}'의 Grade '{entry.Grade}'가 올바르지 않습니다(Common/Rare/Epic/Legendary 중 하나여야 함).");
+                    }
+
+                    // Grade는 있는데 실제로 그 등급 아이템이 하나도 없으면(오타/미등록) Roll() 때 조용히 드롭이
+                    // 안 되는 대신, 부팅 시점에 바로 막는다(다른 검증들과 같은 이유).
+                    if (hasGrade && !ItemCatalog.HasAnyOfGrade(entry.Grade!))
+                    {
+                        throw new InvalidOperationException($"드롭 테이블 '{monsterType}'의 Grade '{entry.Grade}'에 해당하는 아이템이 ItemDefinitions.json에 하나도 없습니다.");
                     }
                 }
             }
@@ -104,11 +126,22 @@ namespace GameServer.Monsters
                     continue;
                 }
 
+                // Grade 항목은 당첨될 때마다 그 등급 풀에서 다시 무작위로 고른다 - 매번 다른 아이템이 나올 수 있다.
+                // 부팅 검증(HasAnyOfGrade)을 통과했다면 실패할 일이 없지만, 방어적으로 실패 시 이번 항목만 건너뛴다.
+                string itemId = entry.ItemId;
+                if (string.IsNullOrEmpty(itemId))
+                {
+                    if (!ItemCatalog.TryGetRandomByGrade(entry.Grade!, out itemId))
+                    {
+                        continue;
+                    }
+                }
+
                 int qty = entry.MaxQty > entry.MinQty
                     ? Random.Shared.Next(entry.MinQty, entry.MaxQty + 1)
                     : entry.MinQty;
 
-                droppedItems.Add((entry.ItemId, qty));
+                droppedItems.Add((itemId, qty));
             }
 
             return (gold, droppedItems);

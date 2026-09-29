@@ -50,18 +50,26 @@ namespace Incheol.Editor
 
                 clientItemIds.Add(clientItem.itemId);
 
-                bool isEquipment = clientItem.itemType == ItemType.Eqiupment;
-                bool isPotion = clientItem.itemType == ItemType.Potion;
-                if (!isEquipment && !isPotion)
-                {
-                    continue; // 전투 스탯/회복에 영향 없는 아이템(General 등)은 서버 정의와 맞출 필요가 없다.
-                }
-
                 if (!serverEntries.TryGetValue(clientItem.itemId, out ServerItemEntry serverEntry))
                 {
                     Debug.LogError($"[ItemDefinitionValidator] '{clientItem.itemId}'가 서버 ItemDefinitions.json에 없습니다.");
                     mismatchCount++;
                     continue;
+                }
+
+                // Grade는 모든 아이템 종류(General 포함)에 대해 등급 무작위 드롭 풀 구성 근거가 되므로 항상 비교한다.
+                string expectedGrade = clientItem.itemGrade.ToString();
+                if (serverEntry.Grade != expectedGrade)
+                {
+                    Debug.LogError($"[ItemDefinitionValidator] '{clientItem.itemId}' grade 불일치 : Client={expectedGrade}, Server={serverEntry.Grade ?? "(none)"}");
+                    mismatchCount++;
+                }
+
+                bool isEquipment = clientItem.itemType == ItemType.Eqiupment;
+                bool isPotion = clientItem.itemType == ItemType.Potion;
+                if (!isEquipment && !isPotion)
+                {
+                    continue; // 전투 스탯/회복에 영향 없는 아이템(General 등)은 그 외 필드는 서버 정의와 맞출 필요가 없다.
                 }
 
                 string expectedEquipSlot = isEquipment ? clientItem.equipSlotType.ToString() : null;
@@ -170,7 +178,7 @@ namespace Incheol.Editor
         // 시절부터 그렇게 써왔고(예: 물약이 아니면 healPercent를 안 씀), 그 스타일을 그대로 따른다.
         private static void AppendItemEntry(StringBuilder builder, ItemData item)
         {
-            builder.Append($"  \"{item.itemId}\": {{ \"name\": \"{EscapeJsonString(item.itemName)}\", \"maxStack\": {item.maxStackCount}");
+            builder.Append($"  \"{item.itemId}\": {{ \"name\": \"{EscapeJsonString(item.itemName)}\", \"maxStack\": {item.maxStackCount}, \"grade\": \"{item.itemGrade}\"");
 
             if (item.itemType == ItemType.Potion && item.healPercent > 0)
             {
@@ -221,7 +229,8 @@ namespace Incheol.Editor
                     BonusAttackPower = ExtractInt(body, "BonusAttackPower"),
                     BonusDefense = ExtractInt(body, "BonusDefense"),
                     HealPercent = ExtractInt(body, "HealPercent"),
-                    EquipSlot = ExtractString(body, "EquipSlot")
+                    EquipSlot = ExtractString(body, "EquipSlot"),
+                    Grade = ExtractString(body, "Grade")
                 };
             }
 
@@ -246,6 +255,7 @@ namespace Incheol.Editor
             public int BonusDefense;
             public int HealPercent;
             public string EquipSlot;
+            public string Grade;
         }
     }
 }

@@ -23,10 +23,10 @@
 --------------------------------
 파일: Server/MainServer/GameServer/Items/ItemDefinitions.json
 
-itemId를 키로 추가한다.
-
-예)
-"material_slime_jelly": { "name": "슬라임 젤리", "maxStack": 999 }
+이제 이 파일을 손으로 고치지 않는다. Unity에서 4번(ItemDatabaseSO 등록)을 먼저 하고,
+Tools > 아이템 정의 서버 JSON 생성 메뉴(ItemDefinitionValidator.Generate)를 실행하면
+ItemDatabaseSO 내용을 그대로 이 파일에 새로 써준다(itemGrade 포함). 손으로 고친 내용은
+다음 Generate 실행 때 사라지니 주의.
 
 주의: 이 파일에 없는 itemId를 드롭 테이블에서 참조하면 서버 부팅 자체가 막힌다(오타 방지용 검증).
 
@@ -53,6 +53,35 @@ itemId를 키로 추가한다.
 
 주의: 범위 오류(maxGold<minGold, maxQty<minQty 등)나 존재하지 않는 itemId를 참조하면
 부팅 시 자동 검증되어 서버 시작이 차단된다.
+
+
+3-1. 특정 아이템 대신 "등급 무작위" 드롭 항목 쓰기
+--------------------------------
+itemId 하나를 고정하는 대신, 그 등급(Common/Rare/Epic/Legendary)에 속한 아이템 중
+당첨될 때마다 무작위로 하나를 고르게 할 수 있다. itemId 자리에 grade를 쓴다(둘 중
+정확히 하나만 지정해야 함 - 둘 다 쓰거나 둘 다 안 쓰면 부팅 시 막힌다).
+
+예)
+"RedMushroom": {
+  "minGold": 27,
+  "maxGold": 40,
+  "items": [
+    { "grade": "Common", "minQty": 1, "maxQty": 1, "dropRate": 0.1 },
+    { "grade": "Epic", "minQty": 1, "maxQty": 1, "dropRate": 0.01 }
+  ]
+}
+
+- grade에 해당하는 아이템이 ItemDefinitions.json에 하나도 없으면(오타 포함) 부팅 시 막힌다.
+- 몬스터 등급별 권장 드롭률(참고용 가이드라인, 강제 아님):
+
+  | 몬스터 등급 | Common     | Rare      | Epic        | Legendary |
+  |------------|-----------|-----------|-------------|-----------|
+  | 일반(잡몹)  | 8~15%     | 1~3%      | 0.1~0.3%    | 0%(배제)  |
+  | 정예       | 20~30%    | 5~10%     | 1~2%        | 0.05~0.1% |
+  | 보스       | 50~70%    | 20~30%    | 5~10%       | 1~3%      |
+
+  등급이 오를수록 격차는 산술이 아니라 배수로 벌어지게 하고, Legendary는 보스에서도
+  낮게 유지해 파밍의 최종 목표로 남겨둔다.
 
 
 4. 클라이언트: ItemDatabaseSO에 같은 itemId 등록

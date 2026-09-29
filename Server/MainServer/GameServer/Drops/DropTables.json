@@ -6,8 +6,9 @@
       { "itemId": "potion_hp_small", "minQty": 1, "maxQty": 2, "dropRate": 0.35 },
       { "itemId": "mushroom_spore", "minQty": 1, "maxQty": 3, "dropRate": 0.6 },
       { "itemId": "rare_essence", "minQty": 1, "maxQty": 1, "dropRate": 0.02 },
-      { "itemId": "weapon_sword_bronze", "minQty": 1, "maxQty": 1, "dropRate": 0.06 },
-      { "itemId": "armor_leather", "minQty": 1, "maxQty": 1, "dropRate": 0.06 }
+      { "grade": "Common", "minQty": 1, "maxQty": 1, "dropRate": 0.12 },
+      { "grade": "Rare", "minQty": 1, "maxQty": 1, "dropRate": 0.02 },
+      { "grade": "Epic", "minQty": 1, "maxQty": 1, "dropRate": 0.002 }
     ]
   }
 }

@@ -5,7 +5,8 @@
     "BonusAttackPower": 7,
     "BonusDefense": 0,
     "HealPercent": 0,
-    "EquipSlot": "Weapon"
+    "EquipSlot": "Weapon",
+    "Grade": "Rare"
   },
   "test_armor_regression": {
     "Name": "회귀테스트용 방어구",
@@ -13,6 +14,16 @@
     "BonusAttackPower": 0,
     "BonusDefense": 3,
     "HealPercent": 0,
-    "EquipSlot": "Armor"
+    "EquipSlot": "Armor",
+    "Grade": "Rare"
+  },
+  "test_weapon_common": {
+    "Name": "회귀테스트용 일반 무기",
+    "MaxStack": 1,
+    "BonusAttackPower": 2,
+    "BonusDefense": 0,
+    "HealPercent": 0,
+    "EquipSlot": "Weapon",
+    "Grade": "Common"
   }
 }

@@ -19,5 +19,9 @@ namespace GameServer.Items
         // 장착 가능한 슬롯("Weapon"/"Armor"/"Helmet"/"Boots"/"Accessory", 클라이언트 ItemData.equipSlotType과 같은 이름).
         // 없으면 장비가 아니다. GameServer는 쓰지 않고, MainServer가 같은 파일을 읽어 장착 요청을 검증한다(ItemEquipSlotCatalog).
         public string? EquipSlot { get; init; }
+
+        // "Common"/"Rare"/"Epic"/"Legendary" 중 하나(클라이언트 ItemData.itemGrade와 같은 이름). DropTableEntry.Grade가
+        // 이 값으로 무작위 드롭 풀을 구성한다(ItemCatalog.TryGetRandomByGrade 참고).
+        public string? Grade { get; init; }
     }
 }
