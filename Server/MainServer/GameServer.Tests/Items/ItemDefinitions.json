@@ -1,0 +1,18 @@
+{
+  "test_weapon_regression": {
+    "Name": "회귀테스트용 무기",
+    "MaxStack": 1,
+    "BonusAttackPower": 7,
+    "BonusDefense": 0,
+    "HealPercent": 0,
+    "EquipSlot": "Weapon"
+  },
+  "test_armor_regression": {
+    "Name": "회귀테스트용 방어구",
+    "MaxStack": 1,
+    "BonusAttackPower": 0,
+    "BonusDefense": 3,
+    "HealPercent": 0,
+    "EquipSlot": "Armor"
+  }
+}

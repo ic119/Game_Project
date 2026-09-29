@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared", "Shared\Shared.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GameServer", "GameServer\GameServer.csproj", "{F22E001F-0CF9-4785-AAF6-BAD90EF64DB1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GameServer.Tests", "GameServer.Tests\GameServer.Tests.csproj", "{BFCE4D86-45B7-43CC-97AE-91CF172FED9A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -55,6 +57,18 @@ Global
 		{F22E001F-0CF9-4785-AAF6-BAD90EF64DB1}.Release|x64.Build.0 = Release|Any CPU
 		{F22E001F-0CF9-4785-AAF6-BAD90EF64DB1}.Release|x86.ActiveCfg = Release|Any CPU
 		{F22E001F-0CF9-4785-AAF6-BAD90EF64DB1}.Release|x86.Build.0 = Release|Any CPU
+		{BFCE4D86-45B7-43CC-97AE-91CF172FED9A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BFCE4D86-45B7-43CC-97AE-91CF172FED9A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BFCE4D86-45B7-43CC-97AE-91CF172FED9A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{BFCE4D86-45B7-43CC-97AE-91CF172FED9A}.Debug|x64.Build.0 = Debug|Any CPU
+		{BFCE4D86-45B7-43CC-97AE-91CF172FED9A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{BFCE4D86-45B7-43CC-97AE-91CF172FED9A}.Debug|x86.Build.0 = Debug|Any CPU
+		{BFCE4D86-45B7-43CC-97AE-91CF172FED9A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BFCE4D86-45B7-43CC-97AE-91CF172FED9A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BFCE4D86-45B7-43CC-97AE-91CF172FED9A}.Release|x64.ActiveCfg = Release|Any CPU
+		{BFCE4D86-45B7-43CC-97AE-91CF172FED9A}.Release|x64.Build.0 = Release|Any CPU
+		{BFCE4D86-45B7-43CC-97AE-91CF172FED9A}.Release|x86.ActiveCfg = Release|Any CPU
+		{BFCE4D86-45B7-43CC-97AE-91CF172FED9A}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
