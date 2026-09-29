@@ -17170,8 +17170,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerCharacterModel
   nameLabel: {fileID: 139876071836541513}
-  currentWeaponType: 1
-  defaultWeaponVisualName: OHS01_Stick
+  currentWeaponType: 0
+  defaultWeaponVisualName: 
 --- !u!114 &4702764603272719981
 MonoBehaviour:
   m_ObjectHideFlags: 0
