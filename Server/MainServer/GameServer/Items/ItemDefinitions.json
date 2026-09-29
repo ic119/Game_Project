@@ -1,5 +1,7 @@
 {
   "potion_hp_small": { "name": "체력 물약(소)", "maxStack": 99, "healPercent": 10 },
   "mushroom_spore": { "name": "버섯 포자", "maxStack": 999 },
-  "rare_essence": { "name": "희귀한 정수", "maxStack": 99 }
+  "rare_essence": { "name": "몬스터 정수 (희귀)", "maxStack": 99 },
+  "weapon_sword_bronze": { "name": "청동 검", "maxStack": 1, "bonusAttackPower": 5, "equipSlot": "Weapon" },
+  "armor_leather": { "name": "가죽 갑옷", "maxStack": 1, "bonusDefense": 3, "equipSlot": "Armor" }
 }
