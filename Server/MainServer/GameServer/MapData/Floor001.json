@@ -5,5 +5,15 @@
         "z": 51.092079162597659,
         "rotationY": 0.0
     },
-    "portals": []
+    "portals": [],
+    "chests": [
+        {
+            "id": "chest_floor001_01",
+            "x": -130.72000122070313,
+            "y": 0.8700000047683716,
+            "z": 51.092079162597659,
+            "radius": 2.5,
+            "lootTableKey": "TreasureChestBasic"
+        }
+    ]
 }

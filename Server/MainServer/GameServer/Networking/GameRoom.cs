@@ -116,6 +116,41 @@ namespace GameServer.Networking
             return false;
         }
 
+        // 이 방(맵)에서 이미 열린 상자 id 집합. 먼저 연 사람이 임자라 TryAdd 성공 여부로 선착순을 판정한다 -
+        // 서버가 재시작되기 전까지 유지되고(영속화 없음), 몬스터처럼 리스폰하지 않는다.
+        private readonly ConcurrentDictionary<string, byte> _openedChestIds = new();
+
+        // 상자를 연다. 존재하지 않는 상자/사거리 밖/이미 열린 상자면 실패(false)로 조용히 거부한다 -
+        // ClientSession.HandleChestOpenRequest가 이 경우 아무것도 보내지 않는다(ChestId 위조 등도 여기서 걸러진다).
+        public bool TryOpenChest(string chestId, long playerId, out int gold, out List<(string ItemId, int Qty)> items)
+        {
+            gold = 0;
+            items = new List<(string, int)>();
+
+            if (!MapDataCatalog.TryGet(_mapId, out MapData? mapData) || !_players.TryGetValue(playerId, out var entry))
+            {
+                return false;
+            }
+
+            MapChest? chest = mapData.Chests.Find(c => c.Id == chestId);
+            if (chest is null || !chest.IsWithinRange(entry.Info.X, entry.Info.Z))
+            {
+                return false;
+            }
+
+            // TryAdd가 원자적 선착순 판정이다 - 동시에 두 요청이 들어와도 하나만 성공한다.
+            if (!_openedChestIds.TryAdd(chestId, 0))
+            {
+                return false;
+            }
+
+            (gold, items) = DropTableCatalog.Roll(chest.LootTableKey);
+            return true;
+        }
+
+        // 방에 새로 입장/맵 이동한 플레이어에게 이미 열려 있는 상자들을 즉시 알려주기 위한 스냅샷.
+        public IEnumerable<string> GetOpenedChestIds() => _openedChestIds.Keys;
+
         // 인벤토리에서 장비를 장착/해제해 바뀐 공격력/방어력을 반영한다(Game_StatUpdateRequest). PlayerInfo가
         // class(참조 타입)라 이 메서드로 값만 바꿔주면 ApplyMonsterAttack/AttackPlayer가 다음 판정부터
         // 곧바로 새 값을 쓴다 - Game_EnterRequest 스냅샷 이후 갱신 경로가 이것뿐이므로, 호출하지 않으면 세션 내내

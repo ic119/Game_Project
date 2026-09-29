@@ -1,0 +1,9 @@
+{
+  "TestChest": {
+    "minGold": 1,
+    "maxGold": 1,
+    "items": [
+      { "grade": "Rare", "minQty": 1, "maxQty": 1, "dropRate": 1.0 }
+    ]
+  }
+}

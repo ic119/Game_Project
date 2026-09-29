@@ -10,5 +10,14 @@
       { "grade": "Rare", "minQty": 1, "maxQty": 1, "dropRate": 0.02 },
       { "grade": "Epic", "minQty": 1, "maxQty": 1, "dropRate": 0.002 }
     ]
+  },
+  "TreasureChestBasic": {
+    "minGold": 10,
+    "maxGold": 25,
+    "items": [
+      { "grade": "Common", "minQty": 1, "maxQty": 1, "dropRate": 0.7 },
+      { "grade": "Rare", "minQty": 1, "maxQty": 1, "dropRate": 0.25 },
+      { "grade": "Epic", "minQty": 1, "maxQty": 1, "dropRate": 0.03 }
+    ]
   }
 }

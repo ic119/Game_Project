@@ -289,6 +289,9 @@ namespace GameServer.Networking
                 case OpCode.Game_AttackAnimationRequest:
                     HandleAttackAnimationRequest(body);
                     return Task.CompletedTask;
+                case OpCode.Game_ChestOpenRequest:
+                    HandleChestOpenRequest(body);
+                    return Task.CompletedTask;
                 case OpCode.Game_StatUpdateRequest:
                     HandleStatUpdateRequest(body, ct);
                     return Task.CompletedTask;
@@ -388,6 +391,19 @@ namespace GameServer.Networking
 
             var ack = new S2CEnterAck { Self = info, ExistingPlayers = visiblePlayers, ExistingMonsters = visibleMonsters };
             Send(OpCode.Game_EnterAck, ack.Encode());
+
+            SendAlreadyOpenedChests(room);
+        }
+
+        // 상자는 몬스터/플레이어처럼 관심 영역(AOI)으로 걸러 보내지 않는다 - 맵에 고정된 소수뿐이라 방 전체에
+        // 이미 열린 것만 그대로 알려줘도 부담이 없다. Game_ChestOpenBroadcast를 그대로 재사용해, 실시간으로
+        // 여는 경우와 클라이언트 처리 코드가 완전히 같다(TreasureChestInteractionController 입장에서는 구분할 필요가 없다).
+        private void SendAlreadyOpenedChests(GameRoom room)
+        {
+            foreach (string chestId in room.GetOpenedChestIds())
+            {
+                Send(OpCode.Game_ChestOpenBroadcast, new S2CChestOpenBroadcast { ChestId = chestId }.Encode());
+            }
         }
 
         // 이 세션의 캐릭터가 지금 방에 있으면 그 체력/맵/위치를 돌려준다(없으면 null). 이 세션이 끊길 때와, 같은 캐릭터로
@@ -545,6 +561,8 @@ namespace GameServer.Networking
 
             var ack = new S2CEnterAck { Self = info, ExistingPlayers = visiblePlayers, ExistingMonsters = visibleMonsters };
             Send(OpCode.Game_MapChangeAck, ack.Encode());
+
+            SendAlreadyOpenedChests(nextRoom);
         }
 
         // 이동 속도 검증 - "이동 거리 예산" 방식. 예산은 초당 MoveBudgetRefillPerSecond(m)씩 차고 최대 MoveBudgetCapacity(m)까지
@@ -907,6 +925,40 @@ namespace GameServer.Networking
 
             var result = new S2CUseItemResult { ItemId = request.ItemId, Success = success };
             Send(OpCode.Game_UseItemResult, result.Encode());
+        }
+
+        // 보물상자 개봉. GameRoom.TryOpenChest가 사거리/선착순을 원자적으로 판정하므로 여기서는 결과만 보고한다 -
+        // 실패(이미 열렸음/사거리 밖/존재하지 않는 ChestId)는 조용히 무시한다(위조 시도와 정상적인 경쟁 실패를
+        // 구분할 필요가 없다).
+        private void HandleChestOpenRequest(byte[] body)
+        {
+            var request = C2SChestOpenRequest.Decode(body);
+
+            if (_playerId is not { } playerId || _room is not { } room)
+            {
+                return;
+            }
+
+            if (!room.TryOpenChest(request.ChestId, playerId, out int gold, out List<(string ItemId, int Qty)> items))
+            {
+                return;
+            }
+
+            // 골드/아이템은 개봉한 본인에게만(Game_LootBroadcast 재사용 - MonsterId는 몬스터 전용 필드라 여기선 0).
+            // 빈 손으로 열렸으면(운 나쁘게 아무것도 안 나옴) 보낼 것도 저장할 것도 없다.
+            if ((gold > 0 || items.Count > 0) && room.TryGetInfo(playerId, out PlayerInfo? player))
+            {
+                var loot = new S2CLootBroadcast { MonsterId = 0, GoldGained = gold, Items = items };
+                Send(OpCode.Game_LootBroadcast, loot.Encode());
+
+                // KillRewardSaver는 이름은 "처치" 보상이지만 실제로는 "캐릭터의 최종 level/exp + 이번 골드/아이템 증가분"을
+                // 저장하는 범용 경로라 상자 보상도 그대로 재사용한다(같은 중복 방지/재시도 보장이 필요하기 때문).
+                _killRewardSaver.Enqueue(playerId, player.Level, player.Exp, gold, items);
+            }
+
+            // 뚜껑이 열렸다는 사실은 골드/아이템 내용과 무관하게 방 전체에 알린다(빈 상자여도 시각적으로는 열려야 한다).
+            var opened = new S2CChestOpenBroadcast { ChestId = request.ChestId };
+            room.BroadcastToAll(OpCode.Game_ChestOpenBroadcast, opened.Encode());
         }
 
         private async Task<bool> TryUseItemAsync(long playerId, GameRoom room, string itemId, CancellationToken ct)

@@ -48,6 +48,11 @@ namespace Shared.Networking
         Game_AttackAnimationRequest = 0x021D,
         Game_AttackAnimationBroadcast = 0x021E,
 
+        // 보물상자 개봉. 선착순(먼저 연 사람이 임자)이라 GameRoom이 상자별로 한 번만 성공시킨다.
+        // 실제 골드/아이템 지급은 본인에게만(Game_LootBroadcast 재사용), 뚜껑이 열렸다는 사실은 방 전체에 알린다.
+        Game_ChestOpenRequest = 0x021F,
+        Game_ChestOpenBroadcast = 0x0220,
+
         // 0x03XX = Dungeon
     }
 }

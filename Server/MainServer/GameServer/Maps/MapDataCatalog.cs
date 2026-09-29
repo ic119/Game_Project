@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GameServer.Monsters;
 
 namespace GameServer.Maps
 {
@@ -59,6 +60,28 @@ namespace GameServer.Maps
                         }
                     }
 
+                    var seenChestIds = new HashSet<string>();
+                    foreach (MapChest chest in data.Chests)
+                    {
+                        if (string.IsNullOrEmpty(chest.Id))
+                        {
+                            throw new InvalidOperationException($"'{mapId}'에 id가 없는 상자가 있습니다.");
+                        }
+
+                        if (!seenChestIds.Add(chest.Id))
+                        {
+                            throw new InvalidOperationException($"'{mapId}'에 중복된 상자 id가 있습니다 : {chest.Id}");
+                        }
+
+                        // ItemCatalog -> DropTableCatalog -> MapDataCatalog 순서로 로드해야(Program.cs) 이 시점에
+                        // DropTableCatalog가 이미 준비돼 있다. 오타로 존재하지 않는 LootTableKey를 참조하면
+                        // 그 상자는 항상 빈 손으로 열리는데, 첫 플레이어가 열어보고 나서야 눈치채는 대신 여기서 막는다.
+                        if (string.IsNullOrEmpty(chest.LootTableKey) || !DropTableCatalog.HasTable(chest.LootTableKey))
+                        {
+                            throw new InvalidOperationException($"'{mapId}'의 상자 '{chest.Id}'가 참조하는 LootTableKey '{chest.LootTableKey}'가 Drops/DropTables.json에 없습니다.");
+                        }
+                    }
+
                     result[mapId] = data;
                     Console.WriteLine($"[GameServer] 맵 데이터 로드 완료 : {mapId}");
                 }
@@ -85,6 +108,36 @@ namespace GameServer.Maps
 
         // 이 맵에 배치된 포탈. 맵 이동(Game_MapChangeRequest)과 같은 맵 안 좌표 이동 포탈의 순간이동을 검증하는 기준이다.
         public List<MapPortal> Portals { get; init; } = new();
+
+        // 이 맵에 배치된 보물상자. GameRoom.TryOpenChest가 사거리/선착순 판정 기준으로 쓴다.
+        public List<MapChest> Chests { get; init; } = new();
+    }
+
+    public class MapChest
+    {
+        // 클라이언트 TreasureChestInteractionController.chestId와 정확히 일치해야 한다(맵 안에서 고유).
+        public string Id { get; init; } = string.Empty;
+
+        public float X { get; init; }
+        public float Y { get; init; }
+        public float Z { get; init; }
+
+        // 상자 콜라이더의 수평 반경(m). MapPortal.Radius와 같은 용도.
+        public float Radius { get; init; }
+
+        // Drops/DropTables.json의 키(몬스터 타입과 같은 딕셔너리를 공유한다 - DropTableCatalog.Roll 참고).
+        public string LootTableKey { get; init; } = string.Empty;
+
+        // MapPortal.IsWithinRange와 같은 이유로 여유 거리를 둔다(이동은 0.1초마다만 보고되므로).
+        private const float EntryTolerance = 1.5f;
+
+        public bool IsWithinRange(float x, float z)
+        {
+            float dx = x - X;
+            float dz = z - Z;
+            float range = Radius + EntryTolerance;
+            return dx * dx + dz * dz <= range * range;
+        }
     }
 
     public class MapPortal

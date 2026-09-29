@@ -103,6 +103,14 @@ namespace GameServer.Monsters
             Console.WriteLine($"[GameServer] 드롭 테이블 로드 완료 : {result.Count}종");
         }
 
+        // key(몬스터 타입 또는 상자 LootTableKey)에 해당하는 드롭 테이블이 정의돼 있는지. MapDataCatalog가
+        // 부팅 시 상자의 LootTableKey 오타를 잡아낼 때 쓴다.
+        public static bool HasTable(string key)
+        {
+            EnsureLoaded();
+            return _tablesByMonsterType!.ContainsKey(key);
+        }
+
         // 골드는 항상 계산되고(범위가 0~0이면 0), 아이템은 항목마다 독립적으로 DropRate를 굴려 0개 이상이
         // 동시에 나올 수 있다. 해당 MonsterType에 정의된 드롭 테이블이 없으면 골드 0 + 빈 아이템 목록을 반환한다.
         public static (int Gold, List<(string ItemId, int Qty)> Items) Roll(string monsterType)
