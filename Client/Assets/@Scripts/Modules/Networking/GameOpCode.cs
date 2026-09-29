@@ -34,6 +34,8 @@ namespace Incheol.Modules.Networking
         Game_UseItemResult = 0x0219,
         Game_PositionCorrection = 0x021A,
         Game_WorldSnapshot = 0x021B,
-        Game_MonsterLeaveView = 0x021C
+        Game_MonsterLeaveView = 0x021C,
+        Game_AttackAnimationRequest = 0x021D,
+        Game_AttackAnimationBroadcast = 0x021E
     }
 }

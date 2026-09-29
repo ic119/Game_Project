@@ -43,6 +43,11 @@ namespace Shared.Networking
         Game_WorldSnapshot = 0x021B,
         Game_MonsterLeaveView = 0x021C,
 
+        // 명중 여부/대상 유무와 무관하게 콤보 타수마다 보내는 공격 "모션" 전용 알림. 대상이 있어야만 보내는
+        // Game_AttackRequest/Game_MonsterAttackRequest와 달리 데미지/쿨다운 판정에는 쓰이지 않고 그대로 중계만 된다.
+        Game_AttackAnimationRequest = 0x021D,
+        Game_AttackAnimationBroadcast = 0x021E,
+
         // 0x03XX = Dungeon
     }
 }

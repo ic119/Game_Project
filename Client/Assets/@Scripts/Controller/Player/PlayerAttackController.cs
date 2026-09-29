@@ -95,6 +95,7 @@ namespace Incheol.Controller
             {
                 GameServerConnectManager.Instance.OnDamageReceived += HandleDamageReceived;
                 GameServerConnectManager.Instance.OnMonsterDamaged += HandleMonsterDamaged;
+                GameServerConnectManager.Instance.OnAttackAnimationReceived += HandleAttackAnimationReceived;
             }
         }
 
@@ -104,6 +105,7 @@ namespace Incheol.Controller
             {
                 GameServerConnectManager.Instance.OnDamageReceived -= HandleDamageReceived;
                 GameServerConnectManager.Instance.OnMonsterDamaged -= HandleMonsterDamaged;
+                GameServerConnectManager.Instance.OnAttackAnimationReceived -= HandleAttackAnimationReceived;
             }
         }
 
@@ -153,6 +155,7 @@ namespace Incheol.Controller
             }
 
             PlaySwingEffect();
+            BroadcastAttackAnimation();
             RequestAttack();
         }
 
@@ -170,6 +173,7 @@ namespace Incheol.Controller
             }
 
             PlaySwingEffect();
+            BroadcastAttackAnimation();
             RequestAttack();
         }
 
@@ -279,6 +283,16 @@ namespace Incheol.Controller
         }
 
         /// <summary>
+        /// PlaySwingEffect와 같은 이유로 대상 유무와 무관하게(허공 스윙 포함) 콤보 타수마다 독립적으로 호출한다 -
+        /// 근처 다른 플레이어가 내 공격 모션을 볼 수 있어야 하기 때문이다. RemoteCharacterController.PlayAttackAnimation 참고.
+        /// </summary>
+        private void BroadcastAttackAnimation()
+        {
+            WeaponType weaponType = playerCharacterModel != null ? playerCharacterModel.CurrentWeaponType : WeaponType.None;
+            GameServerConnectManager.Instance?.SendAttackAnimation(comboStage, weaponType);
+        }
+
+        /// <summary>
         /// Game_DamageBroadcast는 전원에게 오지만, 여기서는 "내가 명중시킨" 경우만 처리해 대상 위치에
         /// 임팩트 이펙트를 재생한다. 다른 플레이어의 무기 타입은 서버가 아직 전달해주지 않아(GamePlayerInfo에
         /// WeaponType이 없음) 내가 맞은 경우/남이 남을 때린 경우는 여기서 재생할 수 없다 - 알려진 한계.
@@ -326,6 +340,18 @@ namespace Incheol.Controller
             }
 
             WeaponVfxManager.Instance?.PlayImpactEffect(playerCharacterModel.CurrentWeaponType, ApplyEffectHeight(target.transform.position), target.transform.rotation, effectScale);
+        }
+
+        /// <summary>
+        /// 다른 플레이어의 공격 모션 알림(Game_AttackAnimationBroadcast)을 받아 해당 원격 캐릭터에 재생시킨다.
+        /// 본인의 공격은 로컬에서 즉시 재생하므로 이 이벤트로 오지 않는다.
+        /// </summary>
+        private void HandleAttackAnimationReceived(GameAttackAnimationBroadcastPacket packet)
+        {
+            if (RemotePlayerManager.Instance != null && RemotePlayerManager.Instance.TryGetRemotePlayer(packet.AttackerId, out RemoteCharacterController attacker))
+            {
+                attacker.PlayAttackAnimation(packet.ComboStage, (WeaponType)packet.WeaponType);
+            }
         }
 
         /// <summary>

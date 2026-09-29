@@ -90,6 +90,12 @@ namespace Incheol.Modules
         public event Action<long> OnMonsterLeftView;
         public event Action<GameChatBroadcastPacket> OnChatReceived;
         public event Action<GameDamageBroadcastPacket> OnDamageReceived;
+
+        /// <summary>
+        /// 다른 플레이어가 공격 모션을 취했을 때 발생한다(Game_AttackAnimationBroadcast). 본인의 공격은
+        /// 로컬에서 즉시 재생하므로 이 이벤트로 오지 않는다 - 원격 캐릭터 전용이다.
+        /// </summary>
+        public event Action<GameAttackAnimationBroadcastPacket> OnAttackAnimationReceived;
         public event Action<GameMonsterInfo> OnMonsterSpawned;
         public event Action<GameMonsterDamageBroadcastPacket> OnMonsterDamaged;
         public event Action<GameMonsterDieBroadcastPacket> OnMonsterDied;
@@ -422,6 +428,30 @@ namespace Incheol.Modules
         }
 
         /// <summary>
+        /// 공격 모션을 GameServer에 알린다(Game_AttackAnimationRequest). SendAttack/SendMonsterAttack과 달리
+        /// 대상 유무와 무관하게 콤보 타수마다(허공 스윙 포함) 매번 호출해야 한다 - 근처 다른 플레이어가
+        /// 내 스윙 모션 자체를 볼 수 있어야 하기 때문이다. 데미지 판정에는 전혀 쓰이지 않는 순수 연출용이다.
+        /// weaponType은 현재 장착 무기(WeaponType enum 값)를 그대로 담아 보낸다 - 서버는 해석하지 않고
+        /// 그대로 중계하며, 받는 쪽(RemoteCharacterController)이 이 값으로 무기별 애니메이션을 고른다.
+        /// </summary>
+        public void SendAttackAnimation(int comboStage, WeaponType weaponType)
+        {
+            if (!isConnected)
+            {
+                return;
+            }
+
+            var request = new GameAttackAnimationRequestPacket
+            {
+                AttackerId = localPlayerId,
+                ComboStage = comboStage,
+                WeaponType = (int)weaponType
+            };
+
+            _ = SendAsync(GameOpCode.Game_AttackAnimationRequest, request.Encode());
+        }
+
+        /// <summary>
         /// 몬스터에 대한 공격 의사를 GameServer에 보낸다(Game_MonsterAttackRequest). 플레이어 공격(SendAttack)과
         /// 달리 데미지 계산은 서버가 직접 수행한다 - 몬스터는 소유 클라이언트가 없어 로컬 Defense로 계산할
         /// 대상이 없기 때문이다. 결과는 OnMonsterDamaged(RemainingHp 포함)로 돌아온다.
@@ -686,6 +716,11 @@ namespace Incheol.Modules
                 case GameOpCode.Game_DamageBroadcast:
                     var damage = GameDamageBroadcastPacket.Decode(body);
                     pendingActions.Enqueue(() => OnDamageReceived?.Invoke(damage));
+                    break;
+
+                case GameOpCode.Game_AttackAnimationBroadcast:
+                    var attackAnimation = GameAttackAnimationBroadcastPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnAttackAnimationReceived?.Invoke(attackAnimation));
                     break;
 
                 case GameOpCode.Game_MonsterSpawnBroadcast:

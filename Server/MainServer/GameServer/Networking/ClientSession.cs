@@ -286,6 +286,9 @@ namespace GameServer.Networking
                 case OpCode.Game_MonsterAttackRequest:
                     HandleMonsterAttackRequest(body);
                     return Task.CompletedTask;
+                case OpCode.Game_AttackAnimationRequest:
+                    HandleAttackAnimationRequest(body);
+                    return Task.CompletedTask;
                 case OpCode.Game_StatUpdateRequest:
                     HandleStatUpdateRequest(body, ct);
                     return Task.CompletedTask;
@@ -713,6 +716,22 @@ namespace GameServer.Networking
             }
 
             room.ApplyPlayerAttack(playerId, request.TargetId, request.Timestamp);
+        }
+
+        // 데미지/쿨다운 판정 없이 그대로 중계만 한다. Game_AttackRequest와 같은 쿨다운(_lastAttackAtUtc)을
+        // 적용하면 안 된다 - 이 요청은 대상이 없는 허공 스윙을 포함해 콤보 타수마다 항상 오므로, 공유 쿨다운을
+        // 적용하면 실제 로컬 콤보 타이밍과 어긋난다. 순전히 연출용이라 위조돼도 다른 플레이어 화면에 잘못된
+        // 모션이 보이는 것 이상의 피해가 없다.
+        private void HandleAttackAnimationRequest(byte[] body)
+        {
+            var request = C2SAttackAnimationRequest.Decode(body);
+
+            if (_playerId is not { } playerId || request.AttackerId != playerId || _room is not { } room)
+            {
+                return;
+            }
+
+            room.BroadcastAttackAnimation(playerId, request.ComboStage, request.WeaponType);
         }
 
         // 플레이어 공격(HandleAttackRequest)과 같은 쿨다운(_lastAttackAtUtc)을 공유한다 - 그렇지 않으면

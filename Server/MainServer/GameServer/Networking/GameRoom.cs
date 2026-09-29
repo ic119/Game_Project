@@ -386,6 +386,15 @@ namespace GameServer.Networking
             }
         }
 
+        // 공격 모션 중계 전용 - 데미지/쿨다운 판정은 하지 않는다(ClientSession.HandleAttackAnimationRequest가
+        // attackerId 위조만 막고 그대로 넘긴다). attackerId 본인은 이미 로컬에서 재생했으므로 보내지 않는다.
+        // weaponType도 공격자가 보낸 값을 그대로 중계한다(서버는 해석하지 않음).
+        public void BroadcastAttackAnimation(long attackerId, int comboStage, int weaponType)
+        {
+            var broadcast = new S2CAttackAnimationBroadcast { AttackerId = attackerId, ComboStage = comboStage, WeaponType = weaponType };
+            SendToViewersOfPlayer(attackerId, OpCode.Game_AttackAnimationBroadcast, broadcast.Encode());
+        }
+
         // 회복 아이템을 써도 효과가 있는 상태인지(살아 있고 체력이 가득 차지 않음). 아이템을 차감하기 전에 확인해
         // "효과 없는 사용"으로 아이템만 사라지는 것을 막는다.
         public bool CanBeHealed(long playerId)
