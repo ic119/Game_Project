@@ -36,8 +36,9 @@ namespace Incheol.Modules
         private MonsterDatabaseSO database;
 
         #region LifeCycle
-        private void Awake()
+        protected override void Awake()
         {
+            base.Awake();
             LoadDatabase();
         }
 
