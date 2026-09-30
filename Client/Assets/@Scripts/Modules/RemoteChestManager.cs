@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Incheol.Controller.Interaction;
+using Incheol.Models.Define;
 using Incheol.Modules.Networking;
 using Incheol.Utils;
 using UnityEngine;
@@ -30,6 +31,12 @@ namespace Incheol.Modules
         // 열림 알림(OnChestOpened)이 상자 생성보다 먼저 도착할 수 있다(프리팹 로딩이 비동기). 컨트롤러는 생성된 뒤에야
         // 이벤트를 구독하므로, 열린 id를 기억해 두었다가 생성 직후 반영한다.
         private readonly HashSet<string> openedChestIds = new();
+
+        // 상자가 사라질 때 터지는 이펙트(Addressables "ChestDespawn01"). 최초 활성 목록을 받을 때 한 번 미리 불러온다.
+        private GameObject despawnEffectPrefab;
+        private bool despawnEffectRequested;
+        private const float DespawnEffectHeight = 0.4f;
+        private const float DespawnEffectLifetime = 3f;
 
         #region LifeCycle
         private void OnEnable()
@@ -62,6 +69,8 @@ namespace Incheol.Modules
         #region Method
         private void HandleActiveChestsReceived(GameActiveChestsPacket packet)
         {
+            PreloadDespawnEffect();
+
             activeChestIds.Clear();
             foreach (GameChestInfo info in packet.Chests)
             {
@@ -105,12 +114,47 @@ namespace Incheol.Modules
                 spawnedChests.Remove(chestId);
                 if (controller != null)
                 {
-                    // Destroy는 프레임 끝에야 실제로 지워지므로, 같은 프레임에 같은 id의 새 상자가 오면(후보가 하나뿐일 때 제자리 리스폰)
-                    // CollectSceneChestIds가 이 죽어가는 오브젝트를 "이미 있는 상자"로 착각해 새 상자를 건너뛴다 - id를 비워 막는다.
+                    // 연출(가라앉으며 작아짐)이 끝날 때까지 오브젝트가 남으므로, 그동안 같은 id의 새 상자가 오면(후보가 하나뿐일 때
+                    // 제자리 리스폰) CollectSceneChestIds가 이 사라지는 오브젝트를 "이미 있는 상자"로 착각해 새 상자를 건너뛴다 -
+                    // id를 비워 막는다.
                     controller.Initialize(string.Empty);
-                    Destroy(controller.gameObject);
+
+                    GameObject chestObject = controller.gameObject;
+                    SpawnDespawnEffect(chestObject.transform.position);
+                    controller.PlayDespawn(() => Destroy(chestObject));
                 }
             }
+        }
+
+        // 제거 연출용 이펙트를 최초 한 번 미리 불러 둔다(제거 순간에 로딩을 기다리면 이펙트가 늦게 나온다).
+        private void PreloadDespawnEffect()
+        {
+            if (despawnEffectRequested || AddressableAssetManager.Instance == null)
+            {
+                return;
+            }
+
+            despawnEffectRequested = true;
+            AddressableAssetManager.Instance.LoadPrefabAddress<GameObject>(AddressableAssetKey.ChestDespawn01.ToString(), prefab =>
+            {
+                if (this != null)
+                {
+                    despawnEffectPrefab = prefab;
+                }
+            });
+        }
+
+        // 이펙트가 아직 로드되지 않았다면 이번 연출만 이펙트 없이(상자가 가라앉는 것만) 진행한다.
+        private void SpawnDespawnEffect(Vector3 chestPosition)
+        {
+            if (despawnEffectPrefab == null || AddressableAssetManager.Instance == null)
+            {
+                return;
+            }
+
+            GameObject effect = AddressableAssetManager.Instance.InstantiatePrefab(despawnEffectPrefab, transform);
+            effect.transform.position = chestPosition + Vector3.up * DespawnEffectHeight;
+            Destroy(effect, DespawnEffectLifetime);
         }
 
         // 씬에 이미 있는 상자(맵 프리팹의 고정 상자)의 id. 이 id는 다시 만들지 않는다.

@@ -34,6 +34,16 @@ namespace Incheol.Controller.Interaction
         [Tooltip("회전 트윈 이징")]
         [SerializeField] private Ease openEase = Ease.OutBack;
 
+        [Header("사라지는 연출 (리스폰으로 제거될 때)")]
+        [Tooltip("상자가 땅으로 가라앉으며 작아지는 데 걸리는 시간(초)")]
+        [SerializeField, Min(0.05f)] private float despawnDuration = 0.6f;
+
+        [Tooltip("사라지는 동안 아래로 가라앉는 거리(m)")]
+        [SerializeField, Min(0f)] private float despawnSinkDistance = 0.4f;
+
+        [Tooltip("크기가 줄어드는 트윈 이징(InBack은 살짝 부풀었다가 줄어든다)")]
+        [SerializeField] private Ease despawnEase = Ease.InBack;
+
         private UI_InteractionPrompt interactionPrompt;
         private bool isOpen;
 
@@ -60,6 +70,33 @@ namespace Incheol.Controller.Interaction
         public void ApplyOpenedState()
         {
             OpenLid();
+        }
+
+        /// <summary>
+        /// 리스폰으로 이 상자가 제거될 때의 연출: 상호작용을 즉시 끄고, 땅으로 가라앉으며 작아진 뒤 onComplete를 부른다
+        /// (호출측이 그때 오브젝트를 파괴한다). 트윈은 이 GameObject에 링크되어 있어서, 연출 도중 맵 전환 등으로
+        /// 오브젝트가 먼저 파괴되어도 안전하게 정리된다(그 경우 onComplete는 불리지 않는다).
+        /// </summary>
+        public void PlayDespawn(System.Action onComplete)
+        {
+            interactionPrompt.Hide();
+            interactionPrompt.enabled = false; // 사라지는 도중 근접/키 입력으로 다시 개봉을 요청하지 않게 한다.
+
+            if (TryGetComponent(out Collider triggerCollider))
+            {
+                triggerCollider.enabled = false;
+            }
+
+            if (chestLid != null)
+            {
+                chestLid.DOKill(); // 뚜껑이 아직 열리는 중이었다면 멈춘다.
+            }
+
+            transform.DOKill();
+            Sequence sequence = DOTween.Sequence().SetLink(gameObject);
+            sequence.Join(transform.DOScale(Vector3.zero, despawnDuration).SetEase(despawnEase));
+            sequence.Join(transform.DOMoveY(transform.position.y - despawnSinkDistance, despawnDuration).SetEase(Ease.InQuad));
+            sequence.OnComplete(() => onComplete?.Invoke());
         }
 
         private void OnEnable()

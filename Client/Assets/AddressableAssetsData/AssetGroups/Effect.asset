@@ -50,6 +50,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bf1566b88f75587459ebbfaa4aa9ceda
+    m_Address: ChestDespawn01
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: cd221d5f145a2254797664c5758a2f31
     m_Address: SpearAttack01
     m_ReadOnly: 0
