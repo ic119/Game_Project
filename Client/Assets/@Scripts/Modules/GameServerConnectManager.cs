@@ -103,6 +103,12 @@ namespace Incheol.Modules
         /// 가진 TreasureChestInteractionController가 알아서 자기 것인지 판단한다.
         /// </summary>
         public event Action<GameChestOpenBroadcastPacket> OnChestOpened;
+
+        /// <summary>
+        /// 방에 입장/맵 이동한 직후 서버가 알려주는 "지금 서 있는 상자 목록"(Game_ActiveChestsNotify). 고정 상자와
+        /// 후보에서 뽑힌 상자가 함께 온다. 이미 열린 상자를 알리는 OnChestOpened보다 먼저 발생한다.
+        /// </summary>
+        public event Action<GameActiveChestsPacket> OnActiveChestsReceived;
         public event Action<GameMonsterInfo> OnMonsterSpawned;
         public event Action<GameMonsterDamageBroadcastPacket> OnMonsterDamaged;
         public event Action<GameMonsterDieBroadcastPacket> OnMonsterDied;
@@ -749,6 +755,11 @@ namespace Incheol.Modules
                 case GameOpCode.Game_ChestOpenBroadcast:
                     var chestOpened = GameChestOpenBroadcastPacket.Decode(body);
                     pendingActions.Enqueue(() => OnChestOpened?.Invoke(chestOpened));
+                    break;
+
+                case GameOpCode.Game_ActiveChestsNotify:
+                    var activeChests = GameActiveChestsPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnActiveChestsReceived?.Invoke(activeChests));
                     break;
 
                 case GameOpCode.Game_MonsterSpawnBroadcast:
