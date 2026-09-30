@@ -57,6 +57,11 @@ namespace Shared.Networking
         // 알린다. Game_EnterAck/Game_MapChangeAck 직후, 이미 열린 상자를 따라잡는 Game_ChestOpenBroadcast보다 먼저 온다.
         Game_ActiveChestsNotify = 0x0221,
 
+        // 상자 리스폰. 열린 상자가 잠시 뒤 사라지고(Despawn), 같은 등급의 다른 후보 지점에 새 상자가 생긴다(Spawn).
+        // 둘 다 방 전체에 보낸다(Game_ChestOpenBroadcast와 같은 방식). 방에 새로 들어온 사람은 Game_ActiveChestsNotify로 따라잡는다.
+        Game_ChestSpawnBroadcast = 0x0222,
+        Game_ChestDespawnBroadcast = 0x0223,
+
         // 0x03XX = Dungeon
     }
 }

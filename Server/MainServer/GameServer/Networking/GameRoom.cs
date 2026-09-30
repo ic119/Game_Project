@@ -60,28 +60,18 @@ namespace GameServer.Networking
                 }
             }
 
-            _activeChests = BuildActiveChests(mapId);
+            MapDataCatalog.TryGet(mapId, out MapData? mapData);
+            _chests = new RoomChestState(mapData, Random.Shared, BroadcastToAll, _serverLifetimeCt);
 
             _ = RunTickLoopAsync(_serverLifetimeCt);
         }
 
-        // 이 방에 실제로 서 있는 상자 = 고정 상자(MapData.Chests) + 후보 중 방 생성 시 뽑힌 상자. 방이 살아 있는 동안
-        // 바뀌지 않는다(리스폰은 아직 없다). TryOpenChest가 이 목록으로 존재/사거리를 판정한다.
-        private readonly List<MapChest> _activeChests;
+        // 이 방의 상자 상태(서 있는 상자/열린 상자/제거·리스폰 타이머). 고정 상자 + 후보 중 방 생성 시 뽑힌 상자로 시작하고,
+        // 후보 상자는 열린 뒤 제거되고 다른 후보에 다시 생긴다(RoomChestState 주석 참고).
+        private readonly RoomChestState _chests;
 
-        public IReadOnlyList<MapChest> ActiveChests => _activeChests;
-
-        private static List<MapChest> BuildActiveChests(string mapId)
-        {
-            if (!MapDataCatalog.TryGet(mapId, out MapData? mapData))
-            {
-                return new List<MapChest>();
-            }
-
-            var active = new List<MapChest>(mapData.Chests);
-            active.AddRange(ChestSpawnSelector.Select(mapData.ChestCandidates, mapData.ChestSpawnCounts, Random.Shared));
-            return active;
-        }
+        // 방에 새로 입장/맵 이동한 세션에게 상자 상태(서 있는 목록 -> 이미 열린 것)를 알린다.
+        public void SendChestState(ClientSession session) => _chests.SendState(session.Send);
 
         // 직전 틱 이후 위치가 바뀐 플레이어 id. 이동 요청은 위치만 갱신하고 여기에 표시하며, 실제 전송은 다음 틱의
         // 스냅샷(S2CWorldSnapshot)에 모아서 한다(RunTickLoopAsync). 값은 쓰지 않는다(ConcurrentDictionary를 집합으로 사용).
@@ -136,41 +126,23 @@ namespace GameServer.Networking
             return false;
         }
 
-        // 이 방(맵)에서 이미 열린 상자 id 집합. 먼저 연 사람이 임자라 TryAdd 성공 여부로 선착순을 판정한다 -
-        // 서버가 재시작되기 전까지 유지되고(영속화 없음), 몬스터처럼 리스폰하지 않는다.
-        private readonly ConcurrentDictionary<string, byte> _openedChestIds = new();
-
         // 상자를 연다. 존재하지 않는 상자/사거리 밖/이미 열린 상자면 실패(false)로 조용히 거부한다 -
-        // ClientSession.HandleChestOpenRequest가 이 경우 아무것도 보내지 않는다(ChestId 위조 등도 여기서 걸러진다).
+        // ClientSession.HandleChestOpenRequest가 이 경우 아무것도 보내지 않는다(ChestId 위조, 지금 서 있지 않은 후보의 id 등도
+        // 여기서 걸러진다). 선착순 판정은 RoomChestState의 잠금 안에서 원자적으로 이뤄진다.
         public bool TryOpenChest(string chestId, long playerId, out int gold, out List<(string ItemId, int Qty)> items)
         {
             gold = 0;
             items = new List<(string, int)>();
 
-            if (!_players.TryGetValue(playerId, out var entry))
+            if (!_players.TryGetValue(playerId, out var entry)
+                || !_chests.TryOpen(chestId, entry.Info.X, entry.Info.Z, out MapChest? chest))
             {
                 return false;
             }
 
-            // 뽑히지 않은 후보의 id를 위조해 보내도 여기서 걸러진다(ActiveChests에 없으므로).
-            MapChest? chest = _activeChests.Find(c => c.Id == chestId);
-            if (chest is null || !chest.IsWithinRange(entry.Info.X, entry.Info.Z))
-            {
-                return false;
-            }
-
-            // TryAdd가 원자적 선착순 판정이다 - 동시에 두 요청이 들어와도 하나만 성공한다.
-            if (!_openedChestIds.TryAdd(chestId, 0))
-            {
-                return false;
-            }
-
-            (gold, items) = DropTableCatalog.Roll(chest.LootTableKey);
+            (gold, items) = DropTableCatalog.Roll(chest!.LootTableKey);
             return true;
         }
-
-        // 방에 새로 입장/맵 이동한 플레이어에게 이미 열려 있는 상자들을 즉시 알려주기 위한 스냅샷.
-        public IEnumerable<string> GetOpenedChestIds() => _openedChestIds.Keys;
 
         // 인벤토리에서 장비를 장착/해제해 바뀐 공격력/방어력을 반영한다(Game_StatUpdateRequest). PlayerInfo가
         // class(참조 타입)라 이 메서드로 값만 바꿔주면 ApplyMonsterAttack/AttackPlayer가 다음 판정부터

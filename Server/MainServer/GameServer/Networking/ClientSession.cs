@@ -395,36 +395,11 @@ namespace GameServer.Networking
             SendChestState(room);
         }
 
-        // 상자는 몬스터/플레이어처럼 관심 영역(AOI)으로 걸러 보내지 않는다 - 맵에 고정된 소수뿐이라 방 전체에
-        // 이미 열린 것만 그대로 알려줘도 부담이 없다. Game_ChestOpenBroadcast를 그대로 재사용해, 실시간으로
+        // 상자는 몬스터/플레이어처럼 관심 영역(AOI)으로 걸러 보내지 않는다 - 맵에 소수뿐이라 방 전체 상태를 그대로 알려줘도
+        // 부담이 없다. 입장/맵 이동 직후 서 있는 상자 목록 -> 이미 열린 상자 순으로 보낸다(GameRoom.SendChestState). 이후의 변화
+        // (열림/제거/리스폰)는 방 전체 브로드캐스트로 온다. 이미 열린 상자는 Game_ChestOpenBroadcast를 그대로 재사용해, 실시간으로
         // 여는 경우와 클라이언트 처리 코드가 완전히 같다(TreasureChestInteractionController 입장에서는 구분할 필요가 없다).
-        // 입장/맵 이동 직후 상자 상태를 순서대로 알려준다 - 어떤 상자가 서 있는지(활성 목록)가 먼저, 그중 이미 열린 것이 그다음.
-        // 연결이 순서를 보장하므로 클라이언트는 열림 알림을 받는 시점에 대상 상자를 이미 알고 있다.
-        private void SendChestState(GameRoom room)
-        {
-            var activeChests = new S2CActiveChests
-            {
-                Chests = room.ActiveChests.Select(c => new ActiveChestInfo
-                {
-                    Id = c.Id,
-                    X = c.X,
-                    Y = c.Y,
-                    Z = c.Z,
-                    LootTableKey = c.LootTableKey
-                }).ToList()
-            };
-            Send(OpCode.Game_ActiveChestsNotify, activeChests.Encode());
-
-            SendAlreadyOpenedChests(room);
-        }
-
-        private void SendAlreadyOpenedChests(GameRoom room)
-        {
-            foreach (string chestId in room.GetOpenedChestIds())
-            {
-                Send(OpCode.Game_ChestOpenBroadcast, new S2CChestOpenBroadcast { ChestId = chestId }.Encode());
-            }
-        }
+        private void SendChestState(GameRoom room) => room.SendChestState(this);
 
         // 이 세션의 캐릭터가 지금 방에 있으면 그 체력/맵/위치를 돌려준다(없으면 null). 이 세션이 끊길 때와, 같은 캐릭터로
         // 새로 접속한 세션이 이 세션을 밀어낼 때(다른 스레드) 호출된다.

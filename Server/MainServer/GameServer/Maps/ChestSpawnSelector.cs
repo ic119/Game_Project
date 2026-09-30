@@ -25,5 +25,24 @@ namespace GameServer.Maps
 
             return selected;
         }
+
+        // 리스폰용: 같은 LootTableKey 후보 중 지금 서 있지 않은 것 하나를 뽑는다(등급별 개수가 유지된다).
+        // preferNotId(방금 열린 자리)는 다른 빈 후보가 있으면 피하고, 그것뿐이면 그 자리를 그대로 쓴다.
+        // 빈 후보가 하나도 없으면 null.
+        public static MapChest? PickReplacement(IReadOnlyList<MapChest> candidates, IReadOnlySet<string> activeIds, string lootTableKey, string? preferNotId, Random random)
+        {
+            List<MapChest> free = candidates
+                .Where(c => c.LootTableKey == lootTableKey && !activeIds.Contains(c.Id))
+                .ToList();
+
+            if (free.Count == 0)
+            {
+                return null;
+            }
+
+            List<MapChest> preferred = free.Where(c => c.Id != preferNotId).ToList();
+            List<MapChest> pool = preferred.Count > 0 ? preferred : free;
+            return pool[random.Next(pool.Count)];
+        }
     }
 }

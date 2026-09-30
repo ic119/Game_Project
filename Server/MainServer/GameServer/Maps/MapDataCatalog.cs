@@ -113,6 +113,15 @@ namespace GameServer.Maps
                         {
                             throw new InvalidOperationException($"'{mapId}'의 LootTableKey '{spawnCount.LootTableKey}' 뽑을 개수({spawnCount.Count})가 0~후보 수({available}) 범위를 벗어났습니다.");
                         }
+
+                        // 리스폰을 켠 등급만 시간을 검사한다(0이면 리스폰 없음). 잔존 시간이 1초 미만이면 개봉 브로드캐스트보다
+                        // 제거 브로드캐스트가 먼저 나가 클라이언트에 "열림" 기록이 남을 수 있어 막는다.
+                        if (spawnCount.RespawnSeconds < 0f
+                            || (spawnCount.RespawnSeconds > 0f
+                                && (spawnCount.DespawnDelaySeconds < 1f || spawnCount.DespawnDelaySeconds > spawnCount.RespawnSeconds)))
+                        {
+                            throw new InvalidOperationException($"'{mapId}'의 LootTableKey '{spawnCount.LootTableKey}' 리스폰 시간이 올바르지 않습니다(RespawnSeconds={spawnCount.RespawnSeconds}, DespawnDelaySeconds={spawnCount.DespawnDelaySeconds} - 리스폰을 켜려면 1 <= 잔존 <= 리스폰이어야 합니다).");
+                        }
                     }
 
                     result[mapId] = data;
@@ -157,6 +166,12 @@ namespace GameServer.Maps
     {
         public string LootTableKey { get; init; } = string.Empty;
         public int Count { get; init; }
+
+        // 이 등급의 상자를 연 뒤 새 상자가 다른 후보 지점에 다시 생기기까지의 시간(초). 0이면 리스폰하지 않는다.
+        public float RespawnSeconds { get; init; }
+
+        // 연 상자가 열린 채로 남아 있다가 사라지기까지의 시간(초). RespawnSeconds보다 클 수 없다.
+        public float DespawnDelaySeconds { get; init; }
     }
 
     public class MapChest

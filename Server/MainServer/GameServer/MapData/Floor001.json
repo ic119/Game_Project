@@ -84,15 +84,21 @@
     "chestSpawnCounts": [
         {
             "lootTableKey": "TreasureChestBasic",
-            "count": 3
+            "count": 3,
+            "respawnSeconds": 180.0,
+            "despawnDelaySeconds": 20.0
         },
         {
             "lootTableKey": "TreasureChestHidden",
-            "count": 1
+            "count": 1,
+            "respawnSeconds": 420.0,
+            "despawnDelaySeconds": 20.0
         },
         {
             "lootTableKey": "TreasureChestRare",
-            "count": 1
+            "count": 1,
+            "respawnSeconds": 900.0,
+            "despawnDelaySeconds": 20.0
         }
     ]
 }
