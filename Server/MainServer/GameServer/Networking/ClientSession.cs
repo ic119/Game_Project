@@ -911,6 +911,10 @@ namespace GameServer.Networking
         private const double MinUseItemIntervalMs = 300;
         private DateTime _lastUseItemAtUtc = DateTime.MinValue;
 
+        // 물약 재사용 대기시간(모든 물약이 공유). 위 최소 간격은 요청 폭주(MainServer 왕복)를 막는 용도이고, 이쪽은
+        // 회복 속도 상한(ItemDefinition.UseCooldownSeconds)을 강제한다. 세션마다 하나라 재접속하면 초기화된다.
+        private readonly PotionCooldown _potionCooldown = new();
+
         // 소비 아이템(현재는 회복 물약) 사용. 예전에는 클라이언트가 로컬에서 회복하고 MainServer에 차감만 따로 요청해
         // 서버 HP에는 회복이 반영되지 않았다. 이제 서버가 효과 여부를 확인 -> MainServer에서 1개 차감 -> 회복 순서로
         // 처리하고, 결과를 요청자에게(Game_UseItemResult), 바뀐 체력을 방 전체에(Game_PlayerHpBroadcast) 알린다.
@@ -979,8 +983,17 @@ namespace GameServer.Networking
                 return false;
             }
 
+            // 재사용 대기시간을 소모 전에 먼저 건다(예약) - MainServer 왕복(await) 중에 들어오는 같은 세션의 다음 요청도 막힌다.
+            // 대기 중이면 아이템을 소모하지 않고 거부한다.
+            if (!_potionCooldown.TryReserve(definition.UseCooldownSeconds, out PotionCooldown.Reservation reservation, out _))
+            {
+                return false;
+            }
+
             if (!await _mainServerApi.ConsumeItemAsync(playerId, itemId, ct))
             {
+                // 아이템이 소모되지 않았으니 이번 시도가 대기시간을 잡아먹지 않게 되돌린다(미보유/저장 실패 등).
+                _potionCooldown.Cancel(reservation);
                 return false;
             }
 
