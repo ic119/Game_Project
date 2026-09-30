@@ -44,6 +44,7 @@ public class EquipmentController : MonoBehaviour
     private readonly Dictionary<EquipmentSlotType, GameObject> activeVisualBySlot = new Dictionary<EquipmentSlotType, GameObject>();
 
     private bool isIndexed;
+    private CharacterCustomModel customModel;
 
     /// <summary>
     /// 인덱싱을 Awake가 아니라 최초 Equip/Unequip 호출 시점에 지연 수행한다. 같은 GameObject의 Awake 호출 순서는
@@ -155,11 +156,31 @@ public class EquipmentController : MonoBehaviour
             }
 
             activeVisualBySlot[slot] = target;
+            SetHelmetHidesHair(slot, true);
             return true;
         }
 
         DebugLogManager.GenerateErrorMessage<EquipmentController>($"슬롯 '{slot}'에서 '{visualName}' 이름의 메시를 찾지 못했습니다.");
         return false;
+    }
+
+    /// <summary>
+    /// 투구를 쓰면 헤어가 투구를 뚫고 나오므로 헤어를 숨기고, 벗으면 CharacterCustomModel이 기억하고 있는
+    /// 선택 헤어를 다시 보여준다. 헤어 켜짐 상태는 CharacterCustomModel이 소유하므로 여기서 직접 SetActive하지 않는다.
+    /// </summary>
+    private void SetHelmetHidesHair(EquipmentSlotType slot, bool hidden)
+    {
+        if (slot != EquipmentSlotType.Helmet)
+        {
+            return;
+        }
+
+        if (customModel == null)
+        {
+            customModel = GetComponentInChildren<CharacterCustomModel>(true);
+        }
+
+        customModel?.SetHairHidden(hidden);
     }
 
     /// <summary>
@@ -175,6 +196,7 @@ public class EquipmentController : MonoBehaviour
         }
 
         activeVisualBySlot.Remove(slot);
+        SetHelmetHidesHair(slot, false);
 
         // 갑옷은 다른 슬롯과 달리 "빈 상태"가 없다 - 그냥 끄면 몸통이 아예 안 보이므로 기본 몸 메시로 되돌린다.
         if (slot == EquipmentSlotType.Armor && !string.IsNullOrEmpty(defaultBodyVisualName)

@@ -20,6 +20,13 @@ public class CharacterCustomModel : MonoBehaviour
     public int CurrentHairIndex { get; private set; } = 0;
     public int CurrentEyeIndex { get; private set; } = 0;
     public int CurrentMouthIndex { get; private set; } = 0;
+
+    /// <summary>
+    /// true면 선택된 헤어를 화면에 켜지 않는다(투구를 쓰면 헤어가 투구를 뚫고 나오기 때문 - EquipmentController가 설정한다).
+    /// 선택한 헤어 인덱스(CurrentHairIndex)는 그대로 기억하므로, 숨김을 풀면 원래 헤어가 다시 켜진다.
+    /// 켜짐 상태를 이 클래스가 계속 소유하므로 Awake/ApplyCustomization/SetHair가 나중에 호출돼도 숨김이 풀리지 않는다.
+    /// </summary>
+    public bool IsHairHidden { get; private set; }
     #endregion
 
     #region LifeCycle
@@ -48,9 +55,23 @@ public class CharacterCustomModel : MonoBehaviour
         {
             if (hairCustomList[i] != null)
             {
-                hairCustomList[i].SetActive(i == index);
+                hairCustomList[i].SetActive(!IsHairHidden && i == index);
             }
         }
+    }
+
+    /// <summary>
+    /// 헤어 숨김 상태를 바꾸고 현재 선택된 헤어를 즉시 다시 반영한다.
+    /// </summary>
+    public void SetHairHidden(bool hidden)
+    {
+        if (IsHairHidden == hidden)
+        {
+            return;
+        }
+
+        IsHairHidden = hidden;
+        SetHair(CurrentHairIndex);
     }
 
     public void SetEye(int index)
