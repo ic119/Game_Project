@@ -1,5 +1,5 @@
 {
-  "potion_hp_small": { "name": "체력 물약(소)", "maxStack": 99, "grade": "Common", "healPercent": 10 },
+  "potion_hp_small": { "name": "체력 물약(소)", "maxStack": 99, "grade": "Common", "healPercent": 10, "useCooldownSeconds": 2 },
   "mushroom_spore": { "name": "버섯 포자", "maxStack": 999, "grade": "Common" },
   "rare_essence": { "name": "몬스터 정수 (희귀)", "maxStack": 99, "grade": "Rare" },
   "weapon_sword_bronze": { "name": "청동 검", "maxStack": 1, "grade": "Common", "bonusAttackPower": 5, "equipSlot": "Weapon" },
@@ -74,6 +74,6 @@
   "helmet_hat12": { "name": "비전의 모자", "maxStack": 1, "grade": "Epic", "bonusDefense": 11, "equipSlot": "Helmet" },
   "helmet_hat13": { "name": "현자의 모자", "maxStack": 1, "grade": "Epic", "bonusDefense": 13, "equipSlot": "Helmet" },
   "helmet_hat14": { "name": "전설의 모자", "maxStack": 1, "grade": "Legendary", "bonusDefense": 17, "equipSlot": "Helmet" },
-  "potion_hp_medium": { "name": "체력 물약(중)", "maxStack": 99, "grade": "Rare", "healPercent": 30 },
-  "potion_hp_large": { "name": "체력 물약(대)", "maxStack": 99, "grade": "Epic", "healPercent": 60 }
+  "potion_hp_medium": { "name": "체력 물약(중)", "maxStack": 99, "grade": "Rare", "healPercent": 30, "useCooldownSeconds": 6 },
+  "potion_hp_large": { "name": "체력 물약(대)", "maxStack": 99, "grade": "Epic", "healPercent": 60, "useCooldownSeconds": 12 }
 }

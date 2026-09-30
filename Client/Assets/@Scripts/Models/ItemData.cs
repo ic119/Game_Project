@@ -54,4 +54,11 @@ public class ItemData
         "실제 회복은 GameServer가 서버 ItemDefinitions.json의 healPercent로 계산하므로 두 값을 반드시 같게 맞춘다 - " +
         "클라이언트 값은 사용 가능 여부(0이면 회복 아이템 아님) 판단에만 쓴다. 예) potion_hp_small=10.")]
     public int healPercent = 0;
+
+    [Min(0f)]
+    [Tooltip("itemType이 Potion일 때만 의미가 있다. 이 물약을 쓴 뒤 다음 물약(종류 무관 - 모든 물약이 하나의 대기시간을 공유한다)을 " +
+        "쓸 수 있기까지의 시간(초). 회복 속도 상한 = healPercent / useCooldownSeconds(권장 5%/초)이므로 회복량이 큰 물약일수록 길게 잡는다. " +
+        "실제 판정은 GameServer가 서버 ItemDefinitions.json의 useCooldownSeconds로 하므로 두 값을 반드시 같게 맞춘다(Generate로 자동 동기화). " +
+        "0이면 대기시간 없음(서버 최소 사용 간격만 적용). 예) potion_hp_small=2, potion_hp_medium=6, potion_hp_large=12.")]
+    public float useCooldownSeconds = 0f;
 }

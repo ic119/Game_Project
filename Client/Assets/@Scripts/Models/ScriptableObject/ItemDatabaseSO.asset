@@ -27,6 +27,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 0
     healPercent: 10
+    useCooldownSeconds: 2
   - itemId: mushroom_spore
     itemName: "\uBC84\uC12F \uD3EC\uC790"
     description: "\uBC84\uC12F\uD0C0\uC785\uC758 \uBAAC\uC2A4\uD130\uAC00 \uD769\uBFCC\uB9B0
@@ -41,6 +42,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: rare_essence
     itemName: "\uBAAC\uC2A4\uD130 \uC815\uC218 (\uD76C\uADC0)"
     description: "\uBAAC\uC2A4\uD130\uC758 \uAE30\uC6B4\uC774 \uB2F4\uAE34 \uC815\uC218"
@@ -54,6 +56,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_sword_bronze
     itemName: "\uCCAD\uB3D9 \uAC80"
     description: "\uAC00\uC7A5 \uAE30\uCD08\uC801\uC778 \uD55C\uC190\uAC80. \uACF5\uACA9\uB825\uC744
@@ -68,6 +71,7 @@ MonoBehaviour:
     bonusAttackPower: 5
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: armor_leather
     itemName: "\uAC00\uC8FD \uAC11\uC637"
     description: "\uAC00\uBCBC\uC6B4 \uAC00\uC8FD\uC73C\uB85C \uB9CC\uB4E0 \uAC11\uC637.
@@ -82,6 +86,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 3
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_ohs01_stick
     itemName: "\uB0A1\uC740 \uC9C0\uD321\uC774"
     description: "\uD6C8\uB828\uC6A9\uC73C\uB85C \uC4F0\uC774\uB294 \uB0A1\uC740
@@ -96,6 +101,7 @@ MonoBehaviour:
     bonusAttackPower: 1
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_ohs02_niddle
     itemName: "\uB179\uC2A8 \uC1E0\uAF2C\uCC59\uC774"
     description: "\uD3C9\uBC94\uD55C \uC1E0\uAF2C\uCC59\uC774."
@@ -109,6 +115,7 @@ MonoBehaviour:
     bonusAttackPower: 3
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_ohs04_sword
     itemName: "\uCCA0\uAC80"
     description: "\uD3C9\uBC94\uD55C \uCCA0\uAC80."
@@ -122,6 +129,7 @@ MonoBehaviour:
     bonusAttackPower: 6
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_ohs05_sword
     itemName: "\uC7A5\uAC80"
     description: "\uC81C\uBC95 \uC4F8\uB9CC\uD55C \uC7A5\uAC80."
@@ -135,6 +143,7 @@ MonoBehaviour:
     bonusAttackPower: 9
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_ohs06_sword
     itemName: "\uAE30\uC0AC\uC758 \uAC80"
     description: "\uAE30\uC0AC\uB2E8\uC774 \uC9C0\uAE09\uD558\uB294 \uAC80."
@@ -148,6 +157,7 @@ MonoBehaviour:
     bonusAttackPower: 10
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_ohs07_sword
     itemName: "\uC740\uBE5B \uAC80"
     description: "\uC740\uC740\uD55C \uBE5B\uC744 \uB0B4\uB294 \uAC80."
@@ -161,6 +171,7 @@ MonoBehaviour:
     bonusAttackPower: 11
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_ohs08_sword
     itemName: "\uBE44\uC804\uC758 \uAC80"
     description: "\uBE44\uC804 \uB9C8\uB825\uC774 \uAE43\uB4E0 \uAC80."
@@ -174,6 +185,7 @@ MonoBehaviour:
     bonusAttackPower: 15
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_ohs09_sword
     itemName: "\uC6A9\uC0AC\uC758 \uAC80"
     description: "\uC6A9\uC0AC\uAC00 \uC0AC\uC6A9\uD588\uB2E4\uACE0 \uC804\uD574\uC9C0\uB294
@@ -188,6 +200,7 @@ MonoBehaviour:
     bonusAttackPower: 17
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_ohs12_sword
     itemName: "\uACB0\uACC4\uC758 \uAC80"
     description: "\uACB0\uACC4\uC758 \uD798\uC774 \uAE43\uB4E0 \uAC80."
@@ -201,6 +214,7 @@ MonoBehaviour:
     bonusAttackPower: 18
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_ohs15_sword
     itemName: "\uACE0\uB300\uC758 \uAC80"
     description: "\uACE0\uB300 \uBB38\uBA85\uC774 \uB0A8\uAE34 \uAC80."
@@ -214,6 +228,7 @@ MonoBehaviour:
     bonusAttackPower: 24
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_ohs16_sword
     itemName: "\uC804\uC124\uC758 \uAC80"
     description: "\uC804\uC124\uB85C\uB9CC \uC804\uD574\uC9C0\uB358 \uAC80."
@@ -227,6 +242,7 @@ MonoBehaviour:
     bonusAttackPower: 26
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_ohs10_axe
     itemName: "\uB3CC\uB3C4\uB07C"
     description: "\uD22C\uBC15\uD558\uAC8C \uB2E4\uB4EC\uC740 \uB3CC\uB3C4\uB07C."
@@ -240,6 +256,7 @@ MonoBehaviour:
     bonusAttackPower: 5
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_ohs13_axe
     itemName: "\uC804\uD22C \uB3C4\uB07C"
     description: "\uC804\uC7A5\uC5D0\uC11C \uC4F0\uC774\uB294 \uB3C4\uB07C."
@@ -253,6 +270,7 @@ MonoBehaviour:
     bonusAttackPower: 10
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_ohs11_hammer
     itemName: "\uB098\uBB34 \uB9DD\uCE58"
     description: "\uBB35\uC9C1\uD55C \uB098\uBB34 \uB9DD\uCE58."
@@ -266,6 +284,7 @@ MonoBehaviour:
     bonusAttackPower: 5
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_ohs14_hammer
     itemName: "\uC804\uC7C1 \uB9DD\uCE58"
     description: "\uC804\uC7C1\uD130\uC5D0\uC11C \uC4F0\uC774\uB294 \uB9DD\uCE58."
@@ -279,6 +298,7 @@ MonoBehaviour:
     bonusAttackPower: 11
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_ths01_sword
     itemName: "\uB300\uAC80"
     description: "\uB450 \uC190\uC73C\uB85C \uD718\uB450\uB974\uB294 \uD070 \uAC80."
@@ -292,6 +312,7 @@ MonoBehaviour:
     bonusAttackPower: 8
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_ths02_sword
     itemName: "\uAC70\uB300\uD55C \uAC80"
     description: "\uAC70\uB300\uD558\uACE0 \uBB35\uC9C1\uD55C \uAC80."
@@ -305,6 +326,7 @@ MonoBehaviour:
     bonusAttackPower: 13
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_ths03_sword
     itemName: "\uAE30\uC0AC\uB2E8\uC758 \uB300\uAC80"
     description: "\uAE30\uC0AC\uB2E8\uC774 \uC0AC\uC6A9\uD558\uB294 \uB300\uAC80."
@@ -318,6 +340,7 @@ MonoBehaviour:
     bonusAttackPower: 15
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_ths04_sword
     itemName: "\uD30C\uAD34\uC790\uC758 \uAC80"
     description: "\uB2FF\uB294 \uBAA8\uB4E0 \uAC83\uC744 \uD30C\uAD34\uD558\uB294
@@ -332,6 +355,7 @@ MonoBehaviour:
     bonusAttackPower: 20
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_ths05_sword
     itemName: "\uC2EC\uD310\uC758 \uB300\uAC80"
     description: "\uC2EC\uD310\uC744 \uC0C1\uC9D5\uD558\uB294 \uB300\uAC80."
@@ -345,6 +369,7 @@ MonoBehaviour:
     bonusAttackPower: 22
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_ths06_sword
     itemName: "\uC6A9\uC0B4\uC790\uC758 \uAC80"
     description: "\uC6A9\uC744 \uBCA0\uC5C8\uB2E4\uB294 \uC804\uC124\uC758 \uAC80."
@@ -358,6 +383,7 @@ MonoBehaviour:
     bonusAttackPower: 28
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_ths07_sword
     itemName: "\uC885\uB9D0\uC758 \uB300\uAC80"
     description: "\uC138\uC0C1\uC758 \uC885\uB9D0\uC744 \uBD80\uB978\uB2E4\uB294
@@ -372,6 +398,7 @@ MonoBehaviour:
     bonusAttackPower: 32
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_wand01
     itemName: "\uACAC\uC2B5\uC0DD\uC758 \uC9C0\uD321\uC774"
     description: "\uB9C8\uBC95 \uACAC\uC2B5\uC0DD\uC774 \uC4F0\uB294 \uC9C0\uD321\uC774."
@@ -385,6 +412,7 @@ MonoBehaviour:
     bonusAttackPower: 6
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_wand02
     itemName: "\uB9C8\uBC95\uC0AC\uC758 \uC9C0\uD321\uC774"
     description: "\uC815\uC2DD \uB9C8\uBC95\uC0AC\uC758 \uC9C0\uD321\uC774."
@@ -398,6 +426,7 @@ MonoBehaviour:
     bonusAttackPower: 8
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_wand03
     itemName: "\uBE44\uC804\uC758 \uC9C0\uD321\uC774"
     description: "\uBE44\uC804 \uB9C8\uB825\uC774 \uAE43\uB4E0 \uC9C0\uD321\uC774."
@@ -411,6 +440,7 @@ MonoBehaviour:
     bonusAttackPower: 12
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_wand04
     itemName: "\uC6D0\uC18C\uC758 \uC9C0\uD321\uC774"
     description: "\uC6D0\uC18C\uC758 \uD798\uC744 \uB2E4\uB8E8\uB294 \uC9C0\uD321\uC774."
@@ -424,6 +454,7 @@ MonoBehaviour:
     bonusAttackPower: 14
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_wand05
     itemName: "\uD604\uC790\uC758 \uC9C0\uD321\uC774"
     description: "\uD604\uC790\uAC00 \uC0AC\uC6A9\uD588\uB2E4\uB294 \uC9C0\uD321\uC774."
@@ -437,6 +468,7 @@ MonoBehaviour:
     bonusAttackPower: 19
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_wand06
     itemName: "\uB300\uB9C8\uBC95\uC0AC\uC758 \uC9C0\uD321\uC774"
     description: "\uB300\uB9C8\uBC95\uC0AC\uC758 \uD798\uC774 \uAE43\uB4E0 \uC9C0\uD321\uC774."
@@ -450,6 +482,7 @@ MonoBehaviour:
     bonusAttackPower: 21
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_wand07
     itemName: "\uD0DC\uCD08\uC758 \uC9C0\uD321\uC774"
     description: "\uD0DC\uCD08\uC758 \uB9C8\uB825\uC744 \uB2F4\uC740 \uC9C0\uD321\uC774."
@@ -463,6 +496,7 @@ MonoBehaviour:
     bonusAttackPower: 28
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_spear01
     itemName: "\uB098\uBB34 \uCC3D"
     description: "\uAC00\uC7A5 \uAE30\uCD08\uC801\uC778 \uB098\uBB34 \uCC3D."
@@ -476,6 +510,7 @@ MonoBehaviour:
     bonusAttackPower: 7
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_spear02
     itemName: "\uCCA0\uCC3D"
     description: "\uC1E0\uB85C \uB9CC\uB4E0 \uCC3D."
@@ -489,6 +524,7 @@ MonoBehaviour:
     bonusAttackPower: 12
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_spear03
     itemName: "\uAE30\uC0AC\uC758 \uCC3D"
     description: "\uAE30\uC0AC\uB2E8\uC774 \uC0AC\uC6A9\uD558\uB294 \uCC3D."
@@ -502,6 +538,7 @@ MonoBehaviour:
     bonusAttackPower: 14
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_spear04
     itemName: "\uC6A9\uC758 \uC774\uBE68 \uCC3D"
     description: "\uC6A9\uC758 \uC774\uBE68\uC744 \uCC3D\uB0A0\uB85C \uC4F4 \uCC3D."
@@ -515,6 +552,7 @@ MonoBehaviour:
     bonusAttackPower: 19
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: weapon_spear05
     itemName: "\uCC9C\uACF5\uC758 \uCC3D"
     description: "\uD558\uB298\uC744 \uAC00\uB978\uB2E4\uB294 \uC804\uC124\uC758
@@ -529,6 +567,7 @@ MonoBehaviour:
     bonusAttackPower: 26
     bonusDefense: 0
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: armor_body03
     itemName: "\uC218\uB828\uC0DD\uC758 \uC637"
     description: "\uC218\uB828\uC0DD\uB4E4\uC774 \uC785\uB294 \uC587\uC740 \uC637."
@@ -542,6 +581,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 2
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: armor_body04
     itemName: "\uCC9C \uAC11\uC637"
     description: "\uCC9C\uC744 \uC5EC\uB7EC \uACB9 \uB367\uB304 \uAC11\uC637."
@@ -555,6 +595,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 3
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: armor_body06
     itemName: "\uB450\uAEBC\uC6B4 \uAC00\uC8FD \uAC11\uC637"
     description: "\uB450\uAECD\uAC8C \uBB34\uB450\uC9C8\uD55C \uAC00\uC8FD \uAC11\uC637."
@@ -568,6 +609,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 4
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: armor_body07
     itemName: "\uC0AC\uC2AC \uC870\uB07C"
     description: "\uC1E0\uC0AC\uC2AC\uC744 \uC5EE\uC5B4 \uB9CC\uB4E0 \uC870\uB07C."
@@ -581,6 +623,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 5
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: armor_body08
     itemName: "\uACBD\uBE44\uBCD1\uC758 \uAC11\uC637"
     description: "\uB9C8\uC744 \uACBD\uBE44\uBCD1\uC5D0\uAC8C \uC9C0\uAE09\uB418\uB294
@@ -595,6 +638,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 6
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: armor_body09
     itemName: "\uAC15\uD654 \uAC00\uC8FD \uAC11\uC637"
     description: "\uAE08\uC18D \uD310\uC73C\uB85C \uB367\uB304 \uAC00\uC8FD \uAC11\uC637."
@@ -608,6 +652,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 8
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: armor_body10
     itemName: "\uC0AC\uC2AC \uAC11\uC637"
     description: "\uCD18\uCD18\uD55C \uC1E0\uC0AC\uC2AC \uAC11\uC637."
@@ -621,6 +666,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 9
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: armor_body11
     itemName: "\uAE30\uC0AC\uC758 \uAC11\uC637"
     description: "\uAE30\uC0AC\uB2E8\uC774 \uC9C0\uAE09\uD558\uB294 \uAC11\uC637."
@@ -634,6 +680,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 10
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: armor_body12
     itemName: "\uD310\uAE08 \uD749\uAC11"
     description: "\uAC00\uC2B4\uC744 \uB2E8\uB2E8\uD788 \uAC10\uC2F8\uB294 \uD310\uAE08
@@ -648,6 +695,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 11
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: armor_body13
     itemName: "\uC740\uBE5B \uAC11\uC637"
     description: "\uC740\uC740\uD55C \uBE5B\uC744 \uB0B4\uB294 \uAC11\uC637."
@@ -661,6 +709,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 12
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: armor_body14
     itemName: "\uC131\uAE30\uC0AC\uC758 \uAC11\uC637"
     description: "\uC131\uAE30\uC0AC\uB2E8\uC758 \uAC11\uC637."
@@ -674,6 +723,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 14
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: armor_body15
     itemName: "\uC218\uD638\uC790\uC758 \uAC11\uC637"
     description: "\uC218\uD638\uC790\uB4E4\uC774 \uC785\uB358 \uD2BC\uD2BC\uD55C
@@ -688,6 +738,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 17
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: armor_body16
     itemName: "\uC6A9\uBE44\uB298 \uAC11\uC637"
     description: "\uC6A9\uC758 \uBE44\uB298\uB85C \uB9CC\uB4E0 \uAC11\uC637."
@@ -701,6 +752,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 19
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: armor_body17
     itemName: "\uBE5B\uC758 \uAC11\uC637"
     description: "\uBE5B\uC758 \uD798\uC774 \uAE43\uB4E0 \uAC11\uC637."
@@ -714,6 +766,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 21
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: armor_body18
     itemName: "\uBD88\uAD74\uC758 \uAC11\uC637"
     description: "\uACB0\uCF54 \uB6AB\uB9AC\uC9C0 \uC54A\uB294\uB2E4\uB294 \uAC11\uC637."
@@ -727,6 +780,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 23
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: armor_body19
     itemName: "\uC2E0\uD654\uC758 \uAC11\uC637"
     description: "\uC2E0\uD654 \uC18D\uC5D0\uC11C\uB9CC \uC874\uC7AC\uD55C\uB2E4\uB294
@@ -741,6 +795,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 28
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: armor_body20
     itemName: "\uC808\uB300 \uBC29\uC5B4\uC758 \uAC11\uC637"
     description: "\uADF8 \uBB34\uC5C7\uB3C4 \uAFF0\uB6AB\uC9C0 \uBABB\uD55C\uB2E4\uB294
@@ -755,6 +810,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 32
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: helmet_headarmor01
     itemName: "\uAC00\uC8FD \uD22C\uAD6C"
     description: "\uAC00\uC8FD\uC73C\uB85C \uB9CC\uB4E0 \uAE30\uCD08\uC801\uC778
@@ -769,6 +825,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 3
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: helmet_headarmor02
     itemName: "\uCCA0 \uD22C\uAD6C"
     description: "\uD2BC\uD2BC\uD55C \uCCA0\uC81C \uD22C\uAD6C."
@@ -782,6 +839,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 8
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: helmet_headarmor03
     itemName: "\uAE30\uC0AC\uC758 \uD22C\uAD6C"
     description: "\uAE30\uC0AC\uB2E8\uC774 \uC4F0\uB294 \uD22C\uAD6C."
@@ -795,6 +853,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 10
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: helmet_headarmor04
     itemName: "\uC218\uD638\uC790\uC758 \uD22C\uAD6C"
     description: "\uC218\uD638\uC790\uB4E4\uC774 \uC4F0\uB358 \uD22C\uAD6C."
@@ -808,6 +867,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 14
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: helmet_headarmor05
     itemName: "\uC804\uC124\uC758 \uD22C\uAD6C"
     description: "\uC804\uC124\uB85C \uC804\uD574\uC9C0\uB294 \uD22C\uAD6C."
@@ -821,6 +881,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 20
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: helmet_hat01
     itemName: "\uB0A1\uC740 \uBAA8\uC790"
     description: "\uB0A1\uC544\uC11C \uD574\uC9C4 \uBAA8\uC790."
@@ -834,6 +895,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 1
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: helmet_hat02
     itemName: "\uCC9C \uBAA8\uC790"
     description: "\uD3C9\uBC94\uD55C \uCC9C \uBAA8\uC790."
@@ -847,6 +909,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 1
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: helmet_hat03
     itemName: "\uBC00\uC9DA\uBAA8\uC790"
     description: "\uD587\uBE5B\uC744 \uAC00\uB824\uC8FC\uB294 \uBAA8\uC790."
@@ -860,6 +923,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 2
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: helmet_hat04
     itemName: "\uC0AC\uB0E5\uAFBC\uC758 \uBAA8\uC790"
     description: "\uC0AC\uB0E5\uAFBC\uB4E4\uC774 \uC990\uACA8 \uC4F0\uB294 \uBAA8\uC790."
@@ -873,6 +937,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 2
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: helmet_hat05
     itemName: "\uC5EC\uD589\uC790\uC758 \uBAA8\uC790"
     description: "\uBA3C \uAE38\uC744 \uB5A0\uB098\uB294 \uC774\uC758 \uBAA8\uC790."
@@ -886,6 +951,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 2
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: helmet_hat06
     itemName: "\uACAC\uC2B5\uC0DD\uC758 \uBAA8\uC790"
     description: "\uACAC\uC2B5\uC0DD\uC5D0\uAC8C \uC9C0\uAE09\uB418\uB294 \uBAA8\uC790."
@@ -899,6 +965,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 3
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: helmet_hat07
     itemName: "\uBC29\uB791\uC790\uC758 \uBAA8\uC790"
     description: "\uB5A0\uB3CC\uC774 \uBB34\uC0AC\uC758 \uBAA8\uC790."
@@ -912,6 +979,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 5
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: helmet_hat08
     itemName: "\uBAA8\uD5D8\uAC00\uC758 \uBAA8\uC790"
     description: "\uBAA8\uD5D8\uAC00\uB4E4\uC774 \uC990\uACA8 \uC4F0\uB294 \uBAA8\uC790."
@@ -925,6 +993,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 5
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: helmet_hat09
     itemName: "\uB9C8\uBC95\uC0AC\uC758 \uBAA8\uC790"
     description: "\uB9C8\uB825\uC774 \uC2A4\uBBFC \uBAA8\uC790."
@@ -938,6 +1007,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 6
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: helmet_hat10
     itemName: "\uAE30\uC0AC\uB2E8\uC758 \uBAA8\uC790"
     description: "\uAE30\uC0AC\uB2E8\uC774 \uD589\uC0AC \uB54C \uC4F0\uB294 \uBAA8\uC790."
@@ -951,6 +1021,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 6
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: helmet_hat11
     itemName: "\uC232 \uC218\uD638\uC790\uC758 \uBAA8\uC790"
     description: "\uC232\uC744 \uC9C0\uD0A4\uB294 \uC774\uB4E4\uC758 \uBAA8\uC790."
@@ -964,6 +1035,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 7
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: helmet_hat12
     itemName: "\uBE44\uC804\uC758 \uBAA8\uC790"
     description: "\uBE44\uC804 \uB9C8\uB825\uC774 \uAE43\uB4E0 \uBAA8\uC790."
@@ -977,6 +1049,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 11
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: helmet_hat13
     itemName: "\uD604\uC790\uC758 \uBAA8\uC790"
     description: "\uD604\uC790\uAC00 \uC4F0\uB358 \uBAA8\uC790."
@@ -990,6 +1063,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 13
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: helmet_hat14
     itemName: "\uC804\uC124\uC758 \uBAA8\uC790"
     description: "\uC804\uC124\uB85C\uB9CC \uC804\uD574\uC9C0\uB358 \uBAA8\uC790."
@@ -1003,6 +1077,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 17
     healPercent: 0
+    useCooldownSeconds: 0
   - itemId: potion_hp_medium
     itemName: "\uCCB4\uB825 \uBB3C\uC57D(\uC911)"
     description: "\uCD5C\uB300\uCCB4\uB825\uC758 30%\uB9CC\uD07C \uCCB4\uB825\uC744
@@ -1017,6 +1092,7 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 0
     healPercent: 30
+    useCooldownSeconds: 6
   - itemId: potion_hp_large
     itemName: "\uCCB4\uB825 \uBB3C\uC57D(\uB300)"
     description: "\uCD5C\uB300\uCCB4\uB825\uC758 60%\uB9CC\uD07C \uCCB4\uB825\uC744
@@ -1031,3 +1107,4 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 0
     healPercent: 60
+    useCooldownSeconds: 12

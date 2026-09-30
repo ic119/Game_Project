@@ -47,3 +47,24 @@ public class ItemCatalogTests
         Assert.False(ItemCatalog.HasAnyOfGrade("Legendary"));
     }
 }
+
+// 물약 재사용 대기시간(UseCooldownSeconds) 정의가 서버 아이템 정의에서 읽히는지. 픽스처의 Epic 물약 1종(6.5초)을 쓴다.
+public class ItemCooldownDefinitionTests
+{
+    [Fact]
+    public void TryGet_Potion_ReadsUseCooldownSeconds()
+    {
+        Assert.True(ItemCatalog.TryGet("test_potion_cooldown", out ItemDefinition definition));
+
+        Assert.Equal(30, definition.HealPercent);
+        Assert.Equal(6.5f, definition.UseCooldownSeconds);
+    }
+
+    [Fact]
+    public void TryGet_ItemWithoutCooldown_DefaultsToZero()
+    {
+        Assert.True(ItemCatalog.TryGet("test_weapon_common", out ItemDefinition definition));
+
+        Assert.Equal(0f, definition.UseCooldownSeconds);
+    }
+}

@@ -16,6 +16,12 @@ namespace GameServer.Items
         // 사용 시 최대 체력 대비 회복 비율(%). 0이면 회복 아이템이 아니다(Game_UseItemRequest 거부).
         public int HealPercent { get; init; } = 0;
 
+        // 이 물약을 쓴 뒤 다음 물약(종류 무관 - 모든 물약이 하나의 대기시간을 공유한다)을 쓸 수 있기까지의 시간(초).
+        // 회복 속도 상한(HealPercent / UseCooldownSeconds, 권장 5%/초)을 정하는 값이다 - 없으면 물약을 0.3초마다 연속으로
+        // 써서 한 전투 안에서 체력을 사실상 무한히 회복할 수 있다. 0이면 대기시간 없음.
+        // 클라이언트 ItemData.useCooldownSeconds와 같은 값이어야 한다(ItemDefinitionValidator.Generate가 동기화).
+        public float UseCooldownSeconds { get; init; } = 0f;
+
         // 장착 가능한 슬롯("Weapon"/"Armor"/"Helmet"/"Boots"/"Accessory", 클라이언트 ItemData.equipSlotType과 같은 이름).
         // 없으면 장비가 아니다. GameServer는 쓰지 않고, MainServer가 같은 파일을 읽어 장착 요청을 검증한다(ItemEquipSlotCatalog).
         public string? EquipSlot { get; init; }

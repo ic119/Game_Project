@@ -25,5 +25,12 @@
     "HealPercent": 0,
     "EquipSlot": "Weapon",
     "Grade": "Common"
+  },
+  "test_potion_cooldown": {
+    "Name": "회귀테스트용 물약",
+    "MaxStack": 99,
+    "HealPercent": 30,
+    "UseCooldownSeconds": 6.5,
+    "Grade": "Epic"
   }
 }

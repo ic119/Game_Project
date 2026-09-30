@@ -96,6 +96,14 @@ namespace Incheol.Editor
                     Debug.LogError($"[ItemDefinitionValidator] '{clientItem.itemId}' healPercent 불일치 : Client={clientItem.healPercent}, Server={serverEntry.HealPercent}");
                     mismatchCount++;
                 }
+
+                // 물약이 아니면 서버 JSON에 쓰지 않으므로 0으로 본다(Generate와 같은 규칙).
+                float expectedCooldown = isPotion ? clientItem.useCooldownSeconds : 0f;
+                if (!Mathf.Approximately(serverEntry.UseCooldownSeconds, expectedCooldown))
+                {
+                    Debug.LogError($"[ItemDefinitionValidator] '{clientItem.itemId}' useCooldownSeconds 불일치 : Client={expectedCooldown}, Server={serverEntry.UseCooldownSeconds}");
+                    mismatchCount++;
+                }
             }
 
             foreach (string serverItemId in serverEntries.Keys)
@@ -185,6 +193,12 @@ namespace Incheol.Editor
                 builder.Append($", \"healPercent\": {item.healPercent}");
             }
 
+            // 물약 재사용 대기시간(초). 소수점 표기가 로케일에 흔들리지 않게 InvariantCulture로 쓴다.
+            if (item.itemType == ItemType.Potion && item.useCooldownSeconds > 0f)
+            {
+                builder.Append($", \"useCooldownSeconds\": {item.useCooldownSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+            }
+
             if (item.itemType == ItemType.Eqiupment && item.equipSlotType != EquipmentSlotType.None)
             {
                 if (item.bonusAttackPower != 0)
@@ -229,6 +243,7 @@ namespace Incheol.Editor
                     BonusAttackPower = ExtractInt(body, "BonusAttackPower"),
                     BonusDefense = ExtractInt(body, "BonusDefense"),
                     HealPercent = ExtractInt(body, "HealPercent"),
+                    UseCooldownSeconds = ExtractFloat(body, "UseCooldownSeconds"),
                     EquipSlot = ExtractString(body, "EquipSlot"),
                     Grade = ExtractString(body, "Grade")
                 };
@@ -243,6 +258,12 @@ namespace Incheol.Editor
             return match.Success ? int.Parse(match.Groups[1].Value) : 0;
         }
 
+        private static float ExtractFloat(string body, string field)
+        {
+            Match match = Regex.Match(body, $"\"{field}\"\\s*:\\s*(-?\\d+(?:\\.\\d+)?)", RegexOptions.IgnoreCase);
+            return match.Success ? float.Parse(match.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) : 0f;
+        }
+
         private static string ExtractString(string body, string field)
         {
             Match match = Regex.Match(body, $"\"{field}\"\\s*:\\s*\"([^\"]*)\"", RegexOptions.IgnoreCase);
@@ -254,6 +275,7 @@ namespace Incheol.Editor
             public int BonusAttackPower;
             public int BonusDefense;
             public int HealPercent;
+            public float UseCooldownSeconds;
             public string EquipSlot;
             public string Grade;
         }
