@@ -6,14 +6,93 @@
         "rotationY": 0.0
     },
     "portals": [],
-    "chests": [
+    "chests": [],
+    "chestCandidates": [
         {
-            "id": "chest_floor001_01",
-            "x": -130.72000122070313,
-            "y": 0.8700000047683716,
-            "z": 51.092079162597659,
-            "radius": 2.5,
+            "id": "TreasureChestSpawn001",
+            "x": -138.22000122070313,
+            "y": 0.0,
+            "z": 43.04999923706055,
+            "radius": 1.5,
             "lootTableKey": "TreasureChestBasic"
+        },
+        {
+            "id": "TreasureChestSpawn002",
+            "x": -81.0199966430664,
+            "y": 0.0,
+            "z": -17.43000030517578,
+            "radius": 1.5,
+            "lootTableKey": "TreasureChestBasic"
+        },
+        {
+            "id": "TreasureChestSpawn003",
+            "x": -79.93000030517578,
+            "y": 0.0,
+            "z": 19.600000381469728,
+            "radius": 1.5,
+            "lootTableKey": "TreasureChestBasic"
+        },
+        {
+            "id": "TreasureChestSpawn004",
+            "x": -130.1999969482422,
+            "y": 0.0,
+            "z": 37.04999923706055,
+            "radius": 1.5,
+            "lootTableKey": "TreasureChestBasic"
+        },
+        {
+            "id": "TreasureChestSpawn005",
+            "x": -87.0,
+            "y": 0.0,
+            "z": -10.399999618530274,
+            "radius": 1.5,
+            "lootTableKey": "TreasureChestBasic"
+        },
+        {
+            "id": "TreasureChestSpawn006",
+            "x": -100.0,
+            "y": 0.0,
+            "z": 2.0,
+            "radius": 1.5,
+            "lootTableKey": "TreasureChestHidden"
+        },
+        {
+            "id": "TreasureChestSpawn007",
+            "x": -110.0,
+            "y": 0.0,
+            "z": 30.0,
+            "radius": 1.5,
+            "lootTableKey": "TreasureChestHidden"
+        },
+        {
+            "id": "TreasureChestSpawn008",
+            "x": -60.0,
+            "y": 0.0,
+            "z": 0.0,
+            "radius": 1.5,
+            "lootTableKey": "TreasureChestRare"
+        },
+        {
+            "id": "TreasureChestSpawn009",
+            "x": -55.0,
+            "y": 0.0,
+            "z": -12.0,
+            "radius": 1.5,
+            "lootTableKey": "TreasureChestRare"
+        }
+    ],
+    "chestSpawnCounts": [
+        {
+            "lootTableKey": "TreasureChestBasic",
+            "count": 3
+        },
+        {
+            "lootTableKey": "TreasureChestHidden",
+            "count": 1
+        },
+        {
+            "lootTableKey": "TreasureChestRare",
+            "count": 1
         }
     ]
 }
