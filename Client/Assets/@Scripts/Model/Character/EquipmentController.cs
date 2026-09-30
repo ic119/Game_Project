@@ -30,7 +30,7 @@ public class EquipmentController : MonoBehaviour
 
     /// <summary>
     /// 슬롯별로 탐색할 컨테이너 우선순위. Weapon은 한손/두손/완드/창(오른팔)과 활(왼팔)을 모두 포함하므로
-    /// 오른팔을 먼저 찾고 없으면 왼팔에서 찾는다. Boots/Accessory는 아직 대응하는 컨테이너가 없다 - 알려진 한계.
+    /// 오른팔을 먼저 찾고 없으면 왼팔에서 찾는다. Accessory는 아직 대응하는 컨테이너가 없다 - 알려진 한계.
     /// </summary>
     private Dictionary<EquipmentSlotType, GameObject[]> containersBySlot;
 
@@ -121,7 +121,7 @@ public class EquipmentController : MonoBehaviour
     /// 같은 컨테이너 안의 나머지 형제 오브젝트는 전부 비활성화한다(CharacterCustomModel.SetHair 등과 동일하게,
     /// EquipmentController.Equip을 거치지 않고 프리팹 원본에서부터 활성 상태였던 오브젝트 - 예: Body 슬롯의
     /// 기본 활성 변형 - 까지 확실히 꺼야 두 변형이 동시에 보이는 문제를 막을 수 있다).
-    /// 대응하는 컨테이너가 없거나(Helmet/Boots/Accessory 등 아직 미지원 슬롯) visualName을 찾지 못하면 false를 반환한다.
+    /// 대응하는 컨테이너가 없거나(Accessory 등 아직 미지원 슬롯) visualName을 찾지 못하면 false를 반환한다.
     /// </summary>
     public bool Equip(EquipmentSlotType slot, string visualName)
     {

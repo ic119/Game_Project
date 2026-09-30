@@ -92,15 +92,18 @@ public enum ItemType
 /// <summary>
 /// 장비 아이템(ItemType.Eqiupment)이 장착되는 슬롯 종류.
 /// UI_InventorySlot.InventorySlotType의 장비 관련 값(EquipmentWeapon 등)과 1:1로 대응한다.
+///
+/// ItemDatabaseSO에 정수값으로 직렬화되므로 값을 고정한다. 4는 예전에 Boots(신발)가 쓰던 값이라 제거한 뒤에도 비워 두고
+/// Accessory의 값(5)을 당기지 않는다(서버 장착 슬롯 문자열도 "Boots"를 더 이상 받지 않는다).
 /// </summary>
 public enum EquipmentSlotType
 {
-    None,
-    Weapon,
-    Armor,
-    Helmet,
-    Boots,
-    Accessory
+    None = 0,
+    Weapon = 1,
+    Armor = 2,
+    Helmet = 3,
+    // 4 = (제거됨) Boots
+    Accessory = 5
 }
 
 // ItemDatabaseSO(ScriptableObject)에 아이템 데이터와 함께 정수값으로 직렬화되므로,
