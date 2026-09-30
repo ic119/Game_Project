@@ -19,5 +19,23 @@
       { "grade": "Rare", "minQty": 1, "maxQty": 1, "dropRate": 0.25 },
       { "grade": "Epic", "minQty": 1, "maxQty": 1, "dropRate": 0.03 }
     ]
+  },
+  "TreasureChestHidden": {
+    "minGold": 30,
+    "maxGold": 60,
+    "items": [
+      { "grade": "Common", "minQty": 1, "maxQty": 1, "dropRate": 0.5 },
+      { "grade": "Rare", "minQty": 1, "maxQty": 1, "dropRate": 0.4 },
+      { "grade": "Epic", "minQty": 1, "maxQty": 1, "dropRate": 0.08 }
+    ]
+  },
+  "TreasureChestRare": {
+    "minGold": 80,
+    "maxGold": 150,
+    "items": [
+      { "grade": "Common", "minQty": 1, "maxQty": 1, "dropRate": 0.2 },
+      { "grade": "Rare", "minQty": 1, "maxQty": 1, "dropRate": 0.6 },
+      { "grade": "Epic", "minQty": 1, "maxQty": 1, "dropRate": 0.18 }
+    ]
   }
 }

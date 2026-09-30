@@ -60,7 +60,27 @@ namespace GameServer.Networking
                 }
             }
 
+            _activeChests = BuildActiveChests(mapId);
+
             _ = RunTickLoopAsync(_serverLifetimeCt);
+        }
+
+        // 이 방에 실제로 서 있는 상자 = 고정 상자(MapData.Chests) + 후보 중 방 생성 시 뽑힌 상자. 방이 살아 있는 동안
+        // 바뀌지 않는다(리스폰은 아직 없다). TryOpenChest가 이 목록으로 존재/사거리를 판정한다.
+        private readonly List<MapChest> _activeChests;
+
+        public IReadOnlyList<MapChest> ActiveChests => _activeChests;
+
+        private static List<MapChest> BuildActiveChests(string mapId)
+        {
+            if (!MapDataCatalog.TryGet(mapId, out MapData? mapData))
+            {
+                return new List<MapChest>();
+            }
+
+            var active = new List<MapChest>(mapData.Chests);
+            active.AddRange(ChestSpawnSelector.Select(mapData.ChestCandidates, mapData.ChestSpawnCounts, Random.Shared));
+            return active;
         }
 
         // 직전 틱 이후 위치가 바뀐 플레이어 id. 이동 요청은 위치만 갱신하고 여기에 표시하며, 실제 전송은 다음 틱의
@@ -127,12 +147,13 @@ namespace GameServer.Networking
             gold = 0;
             items = new List<(string, int)>();
 
-            if (!MapDataCatalog.TryGet(_mapId, out MapData? mapData) || !_players.TryGetValue(playerId, out var entry))
+            if (!_players.TryGetValue(playerId, out var entry))
             {
                 return false;
             }
 
-            MapChest? chest = mapData.Chests.Find(c => c.Id == chestId);
+            // 뽑히지 않은 후보의 id를 위조해 보내도 여기서 걸러진다(ActiveChests에 없으므로).
+            MapChest? chest = _activeChests.Find(c => c.Id == chestId);
             if (chest is null || !chest.IsWithinRange(entry.Info.X, entry.Info.Z))
             {
                 return false;

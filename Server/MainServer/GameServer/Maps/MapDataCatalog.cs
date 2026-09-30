@@ -82,6 +82,39 @@ namespace GameServer.Maps
                         }
                     }
 
+                    // 후보 상자(chestCandidates)는 고정 상자와 같은 id 공간을 쓴다 - 뽑힌 후보가 곧 chestId가 되기 때문이다.
+                    var candidateCountByKey = new Dictionary<string, int>();
+                    foreach (MapChest candidate in data.ChestCandidates)
+                    {
+                        if (string.IsNullOrEmpty(candidate.Id) || !seenChestIds.Add(candidate.Id))
+                        {
+                            throw new InvalidOperationException($"'{mapId}'의 상자 후보 id '{candidate.Id}'가 비어 있거나 다른 상자/후보와 중복됩니다.");
+                        }
+
+                        if (string.IsNullOrEmpty(candidate.LootTableKey) || !DropTableCatalog.HasTable(candidate.LootTableKey))
+                        {
+                            throw new InvalidOperationException($"'{mapId}'의 상자 후보 '{candidate.Id}'가 참조하는 LootTableKey '{candidate.LootTableKey}'가 Drops/DropTables.json에 없습니다.");
+                        }
+
+                        candidateCountByKey[candidate.LootTableKey] = candidateCountByKey.GetValueOrDefault(candidate.LootTableKey) + 1;
+                    }
+
+                    // 뽑을 개수가 후보 수보다 많으면 매번 "모자란 채로" 방이 만들어진다 - 부팅 시점에 막는다.
+                    var seenCountKeys = new HashSet<string>();
+                    foreach (MapChestSpawnCount spawnCount in data.ChestSpawnCounts)
+                    {
+                        if (string.IsNullOrEmpty(spawnCount.LootTableKey) || !seenCountKeys.Add(spawnCount.LootTableKey))
+                        {
+                            throw new InvalidOperationException($"'{mapId}'의 chestSpawnCounts lootTableKey '{spawnCount.LootTableKey}'가 비어 있거나 중복됩니다.");
+                        }
+
+                        int available = candidateCountByKey.GetValueOrDefault(spawnCount.LootTableKey);
+                        if (spawnCount.Count < 0 || spawnCount.Count > available)
+                        {
+                            throw new InvalidOperationException($"'{mapId}'의 LootTableKey '{spawnCount.LootTableKey}' 뽑을 개수({spawnCount.Count})가 0~후보 수({available}) 범위를 벗어났습니다.");
+                        }
+                    }
+
                     result[mapId] = data;
                     Console.WriteLine($"[GameServer] 맵 데이터 로드 완료 : {mapId}");
                 }
@@ -111,6 +144,19 @@ namespace GameServer.Maps
 
         // 이 맵에 배치된 보물상자. GameRoom.TryOpenChest가 사거리/선착순 판정 기준으로 쓴다.
         public List<MapChest> Chests { get; init; } = new();
+
+        // 상자가 설 수 있는 후보 지점(Unity TreasureChestSpawnPointMarker). 형식이 MapChest와 같다 - 방이 만들어질 때
+        // ChestSpawnSelector가 ChestSpawnCounts만큼 뽑아 Chests와 똑같이 취급한다(GameRoom.ActiveChests).
+        public List<MapChest> ChestCandidates { get; init; } = new();
+
+        // 등급(LootTableKey)별로 후보 중 몇 개를 뽑을지(Unity TreasureChestSpawnPlan).
+        public List<MapChestSpawnCount> ChestSpawnCounts { get; init; } = new();
+    }
+
+    public class MapChestSpawnCount
+    {
+        public string LootTableKey { get; init; } = string.Empty;
+        public int Count { get; init; }
     }
 
     public class MapChest
