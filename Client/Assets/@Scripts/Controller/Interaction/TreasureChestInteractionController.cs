@@ -37,9 +37,29 @@ namespace Incheol.Controller.Interaction
         private UI_InteractionPrompt interactionPrompt;
         private bool isOpen;
 
+        public string ChestId => chestId;
+
         private void Awake()
         {
             interactionPrompt = GetComponent<UI_InteractionPrompt>();
+        }
+
+        /// <summary>
+        /// 런타임에 생성한 상자(RemoteChestManager - 서버가 후보에서 뽑아 알려준 상자)에 서버가 정한 id를 주입한다.
+        /// 씬에 미리 배치한 상자는 인스펙터의 chestId를 그대로 쓰므로 호출하지 않는다.
+        /// </summary>
+        public void Initialize(string id)
+        {
+            chestId = id;
+        }
+
+        /// <summary>
+        /// 이 상자가 이미 열려 있다는 사실을 뒤늦게 반영한다. 서버의 열림 알림(OnChestOpened)이 상자 생성보다 먼저 도착해
+        /// 이 컨트롤러가 구독하기 전에 지나간 경우 RemoteChestManager가 생성 직후 호출한다.
+        /// </summary>
+        public void ApplyOpenedState()
+        {
+            OpenLid();
         }
 
         private void OnEnable()

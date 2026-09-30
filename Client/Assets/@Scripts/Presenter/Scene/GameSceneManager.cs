@@ -384,6 +384,7 @@ namespace Incheol.Presenter.Scene
                 // 새 맵 목록은 Game_MapChangeAck 응답으로 다시 채워진다.
                 RemotePlayerManager.Instance?.ClearAll();
                 RemoteMonsterManager.Instance?.ClearAll();
+                RemoteChestManager.Instance?.ClearAll();
 
                 // ClearAll이 파괴한 몬스터를 UI_GameSceneView의 Update() 폴링(Unity null 비교)이 알아서
                 // 감지하긴 하지만, 맵 전환 시점에 명시적으로 타겟 정보 패널을 즉시 닫아 경합 프레임을 없앤다.
@@ -600,6 +601,7 @@ namespace Incheol.Presenter.Scene
             // (최초 접근 시 SingletonObject가 자동 생성된다).
             _ = RemotePlayerManager.Instance;
             _ = RemoteMonsterManager.Instance;
+            _ = RemoteChestManager.Instance;
         }
 
         /// <summary>
@@ -1410,6 +1412,7 @@ private void TryUnequipSlot(EquipmentSlotType _slotType)
                 SetLocalPlayerControlEnabled(false);
                 RemotePlayerManager.Instance?.ClearAll();
                 RemoteMonsterManager.Instance?.ClearAll();
+                RemoteChestManager.Instance?.ClearAll();
                 monsterTargetView?.ClearTarget();
                 GameManager.Instance?.ShowLoadingBar();
             }
