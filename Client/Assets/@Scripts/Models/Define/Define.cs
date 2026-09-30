@@ -35,7 +35,11 @@ namespace Incheol.Models.Define
     public enum MonsterType
     {
         None = 0,
-        RedMushroom = 1
+        RedMushroom = 1,
+        Spider = 2,
+        Orc = 3,
+        Werewolf = 4,
+        Golem = 5
     }
 
     /// <summary>

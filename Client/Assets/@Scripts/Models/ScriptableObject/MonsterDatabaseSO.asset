@@ -16,3 +16,15 @@ MonoBehaviour:
   - monsterType: 1
     displayName: "\uBE68\uAC04 \uC5BC\uB8E9\uBC84\uC12F"
     grade: 0
+  - monsterType: 2
+    displayName: "\uC774\uB07C \uAC70\uBBF8"
+    grade: 0
+  - monsterType: 3
+    displayName: "\uC624\uD06C \uC804\uC0AC"
+    grade: 1
+  - monsterType: 4
+    displayName: "\uB291\uB300\uC778\uAC04"
+    grade: 2
+  - monsterType: 5
+    displayName: "\uAC15\uCCA0 \uACE8\uB818"
+    grade: 3

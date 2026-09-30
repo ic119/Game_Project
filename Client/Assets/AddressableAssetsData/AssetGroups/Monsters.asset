@@ -15,8 +15,28 @@ MonoBehaviour:
   m_GroupName: Monsters
   m_GUID: 2c999b6445316ae4798fd58d0f53cacc
   m_SerializeEntries:
+  - m_GUID: 664973d70c8a8cf48a8956cbe44f7adf
+    m_Address: Orc
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 838505dde10da934e8b9887fcc23e608
+    m_Address: Spider
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: cd1fd038d97f02442bd0adb513d36fb9
     m_Address: RedMushroom
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: dbe1918f046fc174e936cde0c0365790
+    m_Address: Golem
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: dc6ee4fad1a4dd74a99f37647b2fd1e9
+    m_Address: Werewolf
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
