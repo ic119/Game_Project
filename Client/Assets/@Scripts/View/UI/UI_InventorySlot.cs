@@ -6,14 +6,16 @@ using UnityEngine.UI;
 
 namespace Incheol.View.UI
 {
+    // 프리팹(UI_Inventory)에 정수값으로 직렬화되므로 값을 고정한다. 4는 예전에 신발 슬롯(EquipmentBoots)이 쓰던 값이라
+    // 슬롯을 지운 뒤에도 비워 두고 EquipmentAccessory의 값(5)을 당기지 않는다.
     public enum InventorySlotType
     {
-        Inventory,
-        EquipmentWeapon,
-        EquipmentArmor,
-        EquipmentHelmet,
-        EquipmentBoots,
-        EquipmentAccessory
+        Inventory = 0,
+        EquipmentWeapon = 1,
+        EquipmentArmor = 2,
+        EquipmentHelmet = 3,
+        // 4 = (제거됨) EquipmentBoots
+        EquipmentAccessory = 5
     }
 
     /// <summary>

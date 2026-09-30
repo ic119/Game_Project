@@ -1359,7 +1359,6 @@ private void TryUnequipSlot(EquipmentSlotType _slotType)
             InventorySlotType.EquipmentWeapon => EquipmentSlotType.Weapon,
             InventorySlotType.EquipmentArmor => EquipmentSlotType.Armor,
             InventorySlotType.EquipmentHelmet => EquipmentSlotType.Helmet,
-            InventorySlotType.EquipmentBoots => EquipmentSlotType.Boots,
             InventorySlotType.EquipmentAccessory => EquipmentSlotType.Accessory,
             _ => EquipmentSlotType.None
         };

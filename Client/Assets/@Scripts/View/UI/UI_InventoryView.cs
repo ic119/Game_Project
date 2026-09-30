@@ -52,7 +52,6 @@ namespace Incheol.View.UI
         [SerializeField] private UI_InventorySlot weaponSlot;
         [SerializeField] private UI_InventorySlot armorSlot;
         [SerializeField] private UI_InventorySlot helmetSlot;
-        [SerializeField] private UI_InventorySlot bootsSlot;
         [SerializeField] private UI_InventorySlot accessorySlot;
 
         [Header("Stats Display")]
@@ -225,11 +224,6 @@ namespace Incheol.View.UI
             {
                 helmetSlot.InitSlot(InventorySlotType.EquipmentHelmet, 2, "투구");
                 helmetSlot.OnSlotClicked += HandleSlotClicked;
-            }
-            if (bootsSlot != null)
-            {
-                bootsSlot.InitSlot(InventorySlotType.EquipmentBoots, 3, "신발");
-                bootsSlot.OnSlotClicked += HandleSlotClicked;
             }
             if (accessorySlot != null)
             {
@@ -413,7 +407,6 @@ namespace Incheol.View.UI
             SetEquipmentSlot(weaponSlot, EquipmentSlotType.Weapon, "무기", _equippedBySlot, _itemLookup);
             SetEquipmentSlot(armorSlot, EquipmentSlotType.Armor, "갑옷", _equippedBySlot, _itemLookup);
             SetEquipmentSlot(helmetSlot, EquipmentSlotType.Helmet, "투구", _equippedBySlot, _itemLookup);
-            SetEquipmentSlot(bootsSlot, EquipmentSlotType.Boots, "신발", _equippedBySlot, _itemLookup);
             SetEquipmentSlot(accessorySlot, EquipmentSlotType.Accessory, "장신구", _equippedBySlot, _itemLookup);
         }
 
@@ -601,7 +594,7 @@ namespace Incheol.View.UI
 
         /// <summary>
         /// 상세정보 패널의 "종류" 텍스트(예: "장비 · 무기", "물약", "기타"). 장비류는 등급별 슬롯 라벨과
-        /// 같은 표기(무기/갑옷/투구/신발/장신구)를 재사용해 좌측 장비 슬롯 라벨과 용어가 갈리지 않게 한다.
+        /// 같은 표기(무기/갑옷/투구/장신구)를 재사용해 좌측 장비 슬롯 라벨과 용어가 갈리지 않게 한다.
         /// </summary>
         private static string GetItemTypeLabel(ItemData _itemData)
         {
@@ -623,7 +616,6 @@ namespace Incheol.View.UI
                 case EquipmentSlotType.Weapon: return "무기";
                 case EquipmentSlotType.Armor: return "갑옷";
                 case EquipmentSlotType.Helmet: return "투구";
-                case EquipmentSlotType.Boots: return "신발";
                 case EquipmentSlotType.Accessory: return "장신구";
                 default: return "장비";
             }
