@@ -17251,6 +17251,11 @@ MonoBehaviour:
   cloakEquipment: {fileID: 1318771821611678220}
   leftArmEquipment: {fileID: 6951739140167240317}
   rightArmEquipment: {fileID: 6105368201810433905}
+  headEquipment: {fileID: 5128538615122824877}
+  headEquipmentNamePrefixes:
+  - HeadArmor
+  - Hat
+  defaultBodyVisualName: Body01
 --- !u!1 &6438463510138794830
 GameObject:
   m_ObjectHideFlags: 0

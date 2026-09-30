@@ -18,9 +18,19 @@ public class EquipmentController : MonoBehaviour
     [SerializeField] private GameObject leftArmEquipment;
     [SerializeField] private GameObject rightArmEquipment;
 
+    [Tooltip("투구 컨테이너(head 본). 헤어/눈/입 같은 커스터마이징 메시도 같은 head 아래에 섞여 있으므로, " +
+        "아래 Head Equipment Name Prefixes로 시작하는 자식만 투구로 인덱싱한다(그렇지 않으면 투구를 장착할 때 헤어가 꺼진다).")]
+    [SerializeField] private GameObject headEquipment;
+
+    [Tooltip("headEquipment 아래에서 투구로 취급할 자식 오브젝트 이름의 접두사.")]
+    [SerializeField] private string[] headEquipmentNamePrefixes = { "HeadArmor", "Hat" };
+
+    [Tooltip("갑옷을 해제했을 때 다시 보여줄 기본 몸 메시 이름(bodyEquipment 자식). 비우면 해제 시 몸이 사라진다.")]
+    [SerializeField] private string defaultBodyVisualName = "Body01";
+
     /// <summary>
     /// 슬롯별로 탐색할 컨테이너 우선순위. Weapon은 한손/두손/완드/창(오른팔)과 방패/활(왼팔)을 모두 포함하므로
-    /// 오른팔을 먼저 찾고 없으면 왼팔에서 찾는다. Helmet/Boots/Accessory는 아직 대응하는 컨테이너가 없다 - 알려진 한계.
+    /// 오른팔을 먼저 찾고 없으면 왼팔에서 찾는다. Boots/Accessory는 아직 대응하는 컨테이너가 없다 - 알려진 한계.
     /// </summary>
     private Dictionary<EquipmentSlotType, GameObject[]> containersBySlot;
 
@@ -51,6 +61,7 @@ public class EquipmentController : MonoBehaviour
         {
             { EquipmentSlotType.Weapon, new[] { rightArmEquipment, leftArmEquipment } },
             { EquipmentSlotType.Armor, new[] { bodyEquipment } },
+            { EquipmentSlotType.Helmet, new[] { headEquipment } },
         };
 
         IndexContainer(bodyEquipment);
@@ -58,11 +69,17 @@ public class EquipmentController : MonoBehaviour
         IndexContainer(cloakEquipment);
         IndexContainer(leftArmEquipment);
         IndexContainer(rightArmEquipment);
+        IndexContainer(headEquipment, headEquipmentNamePrefixes);
 
         isIndexed = true;
     }
 
-    private void IndexContainer(GameObject container)
+    /// <summary>
+    /// container의 자식을 이름으로 인덱싱한다. namePrefixes가 주어지면 그 접두사로 시작하는 자식만 담는다 -
+    /// 장비가 아닌 자식(헤어/눈/입)이 섞여 있는 컨테이너에서, Equip이 "나머지 형제는 전부 끈다"를 적용할 때
+    /// 장비가 아닌 것까지 꺼지는 일을 막는다.
+    /// </summary>
+    private void IndexContainer(GameObject container, string[] namePrefixes = null)
     {
         if (container == null)
         {
@@ -74,10 +91,28 @@ public class EquipmentController : MonoBehaviour
         for (int i = 0; i < containerTransform.childCount; i++)
         {
             Transform child = containerTransform.GetChild(i);
+            if (namePrefixes != null && !StartsWithAny(child.name, namePrefixes))
+            {
+                continue;
+            }
+
             visuals[child.name] = child.gameObject;
         }
 
         visualsByContainer[container] = visuals;
+    }
+
+    private static bool StartsWithAny(string value, string[] prefixes)
+    {
+        foreach (string prefix in prefixes)
+        {
+            if (!string.IsNullOrEmpty(prefix) && value.StartsWith(prefix))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -140,5 +175,14 @@ public class EquipmentController : MonoBehaviour
         }
 
         activeVisualBySlot.Remove(slot);
+
+        // 갑옷은 다른 슬롯과 달리 "빈 상태"가 없다 - 그냥 끄면 몸통이 아예 안 보이므로 기본 몸 메시로 되돌린다.
+        if (slot == EquipmentSlotType.Armor && !string.IsNullOrEmpty(defaultBodyVisualName)
+            && bodyEquipment != null
+            && visualsByContainer.TryGetValue(bodyEquipment, out Dictionary<string, GameObject> bodyVisuals)
+            && bodyVisuals.TryGetValue(defaultBodyVisualName, out GameObject defaultBody))
+        {
+            defaultBody.SetActive(true);
+        }
     }
 }
