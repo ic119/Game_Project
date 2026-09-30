@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using Incheol.Modules;
 using Incheol.Utils;
@@ -44,6 +45,10 @@ public class CharacterPreviewStage : MonoBehaviour
     private int desiredHairIndex = 0;
     private int desiredEyeIndex = 0;
     private int desiredMouthIndex = 0;
+
+    // 프리뷰에 입혀야 할 장비. 모델이 Addressable로 늦게 생성될 수 있어 목표값을 기억해뒀다가 생성 직후 적용한다.
+    private readonly List<ItemData> desiredEquipment = new List<ItemData>();
+    private PlayerCharacterModel previewCharacter;
 
     public RenderTexture PreviewTexture => previewRenderTexture;
     public CharacterCustomModel CustomModel => customModel;
@@ -233,6 +238,7 @@ private void EnsureCharacterModel()
 
         ApplyPreviewLayer(characterModelInstance);
         customModel?.ApplyCustomization(desiredHairIndex, desiredEyeIndex, desiredMouthIndex);
+        ApplyDesiredEquipment();
 
         var nameLabel = characterModelInstance.GetComponentInChildren<Incheol.View.UI.UI_NameLabel>(true);
         if (nameLabel != null && previewCamera != null)
@@ -357,6 +363,56 @@ private void EnsureCharacterModel()
         desiredMouthIndex = mouthIndex;
         EnsureCustomModelReference();
         customModel?.ApplyCustomization(hairIndex, eyeIndex, mouthIndex);
+    }
+
+    /// <summary>
+    /// 프리뷰 캐릭터에 장착 장비를 입힌다. 이전에 입혀둔 장비는 전부 벗은 뒤(무기는 기본 무기, 갑옷은 기본 몸,
+    /// 투구는 헤어 복원) equippedItems만 새로 장착하므로, 캐릭터를 바꿔 선택해도 이전 캐릭터의 장비가 남지 않는다.
+    /// 모델이 아직 생성 전이면 목록만 기억했다가 생성 직후 적용한다. null이면 장비 없음으로 취급한다.
+    /// </summary>
+    public void ApplyEquipment(IEnumerable<ItemData> equippedItems)
+    {
+        desiredEquipment.Clear();
+
+        if (equippedItems != null)
+        {
+            foreach (ItemData item in equippedItems)
+            {
+                if (item != null)
+                {
+                    desiredEquipment.Add(item);
+                }
+            }
+        }
+
+        ApplyDesiredEquipment();
+    }
+
+    private void ApplyDesiredEquipment()
+    {
+        if (characterModelInstance == null)
+        {
+            return;
+        }
+
+        if (previewCharacter == null)
+        {
+            previewCharacter = characterModelInstance.GetComponent<PlayerCharacterModel>();
+        }
+
+        if (previewCharacter == null)
+        {
+            return;
+        }
+
+        previewCharacter.UnequipItem(EquipmentSlotType.Weapon);
+        previewCharacter.UnequipItem(EquipmentSlotType.Armor);
+        previewCharacter.UnequipItem(EquipmentSlotType.Helmet);
+
+        foreach (ItemData item in desiredEquipment)
+        {
+            previewCharacter.EquipItem(item);
+        }
     }
 
     /// <summary>

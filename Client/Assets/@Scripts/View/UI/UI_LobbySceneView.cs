@@ -48,6 +48,7 @@ namespace Incheol.View.UI
         private bool isPreviewStageDynamicallyCreated;
         private long? previewedCharacterId;
         private long? pendingPreviewCharacterId;
+        private UserSaveData pendingEquipmentData;
 
         public UI_CharacterCreatePopup CharacterCreatePopup => characterCreatePopup;
 
@@ -112,6 +113,11 @@ namespace Incheol.View.UI
             if (SaveDataManager.Instance != null)
             {
                 SaveDataManager.Instance.OnCharacterCreateResult -= OnCharacterCreateResult;
+            }
+
+            if (ItemDatabaseManager.Instance != null)
+            {
+                ItemDatabaseManager.Instance.OnDatabaseLoaded -= OnItemDatabaseLoadedForPreview;
             }
 
             ClearListItems();
@@ -294,6 +300,7 @@ private void OnSelectedCharacterDetailFetched(UserSaveData _data)
             if (previewStage != null)
             {
                 previewStage.ApplyCustomization(_data.hairIndex, _data.eyeIndex, _data.mouthIndex);
+                ApplyPreviewEquipment(_data);
             }
 
             if (selectedPreviewImage != null)
@@ -307,6 +314,67 @@ private void OnSelectedCharacterDetailFetched(UserSaveData _data)
             }
 
             previewedCharacterId = _data.characterId;
+        }
+
+/// <summary>
+        /// 서버가 내려준 장착 슬롯(equipSlot)이 있는 아이템을 프리뷰 캐릭터에 입힌다(인게임 ApplyEquippedVisuals와 같은 기준).
+        /// ItemDatabaseSO에 없는 itemId(삭제된 아이템 등)는 건너뛴다. 데이터베이스가 아직 로드 전이면 로드 완료 뒤 다시 적용한다.
+        /// </summary>
+        private void ApplyPreviewEquipment(UserSaveData _data)
+        {
+            if (previewStage == null || _data == null)
+            {
+                return;
+            }
+
+            ItemDatabaseManager database = ItemDatabaseManager.Instance;
+            if (database == null || !database.IsLoaded)
+            {
+                pendingEquipmentData = _data;
+                if (database != null)
+                {
+                    database.OnDatabaseLoaded -= OnItemDatabaseLoadedForPreview;
+                    database.OnDatabaseLoaded += OnItemDatabaseLoadedForPreview;
+                }
+                return;
+            }
+
+            pendingEquipmentData = null;
+
+            List<ItemData> equipped = new List<ItemData>();
+            if (_data.items != null)
+            {
+                foreach (InventoryItemStack stack in _data.items)
+                {
+                    if (string.IsNullOrEmpty(stack.equipSlot))
+                    {
+                        continue;
+                    }
+
+                    ItemData itemData = database.FindById(stack.itemId);
+                    if (itemData != null)
+                    {
+                        equipped.Add(itemData);
+                    }
+                }
+            }
+
+            previewStage.ApplyEquipment(equipped);
+        }
+
+        private void OnItemDatabaseLoadedForPreview()
+        {
+            if (ItemDatabaseManager.Instance != null)
+            {
+                ItemDatabaseManager.Instance.OnDatabaseLoaded -= OnItemDatabaseLoadedForPreview;
+            }
+
+            // 로드를 기다리는 사이 다른 캐릭터로 선택이 바뀌었다면 낡은 데이터는 버린다.
+            if (pendingEquipmentData != null && SaveDataManager.Instance != null
+                && SaveDataManager.Instance.SelectedCharacterId == pendingEquipmentData.characterId)
+            {
+                ApplyPreviewEquipment(pendingEquipmentData);
+            }
         }
 
 private const string PreviewStageName = "LobbySelectedCharacterPreviewStage";
