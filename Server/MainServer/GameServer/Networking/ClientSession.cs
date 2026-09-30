@@ -927,9 +927,17 @@ namespace GameServer.Networking
                 return;
             }
 
-            bool success = await TryUseItemAsync(playerId, room, request.ItemId, ct);
+            UseItemFailReason failReason = await TryUseItemAsync(playerId, room, request.ItemId, ct);
 
-            var result = new S2CUseItemResult { ItemId = request.ItemId, Success = success };
+            // 남은 대기시간은 성공/실패와 무관하게 늘 담는다 - 클라이언트가 이 값으로 사용 버튼을 잠그고 카운트다운한다.
+            // (성공하면 방금 시작된 대기시간, 대기 중 거부되면 남은 시간, 아니면 0)
+            var result = new S2CUseItemResult
+            {
+                ItemId = request.ItemId,
+                Success = failReason == UseItemFailReason.None,
+                FailReason = failReason,
+                CooldownRemainingMs = (int)Math.Min(int.MaxValue, _potionCooldown.RemainingMs())
+            };
             Send(OpCode.Game_UseItemResult, result.Encode());
         }
 
@@ -967,12 +975,13 @@ namespace GameServer.Networking
             room.BroadcastToAll(OpCode.Game_ChestOpenBroadcast, opened.Encode());
         }
 
-        private async Task<bool> TryUseItemAsync(long playerId, GameRoom room, string itemId, CancellationToken ct)
+        // 성공이면 None, 아니면 거부 사유(클라이언트가 안내에 쓴다 - Game_UseItemResult.FailReason).
+        private async Task<UseItemFailReason> TryUseItemAsync(long playerId, GameRoom room, string itemId, CancellationToken ct)
         {
             var now = DateTime.UtcNow;
             if ((now - _lastUseItemAtUtc).TotalMilliseconds < MinUseItemIntervalMs)
             {
-                return false;
+                return UseItemFailReason.TooFast;
             }
             _lastUseItemAtUtc = now;
 
@@ -980,26 +989,26 @@ namespace GameServer.Networking
             if (!ItemCatalog.TryGet(itemId, out ItemDefinition definition) || definition.HealPercent <= 0
                 || !room.CanBeHealed(playerId))
             {
-                return false;
+                return UseItemFailReason.NotUsable;
             }
 
             // 재사용 대기시간을 소모 전에 먼저 건다(예약) - MainServer 왕복(await) 중에 들어오는 같은 세션의 다음 요청도 막힌다.
             // 대기 중이면 아이템을 소모하지 않고 거부한다.
             if (!_potionCooldown.TryReserve(definition.UseCooldownSeconds, out PotionCooldown.Reservation reservation, out _))
             {
-                return false;
+                return UseItemFailReason.Cooldown;
             }
 
             if (!await _mainServerApi.ConsumeItemAsync(playerId, itemId, ct))
             {
                 // 아이템이 소모되지 않았으니 이번 시도가 대기시간을 잡아먹지 않게 되돌린다(미보유/저장 실패 등).
                 _potionCooldown.Cancel(reservation);
-                return false;
+                return UseItemFailReason.Rejected;
             }
 
             // 차감과 회복 사이에 사망/만피가 되면 아이템만 소모된다 - 두 호출 사이(MainServer 왕복 동안)의 짧은 틈이라
             // 드물고, 반대로 회복 먼저 하면 차감 실패 시 공짜 회복이 되므로 차감을 먼저 한다.
-            return room.TryHealPlayer(playerId, definition.HealPercent);
+            return room.TryHealPlayer(playerId, definition.HealPercent) ? UseItemFailReason.None : UseItemFailReason.Rejected;
         }
 
         // Game_EnterRequest 거부(인증 실패/알 수 없는 맵)를 RunAsync의 루프 종료 신호로 쓰기 위한 내부 전용 예외.
