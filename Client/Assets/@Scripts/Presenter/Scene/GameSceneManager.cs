@@ -62,6 +62,18 @@ namespace Incheol.Presenter.Scene
         private bool isUseItemPending;
 
         /// <summary>
+        /// 물약 재사용 대기시간이 끝나는 시각(Time.unscaledTime 기준). 서버가 Game_UseItemResult로 알려준 남은 시간으로 갱신한다 -
+        /// 실제 판정은 서버가 하고(모든 물약이 하나의 대기시간을 공유), 이 값은 어차피 거부될 요청을 미리 거르고 남은 시간을
+        /// 보여주는 데 쓴다.
+        /// </summary>
+        private float potionReadyAtTime;
+
+        /// <summary>
+        /// 다음 물약을 쓸 수 있기까지 남은 시간(초). 대기 중이 아니면 0.
+        /// </summary>
+        public float PotionCooldownRemainingSeconds => Mathf.Max(0f, potionReadyAtTime - Time.unscaledTime);
+
+        /// <summary>
         /// 로컬 플레이어 인스턴스. SpawnPlayerCharacter가 이 GameSceneManager(transform) 밑에 생성하고
         /// RespawnPoint의 위치/회전값만 가져다 쓰므로, 맵 프리팹(및 그 안의 RespawnPoint)이 파괴돼도
         /// 함께 파괴되지 않는다.
@@ -1200,6 +1212,12 @@ private void TryEquipItem(string _itemId)
                 return;
             }
 
+            // 재사용 대기시간 중이면 서버가 어차피 거부하므로 요청을 보내지 않는다(서버 판정이 최종이다).
+            if (PotionCooldownRemainingSeconds > 0f)
+            {
+                return;
+            }
+
             isUseItemPending = GameServerConnectManager.Instance != null && GameServerConnectManager.Instance.SendUseItem(_itemId);
         }
 
@@ -1209,6 +1227,9 @@ private void TryEquipItem(string _itemId)
 private void HandleUseItemResult(GameUseItemResultPacket packet)
         {
             isUseItemPending = false;
+
+            // 성공/실패와 무관하게 서버가 알려준 남은 대기시간으로 갱신한다(성공하면 방금 시작된 대기시간, Cooldown 거부면 남은 시간).
+            potionReadyAtTime = Time.unscaledTime + packet.CooldownRemainingMs / 1000f;
 
             if (!packet.Success)
             {
@@ -1406,8 +1427,10 @@ private void TryUnequipSlot(EquipmentSlotType _slotType)
         {
             if (attempt == 1)
             {
-                // 응답을 받을 수 없게 됐으므로 대기 상태를 풀어준다.
+                // 응답을 받을 수 없게 됐으므로 대기 상태를 풀어준다. 서버의 물약 대기시간은 세션마다 하나라 재접속하면
+                // 초기화되므로 이쪽 표시도 함께 비운다.
                 isUseItemPending = false;
+                potionReadyAtTime = 0f;
 
                 SetLocalPlayerControlEnabled(false);
                 RemotePlayerManager.Instance?.ClearAll();
