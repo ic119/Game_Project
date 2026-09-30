@@ -26,7 +26,6 @@ namespace Incheol.Controller
         {
             (WeaponType.OneHanded, 16f / 30f, 16f / 30f),
             (WeaponType.TwoHanded, 18f / 30f, 18f / 30f),
-            (WeaponType.Shield, 16f / 30f, 16f / 30f),
             (WeaponType.Wand, 16f / 30f, 16f / 30f),
             (WeaponType.Spear, 16f / 30f, 20f / 30f),
         };
@@ -92,9 +91,9 @@ namespace Incheol.Controller
 
         /// <summary>
         /// Game_AttackAnimationBroadcast 수신 시(PlayerAttackController.HandleAttackAnimationReceived가 중계) 호출된다.
-        /// weaponType은 공격자가 실제로 장착한 무기 그대로라 콤보 모션/타이밍이 정확하지만, 이 캐릭터가 그 무기를
-        /// 실제로 들고 있는 "시각"(메시)까지 일치하는 건 아니다 - 원격 플레이어의 장착 무기 시각 자체가 아직
-        /// 동기화되지 않기 때문이다(RemotePlayerManager가 원격 캐릭터에 EquipItem을 호출하지 않음, 알려진 한계).
+        /// weaponType은 공격자가 실제로 장착한 무기 그대로라 콤보 모션/타이밍이 정확하다. 이 캐릭터가 실제로 들고 있는
+        /// 무기/갑옷/투구의 "시각"(메시)은 서버가 알려주는 장착 정보(GamePlayerInfo, Game_EquipmentChangedBroadcast)를
+        /// RemotePlayerManager가 반영한다.
         /// </summary>
         public void PlayAttackAnimation(int comboStage, WeaponType weaponType)
         {

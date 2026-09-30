@@ -62,16 +62,20 @@ public enum PlayerMoveState
 
 /// <summary>
 /// 무기 오브젝트 이름 접두사와 매핑되는 무기 분류.
-/// OH(One-Handed) = 한손무기류, TH(Two-Handed) = 두손무기류, Shield = 방패류, Wand = 원드류, Spear = 창류.
+/// OH(One-Handed) = 한손무기류, TH(Two-Handed) = 두손무기류, Wand = 원드류, Spear = 창류.
+///
+/// 값은 애니메이터 WeaponIndex(BlendTree 임계값)와 직렬화 데이터(ItemDatabaseSO/WeaponVfxDatabaseSO)가 정수 그대로 쓰므로
+/// 명시적으로 고정한다. 3은 예전에 Shield(방패)가 쓰던 값이라 제거한 뒤에도 비워 둔다 - 다른 값으로 재사용하거나
+/// Wand/Spear의 번호를 당기지 말 것(BlendTree의 Wand/Spear 클립 매핑이 어긋난다).
 /// </summary>
 public enum WeaponType
 {
-    None,
-    OneHanded,
-    TwoHanded,
-    Shield,
-    Wand,
-    Spear
+    None = 0,
+    OneHanded = 1,
+    TwoHanded = 2,
+    // 3 = (제거됨) Shield
+    Wand = 4,
+    Spear = 5
 }
 
 public enum ItemType

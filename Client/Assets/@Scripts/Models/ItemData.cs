@@ -26,12 +26,12 @@ public class ItemData
     [Tooltip("itemType이 Eqiupment일 때만 의미가 있다.")]
     public EquipmentSlotType equipSlotType = EquipmentSlotType.None;
 
-    [Tooltip("equipSlotType이 Weapon일 때만 의미가 있다(한손/두손/방패/완드/창).")]
+    [Tooltip("equipSlotType이 Weapon일 때만 의미가 있다(한손/두손/완드/창).")]
     public WeaponType weaponType = WeaponType.None;
 
     [Tooltip("장착 시 활성화할 메시 오브젝트 이름. PlayerCharacterModel의 EquipmentController가 관리하는 장비 컨테이너" +
         "(rightArmEqiupment/leftArmEqiupment/bodyEqiupment 등) 하위 자식 오브젝트 이름과 정확히 일치해야 한다. " +
-        "예) OHS03_Sword, Shield01, Body05. equipSlotType이 None이면 비워둔다.")]
+        "예) OHS03_Sword, Wand01, Body05, Hat03. equipSlotType이 None이면 비워둔다.")]
     public string equipVisualName;
 
     public Sprite icon;

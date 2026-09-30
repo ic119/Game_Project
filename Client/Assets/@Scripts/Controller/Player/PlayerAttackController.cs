@@ -41,7 +41,6 @@ namespace Incheol.Controller
         {
             new WeaponAttackTiming { weaponType = WeaponType.OneHanded, attack1Duration = 16f / 30f, attack2Duration = 16f / 30f },
             new WeaponAttackTiming { weaponType = WeaponType.TwoHanded, attack1Duration = 18f / 30f, attack2Duration = 18f / 30f },
-            new WeaponAttackTiming { weaponType = WeaponType.Shield, attack1Duration = 16f / 30f, attack2Duration = 16f / 30f },
             new WeaponAttackTiming { weaponType = WeaponType.Wand, attack1Duration = 16f / 30f, attack2Duration = 16f / 30f },
             new WeaponAttackTiming { weaponType = WeaponType.Spear, attack1Duration = 16f / 30f, attack2Duration = 20f / 30f },
         };
