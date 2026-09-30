@@ -11,6 +11,47 @@
       { "grade": "Epic", "minQty": 1, "maxQty": 1, "dropRate": 0.002 }
     ]
   },
+  "Spider": {
+    "minGold": 38,
+    "maxGold": 57,
+    "items": [
+      { "itemId": "potion_hp_small", "minQty": 1, "maxQty": 2, "dropRate": 0.3 },
+      { "grade": "Common", "minQty": 1, "maxQty": 1, "dropRate": 0.18 },
+      { "grade": "Rare", "minQty": 1, "maxQty": 1, "dropRate": 0.05 },
+      { "grade": "Epic", "minQty": 1, "maxQty": 1, "dropRate": 0.006 }
+    ]
+  },
+  "Orc": {
+    "minGold": 56,
+    "maxGold": 84,
+    "items": [
+      { "itemId": "potion_hp_small", "minQty": 1, "maxQty": 2, "dropRate": 0.3 },
+      { "grade": "Common", "minQty": 1, "maxQty": 1, "dropRate": 0.1 },
+      { "grade": "Rare", "minQty": 1, "maxQty": 1, "dropRate": 0.14 },
+      { "grade": "Epic", "minQty": 1, "maxQty": 1, "dropRate": 0.03 },
+      { "grade": "Legendary", "minQty": 1, "maxQty": 1, "dropRate": 0.002 }
+    ]
+  },
+  "Werewolf": {
+    "minGold": 83,
+    "maxGold": 125,
+    "items": [
+      { "itemId": "potion_hp_small", "minQty": 1, "maxQty": 2, "dropRate": 0.3 },
+      { "grade": "Rare", "minQty": 1, "maxQty": 1, "dropRate": 0.16 },
+      { "grade": "Epic", "minQty": 1, "maxQty": 1, "dropRate": 0.07 },
+      { "grade": "Legendary", "minQty": 1, "maxQty": 1, "dropRate": 0.008 }
+    ]
+  },
+  "Golem": {
+    "minGold": 113,
+    "maxGold": 170,
+    "items": [
+      { "itemId": "potion_hp_small", "minQty": 1, "maxQty": 3, "dropRate": 0.3 },
+      { "grade": "Rare", "minQty": 1, "maxQty": 1, "dropRate": 0.12 },
+      { "grade": "Epic", "minQty": 1, "maxQty": 1, "dropRate": 0.14 },
+      { "grade": "Legendary", "minQty": 1, "maxQty": 1, "dropRate": 0.025 }
+    ]
+  },
   "TreasureChestBasic": {
     "minGold": 30,
     "maxGold": 50,
