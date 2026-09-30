@@ -45,7 +45,9 @@ namespace Incheol.Models.Define
     public enum ChestLootTableKey
     {
         None = 0,
-        TreasureChestBasic = 1
+        TreasureChestBasic = 1,
+        TreasureChestHidden = 2,
+        TreasureChestRare = 3
     }
 }
 
