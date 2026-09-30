@@ -53,6 +53,10 @@ namespace Shared.Networking
         Game_ChestOpenRequest = 0x021F,
         Game_ChestOpenBroadcast = 0x0220,
 
+        // 방에 입장/맵 이동한 플레이어에게 "이 방에 지금 서 있는 상자 목록"(고정 상자 + 방 생성 시 후보에서 뽑힌 상자)을
+        // 알린다. Game_EnterAck/Game_MapChangeAck 직후, 이미 열린 상자를 따라잡는 Game_ChestOpenBroadcast보다 먼저 온다.
+        Game_ActiveChestsNotify = 0x0221,
+
         // 0x03XX = Dungeon
     }
 }

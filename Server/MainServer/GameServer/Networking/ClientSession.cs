@@ -392,12 +392,32 @@ namespace GameServer.Networking
             var ack = new S2CEnterAck { Self = info, ExistingPlayers = visiblePlayers, ExistingMonsters = visibleMonsters };
             Send(OpCode.Game_EnterAck, ack.Encode());
 
-            SendAlreadyOpenedChests(room);
+            SendChestState(room);
         }
 
         // 상자는 몬스터/플레이어처럼 관심 영역(AOI)으로 걸러 보내지 않는다 - 맵에 고정된 소수뿐이라 방 전체에
         // 이미 열린 것만 그대로 알려줘도 부담이 없다. Game_ChestOpenBroadcast를 그대로 재사용해, 실시간으로
         // 여는 경우와 클라이언트 처리 코드가 완전히 같다(TreasureChestInteractionController 입장에서는 구분할 필요가 없다).
+        // 입장/맵 이동 직후 상자 상태를 순서대로 알려준다 - 어떤 상자가 서 있는지(활성 목록)가 먼저, 그중 이미 열린 것이 그다음.
+        // 연결이 순서를 보장하므로 클라이언트는 열림 알림을 받는 시점에 대상 상자를 이미 알고 있다.
+        private void SendChestState(GameRoom room)
+        {
+            var activeChests = new S2CActiveChests
+            {
+                Chests = room.ActiveChests.Select(c => new ActiveChestInfo
+                {
+                    Id = c.Id,
+                    X = c.X,
+                    Y = c.Y,
+                    Z = c.Z,
+                    LootTableKey = c.LootTableKey
+                }).ToList()
+            };
+            Send(OpCode.Game_ActiveChestsNotify, activeChests.Encode());
+
+            SendAlreadyOpenedChests(room);
+        }
+
         private void SendAlreadyOpenedChests(GameRoom room)
         {
             foreach (string chestId in room.GetOpenedChestIds())
@@ -562,7 +582,7 @@ namespace GameServer.Networking
             var ack = new S2CEnterAck { Self = info, ExistingPlayers = visiblePlayers, ExistingMonsters = visibleMonsters };
             Send(OpCode.Game_MapChangeAck, ack.Encode());
 
-            SendAlreadyOpenedChests(nextRoom);
+            SendChestState(nextRoom);
         }
 
         // 이동 속도 검증 - "이동 거리 예산" 방식. 예산은 초당 MoveBudgetRefillPerSecond(m)씩 차고 최대 MoveBudgetCapacity(m)까지
