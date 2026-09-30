@@ -34,6 +34,13 @@ namespace Shared.Networking.Packets
         public int Level { get; set; } = 1;
         public int Exp { get; set; }
 
+        // 장착 중인 장비의 itemId(없으면 빈 문자열). 다른 접속자의 외형(무기/갑옷/투구 메시)을 그리는 데 쓰인다. 위 값들과 마찬가지로
+        // 클라이언트가 채워 보낸 값은 서버가 쓰지 않고, 입장 시와 장비 변경(Game_StatUpdateRequest) 때마다 MainServer DB 원본
+        // (CharacterSnapshot)으로 덮어쓴다. 바뀌면 Game_EquipmentChangedBroadcast로 주변에 알린다.
+        public string WeaponItemId { get; set; } = string.Empty;
+        public string ArmorItemId { get; set; } = string.Empty;
+        public string HelmetItemId { get; set; } = string.Empty;
+
         public void WriteTo(BinaryWriter writer)
         {
             writer.Write(PlayerId);
@@ -52,6 +59,9 @@ namespace Shared.Networking.Packets
             writer.Write(Defense);
             writer.Write(Level);
             writer.Write(Exp);
+            writer.Write(WeaponItemId);
+            writer.Write(ArmorItemId);
+            writer.Write(HelmetItemId);
         }
 
         public static PlayerInfo ReadFrom(BinaryReader reader)
@@ -73,7 +83,10 @@ namespace Shared.Networking.Packets
                 AttackPower = reader.ReadInt32(),
                 Defense = reader.ReadInt32(),
                 Level = reader.ReadInt32(),
-                Exp = reader.ReadInt32()
+                Exp = reader.ReadInt32(),
+                WeaponItemId = reader.ReadString(),
+                ArmorItemId = reader.ReadString(),
+                HelmetItemId = reader.ReadString()
             };
         }
 

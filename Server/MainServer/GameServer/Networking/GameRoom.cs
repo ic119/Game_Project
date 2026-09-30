@@ -160,6 +160,39 @@ namespace GameServer.Networking
             return true;
         }
 
+        // 장착 장비(무기/갑옷/투구)가 바뀌었으면 PlayerInfo에 반영하고 그 플레이어를 보고 있는 사람(과 본인)에게 알려
+        // 외형을 동기화한다(Game_EquipmentChangedBroadcast). 바뀐 게 없으면 아무것도 보내지 않는다. 막 시야에 들어오는 사람은
+        // 갱신된 PlayerInfo(Game_PlayerJoined)로 같은 값을 받는다.
+        public bool TryUpdateEquipment(long playerId, EquippedVisuals equipped)
+        {
+            if (!_players.TryGetValue(playerId, out var entry))
+            {
+                return false;
+            }
+
+            PlayerInfo info = entry.Info;
+            if (info.WeaponItemId == equipped.WeaponItemId
+                && info.ArmorItemId == equipped.ArmorItemId
+                && info.HelmetItemId == equipped.HelmetItemId)
+            {
+                return false;
+            }
+
+            info.WeaponItemId = equipped.WeaponItemId;
+            info.ArmorItemId = equipped.ArmorItemId;
+            info.HelmetItemId = equipped.HelmetItemId;
+
+            var broadcast = new S2CEquipmentChangedBroadcast
+            {
+                PlayerId = playerId,
+                WeaponItemId = equipped.WeaponItemId,
+                ArmorItemId = equipped.ArmorItemId,
+                HelmetItemId = equipped.HelmetItemId
+            };
+            SendToViewersOfPlayer(playerId, OpCode.Game_EquipmentChangedBroadcast, broadcast.Encode());
+            return true;
+        }
+
         // 공격 판정 자체(사거리/쿨다운 등)는 ClientSession이 검증한 뒤 이 메서드를 호출한다.
         // 데미지 계산(공격력-방어력)과 사망/리스폰 판정, 브로드캐스트까지 전부 여기서 처리한다 -
         // 몬스터의 Defense/HP를 아는 유일한 주체가 GameRoom(서버)이기 때문에, 서버가 최종 결과(RemainingHp)를

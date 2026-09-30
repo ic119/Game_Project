@@ -356,6 +356,12 @@ namespace GameServer.Networking
             info.Exp = snapshot.Exp;
             (info.AttackPower, info.Defense) = CombatStatCalculator.Calculate(snapshot);
 
+            // 외형 장비(무기/갑옷/투구)도 DB 원본으로 정한다 - 다른 접속자에게 보이는 모습이라 클라이언트 값을 믿지 않는다.
+            EquippedVisuals equipped = EquippedVisuals.From(snapshot, ItemCatalog.Exists);
+            info.WeaponItemId = equipped.WeaponItemId;
+            info.ArmorItemId = equipped.ArmorItemId;
+            info.HelmetItemId = equipped.HelmetItemId;
+
             // 체력은 DB에 저장하지 않는다. 기본은 가득 찬 상태로 시작하고(클라이언트 HealthComponent.ApplyFromUserStats와 동일),
             // 최근에 끊긴 상태가 있으면 아래에서 이어받는다.
             info.MaxHp = CombatStatCalculator.CalculateMaxHp(snapshot);
@@ -877,6 +883,7 @@ namespace GameServer.Networking
                     {
                         (int attackPower, int defense) = CombatStatCalculator.Calculate(snapshot);
                         room.TryUpdateCombatStats(playerId, attackPower, defense);
+                        room.TryUpdateEquipment(playerId, EquippedVisuals.From(snapshot, ItemCatalog.Exists));
                     }
 
                     await Task.Delay(MinStatRefreshInterval, ct);

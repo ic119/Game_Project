@@ -62,6 +62,9 @@ namespace Shared.Networking
         Game_ChestSpawnBroadcast = 0x0222,
         Game_ChestDespawnBroadcast = 0x0223,
 
+        // 다른 플레이어의 장착 장비(무기/갑옷/투구)가 바뀌었음을 그 플레이어를 보고 있는 사람에게 알린다(외형 동기화).
+        Game_EquipmentChangedBroadcast = 0x0224,
+
         // 0x03XX = Dungeon
     }
 }

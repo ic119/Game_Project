@@ -15,7 +15,8 @@ namespace GameServer.Combat
         int Exp,
         int Str,
         int Agi,
-        IReadOnlyList<string> EquippedItemIds)
+        IReadOnlyList<string> EquippedItemIds,
+        IReadOnlyDictionary<string, string>? EquippedBySlot = null)
     {
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
@@ -36,6 +37,16 @@ namespace GameServer.Combat
                 .Select(item => item._itemId)
                 .ToList();
 
+            // 슬롯 -> itemId. 외형 동기화(EquippedVisuals)가 어느 슬롯에 무엇이 장착됐는지 알아야 한다.
+            var equippedBySlot = new Dictionary<string, string>();
+            foreach (CharacterItemResponseBody item in body._items ?? new List<CharacterItemResponseBody>())
+            {
+                if (!string.IsNullOrEmpty(item._equipSlot))
+                {
+                    equippedBySlot[item._equipSlot] = item._itemId;
+                }
+            }
+
             return new CharacterSnapshot(
                 body._nickname,
                 body._hairIndex,
@@ -45,7 +56,8 @@ namespace GameServer.Combat
                 body._exp,
                 body._str,
                 body._agi,
-                equippedItemIds);
+                equippedItemIds,
+                equippedBySlot);
         }
 
         // MainServer.CharacterServer.DTOs.CharacterResponse의 부분 집합. GameServer는 MainServer 프로젝트를
