@@ -62,6 +62,12 @@ namespace Incheol.View.UI
                 }
 
                 parts.Add(heal);
+
+                // 재사용 대기시간은 증가/감소 효과가 아닌 정보라 회색으로 표시한다. 0이면(대기시간 없는 물약) 생략.
+                if (_itemData.useCooldownSeconds > 0f)
+                {
+                    parts.Add(Colored(NeutralColor, $"재사용 {FormatSeconds(_itemData.useCooldownSeconds)}초"));
+                }
             }
 
             return string.Join("   ", parts);
@@ -88,6 +94,24 @@ namespace Incheol.View.UI
             }
 
             _parts.Add(text);
+        }
+
+        /// <summary>
+        /// 초 단위 시간 표기. 정수면 "12", 소수가 있으면 한 자리 "6.5". 재사용 시간 표시와 남은 대기시간 표시가 같은 형식을 쓴다.
+        /// </summary>
+        public static string FormatSeconds(float _seconds)
+        {
+            return _seconds.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>
+        /// 대기 중인 사용 버튼의 문구. 남은 시간을 올림한 소수 한 자리로 보여줘 카운트다운이 끊기지 않고 0.0으로 끝나지 않게 한다.
+        /// 예) 3.2초 남았으면 "사용 대기 3.2초".
+        /// </summary>
+        public static string BuildCooldownButtonLabel(float _remainingSeconds)
+        {
+            float rounded = Mathf.Ceil(_remainingSeconds * 10f) / 10f;
+            return $"사용 대기 {rounded.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)}초";
         }
 
         private static string ColorOfSign(int _value)

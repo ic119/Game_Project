@@ -92,6 +92,12 @@ namespace Incheol.View.UI
         // 물약의 실제 회복량 표시용. UpdateStatsUI가 최신 값을 알려준다(0이면 회복량 숫자는 생략).
         private int lastMaxHp;
 
+        // 물약 재사용 대기시간이 끝나는 시각(Time.unscaledTime 기준). SetPotionCooldown이 갱신한다.
+        private float potionReadyAtTime;
+
+        // 사용 버튼이 지금 "사용 대기 N초"를 보여주고 있는지. 대기가 끝난 뒤 문구를 되돌리는 갱신이 필요한지 판단하는 데 쓴다.
+        private bool useButtonShowsCooldown;
+
         private InventoryTabType currentTab = InventoryTabType.All;
         private UI_InventorySlot selectedSlot = null;
 
@@ -126,6 +132,16 @@ namespace Incheol.View.UI
         private void OnDestroy()
         {
             UnregisterEvents();
+        }
+
+        private void Update()
+        {
+            // 선택한 물약이 재사용 대기 중일 때만 남은 시간을 갱신한다(그 외에는 아무 일도 하지 않는다). 대기가 막 끝난 프레임에는
+            // 아직 "사용 대기" 문구가 남아 있으므로 한 번 더 갱신해 원래 문구/활성 상태로 되돌린다.
+            if (useButtonShowsCooldown || IsPotionCoolingDown())
+            {
+                RefreshUseButton();
+            }
         }
         #endregion
 
@@ -481,6 +497,60 @@ namespace Incheol.View.UI
             OnSlotSelected?.Invoke(_slot);
         }
 
+        /// <summary>
+        /// 물약 재사용 대기시간이 끝나는 시각(Time.unscaledTime 기준)을 남은 시간(초)으로 갱신한다. GameSceneManager가 서버의
+        /// 사용 결과(Game_UseItemResult.CooldownRemainingMs)를 받을 때와 인벤토리를 다시 그릴 때 넘겨준다 - 이 뷰는 서버/네트워크를
+        /// 모르고, 받은 값으로 스스로 카운트다운만 한다.
+        /// </summary>
+        public void SetPotionCooldown(float _remainingSeconds)
+        {
+            potionReadyAtTime = Time.unscaledTime + Mathf.Max(0f, _remainingSeconds);
+            RefreshUseButton();
+        }
+
+        // 선택한 슬롯이 "일반 칸의 물약"이고 재사용 대기시간이 남아 있으면 true. 장비/기타 아이템은 대기시간의 영향을 받지 않는다.
+        private bool IsPotionCoolingDown()
+        {
+            if (selectedSlot == null || !selectedSlot.HasItem || selectedSlot.SlotType != InventorySlotType.Inventory
+                || Time.unscaledTime >= potionReadyAtTime)
+            {
+                return false;
+            }
+
+            ItemData itemData = itemLookup?.Invoke(selectedSlot.ItemId);
+            return itemData != null && itemData.itemType == ItemType.Potion;
+        }
+
+        /// <summary>
+        /// 사용 버튼의 문구와 활성 상태. 평소에는 "장착 / 사용"(일반 칸) 또는 "장착 해제"(장비 슬롯)이고, 선택한 물약이 재사용 대기 중이면
+        /// "사용 대기 3.2초"로 바꾸고 버튼을 잠근다. 대기시간이 끝나면 다음 호출에서 원래대로 돌아온다. 문구가 같으면 다시 쓰지 않는다
+        /// (매 프레임 호출돼도 문자열 할당이 없도록).
+        /// </summary>
+        private void RefreshUseButton()
+        {
+            if (selectedSlot == null || !selectedSlot.HasItem)
+            {
+                useButtonShowsCooldown = false;
+                return;
+            }
+
+            bool coolingDown = IsPotionCoolingDown();
+            useButtonShowsCooldown = coolingDown;
+            string label = coolingDown
+                ? ItemDetailTextBuilder.BuildCooldownButtonLabel(potionReadyAtTime - Time.unscaledTime)
+                : (selectedSlot.SlotType == InventorySlotType.Inventory ? "장착 / 사용" : "장착 해제");
+
+            if (useButton != null)
+            {
+                useButton.interactable = !coolingDown;
+            }
+
+            if (useButtonText != null && useButtonText.text != label)
+            {
+                useButtonText.text = label;
+            }
+        }
+
         private void UpdateItemDetail(UI_InventorySlot _slot)
         {
             if (_slot == null || !_slot.HasItem)
@@ -492,13 +562,10 @@ namespace Incheol.View.UI
             }
 
             if (itemDetailPanel != null) itemDetailPanel.SetActive(true);
-            if (useButton != null) useButton.interactable = true;
             if (dropButton != null) dropButton.interactable = true;
 
-            if (useButtonText != null)
-            {
-                useButtonText.text = _slot.SlotType == InventorySlotType.Inventory ? "장착 / 사용" : "장착 해제";
-            }
+            // 사용 버튼의 문구/활성 상태(물약 재사용 대기 중이면 남은 시간)를 정한다.
+            RefreshUseButton();
 
             ItemData itemData = itemLookup?.Invoke(_slot.ItemId);
 

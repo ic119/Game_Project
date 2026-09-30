@@ -1017,6 +1017,7 @@ namespace Incheol.Presenter.Scene
 
             Func<string, ItemData> itemLookup = ItemDatabaseManager.Instance != null ? ItemDatabaseManager.Instance.FindById : null;
             inventoryView.RefreshInventory(spawnedPlayerModel.Gold, localInventoryItems, itemLookup);
+            inventoryView.SetPotionCooldown(PotionCooldownRemainingSeconds); // 다시 그려진 선택 슬롯의 사용 버튼에 남은 대기시간을 반영한다.
             inventoryView.UpdateStatsUI(spawnedPlayerModel.Stats, spawnedPlayerModel.AttackPower, spawnedPlayerModel.Defense, spawnedPlayerModel.MaxHp);
         }
 
@@ -1230,6 +1231,7 @@ private void HandleUseItemResult(GameUseItemResultPacket packet)
 
             // 성공/실패와 무관하게 서버가 알려준 남은 대기시간으로 갱신한다(성공하면 방금 시작된 대기시간, Cooldown 거부면 남은 시간).
             potionReadyAtTime = Time.unscaledTime + packet.CooldownRemainingMs / 1000f;
+            inventoryView?.SetPotionCooldown(PotionCooldownRemainingSeconds);
 
             if (!packet.Success)
             {
@@ -1431,6 +1433,7 @@ private void TryUnequipSlot(EquipmentSlotType _slotType)
                 // 초기화되므로 이쪽 표시도 함께 비운다.
                 isUseItemPending = false;
                 potionReadyAtTime = 0f;
+                inventoryView?.SetPotionCooldown(0f);
 
                 SetLocalPlayerControlEnabled(false);
                 RemotePlayerManager.Instance?.ClearAll();
