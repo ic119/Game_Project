@@ -22,7 +22,7 @@ namespace GameServer.Items
         // 클라이언트 ItemData.useCooldownSeconds와 같은 값이어야 한다(ItemDefinitionValidator.Generate가 동기화).
         public float UseCooldownSeconds { get; init; } = 0f;
 
-        // 장착 가능한 슬롯("Weapon"/"Armor"/"Helmet"/"Boots"/"Accessory", 클라이언트 ItemData.equipSlotType과 같은 이름).
+        // 장착 가능한 슬롯("Weapon"/"Armor"/"Helmet"/"Accessory", 클라이언트 ItemData.equipSlotType과 같은 이름).
         // 없으면 장비가 아니다. GameServer는 쓰지 않고, MainServer가 같은 파일을 읽어 장착 요청을 검증한다(ItemEquipSlotCatalog).
         public string? EquipSlot { get; init; }
 

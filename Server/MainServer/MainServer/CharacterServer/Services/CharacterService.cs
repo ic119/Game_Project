@@ -182,7 +182,7 @@ namespace MainServer.CharacterServer.Services
             _db.KillRewardReceipts.AsNoTracking().AnyAsync(r => r.Id == rewardId);
 
         // 인벤토리 UI에서 장착 가능한 슬롯 이름. 클라이언트 EquipmentSlotType(None 제외)과 철자를 맞춘다.
-        public static readonly IReadOnlySet<string> ValidEquipSlots = new HashSet<string> { "Weapon", "Armor", "Helmet", "Boots", "Accessory" };
+        public static readonly IReadOnlySet<string> ValidEquipSlots = new HashSet<string> { "Weapon", "Armor", "Helmet", "Accessory" };
 
         // 인벤토리 아이템을 장비 슬롯에 장착한다(소유자 검증 포함). 같은 슬롯에 이미 장착돼 있던 다른 아이템은
         // 자동으로 해제한 뒤(먼저 저장) 새 아이템을 장착한다 - (CharacterId, EquipSlot) 유니크 인덱스가 있어
