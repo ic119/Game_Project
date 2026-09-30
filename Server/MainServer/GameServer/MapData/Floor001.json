@@ -79,6 +79,78 @@
             "z": -12.0,
             "radius": 1.5,
             "lootTableKey": "TreasureChestRare"
+        },
+        {
+            "id": "TreasureChestSpawn010",
+            "x": -90.0,
+            "y": 0.0,
+            "z": 10.0,
+            "radius": 1.5,
+            "lootTableKey": "TreasureChestHidden"
+        },
+        {
+            "id": "TreasureChestSpawn011",
+            "x": -57.5,
+            "y": 0.0,
+            "z": 30.0,
+            "radius": 1.5,
+            "lootTableKey": "TreasureChestHidden"
+        },
+        {
+            "id": "TreasureChestSpawn012",
+            "x": -80.0,
+            "y": 0.0,
+            "z": 27.5,
+            "radius": 1.5,
+            "lootTableKey": "TreasureChestHidden"
+        },
+        {
+            "id": "TreasureChestSpawn013",
+            "x": -52.5,
+            "y": 0.0,
+            "z": -42.5,
+            "radius": 1.5,
+            "lootTableKey": "TreasureChestRare"
+        },
+        {
+            "id": "TreasureChestSpawn014",
+            "x": -55.0,
+            "y": 0.0,
+            "z": 47.5,
+            "radius": 1.5,
+            "lootTableKey": "TreasureChestRare"
+        },
+        {
+            "id": "TreasureChestSpawn015",
+            "x": -57.5,
+            "y": 0.0,
+            "z": -27.5,
+            "radius": 1.5,
+            "lootTableKey": "TreasureChestRare"
+        },
+        {
+            "id": "TreasureChestSpawn016",
+            "x": -122.5,
+            "y": 0.0,
+            "z": 42.5,
+            "radius": 1.5,
+            "lootTableKey": "TreasureChestBasic"
+        },
+        {
+            "id": "TreasureChestSpawn017",
+            "x": -100.0,
+            "y": 0.0,
+            "z": 10.0,
+            "radius": 1.5,
+            "lootTableKey": "TreasureChestBasic"
+        },
+        {
+            "id": "TreasureChestSpawn018",
+            "x": -60.0,
+            "y": 0.0,
+            "z": -35.0,
+            "radius": 1.5,
+            "lootTableKey": "TreasureChestBasic"
         }
     ],
     "chestSpawnCounts": [
