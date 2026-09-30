@@ -1003,3 +1003,31 @@ MonoBehaviour:
     bonusAttackPower: 0
     bonusDefense: 17
     healPercent: 0
+  - itemId: potion_hp_medium
+    itemName: "\uCCB4\uB825 \uBB3C\uC57D(\uC911)"
+    description: "\uCD5C\uB300\uCCB4\uB825\uC758 30%\uB9CC\uD07C \uCCB4\uB825\uC744
+      \uD68C\uBCF5\uC2DC\uD0A4\uB294 \uCCB4\uB825 \uBB3C\uC57D"
+    itemType: 1
+    equipSlotType: 0
+    weaponType: 0
+    equipVisualName: 
+    icon: {fileID: 21300000, guid: 8747fbd096b50834ab608c29a3c05bcc, type: 3}
+    itemGrade: 1
+    maxStackCount: 99
+    bonusAttackPower: 0
+    bonusDefense: 0
+    healPercent: 30
+  - itemId: potion_hp_large
+    itemName: "\uCCB4\uB825 \uBB3C\uC57D(\uB300)"
+    description: "\uCD5C\uB300\uCCB4\uB825\uC758 60%\uB9CC\uD07C \uCCB4\uB825\uC744
+      \uD68C\uBCF5\uC2DC\uD0A4\uB294 \uCCB4\uB825 \uBB3C\uC57D"
+    itemType: 1
+    equipSlotType: 0
+    weaponType: 0
+    equipVisualName: 
+    icon: {fileID: 21300000, guid: 8747fbd096b50834ab608c29a3c05bcc, type: 3}
+    itemGrade: 2
+    maxStackCount: 99
+    bonusAttackPower: 0
+    bonusDefense: 0
+    healPercent: 60

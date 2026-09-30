@@ -15,7 +15,8 @@
     "minGold": 38,
     "maxGold": 57,
     "items": [
-      { "itemId": "potion_hp_small", "minQty": 1, "maxQty": 2, "dropRate": 0.3 },
+      { "itemId": "potion_hp_small", "minQty": 1, "maxQty": 2, "dropRate": 0.25 },
+      { "itemId": "potion_hp_medium", "minQty": 1, "maxQty": 1, "dropRate": 0.08 },
       { "grade": "Common", "minQty": 1, "maxQty": 1, "dropRate": 0.18 },
       { "grade": "Rare", "minQty": 1, "maxQty": 1, "dropRate": 0.05 },
       { "grade": "Epic", "minQty": 1, "maxQty": 1, "dropRate": 0.006 }
@@ -25,7 +26,8 @@
     "minGold": 56,
     "maxGold": 84,
     "items": [
-      { "itemId": "potion_hp_small", "minQty": 1, "maxQty": 2, "dropRate": 0.3 },
+      { "itemId": "potion_hp_small", "minQty": 1, "maxQty": 2, "dropRate": 0.15 },
+      { "itemId": "potion_hp_medium", "minQty": 1, "maxQty": 1, "dropRate": 0.22 },
       { "grade": "Common", "minQty": 1, "maxQty": 1, "dropRate": 0.1 },
       { "grade": "Rare", "minQty": 1, "maxQty": 1, "dropRate": 0.14 },
       { "grade": "Epic", "minQty": 1, "maxQty": 1, "dropRate": 0.03 },
@@ -36,7 +38,8 @@
     "minGold": 83,
     "maxGold": 125,
     "items": [
-      { "itemId": "potion_hp_small", "minQty": 1, "maxQty": 2, "dropRate": 0.3 },
+      { "itemId": "potion_hp_medium", "minQty": 1, "maxQty": 2, "dropRate": 0.25 },
+      { "itemId": "potion_hp_large", "minQty": 1, "maxQty": 1, "dropRate": 0.06 },
       { "grade": "Rare", "minQty": 1, "maxQty": 1, "dropRate": 0.16 },
       { "grade": "Epic", "minQty": 1, "maxQty": 1, "dropRate": 0.07 },
       { "grade": "Legendary", "minQty": 1, "maxQty": 1, "dropRate": 0.008 }
@@ -46,7 +49,8 @@
     "minGold": 113,
     "maxGold": 170,
     "items": [
-      { "itemId": "potion_hp_small", "minQty": 1, "maxQty": 3, "dropRate": 0.3 },
+      { "itemId": "potion_hp_medium", "minQty": 1, "maxQty": 2, "dropRate": 0.25 },
+      { "itemId": "potion_hp_large", "minQty": 1, "maxQty": 1, "dropRate": 0.18 },
       { "grade": "Rare", "minQty": 1, "maxQty": 1, "dropRate": 0.12 },
       { "grade": "Epic", "minQty": 1, "maxQty": 1, "dropRate": 0.14 },
       { "grade": "Legendary", "minQty": 1, "maxQty": 1, "dropRate": 0.025 }
