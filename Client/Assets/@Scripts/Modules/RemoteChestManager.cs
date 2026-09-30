@@ -41,6 +41,8 @@ namespace Incheol.Modules
 
             GameServerConnectManager.Instance.OnActiveChestsReceived += HandleActiveChestsReceived;
             GameServerConnectManager.Instance.OnChestOpened += HandleChestOpened;
+            GameServerConnectManager.Instance.OnChestSpawned += HandleChestSpawned;
+            GameServerConnectManager.Instance.OnChestDespawned += HandleChestDespawned;
         }
 
         private void OnDisable()
@@ -52,6 +54,8 @@ namespace Incheol.Modules
 
             GameServerConnectManager.Instance.OnActiveChestsReceived -= HandleActiveChestsReceived;
             GameServerConnectManager.Instance.OnChestOpened -= HandleChestOpened;
+            GameServerConnectManager.Instance.OnChestSpawned -= HandleChestSpawned;
+            GameServerConnectManager.Instance.OnChestDespawned -= HandleChestDespawned;
         }
         #endregion
 
@@ -64,27 +68,71 @@ namespace Incheol.Modules
                 activeChestIds.Add(info.Id);
             }
 
-            // 씬에 이미 있는 상자(맵 프리팹의 고정 상자)의 id. 이 id는 다시 만들지 않는다.
-            var sceneChestIds = new HashSet<string>();
-            foreach (TreasureChestInteractionController chest in FindObjectsByType<TreasureChestInteractionController>(FindObjectsInactive.Include))
-            {
-                sceneChestIds.Add(chest.ChestId);
-            }
-
+            HashSet<string> sceneChestIds = CollectSceneChestIds();
             foreach (GameChestInfo info in packet.Chests)
             {
-                if (sceneChestIds.Contains(info.Id) || spawnedChests.ContainsKey(info.Id) || loadingChestIds.Contains(info.Id))
-                {
-                    continue;
-                }
-
-                SpawnChest(info);
+                SpawnIfMissing(info, sceneChestIds);
             }
         }
 
         private void HandleChestOpened(GameChestOpenBroadcastPacket packet)
         {
             openedChestIds.Add(packet.ChestId);
+        }
+
+        /// <summary>
+        /// 리스폰으로 새 상자가 생겼다(Game_ChestSpawnBroadcast). 입장 직후의 스냅샷과 같은 경로로 생성한다 -
+        /// 이미 씬에 있거나 만들었거나 로딩 중인 id면(스냅샷과 겹친 경우) 건너뛴다.
+        /// </summary>
+        private void HandleChestSpawned(GameChestInfo info)
+        {
+            activeChestIds.Add(info.Id);
+            SpawnIfMissing(info, CollectSceneChestIds());
+        }
+
+        /// <summary>
+        /// 열린 뒤 잔존 시간이 지난 상자가 사라졌다(Game_ChestDespawnBroadcast). 상자를 지우고 "열림" 기록도 함께 지운다 -
+        /// 같은 id의 상자가 나중에 다시 생기면 닫힌 상태여야 하기 때문이다. 프리팹을 불러오는 중이었다면 활성 id에서 빠졌으므로
+        /// 로딩 콜백(OnPrefabLoaded)이 알아서 생성을 포기한다. 모르는 id(스냅샷보다 먼저 온 경우)는 조용히 무시한다.
+        /// </summary>
+        private void HandleChestDespawned(string chestId)
+        {
+            activeChestIds.Remove(chestId);
+            openedChestIds.Remove(chestId);
+
+            if (spawnedChests.TryGetValue(chestId, out TreasureChestInteractionController controller))
+            {
+                spawnedChests.Remove(chestId);
+                if (controller != null)
+                {
+                    // Destroy는 프레임 끝에야 실제로 지워지므로, 같은 프레임에 같은 id의 새 상자가 오면(후보가 하나뿐일 때 제자리 리스폰)
+                    // CollectSceneChestIds가 이 죽어가는 오브젝트를 "이미 있는 상자"로 착각해 새 상자를 건너뛴다 - id를 비워 막는다.
+                    controller.Initialize(string.Empty);
+                    Destroy(controller.gameObject);
+                }
+            }
+        }
+
+        // 씬에 이미 있는 상자(맵 프리팹의 고정 상자)의 id. 이 id는 다시 만들지 않는다.
+        private static HashSet<string> CollectSceneChestIds()
+        {
+            var ids = new HashSet<string>();
+            foreach (TreasureChestInteractionController chest in FindObjectsByType<TreasureChestInteractionController>(FindObjectsInactive.Include))
+            {
+                ids.Add(chest.ChestId);
+            }
+
+            return ids;
+        }
+
+        private void SpawnIfMissing(GameChestInfo info, HashSet<string> sceneChestIds)
+        {
+            if (sceneChestIds.Contains(info.Id) || spawnedChests.ContainsKey(info.Id) || loadingChestIds.Contains(info.Id))
+            {
+                return;
+            }
+
+            SpawnChest(info);
         }
 
         private void SpawnChest(GameChestInfo info)

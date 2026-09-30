@@ -82,6 +82,8 @@ namespace Incheol.Editor
         {
             public string lootTableKey;
             public int count;
+            public float respawnSeconds;
+            public float despawnDelaySeconds;
         }
 
         [System.Serializable]
@@ -400,7 +402,21 @@ namespace Incheol.Editor
                         return false;
                     }
 
-                    fileData.chestSpawnCounts.Add(new ChestSpawnCountJson { lootTableKey = entry.lootTableKey.ToString(), count = entry.count });
+                    // 서버 MapDataCatalog가 부팅 시 같은 규칙으로 다시 검증한다(잔존 시간이 1초 미만이면 개봉 브로드캐스트보다
+                    // 제거 브로드캐스트가 먼저 나가 클라이언트에 "열림" 기록이 남을 수 있다).
+                    if (entry.respawnSeconds > 0f && (entry.despawnDelaySeconds < 1f || entry.despawnDelaySeconds > entry.respawnSeconds))
+                    {
+                        error = $"lootTableKey '{entry.lootTableKey}'의 리스폰 시간이 올바르지 않습니다(리스폰을 켜려면 1 <= despawnDelaySeconds <= respawnSeconds).";
+                        return false;
+                    }
+
+                    fileData.chestSpawnCounts.Add(new ChestSpawnCountJson
+                    {
+                        lootTableKey = entry.lootTableKey.ToString(),
+                        count = entry.count,
+                        respawnSeconds = entry.respawnSeconds,
+                        despawnDelaySeconds = entry.despawnDelaySeconds
+                    });
                 }
             }
 

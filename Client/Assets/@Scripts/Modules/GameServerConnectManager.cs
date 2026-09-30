@@ -109,6 +109,16 @@ namespace Incheol.Modules
         /// 후보에서 뽑힌 상자가 함께 온다. 이미 열린 상자를 알리는 OnChestOpened보다 먼저 발생한다.
         /// </summary>
         public event Action<GameActiveChestsPacket> OnActiveChestsReceived;
+
+        /// <summary>
+        /// 리스폰으로 새 상자가 생겼을 때(Game_ChestSpawnBroadcast). 방에 있는 모두에게 온다.
+        /// </summary>
+        public event Action<GameChestInfo> OnChestSpawned;
+
+        /// <summary>
+        /// 열린 상자가 잔존 시간이 지나 사라졌을 때(Game_ChestDespawnBroadcast). 인자는 사라진 상자의 chestId다.
+        /// </summary>
+        public event Action<string> OnChestDespawned;
         public event Action<GameMonsterInfo> OnMonsterSpawned;
         public event Action<GameMonsterDamageBroadcastPacket> OnMonsterDamaged;
         public event Action<GameMonsterDieBroadcastPacket> OnMonsterDied;
@@ -760,6 +770,16 @@ namespace Incheol.Modules
                 case GameOpCode.Game_ActiveChestsNotify:
                     var activeChests = GameActiveChestsPacket.Decode(body);
                     pendingActions.Enqueue(() => OnActiveChestsReceived?.Invoke(activeChests));
+                    break;
+
+                case GameOpCode.Game_ChestSpawnBroadcast:
+                    var chestSpawn = GameChestSpawnPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnChestSpawned?.Invoke(chestSpawn.Chest));
+                    break;
+
+                case GameOpCode.Game_ChestDespawnBroadcast:
+                    var chestDespawn = GameChestDespawnPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnChestDespawned?.Invoke(chestDespawn.ChestId));
                     break;
 
                 case GameOpCode.Game_MonsterSpawnBroadcast:
