@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using Incheol.Controller.Interaction;
+using Incheol.Models.Define;
 using UnityEditor;
 using UnityEngine;
 
@@ -63,12 +64,34 @@ namespace Incheol.Editor
             public string lootTableKey;
         }
 
+        // 상자가 설 수 있는 후보 지점. 서버가 chestSpawnCounts[]의 개수만큼 같은 lootTableKey 후보 중에서 뽑는다.
+        [System.Serializable]
+        private class ChestCandidateJson
+        {
+            // 후보 마커 GameObject 이름(맵 안에서 고유). 서버가 뽑은 후보의 chestId로 그대로 쓸 수 있다.
+            public string id;
+            public float x;
+            public float y;
+            public float z;
+            public float radius;
+            public string lootTableKey;
+        }
+
+        [System.Serializable]
+        private class ChestSpawnCountJson
+        {
+            public string lootTableKey;
+            public int count;
+        }
+
         [System.Serializable]
         private class MapDataJson
         {
             public PointJson respawnPoint;
             public List<PortalJson> portals = new();
             public List<ChestJson> chests = new();
+            public List<ChestCandidateJson> chestCandidates = new();
+            public List<ChestSpawnCountJson> chestSpawnCounts = new();
         }
 
         [MenuItem("Tools/Map/Export Map Data From Selected Prefab")]
@@ -131,13 +154,18 @@ namespace Incheol.Editor
                     fileData.chests.Add(chestJson);
                 }
 
+                if (!TryBuildChestCandidates(root, fileData, seenChestIds, out string candidateError))
+                {
+                    return Fail(showDialogs, $"'{mapId}' : {candidateError}");
+                }
+
                 string json = JsonUtility.ToJson(fileData, true);
                 string outputDirectory = Path.GetFullPath(Path.Combine(Application.dataPath, ServerMapDataRelativePath));
                 Directory.CreateDirectory(outputDirectory);
                 string outputPath = Path.Combine(outputDirectory, $"{mapId}.json");
                 File.WriteAllText(outputPath, json);
 
-                Debug.Log($"[MapDataExporter] '{mapId}' 맵 데이터(포탈 {fileData.portals.Count}개, 상자 {fileData.chests.Count}개)를 내보냈습니다 : {outputPath}");
+                Debug.Log($"[MapDataExporter] '{mapId}' 맵 데이터(포탈 {fileData.portals.Count}개, 상자 {fileData.chests.Count}개, 상자 후보 {fileData.chestCandidates.Count}개)를 내보냈습니다 : {outputPath}");
                 return true;
             }
             finally
@@ -305,6 +333,77 @@ namespace Incheol.Editor
                 radius = GetHorizontalRadius(collider),
                 lootTableKey = lootTableKey
             };
+            error = null;
+            return true;
+        }
+
+        // 후보 마커(TreasureChestSpawnPointMarker)와 등급별 개수(TreasureChestSpawnPlan)를 검증해 내보낸다.
+        // 후보 id는 고정 상자 id(usedIds)와도 겹치면 안 된다 - 서버가 둘 다 chestId로 취급하기 때문이다.
+        // 잘못된 개수를 그대로 내보내면 서버가 "뽑을 후보가 모자란" 상태로 뜨므로 통째로 중단한다.
+        private static bool TryBuildChestCandidates(GameObject root, MapDataJson fileData, HashSet<string> usedIds, out string error)
+        {
+            TreasureChestSpawnPointMarker[] markers = root.GetComponentsInChildren<TreasureChestSpawnPointMarker>(true);
+            TreasureChestSpawnPlan plan = root.GetComponentInChildren<TreasureChestSpawnPlan>(true);
+            var candidateCountByKey = new Dictionary<ChestLootTableKey, int>();
+
+            foreach (TreasureChestSpawnPointMarker marker in markers)
+            {
+                string id = marker.gameObject.name;
+                if (!usedIds.Add(id))
+                {
+                    error = $"상자 후보 '{id}'의 이름이 다른 상자/후보와 중복됩니다(후보 이름이 곧 id입니다).";
+                    return false;
+                }
+
+                if (marker.lootTableKey == ChestLootTableKey.None)
+                {
+                    error = $"상자 후보 '{id}'의 lootTableKey가 None입니다.";
+                    return false;
+                }
+
+                Vector3 position = marker.transform.position;
+                fileData.chestCandidates.Add(new ChestCandidateJson
+                {
+                    id = id,
+                    x = position.x,
+                    y = position.y,
+                    z = position.z,
+                    radius = marker.interactRadius,
+                    lootTableKey = marker.lootTableKey.ToString()
+                });
+
+                candidateCountByKey.TryGetValue(marker.lootTableKey, out int current);
+                candidateCountByKey[marker.lootTableKey] = current + 1;
+            }
+
+            if (markers.Length > 0 && plan == null)
+            {
+                error = "상자 후보가 있는데 TreasureChestSpawnPlan 컴포넌트가 없습니다(맵 프리팹에 추가해 등급별 개수를 지정하세요).";
+                return false;
+            }
+
+            if (plan != null)
+            {
+                var seenKeys = new HashSet<ChestLootTableKey>();
+                foreach (TreasureChestSpawnCount entry in plan.counts)
+                {
+                    if (entry.lootTableKey == ChestLootTableKey.None || !seenKeys.Add(entry.lootTableKey))
+                    {
+                        error = $"TreasureChestSpawnPlan의 lootTableKey '{entry.lootTableKey}'가 None이거나 중복됩니다.";
+                        return false;
+                    }
+
+                    candidateCountByKey.TryGetValue(entry.lootTableKey, out int available);
+                    if (entry.count > available)
+                    {
+                        error = $"lootTableKey '{entry.lootTableKey}'의 뽑을 개수({entry.count})가 후보 수({available})보다 많습니다.";
+                        return false;
+                    }
+
+                    fileData.chestSpawnCounts.Add(new ChestSpawnCountJson { lootTableKey = entry.lootTableKey.ToString(), count = entry.count });
+                }
+            }
+
             error = null;
             return true;
         }

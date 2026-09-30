@@ -36,6 +36,17 @@ namespace Incheol.Models.Define
         None = 0,
         RedMushroom = 1
     }
+
+    /// <summary>
+    /// 보물상자 후보 지점/등급별 개수 설정에서 고르는 드롭 테이블 키. 멤버 이름이 서버 Drops/DropTables.json의
+    /// 키와 글자 그대로 일치해야 한다(MapDataExporter가 ToString()으로 내보낸다) -
+    /// 새 멤버를 추가하려면 DropTables.json에 같은 이름의 항목을 먼저 만들 것.
+    /// </summary>
+    public enum ChestLootTableKey
+    {
+        None = 0,
+        TreasureChestBasic = 1
+    }
 }
 
 public enum PlayerMoveState
