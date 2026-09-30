@@ -12,30 +12,29 @@
     ]
   },
   "TreasureChestBasic": {
-    "minGold": 10,
-    "maxGold": 25,
+    "minGold": 30,
+    "maxGold": 50,
     "items": [
-      { "grade": "Common", "minQty": 1, "maxQty": 1, "dropRate": 0.7 },
-      { "grade": "Rare", "minQty": 1, "maxQty": 1, "dropRate": 0.25 },
-      { "grade": "Epic", "minQty": 1, "maxQty": 1, "dropRate": 0.03 }
+      { "grade": "Common", "minQty": 1, "maxQty": 1, "dropRate": 1.0 },
+      { "grade": "Rare", "minQty": 1, "maxQty": 1, "dropRate": 0.2 },
+      { "grade": "Epic", "minQty": 1, "maxQty": 1, "dropRate": 0.02 }
     ]
   },
   "TreasureChestHidden": {
-    "minGold": 30,
-    "maxGold": 60,
+    "minGold": 70,
+    "maxGold": 110,
     "items": [
-      { "grade": "Common", "minQty": 1, "maxQty": 1, "dropRate": 0.5 },
-      { "grade": "Rare", "minQty": 1, "maxQty": 1, "dropRate": 0.4 },
-      { "grade": "Epic", "minQty": 1, "maxQty": 1, "dropRate": 0.08 }
+      { "grade": "Rare", "minQty": 1, "maxQty": 1, "dropRate": 1.0 },
+      { "grade": "Epic", "minQty": 1, "maxQty": 1, "dropRate": 0.15 }
     ]
   },
   "TreasureChestRare": {
-    "minGold": 80,
-    "maxGold": 150,
+    "minGold": 150,
+    "maxGold": 250,
     "items": [
-      { "grade": "Common", "minQty": 1, "maxQty": 1, "dropRate": 0.2 },
-      { "grade": "Rare", "minQty": 1, "maxQty": 1, "dropRate": 0.6 },
-      { "grade": "Epic", "minQty": 1, "maxQty": 1, "dropRate": 0.18 }
+      { "grade": "Epic", "minQty": 1, "maxQty": 1, "dropRate": 1.0 },
+      { "grade": "Rare", "minQty": 1, "maxQty": 1, "dropRate": 0.5 },
+      { "grade": "Legendary", "minQty": 1, "maxQty": 1, "dropRate": 0.05 }
     ]
   }
 }
