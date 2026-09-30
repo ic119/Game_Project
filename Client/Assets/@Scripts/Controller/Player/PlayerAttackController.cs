@@ -177,7 +177,7 @@ namespace Incheol.Controller
         }
 
         /// <summary>
-        /// Attack Layer의 Attack1/Attack2 상태는 무기 타입별 클립(예: SingleSword/THS/SwordAndShield/MagicWand/Spear의
+        /// Attack Layer의 Attack1/Attack2 상태는 무기 타입별 클립(예: SingleSword/THS/MagicWand/Spear의
         /// Attack01·Attack02)을 담은 BlendTree이고, WeaponIndex 파라미터(WeaponType의 enum 값)로 그중 하나를 정확히
         /// 골라 재생한다(임계값이 정수로 정확히 일치해 블렌딩 없이 하나만 재생됨). 매 콤보 단계 시작마다 현재 장착 무기로
         /// 동기화해, 공격 도중 장비를 바꾸는 경우에도 다음 콤보 단계부터는 항상 최신 무기 애니메이션이 재생되게 한다.

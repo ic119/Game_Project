@@ -29,7 +29,7 @@ public class EquipmentController : MonoBehaviour
     [SerializeField] private string defaultBodyVisualName = "Body01";
 
     /// <summary>
-    /// 슬롯별로 탐색할 컨테이너 우선순위. Weapon은 한손/두손/완드/창(오른팔)과 방패/활(왼팔)을 모두 포함하므로
+    /// 슬롯별로 탐색할 컨테이너 우선순위. Weapon은 한손/두손/완드/창(오른팔)과 활(왼팔)을 모두 포함하므로
     /// 오른팔을 먼저 찾고 없으면 왼팔에서 찾는다. Boots/Accessory는 아직 대응하는 컨테이너가 없다 - 알려진 한계.
     /// </summary>
     private Dictionary<EquipmentSlotType, GameObject[]> containersBySlot;
