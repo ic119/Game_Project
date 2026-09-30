@@ -41,6 +41,7 @@ namespace Incheol.Modules.Networking
         Game_ChestOpenBroadcast = 0x0220,
         Game_ActiveChestsNotify = 0x0221,
         Game_ChestSpawnBroadcast = 0x0222,
-        Game_ChestDespawnBroadcast = 0x0223
+        Game_ChestDespawnBroadcast = 0x0223,
+        Game_EquipmentChangedBroadcast = 0x0224
     }
 }

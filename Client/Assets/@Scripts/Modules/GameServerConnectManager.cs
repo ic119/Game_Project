@@ -119,6 +119,11 @@ namespace Incheol.Modules
         /// 열린 상자가 잔존 시간이 지나 사라졌을 때(Game_ChestDespawnBroadcast). 인자는 사라진 상자의 chestId다.
         /// </summary>
         public event Action<string> OnChestDespawned;
+
+        /// <summary>
+        /// 다른 플레이어(또는 본인)의 장착 장비가 바뀌었을 때(Game_EquipmentChangedBroadcast). 원격 캐릭터의 외형을 갱신하는 데 쓴다.
+        /// </summary>
+        public event Action<GameEquipmentChangedPacket> OnEquipmentChanged;
         public event Action<GameMonsterInfo> OnMonsterSpawned;
         public event Action<GameMonsterDamageBroadcastPacket> OnMonsterDamaged;
         public event Action<GameMonsterDieBroadcastPacket> OnMonsterDied;
@@ -775,6 +780,11 @@ namespace Incheol.Modules
                 case GameOpCode.Game_ChestSpawnBroadcast:
                     var chestSpawn = GameChestSpawnPacket.Decode(body);
                     pendingActions.Enqueue(() => OnChestSpawned?.Invoke(chestSpawn.Chest));
+                    break;
+
+                case GameOpCode.Game_EquipmentChangedBroadcast:
+                    var equipmentChanged = GameEquipmentChangedPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnEquipmentChanged?.Invoke(equipmentChanged));
                     break;
 
                 case GameOpCode.Game_ChestDespawnBroadcast:

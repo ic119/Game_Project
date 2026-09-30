@@ -33,6 +33,12 @@ namespace Incheol.Modules.Networking
         public int Level = 1;
         public int Exp;
 
+        // 장착 중인 장비의 itemId(없으면 빈 문자열). 다른 접속자의 외형(무기/갑옷/투구 메시)을 그리는 데 쓴다.
+        // Game_EnterRequest에는 비워 보내도 된다(서버는 DB 원본으로 채운다). 이후 장비가 바뀌면 Game_EquipmentChangedBroadcast로 온다.
+        public string WeaponItemId = string.Empty;
+        public string ArmorItemId = string.Empty;
+        public string HelmetItemId = string.Empty;
+
         public void WriteTo(BinaryWriter writer)
         {
             writer.Write(PlayerId);
@@ -51,6 +57,9 @@ namespace Incheol.Modules.Networking
             writer.Write(Defense);
             writer.Write(Level);
             writer.Write(Exp);
+            writer.Write(WeaponItemId ?? string.Empty);
+            writer.Write(ArmorItemId ?? string.Empty);
+            writer.Write(HelmetItemId ?? string.Empty);
         }
 
         public static GamePlayerInfo ReadFrom(BinaryReader reader)
@@ -72,7 +81,10 @@ namespace Incheol.Modules.Networking
                 AttackPower = reader.ReadInt32(),
                 Defense = reader.ReadInt32(),
                 Level = reader.ReadInt32(),
-                Exp = reader.ReadInt32()
+                Exp = reader.ReadInt32(),
+                WeaponItemId = reader.ReadString(),
+                ArmorItemId = reader.ReadString(),
+                HelmetItemId = reader.ReadString()
             };
         }
 

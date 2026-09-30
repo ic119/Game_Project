@@ -17,6 +17,10 @@ namespace Incheol.Modules
     {
         private readonly Dictionary<long, RemoteCharacterController> remotePlayers = new();
 
+        // 플레이어별 최신 장착 장비(itemId). 캐릭터 프리팹을 불러오는 동안(스폰 전)에 장비 변경 알림이 오면 스폰된 캐릭터가 없어
+        // 바로 적용할 수 없으므로, 여기에 최신값을 쌓아 두었다가 스폰 직후 적용한다.
+        private readonly Dictionary<long, (string Weapon, string Armor, string Helmet)> latestEquipment = new();
+
         #region LifeCycle
         private void OnEnable()
         {
@@ -32,6 +36,14 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnMonsterAttacked += HandleMonsterAttackedPlayer;
             GameServerConnectManager.Instance.OnPlayerHpChanged += HandlePlayerHpChanged;
             GameServerConnectManager.Instance.OnPlayerRevived += HandlePlayerRevived;
+            GameServerConnectManager.Instance.OnEquipmentChanged += HandleEquipmentChanged;
+
+            // ItemDatabaseSO는 Addressables로 비동기 로드되므로 원격 캐릭터가 데이터베이스 로드 전에 스폰될 수 있다 -
+            // 로드가 끝나면 그때까지 못 그린 장비를 다시 적용한다.
+            if (ItemDatabaseManager.Instance != null)
+            {
+                ItemDatabaseManager.Instance.OnDatabaseLoaded += HandleItemDatabaseLoaded;
+            }
         }
 
         private void OnDisable()
@@ -48,6 +60,12 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnMonsterAttacked -= HandleMonsterAttackedPlayer;
             GameServerConnectManager.Instance.OnPlayerHpChanged -= HandlePlayerHpChanged;
             GameServerConnectManager.Instance.OnPlayerRevived -= HandlePlayerRevived;
+            GameServerConnectManager.Instance.OnEquipmentChanged -= HandleEquipmentChanged;
+
+            if (ItemDatabaseManager.Instance != null)
+            {
+                ItemDatabaseManager.Instance.OnDatabaseLoaded -= HandleItemDatabaseLoaded;
+            }
         }
         #endregion
 
@@ -61,6 +79,12 @@ namespace Incheol.Modules
             if (remotePlayers.ContainsKey(info.PlayerId))
             {
                 return;
+            }
+
+            // 프리팹 로딩 중에 오는 장비 변경 알림이 더 최신이므로, 이미 기록된 값이 있으면 덮어쓰지 않는다.
+            if (!latestEquipment.ContainsKey(info.PlayerId))
+            {
+                latestEquipment[info.PlayerId] = (info.WeaponItemId, info.ArmorItemId, info.HelmetItemId);
             }
 
             if (AddressableAssetManager.Instance == null)
@@ -109,7 +133,59 @@ namespace Incheol.Modules
                 controller.Warp(new Vector3(info.X, info.Y, info.Z), info.RotationY);
 
                 remotePlayers[info.PlayerId] = controller;
+                ApplyLatestEquipment(info.PlayerId);
             });
+        }
+
+        /// <summary>
+        /// 다른 플레이어의 장착 장비가 바뀌었다(Game_EquipmentChangedBroadcast). 이 플레이어가 아직 스폰 전이어도 최신값은 기록해 둔다.
+        /// 본인의 id면 remotePlayers에 없으므로 자연히 적용되지 않는다(본인 외형은 로컬 장착 흐름이 이미 반영했다).
+        /// </summary>
+        private void HandleEquipmentChanged(GameEquipmentChangedPacket packet)
+        {
+            latestEquipment[packet.PlayerId] = (packet.WeaponItemId, packet.ArmorItemId, packet.HelmetItemId);
+            ApplyLatestEquipment(packet.PlayerId);
+        }
+
+        private void HandleItemDatabaseLoaded()
+        {
+            foreach (long playerId in remotePlayers.Keys)
+            {
+                ApplyLatestEquipment(playerId);
+            }
+        }
+
+        /// <summary>
+        /// 기록된 최신 장비를 스폰된 원격 캐릭터에 그린다. 빈 슬롯(또는 클라이언트 데이터베이스에 없는 itemId)은 해제로 취급한다 -
+        /// 무기는 기본 무기, 갑옷은 기본 몸, 투구는 맨머리로 돌아간다. 데이터베이스가 아직 로드되지 않았으면 건너뛰고,
+        /// 로드가 끝난 뒤 HandleItemDatabaseLoaded가 다시 적용한다.
+        /// </summary>
+        private void ApplyLatestEquipment(long playerId)
+        {
+            if (!latestEquipment.TryGetValue(playerId, out var equipment)
+                || !remotePlayers.TryGetValue(playerId, out RemoteCharacterController controller) || controller == null
+                || ItemDatabaseManager.Instance == null || !ItemDatabaseManager.Instance.IsLoaded
+                || !controller.TryGetComponent(out PlayerCharacterModel model))
+            {
+                return;
+            }
+
+            ApplySlot(model, EquipmentSlotType.Weapon, equipment.Weapon);
+            ApplySlot(model, EquipmentSlotType.Armor, equipment.Armor);
+            ApplySlot(model, EquipmentSlotType.Helmet, equipment.Helmet);
+        }
+
+        private static void ApplySlot(PlayerCharacterModel model, EquipmentSlotType slot, string itemId)
+        {
+            ItemData itemData = string.IsNullOrEmpty(itemId) ? null : ItemDatabaseManager.Instance.FindById(itemId);
+            if (itemData != null && itemData.equipSlotType == slot)
+            {
+                model.EquipItem(itemData);
+            }
+            else
+            {
+                model.UnequipItem(slot);
+            }
         }
 
         /// <summary>
@@ -136,10 +212,13 @@ namespace Incheol.Modules
             }
 
             remotePlayers.Clear();
+            latestEquipment.Clear();
         }
 
         private void HandlePlayerLeft(long playerId)
         {
+            latestEquipment.Remove(playerId);
+
             if (!remotePlayers.TryGetValue(playerId, out RemoteCharacterController controller))
             {
                 return;
