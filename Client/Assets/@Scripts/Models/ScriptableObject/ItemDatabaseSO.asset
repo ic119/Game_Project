@@ -62,7 +62,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 1
     equipVisualName: OHS03_Sword
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: a59d6029d282ea148bf57966b0c2401e, type: 3}
     itemGrade: 0
     maxStackCount: 1
     bonusAttackPower: 5
@@ -76,7 +76,7 @@ MonoBehaviour:
     equipSlotType: 2
     weaponType: 0
     equipVisualName: Body05
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 72cdd1b1bb49d5f47bd5d2b3ecd3e851, type: 3}
     itemGrade: 0
     maxStackCount: 1
     bonusAttackPower: 0
@@ -90,7 +90,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 1
     equipVisualName: OHS01_Stick
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: a59d6029d282ea148bf57966b0c2401e, type: 3}
     itemGrade: 0
     maxStackCount: 1
     bonusAttackPower: 1
@@ -103,7 +103,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 1
     equipVisualName: OHS02_Niddle
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: a59d6029d282ea148bf57966b0c2401e, type: 3}
     itemGrade: 0
     maxStackCount: 1
     bonusAttackPower: 3
@@ -116,7 +116,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 1
     equipVisualName: OHS04_Sword
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: a59d6029d282ea148bf57966b0c2401e, type: 3}
     itemGrade: 0
     maxStackCount: 1
     bonusAttackPower: 6
@@ -129,7 +129,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 1
     equipVisualName: OHS05_Sword
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: a59d6029d282ea148bf57966b0c2401e, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 9
@@ -142,7 +142,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 1
     equipVisualName: OHS06_Sword
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: a59d6029d282ea148bf57966b0c2401e, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 10
@@ -155,7 +155,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 1
     equipVisualName: OHS07_Sword
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: a59d6029d282ea148bf57966b0c2401e, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 11
@@ -168,7 +168,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 1
     equipVisualName: OHS08_Sword
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: a59d6029d282ea148bf57966b0c2401e, type: 3}
     itemGrade: 2
     maxStackCount: 1
     bonusAttackPower: 15
@@ -182,7 +182,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 1
     equipVisualName: OHS09_Sword
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: a59d6029d282ea148bf57966b0c2401e, type: 3}
     itemGrade: 2
     maxStackCount: 1
     bonusAttackPower: 17
@@ -195,7 +195,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 1
     equipVisualName: OHS12_Sword
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: a59d6029d282ea148bf57966b0c2401e, type: 3}
     itemGrade: 2
     maxStackCount: 1
     bonusAttackPower: 18
@@ -208,7 +208,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 1
     equipVisualName: OHS15_Sword
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: a59d6029d282ea148bf57966b0c2401e, type: 3}
     itemGrade: 3
     maxStackCount: 1
     bonusAttackPower: 24
@@ -221,7 +221,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 1
     equipVisualName: OHS16_Sword
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: a59d6029d282ea148bf57966b0c2401e, type: 3}
     itemGrade: 3
     maxStackCount: 1
     bonusAttackPower: 26
@@ -234,7 +234,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 1
     equipVisualName: OHS10_Axe
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: b3a100d8344187049b3f8b5c9e5aba88, type: 3}
     itemGrade: 0
     maxStackCount: 1
     bonusAttackPower: 5
@@ -247,7 +247,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 1
     equipVisualName: OHS13_Axe
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: b3a100d8344187049b3f8b5c9e5aba88, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 10
@@ -260,7 +260,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 1
     equipVisualName: OHS11_Hammer
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 7dfd68325eeac354d866d207e4d2744c, type: 3}
     itemGrade: 0
     maxStackCount: 1
     bonusAttackPower: 5
@@ -273,7 +273,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 1
     equipVisualName: OHS14_Hammer
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 7dfd68325eeac354d866d207e4d2744c, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 11
@@ -286,7 +286,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 2
     equipVisualName: THS01_Sword
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 43358b703766fee4ebe64c7fbd583376, type: 3}
     itemGrade: 0
     maxStackCount: 1
     bonusAttackPower: 8
@@ -299,7 +299,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 2
     equipVisualName: THS02_Sword
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 43358b703766fee4ebe64c7fbd583376, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 13
@@ -312,7 +312,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 2
     equipVisualName: THS03_Sword
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 43358b703766fee4ebe64c7fbd583376, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 15
@@ -326,7 +326,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 2
     equipVisualName: THS04_Sword
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 43358b703766fee4ebe64c7fbd583376, type: 3}
     itemGrade: 2
     maxStackCount: 1
     bonusAttackPower: 20
@@ -339,7 +339,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 2
     equipVisualName: THS05_Sword
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 43358b703766fee4ebe64c7fbd583376, type: 3}
     itemGrade: 2
     maxStackCount: 1
     bonusAttackPower: 22
@@ -352,7 +352,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 2
     equipVisualName: THS06_Sword
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 43358b703766fee4ebe64c7fbd583376, type: 3}
     itemGrade: 3
     maxStackCount: 1
     bonusAttackPower: 28
@@ -366,7 +366,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 2
     equipVisualName: THS07_Sword
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 43358b703766fee4ebe64c7fbd583376, type: 3}
     itemGrade: 3
     maxStackCount: 1
     bonusAttackPower: 32
@@ -379,7 +379,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 4
     equipVisualName: Wand01
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 798a0192e5e2a1c45a1f6786703af909, type: 3}
     itemGrade: 0
     maxStackCount: 1
     bonusAttackPower: 6
@@ -392,7 +392,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 4
     equipVisualName: Wand02
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 798a0192e5e2a1c45a1f6786703af909, type: 3}
     itemGrade: 0
     maxStackCount: 1
     bonusAttackPower: 8
@@ -405,7 +405,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 4
     equipVisualName: Wand03
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 798a0192e5e2a1c45a1f6786703af909, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 12
@@ -418,7 +418,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 4
     equipVisualName: Wand04
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 798a0192e5e2a1c45a1f6786703af909, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 14
@@ -431,7 +431,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 4
     equipVisualName: Wand05
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 798a0192e5e2a1c45a1f6786703af909, type: 3}
     itemGrade: 2
     maxStackCount: 1
     bonusAttackPower: 19
@@ -444,7 +444,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 4
     equipVisualName: Wand06
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 798a0192e5e2a1c45a1f6786703af909, type: 3}
     itemGrade: 2
     maxStackCount: 1
     bonusAttackPower: 21
@@ -457,7 +457,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 4
     equipVisualName: Wand07
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 798a0192e5e2a1c45a1f6786703af909, type: 3}
     itemGrade: 3
     maxStackCount: 1
     bonusAttackPower: 28
@@ -470,7 +470,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 5
     equipVisualName: Spear01
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 9b0be4ef9a8e4b34eaa96ebc919f52a0, type: 3}
     itemGrade: 0
     maxStackCount: 1
     bonusAttackPower: 7
@@ -483,7 +483,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 5
     equipVisualName: Spear02
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 9b0be4ef9a8e4b34eaa96ebc919f52a0, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 12
@@ -496,7 +496,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 5
     equipVisualName: Spear03
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 9b0be4ef9a8e4b34eaa96ebc919f52a0, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 14
@@ -509,7 +509,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 5
     equipVisualName: Spear04
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 9b0be4ef9a8e4b34eaa96ebc919f52a0, type: 3}
     itemGrade: 2
     maxStackCount: 1
     bonusAttackPower: 19
@@ -523,7 +523,7 @@ MonoBehaviour:
     equipSlotType: 1
     weaponType: 5
     equipVisualName: Spear05
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 9b0be4ef9a8e4b34eaa96ebc919f52a0, type: 3}
     itemGrade: 3
     maxStackCount: 1
     bonusAttackPower: 26
@@ -536,7 +536,7 @@ MonoBehaviour:
     equipSlotType: 2
     weaponType: 0
     equipVisualName: Body03
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 72cdd1b1bb49d5f47bd5d2b3ecd3e851, type: 3}
     itemGrade: 0
     maxStackCount: 1
     bonusAttackPower: 0
@@ -549,7 +549,7 @@ MonoBehaviour:
     equipSlotType: 2
     weaponType: 0
     equipVisualName: Body04
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 72cdd1b1bb49d5f47bd5d2b3ecd3e851, type: 3}
     itemGrade: 0
     maxStackCount: 1
     bonusAttackPower: 0
@@ -562,7 +562,7 @@ MonoBehaviour:
     equipSlotType: 2
     weaponType: 0
     equipVisualName: Body06
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 72cdd1b1bb49d5f47bd5d2b3ecd3e851, type: 3}
     itemGrade: 0
     maxStackCount: 1
     bonusAttackPower: 0
@@ -575,7 +575,7 @@ MonoBehaviour:
     equipSlotType: 2
     weaponType: 0
     equipVisualName: Body07
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 72cdd1b1bb49d5f47bd5d2b3ecd3e851, type: 3}
     itemGrade: 0
     maxStackCount: 1
     bonusAttackPower: 0
@@ -589,7 +589,7 @@ MonoBehaviour:
     equipSlotType: 2
     weaponType: 0
     equipVisualName: Body08
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 72cdd1b1bb49d5f47bd5d2b3ecd3e851, type: 3}
     itemGrade: 0
     maxStackCount: 1
     bonusAttackPower: 0
@@ -602,7 +602,7 @@ MonoBehaviour:
     equipSlotType: 2
     weaponType: 0
     equipVisualName: Body09
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 72cdd1b1bb49d5f47bd5d2b3ecd3e851, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 0
@@ -615,7 +615,7 @@ MonoBehaviour:
     equipSlotType: 2
     weaponType: 0
     equipVisualName: Body10
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 72cdd1b1bb49d5f47bd5d2b3ecd3e851, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 0
@@ -628,7 +628,7 @@ MonoBehaviour:
     equipSlotType: 2
     weaponType: 0
     equipVisualName: Body11
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 72cdd1b1bb49d5f47bd5d2b3ecd3e851, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 0
@@ -642,7 +642,7 @@ MonoBehaviour:
     equipSlotType: 2
     weaponType: 0
     equipVisualName: Body12
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 72cdd1b1bb49d5f47bd5d2b3ecd3e851, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 0
@@ -655,7 +655,7 @@ MonoBehaviour:
     equipSlotType: 2
     weaponType: 0
     equipVisualName: Body13
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 72cdd1b1bb49d5f47bd5d2b3ecd3e851, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 0
@@ -668,7 +668,7 @@ MonoBehaviour:
     equipSlotType: 2
     weaponType: 0
     equipVisualName: Body14
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 72cdd1b1bb49d5f47bd5d2b3ecd3e851, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 0
@@ -682,7 +682,7 @@ MonoBehaviour:
     equipSlotType: 2
     weaponType: 0
     equipVisualName: Body15
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 72cdd1b1bb49d5f47bd5d2b3ecd3e851, type: 3}
     itemGrade: 2
     maxStackCount: 1
     bonusAttackPower: 0
@@ -695,7 +695,7 @@ MonoBehaviour:
     equipSlotType: 2
     weaponType: 0
     equipVisualName: Body16
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 72cdd1b1bb49d5f47bd5d2b3ecd3e851, type: 3}
     itemGrade: 2
     maxStackCount: 1
     bonusAttackPower: 0
@@ -708,7 +708,7 @@ MonoBehaviour:
     equipSlotType: 2
     weaponType: 0
     equipVisualName: Body17
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 72cdd1b1bb49d5f47bd5d2b3ecd3e851, type: 3}
     itemGrade: 2
     maxStackCount: 1
     bonusAttackPower: 0
@@ -721,7 +721,7 @@ MonoBehaviour:
     equipSlotType: 2
     weaponType: 0
     equipVisualName: Body18
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 72cdd1b1bb49d5f47bd5d2b3ecd3e851, type: 3}
     itemGrade: 2
     maxStackCount: 1
     bonusAttackPower: 0
@@ -735,7 +735,7 @@ MonoBehaviour:
     equipSlotType: 2
     weaponType: 0
     equipVisualName: Body19
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 72cdd1b1bb49d5f47bd5d2b3ecd3e851, type: 3}
     itemGrade: 3
     maxStackCount: 1
     bonusAttackPower: 0
@@ -749,7 +749,7 @@ MonoBehaviour:
     equipSlotType: 2
     weaponType: 0
     equipVisualName: Body20
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 72cdd1b1bb49d5f47bd5d2b3ecd3e851, type: 3}
     itemGrade: 3
     maxStackCount: 1
     bonusAttackPower: 0
@@ -763,7 +763,7 @@ MonoBehaviour:
     equipSlotType: 3
     weaponType: 0
     equipVisualName: HeadArmor01
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: e128b01dab70e7a498a78577123c2db0, type: 3}
     itemGrade: 0
     maxStackCount: 1
     bonusAttackPower: 0
@@ -776,7 +776,7 @@ MonoBehaviour:
     equipSlotType: 3
     weaponType: 0
     equipVisualName: HeadArmor02
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: e128b01dab70e7a498a78577123c2db0, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 0
@@ -789,7 +789,7 @@ MonoBehaviour:
     equipSlotType: 3
     weaponType: 0
     equipVisualName: HeadArmor03
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: e128b01dab70e7a498a78577123c2db0, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 0
@@ -802,7 +802,7 @@ MonoBehaviour:
     equipSlotType: 3
     weaponType: 0
     equipVisualName: HeadArmor04
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: e128b01dab70e7a498a78577123c2db0, type: 3}
     itemGrade: 2
     maxStackCount: 1
     bonusAttackPower: 0
@@ -815,7 +815,7 @@ MonoBehaviour:
     equipSlotType: 3
     weaponType: 0
     equipVisualName: HeadArmor05
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: e128b01dab70e7a498a78577123c2db0, type: 3}
     itemGrade: 3
     maxStackCount: 1
     bonusAttackPower: 0
@@ -828,7 +828,7 @@ MonoBehaviour:
     equipSlotType: 3
     weaponType: 0
     equipVisualName: Hat01
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 06823b49a1fcd154da0942a436195adb, type: 3}
     itemGrade: 0
     maxStackCount: 1
     bonusAttackPower: 0
@@ -841,7 +841,7 @@ MonoBehaviour:
     equipSlotType: 3
     weaponType: 0
     equipVisualName: Hat02
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 06823b49a1fcd154da0942a436195adb, type: 3}
     itemGrade: 0
     maxStackCount: 1
     bonusAttackPower: 0
@@ -854,7 +854,7 @@ MonoBehaviour:
     equipSlotType: 3
     weaponType: 0
     equipVisualName: Hat03
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 06823b49a1fcd154da0942a436195adb, type: 3}
     itemGrade: 0
     maxStackCount: 1
     bonusAttackPower: 0
@@ -867,7 +867,7 @@ MonoBehaviour:
     equipSlotType: 3
     weaponType: 0
     equipVisualName: Hat04
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 06823b49a1fcd154da0942a436195adb, type: 3}
     itemGrade: 0
     maxStackCount: 1
     bonusAttackPower: 0
@@ -880,7 +880,7 @@ MonoBehaviour:
     equipSlotType: 3
     weaponType: 0
     equipVisualName: Hat05
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 06823b49a1fcd154da0942a436195adb, type: 3}
     itemGrade: 0
     maxStackCount: 1
     bonusAttackPower: 0
@@ -893,7 +893,7 @@ MonoBehaviour:
     equipSlotType: 3
     weaponType: 0
     equipVisualName: Hat06
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 06823b49a1fcd154da0942a436195adb, type: 3}
     itemGrade: 0
     maxStackCount: 1
     bonusAttackPower: 0
@@ -906,7 +906,7 @@ MonoBehaviour:
     equipSlotType: 3
     weaponType: 0
     equipVisualName: Hat07
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 06823b49a1fcd154da0942a436195adb, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 0
@@ -919,7 +919,7 @@ MonoBehaviour:
     equipSlotType: 3
     weaponType: 0
     equipVisualName: Hat08
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 06823b49a1fcd154da0942a436195adb, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 0
@@ -932,7 +932,7 @@ MonoBehaviour:
     equipSlotType: 3
     weaponType: 0
     equipVisualName: Hat09
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 06823b49a1fcd154da0942a436195adb, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 0
@@ -945,7 +945,7 @@ MonoBehaviour:
     equipSlotType: 3
     weaponType: 0
     equipVisualName: Hat10
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 06823b49a1fcd154da0942a436195adb, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 0
@@ -958,7 +958,7 @@ MonoBehaviour:
     equipSlotType: 3
     weaponType: 0
     equipVisualName: Hat11
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 06823b49a1fcd154da0942a436195adb, type: 3}
     itemGrade: 1
     maxStackCount: 1
     bonusAttackPower: 0
@@ -971,7 +971,7 @@ MonoBehaviour:
     equipSlotType: 3
     weaponType: 0
     equipVisualName: Hat12
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 06823b49a1fcd154da0942a436195adb, type: 3}
     itemGrade: 2
     maxStackCount: 1
     bonusAttackPower: 0
@@ -984,7 +984,7 @@ MonoBehaviour:
     equipSlotType: 3
     weaponType: 0
     equipVisualName: Hat13
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 06823b49a1fcd154da0942a436195adb, type: 3}
     itemGrade: 2
     maxStackCount: 1
     bonusAttackPower: 0
@@ -997,7 +997,7 @@ MonoBehaviour:
     equipSlotType: 3
     weaponType: 0
     equipVisualName: Hat14
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 06823b49a1fcd154da0942a436195adb, type: 3}
     itemGrade: 3
     maxStackCount: 1
     bonusAttackPower: 0
