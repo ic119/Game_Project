@@ -76,6 +76,8 @@ namespace Incheol.View.UI
         [SerializeField] private GameObject itemDetailPanel;
         [SerializeField] private TextMeshProUGUI detailItemNameText;
         [SerializeField] private TextMeshProUGUI detailItemTypeText;
+        [Tooltip("능력치/효과 한 줄(공격력/방어력 증감, 물약 회복량). 표시할 효과가 없으면 숨긴다.")]
+        [SerializeField] private TextMeshProUGUI detailItemEffectText;
         [SerializeField] private TextMeshProUGUI detailItemDescText;
 
         // RefreshInventory가 마지막으로 받은 아이템 조회 함수를 캐싱해둔다. 슬롯 클릭(UpdateItemDetail)은
@@ -83,8 +85,18 @@ namespace Incheol.View.UI
         // 인벤토리가 열려있으려면 이미 최소 한 번 RefreshInventory가 호출된 뒤이므로 항상 최신 값이다.
         private Func<string, ItemData> itemLookup;
 
+        // 지금 장착 중인 장비의 정적 데이터(슬롯별). 일반 칸에서 고른 장비를 장착 중인 장비와 비교해 증감량을 보여주는 데 쓴다.
+        // RefreshInventory마다 새로 채운다.
+        private readonly Dictionary<EquipmentSlotType, ItemData> equippedItemData = new Dictionary<EquipmentSlotType, ItemData>();
+
+        // 물약의 실제 회복량 표시용. UpdateStatsUI가 최신 값을 알려준다(0이면 회복량 숫자는 생략).
+        private int lastMaxHp;
+
         private InventoryTabType currentTab = InventoryTabType.All;
         private UI_InventorySlot selectedSlot = null;
+
+        // 선택할 때의 itemId. 인벤토리가 다시 그려진 뒤에도 그 슬롯이 같은 아이템인지(=선택을 유지해도 되는지) 판단하는 기준이다.
+        private string selectedItemId = null;
 
         public InventoryTabType CurrentTab => currentTab;
         public UI_InventorySlot SelectedSlot => selectedSlot;
@@ -303,6 +315,16 @@ namespace Incheol.View.UI
 
             RefreshEquipmentSlots(equippedBySlot, _itemLookup);
 
+            equippedItemData.Clear();
+            foreach (KeyValuePair<EquipmentSlotType, InventoryItemStack> pair in equippedBySlot)
+            {
+                ItemData equippedData = _itemLookup?.Invoke(pair.Value.itemId);
+                if (equippedData != null)
+                {
+                    equippedItemData[pair.Key] = equippedData;
+                }
+            }
+
             int itemCount = unequippedItems.Count;
 
             for (int i = 0; i < inventorySlots.Count; i++)
@@ -327,6 +349,43 @@ namespace Incheol.View.UI
             }
 
             SetCapacity(itemCount, inventorySlots.Count);
+
+            SyncSelectionAfterRefresh();
+        }
+
+        /// <summary>
+        /// 인벤토리를 다시 그린 뒤 선택 상태를 맞춘다. 슬롯 내용은 스택 순서대로 채워지므로 장착/사용/버리기 뒤에는 같은 칸에
+        /// 다른 아이템이 들어오거나 칸이 비기도 한다 - 그런데 선택과 상세 패널을 그대로 두면 패널은 이전 아이템 정보인데
+        /// "장착/사용" 버튼은 지금 칸의 아이템에 동작하는 어긋남이 생긴다. 같은 아이템이 그대로 있으면(수량 변화, 장착 장비가
+        /// 바뀌어 비교 수치가 달라진 경우) 패널을 새로 그리고, 아니면 선택을 해제한다.
+        /// </summary>
+        private void SyncSelectionAfterRefresh()
+        {
+            if (selectedSlot == null)
+            {
+                return;
+            }
+
+            if (selectedSlot.HasItem && selectedSlot.ItemId == selectedItemId)
+            {
+                UpdateItemDetail(selectedSlot);
+            }
+            else
+            {
+                ClearSelection();
+            }
+        }
+
+        private void ClearSelection()
+        {
+            if (selectedSlot != null)
+            {
+                selectedSlot.SetSelected(false);
+            }
+
+            selectedSlot = null;
+            selectedItemId = null;
+            UpdateItemDetail(null);
         }
 
         /// <summary>
@@ -391,6 +450,16 @@ namespace Incheol.View.UI
             if (atkValueText != null) atkValueText.text = _attackPower.ToString();
             if (defValueText != null) defValueText.text = _defense.ToString();
             if (hpValueText != null) hpValueText.text = _maxHp.ToString();
+
+            // 물약 상세의 회복량 숫자는 최대 체력에 따라 달라지므로, 최대 체력이 바뀌면 열려 있는 상세를 다시 그린다.
+            if (lastMaxHp != _maxHp)
+            {
+                lastMaxHp = _maxHp;
+                if (selectedSlot != null && selectedSlot.HasItem)
+                {
+                    UpdateItemDetail(selectedSlot);
+                }
+            }
         }
 
         public void HandleSlotClicked(UI_InventorySlot _slot)
@@ -401,6 +470,7 @@ namespace Incheol.View.UI
             }
 
             selectedSlot = _slot;
+            selectedItemId = _slot != null && _slot.HasItem ? _slot.ItemId : null;
 
             if (selectedSlot != null)
             {
@@ -434,12 +504,26 @@ namespace Incheol.View.UI
 
             if (detailItemNameText != null)
             {
-                detailItemNameText.text = itemData != null ? itemData.itemName : _slot.ItemId;
+                detailItemNameText.text = ItemDetailTextBuilder.BuildTitle(itemData, _slot.ItemId);
             }
 
             if (detailItemTypeText != null)
             {
                 detailItemTypeText.text = itemData != null ? GetItemTypeLabel(itemData) : string.Empty;
+            }
+
+            if (detailItemEffectText != null)
+            {
+                // 일반 칸에서 고른 장비만 "지금 장착 중인 장비와의 차이"를 보여준다(이미 장착 중인 장비는 비교 대상이 자기 자신이다).
+                ItemData equippedInSameSlot = null;
+                if (itemData != null && _slot.SlotType == InventorySlotType.Inventory && itemData.itemType == ItemType.Eqiupment)
+                {
+                    equippedItemData.TryGetValue(itemData.equipSlotType, out equippedInSameSlot);
+                }
+
+                string effectLine = ItemDetailTextBuilder.BuildEffectLine(itemData, equippedInSameSlot, lastMaxHp);
+                detailItemEffectText.text = effectLine;
+                detailItemEffectText.gameObject.SetActive(!string.IsNullOrEmpty(effectLine));
             }
 
             if (detailItemDescText != null)
