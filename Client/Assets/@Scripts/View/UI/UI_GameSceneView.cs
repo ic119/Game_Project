@@ -33,6 +33,9 @@ public class UI_GameSceneView : MonoBehaviour
     [SerializeField] private UI_SessionKickedPopupView sessionKickedPopup;
 
     private PlayerCharacterModel playerModel;
+
+    // 레벨 라벨에 마지막으로 표시한 레벨. 서버 경험치 패킷으로 레벨이 바뀌어도 라벨이 갱신되도록 Update에서 비교한다(-1: 아직 표시 전).
+    private int displayedLevel = -1;
     #endregion
 
     #region LifeCycle
@@ -62,13 +65,19 @@ public class UI_GameSceneView : MonoBehaviour
 
     /// <summary>
     /// 체력/경험치는 전투 중 실시간으로 바뀌므로 이벤트 대신 폴링으로 슬라이더를 갱신한다
-    /// (PlayerCharacterModel 주석에 명시된 기존 컨벤션).
+    /// (PlayerCharacterModel 주석에 명시된 기존 컨벤션). 레벨도 같은 이유로 폴링하되, 값이 바뀐 프레임에만
+    /// 문자열을 다시 만든다(RefreshLevelLabel).
     /// </summary>
     private void Update()
     {
         if (playerModel == null)
         {
             return;
+        }
+
+        if (playerModel.Level != displayedLevel)
+        {
+            RefreshLevelLabel();
         }
 
         if (hpBarSlider != null)
@@ -118,9 +127,16 @@ public class UI_GameSceneView : MonoBehaviour
             playerNameLabel.text = playerModel.Nickname;
         }
 
+        RefreshLevelLabel();
+    }
+
+    private void RefreshLevelLabel()
+    {
+        displayedLevel = playerModel.Level;
+
         if (playerLevelLabel != null)
         {
-            playerLevelLabel.text = $"Lv.{playerModel.Level}";
+            playerLevelLabel.text = $"Lv.{displayedLevel}";
         }
     }
 
