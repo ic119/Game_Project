@@ -65,6 +65,13 @@ namespace Shared.Networking
         // 다른 플레이어의 장착 장비(무기/갑옷/투구)가 바뀌었음을 그 플레이어를 보고 있는 사람에게 알린다(외형 동기화).
         Game_EquipmentChangedBroadcast = 0x0224,
 
+        // 대쉬 회피. 클라이언트가 대쉬를 시작하면 Game_DashRequest로 알리고, 서버가 쿨다운을 검증한 뒤 짧은 무적 구간을 기록한다.
+        // 몬스터 공격은 Game_MonsterAttackStartBroadcast(선딜 시작, 공격 모션 재생)와 선딜이 끝난 뒤의 판정으로 나뉜다 -
+        // 판정 결과가 명중이면 기존 Game_MonsterAttackBroadcast(피해/남은 체력), 회피면 Game_MonsterAttackDodgedBroadcast다.
+        Game_DashRequest = 0x0225,
+        Game_MonsterAttackStartBroadcast = 0x0226,
+        Game_MonsterAttackDodgedBroadcast = 0x0227,
+
         // 0x03XX = Dungeon
     }
 }

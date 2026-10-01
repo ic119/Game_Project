@@ -86,6 +86,7 @@ namespace GameServer.Networking
 
                 _views.Remove(playerId);
                 _movedPlayerIds.TryRemove(playerId, out _);
+                _dashStates.TryRemove(playerId, out _);
 
                 byte[] left = new S2CPlayerLeft { PlayerId = playerId }.Encode();
                 foreach (var (viewerId, view) in _views)

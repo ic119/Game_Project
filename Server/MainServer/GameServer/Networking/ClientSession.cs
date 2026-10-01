@@ -292,6 +292,9 @@ namespace GameServer.Networking
                 case OpCode.Game_ChestOpenRequest:
                     HandleChestOpenRequest(body);
                     return Task.CompletedTask;
+                case OpCode.Game_DashRequest:
+                    HandleDashRequest(body);
+                    return Task.CompletedTask;
                 case OpCode.Game_StatUpdateRequest:
                     HandleStatUpdateRequest(body, ct);
                     return Task.CompletedTask;
@@ -751,6 +754,27 @@ namespace GameServer.Networking
             }
 
             room.BroadcastAttackAnimation(playerId, request.ComboStage, request.WeaponType);
+        }
+
+        // 대쉬 시작 알림. 무적 구간은 서버가 쿨다운을 검증해 정하므로(GameRoom.RegisterDash) 요청을 도배해도 얻는 것이 없지만,
+        // 불필요한 처리를 막기 위해 세션별로 빈도도 제한한다. 클라이언트 대쉬는 1.25초 간격이라 이 한도는 정상 입력에 충분하다.
+        private readonly RequestRateLimiter _dashRateLimiter = new(capacity: 3, refillPerSecond: 1);
+
+        private void HandleDashRequest(byte[] body)
+        {
+            if (!_dashRateLimiter.TryAcquire())
+            {
+                return;
+            }
+
+            var request = C2SDashRequest.Decode(body);
+
+            if (_playerId is not { } playerId || request.PlayerId != playerId || _room is not { } room)
+            {
+                return;
+            }
+
+            room.RegisterDash(playerId);
         }
 
         // 플레이어 공격(HandleAttackRequest)과 같은 쿨다운(_lastAttackAtUtc)을 공유한다 - 그렇지 않으면

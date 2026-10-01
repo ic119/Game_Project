@@ -376,6 +376,12 @@ namespace GameServer.Networking
             // deltaSeconds만큼 줄인다. 0 이하면 다음 틱에 바로 공격 가능.
             public float AttackCooldownRemaining { get; set; }
 
+            // 공격 선딜(공격 시작 → 피해 판정) 남은 시간. 0보다 크면 공격 모션 중이라 제자리에서 대상을 바라보며 기다리다가
+            // 0이 되는 틱에 판정한다(GameRoom.ResolveMonsterAttack). AttackWindupStartedAtUtcTicks는 이번 선딜이 시작된
+            // 시각으로, 그 뒤에 대쉬한 플레이어를 "선딜 중 회피"로 인정하는 기준이다.
+            public float AttackWindupRemaining { get; set; }
+            public long AttackWindupStartedAtUtcTicks { get; set; }
+
             public MonsterRuntime(MonsterInfo info, MonsterSpawnPointDefinition point, int expReward, float homeX, float homeZ)
             {
                 Info = info;
@@ -385,6 +391,71 @@ namespace GameServer.Networking
                 HomeZ = homeZ;
             }
         }
+
+        #region Method - Dash
+        // 대쉬 회피. 클라이언트가 대쉬를 시작하면 Game_DashRequest로 알리고(ClientSession.HandleDashRequest), 서버는 쿨다운을
+        // 검증한 뒤 짧은 무적 구간을 기록한다. 무적 여부는 몬스터 공격 판정(ResolveMonsterAttack)에서만 쓰인다.
+        // 클라이언트 값(무적이라는 주장)을 신뢰하지 않고 서버가 요청 시각과 쿨다운으로 직접 정하므로, 변조된 클라이언트가
+        // 요청을 도배해도 쿨다운마다 한 번의 짧은 무적밖에 얻지 못한다.
+
+        // 클라이언트 대쉬는 0.25초 지속 + 1초 쿨다운(PlayerMoveController, 시작 간격 1.25초)이다. 무적 시간은 대쉬 지속시간에
+        // 패킷 지연 여유를 더한 값이고, 최소 간격은 클라이언트 시작 간격보다 약간 짧게 잡아 시계/지연 오차로 정상 대쉬가
+        // 거부되지 않게 한다. 클라이언트 대쉬 값을 바꾸면 함께 조정해야 한다.
+        private static readonly TimeSpan DashInvulnerableDuration = TimeSpan.FromSeconds(0.35);
+        private static readonly TimeSpan MinDashInterval = TimeSpan.FromSeconds(1.0);
+
+        private sealed class DashState
+        {
+            public long LastDashAtUtcTicks;
+            public long InvulnerableUntilUtcTicks;
+        }
+
+        // 플레이어 id -> 대쉬 상태. 대쉬 요청(세션 스레드)과 몬스터 공격 판정(방 틱)이 동시에 접근하므로 항목 단위로 lock한다.
+        private readonly ConcurrentDictionary<long, DashState> _dashStates = new();
+
+        // 대쉬 시작을 기록하고 무적 구간을 연다. 죽었거나 쿨다운 중이면 false(무적 없음).
+        public bool RegisterDash(long playerId)
+        {
+            if (!_players.TryGetValue(playerId, out var entry) || entry.Info.CurrentHp <= 0)
+            {
+                return false;
+            }
+
+            DashState state = _dashStates.GetOrAdd(playerId, _ => new DashState());
+            long now = DateTime.UtcNow.Ticks;
+
+            lock (state)
+            {
+                if (state.LastDashAtUtcTicks != 0 && now - state.LastDashAtUtcTicks < MinDashInterval.Ticks)
+                {
+                    return false;
+                }
+
+                state.LastDashAtUtcTicks = now;
+                state.InvulnerableUntilUtcTicks = now + DashInvulnerableDuration.Ticks;
+                return true;
+            }
+        }
+
+        // 지금 무적 구간 안인지, 그리고 windupStartedAtUtcTicks 이후에 대쉬를 시작했는지(= 이번 몬스터 공격의 선딜 중 대쉬했는지).
+        private void GetDashStatus(long playerId, long windupStartedAtUtcTicks, out bool isInvulnerable, out bool dashedDuringWindup)
+        {
+            isInvulnerable = false;
+            dashedDuringWindup = false;
+
+            if (!_dashStates.TryGetValue(playerId, out DashState? state))
+            {
+                return;
+            }
+
+            long now = DateTime.UtcNow.Ticks;
+            lock (state)
+            {
+                isInvulnerable = now < state.InvulnerableUntilUtcTicks;
+                dashedDuringWindup = state.LastDashAtUtcTicks >= windupStartedAtUtcTicks;
+            }
+        }
+        #endregion
 
         #region Method - Player Health
         // 플레이어 HP는 서버(이 GameRoom)가 유일한 권위다. 피해/레벨업/사망/부활은 모두 여기서 계산하고,
@@ -689,6 +760,10 @@ namespace GameServer.Networking
         private const float MeleeAttackRange = 1.5f;
         private const float AttackIntervalSeconds = 1.5f;
 
+        // 공격 시작(Game_MonsterAttackStartBroadcast)부터 피해 판정까지의 선딜. 클라이언트 공격 모션(약 0.83초)의 중간쯤에 맞고,
+        // 플레이어가 모션을 보고 대쉬(0.25초)로 반응할 시간을 준다. 쿨다운(AttackIntervalSeconds)은 선딜 시작 시점부터 센다.
+        private const float MonsterAttackWindupSeconds = 0.4f;
+
         private bool TickChasing(MonsterRuntime runtime, float deltaSeconds)
         {
             if (runtime.TargetPlayerId is not { } targetId
@@ -696,6 +771,7 @@ namespace GameServer.Networking
                 || targetEntry.Info.CurrentHp <= 0)
             {
                 runtime.TargetPlayerId = null;
+                runtime.AttackWindupRemaining = 0f;
                 runtime.AiState = MonsterAiState.Returning;
                 return false;
             }
@@ -707,6 +783,7 @@ namespace GameServer.Networking
             if (distanceFromSpawn > runtime.Point.LeashRange)
             {
                 runtime.TargetPlayerId = null;
+                runtime.AttackWindupRemaining = 0f;
                 runtime.AiState = MonsterAiState.Returning;
                 return false;
             }
@@ -716,15 +793,31 @@ namespace GameServer.Networking
                 runtime.AttackCooldownRemaining -= deltaSeconds;
             }
 
+            // 선딜 중에는 이미 공격을 시작했으므로 도중에 대상이 사거리를 벗어나도 따라가지 않고 그 자리에서 기다렸다가
+            // 선딜이 끝나는 틱에 판정한다(빗나가면 헛스윙).
+            if (runtime.AttackWindupRemaining > 0f)
+            {
+                FaceTarget(info, target);
+                runtime.AttackWindupRemaining -= deltaSeconds;
+
+                if (runtime.AttackWindupRemaining <= 0f)
+                {
+                    runtime.AttackWindupRemaining = 0f;
+                    ResolveMonsterAttack(runtime, target);
+                }
+
+                return true;
+            }
+
             if (Distance(info.X, info.Z, target.X, target.Z) <= MeleeAttackRange)
             {
                 // 사거리 안에 들어오면 더 붙지 않고 그 자리에서 대상을 바라보며 공격만 한다.
-                info.RotationY = MathF.Atan2(target.X - info.X, target.Z - info.Z) * (180f / MathF.PI);
+                FaceTarget(info, target);
 
                 if (runtime.AttackCooldownRemaining <= 0f)
                 {
                     runtime.AttackCooldownRemaining = AttackIntervalSeconds;
-                    AttackPlayer(runtime, target);
+                    StartMonsterAttack(runtime, target);
                 }
 
                 return true;
@@ -733,7 +826,59 @@ namespace GameServer.Networking
             return MoveToward(info, target.X, target.Z, runtime.Point.ChaseSpeed, deltaSeconds);
         }
 
-        // 근접 사거리 안에서 공격 쿨다운마다 호출된다. PvP(ApplyPlayerAttack)와 같은 TryDamagePlayer로
+        private static void FaceTarget(MonsterInfo info, PlayerInfo target)
+        {
+            info.RotationY = MathF.Atan2(target.X - info.X, target.Z - info.Z) * (180f / MathF.PI);
+        }
+
+        // 사거리 안에서 쿨다운이 끝나면 호출된다. 피해는 바로 주지 않고 공격 시작만 알린 뒤 선딜(MonsterAttackWindupSeconds)이
+        // 끝나는 틱에 ResolveMonsterAttack이 판정한다 - 그 사이에 플레이어가 대쉬로 피할 수 있다.
+        private void StartMonsterAttack(MonsterRuntime runtime, PlayerInfo target)
+        {
+            runtime.AttackWindupRemaining = MonsterAttackWindupSeconds;
+            runtime.AttackWindupStartedAtUtcTicks = DateTime.UtcNow.Ticks;
+
+            var start = new S2CMonsterAttackStartBroadcast
+            {
+                MonsterId = runtime.Info.MonsterId,
+                TargetPlayerId = target.PlayerId
+            };
+
+            SendToViewersOfMonster(runtime.Info.MonsterId, OpCode.Game_MonsterAttackStartBroadcast, start.Encode(), alsoToPlayerId: target.PlayerId);
+        }
+
+        // 선딜이 끝난 순간의 판정. 대상이 이미 죽었으면 아무 일도 없다. 규칙은 MonsterAttackJudge가 정한다:
+        // 대쉬 무적이거나 선딜 도중 대쉬로 사거리를 벗어나면 회피(피해 없음, 회피 연출 알림), 그냥 사거리를 벗어났으면 헛스윙,
+        // 사거리 안이고 무적이 아니면 명중(AttackPlayer).
+        private void ResolveMonsterAttack(MonsterRuntime runtime, PlayerInfo target)
+        {
+            if (target.CurrentHp <= 0)
+            {
+                return;
+            }
+
+            MonsterInfo info = runtime.Info;
+            bool isInRange = Distance(info.X, info.Z, target.X, target.Z) <= MeleeAttackRange + MonsterAttackJudge.HitRangeTolerance;
+            GetDashStatus(target.PlayerId, runtime.AttackWindupStartedAtUtcTicks, out bool isInvulnerable, out bool dashedDuringWindup);
+
+            switch (MonsterAttackJudge.Judge(isInRange, isInvulnerable, dashedDuringWindup))
+            {
+                case MonsterAttackOutcome.Hit:
+                    AttackPlayer(runtime, target);
+                    break;
+
+                case MonsterAttackOutcome.Dodged:
+                    var dodged = new S2CMonsterAttackDodgedBroadcast
+                    {
+                        MonsterId = info.MonsterId,
+                        TargetPlayerId = target.PlayerId
+                    };
+                    SendToViewersOfMonster(info.MonsterId, OpCode.Game_MonsterAttackDodgedBroadcast, dodged.Encode(), alsoToPlayerId: target.PlayerId);
+                    break;
+            }
+        }
+
+        // 판정 결과가 명중일 때 호출된다. PvP(ApplyPlayerAttack)와 같은 TryDamagePlayer로
         // 서버가 최종 피해와 남은 체력을 계산하고, 클라이언트에는 그 결과만 보낸다(Player Health 영역 참고).
         private void AttackPlayer(MonsterRuntime runtime, PlayerInfo target)
         {
