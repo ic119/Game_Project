@@ -109,6 +109,21 @@ public class PlayerCharacterModel : MonoBehaviour
     {
         currentWeaponType = weaponType;
         equipmentController.Equip(EquipmentSlotType.Weapon, string.IsNullOrEmpty(visualName) ? defaultWeaponVisualName : visualName);
+        SyncWeaponAnimation();
+    }
+
+    // Base Layer의 Idle/Move/Jump/Die/Dash/BackDash는 공격(Attack Layer)과 같은 방식으로 WeaponIndex(WeaponType 값)를 임계값으로 하는
+    // BlendTree라, 무기를 바꾸는 순간 이 값을 맞춰야 그 무기의 대기/이동/대쉬/사망 모션이 재생된다. 공격 때만 값을 맞추면
+    // (PlayerAttackController.SyncWeaponIndex) 공격하기 전까지 평소 모션이 맨손 모션으로 남는다. 로컬/원격 플레이어와 로비 미리보기가
+    // 모두 이 메서드(EquipWeapon)를 거치므로 한 곳에서 처리한다. 값이 임계값과 정확히 일치해야 블렌딩 없이 한 클립만 재생된다.
+    private static readonly int WeaponIndexHash = Animator.StringToHash("WeaponIndex");
+
+    private void SyncWeaponAnimation()
+    {
+        if (TryGetComponent(out Animator animator) && animator.runtimeAnimatorController != null)
+        {
+            animator.SetFloat(WeaponIndexHash, (float)currentWeaponType);
+        }
     }
 
     /// <summary>
