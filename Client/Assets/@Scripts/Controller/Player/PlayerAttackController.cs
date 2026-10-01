@@ -122,6 +122,12 @@ namespace Incheol.Controller
                 return;
             }
 
+            // 사망 중에는 공격 모션/판정/요청을 시작하지 않는다(컨트롤러가 꺼지기 전 같은 프레임에 들어온 입력까지 막는다).
+            if (playerCharacterModel != null && playerCharacterModel.IsDead)
+            {
+                return;
+            }
+
             if (comboStage == 0)
             {
                 // 마지막 타수(콤보 완료) 직후에는 comboFinishDelay가 지나기 전까지 새 공격을 받지 않는다.

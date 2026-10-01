@@ -36,6 +36,7 @@ namespace Incheol.Controller
 
         private readonly SnapshotInterpolationBuffer interpolation = new();
         private Animator animator;
+        private PlayerCharacterModel playerCharacterModel;
         private float lastMovingTime = float.NegativeInfinity;
         private int attackLayerIndex = -1;
         private float attackAnimationEndTime = float.NegativeInfinity;
@@ -55,6 +56,7 @@ namespace Incheol.Controller
         {
             interpolation.Reset(transform.position, transform.eulerAngles.y);
             animator = GetComponent<Animator>();
+            playerCharacterModel = GetComponent<PlayerCharacterModel>();
             if (animator != null)
             {
                 attackLayerIndex = animator.GetLayerIndex(AttackLayerName);
@@ -98,6 +100,12 @@ namespace Incheol.Controller
         public void PlayAttackAnimation(int comboStage, WeaponType weaponType)
         {
             if (animator == null || attackLayerIndex < 0)
+            {
+                return;
+            }
+
+            // 사망 패킷 뒤에 늦게 도착한 공격 모션 알림이 Attack Layer를 다시 올려 Die를 덮지 않게 한다.
+            if (playerCharacterModel != null && playerCharacterModel.IsDead)
             {
                 return;
             }

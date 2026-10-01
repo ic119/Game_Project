@@ -228,6 +228,7 @@ public class PlayerCharacterModel : MonoBehaviour
 
         if (!wasDead && healthComponent.IsDead)
         {
+            ClearActionAnimations();
             PlayStateAnimation(DieStateHash);
         }
         else if (wasDead && !healthComponent.IsDead)
@@ -240,6 +241,30 @@ public class PlayerCharacterModel : MonoBehaviour
     // 재생한다 - 한 번 Die로 들어가면 IsIdle/IsMove 값과 상관없이 부활 때 Idle을 다시 재생할 때까지 쓰러져 있다.
     private static readonly int DieStateHash = Animator.StringToHash("Die");
     private static readonly int IdleStateHash = Animator.StringToHash("Idle");
+
+    // 사망 직전에 진행 중이던 공격/대쉬 모션을 걷어낸다. Attack Layer는 weight가 1로 남으면 Die 위에 덮어 그려지고,
+    // Base Layer의 AnyState -> Dash(IsDash) 전이는 IsDash가 켜진 채면 Die 재생 직후 다시 Dash로 끌고 간다.
+    // 사망하면 PlayerAttackController/PlayerMoveController가 꺼져 스스로 정리하지 못하므로 여기서 대신 정리한다.
+    private const string AttackLayerName = "Attack Layer";
+    private static readonly int ComboIndexHash = Animator.StringToHash("ComboIndex");
+    private static readonly int IsDashHash = Animator.StringToHash("IsDash");
+
+    private void ClearActionAnimations()
+    {
+        if (!TryGetComponent(out Animator animator))
+        {
+            return;
+        }
+
+        int attackLayerIndex = animator.GetLayerIndex(AttackLayerName);
+        if (attackLayerIndex >= 0)
+        {
+            animator.SetInteger(ComboIndexHash, 0);
+            animator.SetLayerWeight(attackLayerIndex, 0f);
+        }
+
+        animator.SetBool(IsDashHash, false);
+    }
 
     private void PlayStateAnimation(int stateHash)
     {
