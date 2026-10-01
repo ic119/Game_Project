@@ -33,6 +33,9 @@ namespace Incheol.Modules
 
         // 프리팹을 불러오는 중(SpawnMonster 호출 후 콜백 전)인 몬스터 id.
         private readonly HashSet<long> loadingMonsterIds = new();
+
+        // pointId(마커 오브젝트 이름) -> 마커 Transform. FindSpawnPointTransform 참고.
+        private readonly Dictionary<string, Transform> spawnPointCache = new();
         private MonsterDatabaseSO database;
 
         #region LifeCycle
@@ -203,22 +206,32 @@ namespace Incheol.Modules
         /// MonsterSpawnPointExporter가 내보낼 때 이름을 그대로 pointId로 썼으므로(RemoteMonsterManager.cs 주석 참고)
         /// 이름 일치로 원본 포인트를 역으로 찾을 수 있다. 못 찾으면 null(호출부에서 기본 위치로 대체).
         /// </summary>
-        private static Transform FindSpawnPointTransform(string pointId)
+        private Transform FindSpawnPointTransform(string pointId)
         {
             if (string.IsNullOrEmpty(pointId))
             {
                 return null;
             }
 
-            foreach (MonsterSpawnPointMarker marker in FindObjectsByType<MonsterSpawnPointMarker>(FindObjectsSortMode.None))
+            // 몬스터가 스폰될 때마다 씬 전체를 검색하지 않도록 이름으로 캐시해 둔다. 캐시된 마커가 파괴됐거나(맵 전환)
+            // 아직 모르는 pointId면 그때만 다시 모은다.
+            if (spawnPointCache.TryGetValue(pointId, out Transform cached) && cached != null)
             {
-                if (marker.gameObject.name == pointId)
-                {
-                    return marker.transform;
-                }
+                return cached;
             }
 
-            return null;
+            RebuildSpawnPointCache();
+            return spawnPointCache.TryGetValue(pointId, out cached) ? cached : null;
+        }
+
+        private void RebuildSpawnPointCache()
+        {
+            spawnPointCache.Clear();
+
+            foreach (MonsterSpawnPointMarker marker in FindObjectsByType<MonsterSpawnPointMarker>(FindObjectsSortMode.None))
+            {
+                spawnPointCache.TryAdd(marker.gameObject.name, marker.transform);
+            }
         }
 
         /// <summary>
@@ -245,6 +258,9 @@ namespace Incheol.Modules
             }
 
             remoteMonsters.Clear();
+
+            // 이전 맵의 마커는 곧 사라지고 새 맵의 마커로 바뀌므로, 같은 이름의 마커를 가리키는 낡은 캐시를 버린다.
+            spawnPointCache.Clear();
         }
 
         /// <summary>
