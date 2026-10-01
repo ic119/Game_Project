@@ -45,6 +45,7 @@ namespace Incheol.Modules.Networking
         Game_EquipmentChangedBroadcast = 0x0224,
         Game_DashRequest = 0x0225,
         Game_MonsterAttackStartBroadcast = 0x0226,
-        Game_MonsterAttackDodgedBroadcast = 0x0227
+        Game_MonsterAttackDodgedBroadcast = 0x0227,
+        Game_MapChangeRejected = 0x0228
     }
 }

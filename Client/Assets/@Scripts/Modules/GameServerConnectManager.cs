@@ -76,6 +76,18 @@ namespace Incheol.Modules
         // 재접속하지 않고 바로 OnDisconnected로 알린다. 메인 스레드에서만 읽고 쓴다.
         private bool hasEntered;
 
+        /// <summary>
+        /// 맵 이동 요청(Game_MapChangeRequest)을 서버가 승인했을 때(Game_MapChangeAck). 서버가 정한 내 위치/체력(Self)과 새 맵 시야 안의
+        /// 플레이어/몬스터 목록을 담는다. 목록은 이 이벤트를 받은 쪽이 맵을 교체한 뒤 DispatchMapChangeEntities로 적용한다 -
+        /// 맵을 교체하기 전에 스폰하면 교체하면서 지워지기 때문이다.
+        /// </summary>
+        public event Action<GameEnterAckPacket> OnMapChangeAcked;
+
+        /// <summary>
+        /// 맵 이동 요청을 서버가 거부했을 때(Game_MapChangeRejected). 서버 상태는 그대로이므로 이전 맵을 유지하면 된다.
+        /// </summary>
+        public event Action<GameMapChangeRejectedPacket> OnMapChangeRejected;
+
         public event Action<GamePlayerInfo> OnPlayerJoined;
         public event Action<long> OnPlayerLeft;
         /// <summary>
@@ -413,22 +425,21 @@ namespace Incheol.Modules
             _ = SendAsync(GameOpCode.Game_ChatRequest, request.Encode());
         }
 
+        /// <summary>서버와 연결돼 있는지(재접속 중이거나 끊겼으면 false).</summary>
+        public bool IsConnected => isConnected;
+
         /// <summary>
-        /// 같은 접속을 유지한 채 다른 맵으로 이동했음을 GameServer에 알린다(Game_MapChangeRequest).
-        /// 서버는 이전 맵 방에서 빼고 새 맵 방에 등록한 뒤, 새 맵의 기존 접속자 목록을 Game_MapChangeAck로 돌려준다.
-        /// MapPortalController가 맵(프리팹) 교체를 마친 직후 호출해야 한다.
+        /// 다른 맵으로 이동해도 되는지 GameServer에 요청한다(Game_MapChangeRequest). 서버가 승인하면 이전 맵 방에서 빼고 새 맵 방에
+        /// 등록한 뒤 Game_MapChangeAck(OnMapChangeAcked)를, 거부하면 Game_MapChangeRejected(OnMapChangeRejected)를 돌려준다.
+        /// 클라이언트는 이 응답을 받은 뒤에 맵을 교체한다(GameSceneManager.SwapMapAsync) - 요청을 보내는 시점에는 새 맵을
+        /// 이미 로드해 두되 교체는 하지 않은 상태다. 서버는 좌표를 참고하지 않고 맵 데이터의 진입 지점으로 도착 위치를 정한다.
+        /// 재접속 시 입장할 맵은 서버가 승인한 뒤 ConfirmMapChange로 바꾼다(요청만 보낸 시점에는 바꾸지 않는다).
         /// </summary>
         public void SendMapChange(string mapId, float x, float y, float z, float rotationY)
         {
             if (!isConnected)
             {
                 return;
-            }
-
-            // 재접속하면 지금 있는 맵으로 다시 입장해야 한다.
-            if (lastEnterInfo != null)
-            {
-                lastEnterInfo.MapId = mapId;
             }
 
             var request = new GameMapChangeRequestPacket
@@ -442,6 +453,36 @@ namespace Incheol.Modules
             };
 
             _ = SendAsync(GameOpCode.Game_MapChangeRequest, request.Encode());
+        }
+
+        /// <summary>
+        /// 서버가 맵 이동을 승인해 클라이언트가 맵을 교체했을 때 호출한다. 재접속하면 지금 있는 맵으로 다시 입장해야 하므로
+        /// 마지막 입장 정보의 맵을 바꾼다. 요청을 보낸 시점이 아니라 승인된 뒤에 바꿔야, 거부되거나 응답이 오지 않았을 때
+        /// 재접속이 서버에 없는 맵으로 입장하려 하지 않는다.
+        /// </summary>
+        public void ConfirmMapChange(string mapId)
+        {
+            if (lastEnterInfo != null)
+            {
+                lastEnterInfo.MapId = mapId;
+            }
+        }
+
+        /// <summary>
+        /// 맵 이동 승인(OnMapChangeAcked)에 담겨 온 새 맵 시야 안의 플레이어/몬스터를 스폰 이벤트로 알린다. 맵 교체를 마친 뒤
+        /// 호출해야 한다(교체하면서 이전 맵의 원격 개체를 비우기 때문에, 먼저 스폰하면 함께 지워진다).
+        /// </summary>
+        public void DispatchMapChangeEntities(GameEnterAckPacket ack)
+        {
+            foreach (GamePlayerInfo player in ack.ExistingPlayers)
+            {
+                OnPlayerJoined?.Invoke(player);
+            }
+
+            foreach (GameMonsterInfo monster in ack.ExistingMonsters)
+            {
+                OnMonsterSpawned?.Invoke(monster);
+            }
         }
 
         /// <summary>
@@ -738,19 +779,17 @@ namespace Incheol.Modules
                     });
                     break;
 
-                // 페이로드 구조가 Game_EnterAck과 동일하므로(새 맵의 기존 접속자/몬스터 목록) 같은 디코더를 재사용한다.
-                // 이전 맵에서 스폰돼있던 원격 플레이어/몬스터 정리는 서버 응답을 기다리지 않고 맵 전환을 시작한
-                // 클라이언트 쪽(RemotePlayerManager.ClearAll/RemoteMonsterManager.ClearAll)에서 이미 처리했다는 전제다.
+                // 페이로드 구조가 Game_EnterAck과 동일하므로(본인 상태 + 새 맵의 기존 접속자/몬스터 목록) 같은 디코더를 재사용한다.
+                // 맵 이동은 서버 승인(이 응답)을 받은 뒤에야 클라이언트가 맵을 교체하므로, 플레이어/몬스터를 여기서 바로 스폰하지
+                // 않고 한 번에 넘긴다 - 받은 쪽(GameSceneManager)이 이전 맵 정리와 새 맵 생성을 마친 뒤 DispatchMapChangeEntities로 적용한다.
                 case GameOpCode.Game_MapChangeAck:
                     var mapChangeAck = GameEnterAckPacket.Decode(body);
-                    foreach (GamePlayerInfo player in mapChangeAck.ExistingPlayers)
-                    {
-                        pendingActions.Enqueue(() => OnPlayerJoined?.Invoke(player));
-                    }
-                    foreach (GameMonsterInfo monster in mapChangeAck.ExistingMonsters)
-                    {
-                        pendingActions.Enqueue(() => OnMonsterSpawned?.Invoke(monster));
-                    }
+                    pendingActions.Enqueue(() => OnMapChangeAcked?.Invoke(mapChangeAck));
+                    break;
+
+                case GameOpCode.Game_MapChangeRejected:
+                    var mapChangeRejected = GameMapChangeRejectedPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnMapChangeRejected?.Invoke(mapChangeRejected));
                     break;
 
                 case GameOpCode.Game_PlayerJoined:
