@@ -14,7 +14,7 @@ using Shared.Networking.Packets;
 namespace GameServer.Networking
 {
     // 접속 클라이언트 1개를 담당: TLS 핸드셰이크 + 프레임 수신 루프 + OpCode 디스패치 + 전송 대기열/전송 루프
-    public class ClientSession
+    public class ClientSession : ISessionSender
     {
         private readonly TcpClient _tcpClient;
 

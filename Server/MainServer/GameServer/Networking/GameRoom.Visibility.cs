@@ -37,7 +37,7 @@ namespace GameServer.Networking
 
         // 방에 입장시키고, 지금 시야 안에 있는 플레이어/몬스터를 돌려준다(Game_EnterAck/Game_MapChangeAck에 담을 목록).
         // 다른 플레이어들은 다음 틱의 시야 갱신에서 이 플레이어를 "시야 진입"으로 받는다.
-        public (List<PlayerInfo> VisiblePlayers, List<MonsterInfo> VisibleMonsters) Join(PlayerInfo info, ClientSession session)
+        public (List<PlayerInfo> VisiblePlayers, List<MonsterInfo> VisibleMonsters) Join(PlayerInfo info, ISessionSender session)
         {
             var visiblePlayers = new List<PlayerInfo>();
             var visibleMonsters = new List<MonsterInfo>();
@@ -74,12 +74,12 @@ namespace GameServer.Networking
         // session이 등록한 항목일 때만 제거하고, 실제로 제거했으면 true. 같은 캐릭터가 새 세션으로 다시 입장해 항목이
         // 교체된 뒤에는 이전 세션이 종료되면서 호출해도 새 세션의 항목을 지우지 않는다(퇴장 알림도 보내지 않는다).
         // 제거하면 이 플레이어를 보고 있던 사람들에게만 Game_PlayerLeft를 보낸다.
-        public bool Remove(long playerId, ClientSession session)
+        public bool Remove(long playerId, ISessionSender session)
         {
             lock (_viewLock)
             {
                 if (!_players.TryGetValue(playerId, out var entry) || !ReferenceEquals(entry.Session, session)
-                    || !_players.TryRemove(new KeyValuePair<long, (PlayerInfo Info, ClientSession Session)>(playerId, entry)))
+                    || !_players.TryRemove(new KeyValuePair<long, (PlayerInfo Info, ISessionSender Session)>(playerId, entry)))
                 {
                     return false;
                 }
@@ -181,7 +181,7 @@ namespace GameServer.Networking
                     }
 
                     PlayerInfo viewer = viewerEntry.Info;
-                    ClientSession session = viewerEntry.Session;
+                    ISessionSender session = viewerEntry.Session;
 
                     // 플레이어 시야
                     var nextPlayers = new HashSet<long>();

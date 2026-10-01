@@ -31,7 +31,7 @@ namespace GameServer.Networking
     // 누가 누구를 보는지(관심 영역, 입장/퇴장/시야 진입·이탈, 대상별 알림)는 GameRoom.Visibility.cs에 있다.
     public partial class GameRoom
     {
-        private readonly ConcurrentDictionary<long, (PlayerInfo Info, ClientSession Session)> _players = new();
+        private readonly ConcurrentDictionary<long, (PlayerInfo Info, ISessionSender Session)> _players = new();
 
         // 몬스터 id -> 현재 상태(+ 어느 스폰 포인트 소속인지). 포인트 단위 개체수/리스폰 판정에 쓴다.
         private readonly ConcurrentDictionary<long, MonsterRuntime> _monsters = new();
@@ -71,7 +71,7 @@ namespace GameServer.Networking
         private readonly RoomChestState _chests;
 
         // 방에 새로 입장/맵 이동한 세션에게 상자 상태(서 있는 목록 -> 이미 열린 것)를 알린다.
-        public void SendChestState(ClientSession session) => _chests.SendState(session.Send);
+        public void SendChestState(ISessionSender session) => _chests.SendState(session.Send);
 
         // 직전 틱 이후 위치가 바뀐 플레이어 id. 이동 요청은 위치만 갱신하고 여기에 표시하며, 실제 전송은 다음 틱의
         // 스냅샷(S2CWorldSnapshot)에 모아서 한다(RunTickLoopAsync). 값은 쓰지 않는다(ConcurrentDictionary를 집합으로 사용).
