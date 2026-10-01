@@ -21,8 +21,8 @@ namespace GameServer.Networking
         // 클라이언트 대쉬는 0.25초 지속 + 1초 쿨다운(PlayerMoveController, 시작 간격 1.25초)이다. 무적 시간은 대쉬 지속시간에
         // 패킷 지연 여유를 더한 값이고, 최소 간격은 클라이언트 시작 간격보다 약간 짧게 잡아 시계/지연 오차로 정상 대쉬가
         // 거부되지 않게 한다. 클라이언트 대쉬 값을 바꾸면 함께 조정해야 한다.
-        private static readonly TimeSpan DashInvulnerableDuration = TimeSpan.FromSeconds(0.35);
-        private static readonly TimeSpan MinDashInterval = TimeSpan.FromSeconds(1.0);
+        private static TimeSpan DashInvulnerableDuration => TimeSpan.FromSeconds(CombatTuning.Current.DashInvulnerableSeconds);
+        private static TimeSpan MinDashInterval => TimeSpan.FromSeconds(CombatTuning.Current.MinDashIntervalSeconds);
 
         private sealed class DashState
         {

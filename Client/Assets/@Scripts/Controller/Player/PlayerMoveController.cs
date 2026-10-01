@@ -22,8 +22,8 @@ namespace Incheol.Controller
         [SerializeField] private KeyCode dashKey = KeyCode.Space;
         [Tooltip("한 번의 대쉬로 이동하는 총 거리(m). dashDuration 동안 이 거리만큼 전방으로 이동하도록 속도가 계산된다.")]
         [SerializeField, Min(0f)] private float dashDistance = 3f;
-        [SerializeField, Min(0f)] private float dashDuration = 0.25f;
-        [SerializeField, Min(0f)] private float dashCooldown = 1f;
+        [SerializeField, Min(0f)] private float dashDuration = CombatTimings.DashDurationSeconds;
+        [SerializeField, Min(0f)] private float dashCooldown = CombatTimings.DashCooldownSeconds;
 
         [Header("Dash Effect")]
         [Tooltip("Dash01 이펙트를 재생할 위치. 캐릭터 기준 로컬 오프셋이며, 캐릭터의 현재 방향에 맞춰 회전 적용된다. " +

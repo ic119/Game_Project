@@ -21,7 +21,7 @@ namespace GameServer.Networking
         // HP는 AI 루프(몬스터 공격)와 여러 세션(PvP)이 동시에 바꿀 수 있으므로 PlayerInfo 인스턴스를 lock으로 쓴다.
 
         // 사망 후 자동 부활까지 걸리는 시간. 클라이언트 부활 팝업의 카운트다운(GameSceneManager.ReviveDelaySeconds)과 같아야 한다.
-        private static readonly TimeSpan ReviveDelay = TimeSpan.FromSeconds(5);
+        private static TimeSpan ReviveDelay => TimeSpan.FromSeconds(CombatTuning.Current.ReviveDelaySeconds);
 
         // target에게 방어력 적용 전 피해(rawDamage)를 준다. 이미 사망한 대상이면 false(피해 없음).
         // died는 이 피해로 체력이 0이 된 경우에만 true다 - 사망 처리(부활 예약)가 한 번만 일어나게 한다.

@@ -33,29 +33,10 @@ namespace Incheol.Controller
         [Header("콤보 (BasicCharacterStance/Attack Layer 참고)")]
         [Tooltip("콤보 최대 타수. Attack Layer에 Attack1/Attack2 두 단계만 있어 2로 둔다.")]
         [SerializeField, Min(1)] private int maxComboStage = 2;
-        [Tooltip("무기 타입별 Attack1/Attack2 애니메이션 길이(초). Attack Layer의 Attack1/Attack2 상태는 " +
-            "WeaponIndex 파라미터를 기준으로 한 BlendTree라 무기마다 실제 재생되는 클립이 다르고 길이도 다르므로" +
-            "(예: Spear는 Attack01 16프레임/Attack02 20프레임으로 서로 다름), 무기 타입마다 따로 값을 맞춘다. " +
-            "목록에 없는 WeaponType은 기본값(16프레임/30fps)으로 처리한다.")]
-        [SerializeField] private WeaponAttackTiming[] weaponAttackTimings =
-        {
-            new WeaponAttackTiming { weaponType = WeaponType.OneHanded, attack1Duration = 16f / 30f, attack2Duration = 16f / 30f },
-            new WeaponAttackTiming { weaponType = WeaponType.TwoHanded, attack1Duration = 18f / 30f, attack2Duration = 18f / 30f },
-            new WeaponAttackTiming { weaponType = WeaponType.Wand, attack1Duration = 16f / 30f, attack2Duration = 16f / 30f },
-            new WeaponAttackTiming { weaponType = WeaponType.Spear, attack1Duration = 16f / 30f, attack2Duration = 20f / 30f },
-        };
         [Tooltip("각 단계 시작 후 이 시간이 지나야 다음 입력을 콤보 연계로 인정한다(스윙 시작 직후 캔슬 방지).")]
-        [SerializeField, Min(0f)] private float comboInputGuard = 0.15f;
+        [SerializeField, Min(0f)] private float comboInputGuard = CombatTimings.ComboInputGuardSeconds;
         [Tooltip("마지막 타수(2콤보) 공격이 끝난 뒤 다음 공격을 다시 받아들이기까지의 딜레이(초). 애니메이션은 이 딜레이와 무관하게 공격 종료 즉시 Idle로 돌아가고, 이 값은 공격 판정(RequestAttack)이 곧바로 겹치지 않도록 입력만 잠근다.")]
         [SerializeField, Min(0f)] private float comboFinishDelay = 0.25f;
-
-        [Serializable]
-        private struct WeaponAttackTiming
-        {
-            public WeaponType weaponType;
-            [Min(0.05f)] public float attack1Duration;
-            [Min(0.05f)] public float attack2Duration;
-        }
 
         private const string AttackLayerName = "Attack Layer";
         private static readonly int ComboIndexHash = Animator.StringToHash("ComboIndex");
@@ -208,22 +189,19 @@ namespace Incheol.Controller
 
         /// <summary>
         /// 현재 장착 무기(playerCharacterModel.CurrentWeaponType)와 콤보 단계에 맞는 애니메이션 길이를 반환한다.
-        /// weaponAttackTimings에 등록되지 않은 WeaponType이면 SingleSword 기준값(16프레임/30fps)으로 대체한다.
+        /// 공격 길이 표는 로컬/원격 플레이어가 공유하는 CombatTimings에 있다. 등록되지 않은 WeaponType이면 기본값(16프레임/30fps)으로 대체한다.
         /// </summary>
         private float GetStageDuration(int stage)
         {
             WeaponType weaponType = playerCharacterModel != null ? playerCharacterModel.CurrentWeaponType : WeaponType.None;
 
-            foreach (WeaponAttackTiming timing in weaponAttackTimings)
+            if (CombatTimings.TryGetAttackDuration((int)weaponType, stage, maxComboStage, out float duration))
             {
-                if (timing.weaponType == weaponType)
-                {
-                    return stage >= maxComboStage ? timing.attack2Duration : timing.attack1Duration;
-                }
+                return duration;
             }
 
-            DebugLogManager.GenerateErrorMessage<PlayerAttackController>($"WeaponType '{weaponType}'에 대응하는 공격 타이밍 설정이 weaponAttackTimings에 없습니다. 기본값을 사용합니다.");
-            return 16f / 30f;
+            DebugLogManager.GenerateErrorMessage<PlayerAttackController>($"WeaponType '{weaponType}'에 대응하는 공격 타이밍이 CombatTimings에 없습니다 - 기본 공격 길이를 사용합니다.");
+            return duration;
         }
 
         private void UpdateNextAttackReadyTime()

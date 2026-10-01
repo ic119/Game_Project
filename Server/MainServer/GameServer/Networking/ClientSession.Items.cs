@@ -94,7 +94,6 @@ namespace GameServer.Networking
         }
 
         // 물약 연타로 MainServer 차감 요청이 몰리지 않게 하는 최소 사용 간격.
-        private const double MinUseItemIntervalMs = 300;
         private DateTime _lastUseItemAtUtc = DateTime.MinValue;
 
         // 물약 재사용 대기시간(모든 물약이 공유). 위 최소 간격은 요청 폭주(MainServer 왕복)를 막는 용도이고, 이쪽은
@@ -165,7 +164,7 @@ namespace GameServer.Networking
         private async Task<UseItemFailReason> TryUseItemAsync(long playerId, GameRoom room, string itemId, CancellationToken ct)
         {
             var now = DateTime.UtcNow;
-            if ((now - _lastUseItemAtUtc).TotalMilliseconds < MinUseItemIntervalMs)
+            if ((now - _lastUseItemAtUtc).TotalMilliseconds < CombatTuning.Current.MinUseItemIntervalMs)
             {
                 return UseItemFailReason.TooFast;
             }

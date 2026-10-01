@@ -17,19 +17,6 @@ namespace Incheol.Controller
         [Tooltip("멈춘 뒤 이 시간(초)이 지나야 정지 애니메이션(IsIdle)으로 바꾼다 - 스냅샷 사이 짧은 정지로 애니메이션이 깜빡이지 않게 한다.")]
         [SerializeField, Min(0f)] private float idleDelay = 0.15f;
 
-        // PlayerAttackController.weaponAttackTimings와 같은 값이어야 한다(같은 Attack Layer BlendTree를 공유하므로
-        // 무기 타입별 클립 길이가 동일하다). 로컬 콤보 진행을 직접 관리하는 PlayerAttackController와 달리 이쪽은
-        // Game_AttackAnimationBroadcast로 받은 comboStage/weaponType 한 번만으로 재생 시간을 정해야 해서 별도로 둔다 -
-        // 두 값이 갈라지면 원격 캐릭터의 모션 리셋 타이밍만 어긋나므로(치명적이지 않은 연출 문제) 공용 애셋으로
-        // 묶지 않았다. weaponAttackTimings를 고치면 이 표도 같이 확인할 것.
-        private static readonly (WeaponType WeaponType, float Attack1Duration, float Attack2Duration)[] WeaponAttackTimings =
-        {
-            (WeaponType.OneHanded, 16f / 30f, 16f / 30f),
-            (WeaponType.TwoHanded, 18f / 30f, 18f / 30f),
-            (WeaponType.Wand, 16f / 30f, 16f / 30f),
-            (WeaponType.Spear, 16f / 30f, 20f / 30f),
-        };
-
         // Attack Layer에 Attack1/Attack2 두 단계만 있다(PlayerAttackController.maxComboStage와 같은 값이어야 한다).
         private const int MaxComboStage = 2;
         private const string AttackLayerName = "Attack Layer";
@@ -126,18 +113,11 @@ namespace Incheol.Controller
             attackAnimationEndTime = Time.time + GetStageDuration(weaponType, comboStage);
         }
 
-        // PlayerAttackController.GetStageDuration과 같은 로직(등록되지 않은 WeaponType은 OneHanded 기준값으로 대체).
+        // 로컬(PlayerAttackController)과 같은 CombatTimings 표를 쓴다(등록되지 않은 WeaponType은 기본 길이).
         private static float GetStageDuration(WeaponType weaponType, int comboStage)
         {
-            foreach (var timing in WeaponAttackTimings)
-            {
-                if (timing.WeaponType == weaponType)
-                {
-                    return comboStage >= MaxComboStage ? timing.Attack2Duration : timing.Attack1Duration;
-                }
-            }
-
-            return 16f / 30f;
+            CombatTimings.TryGetAttackDuration((int)weaponType, comboStage, MaxComboStage, out float duration);
+            return duration;
         }
 
         /// <summary>

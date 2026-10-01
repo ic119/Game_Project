@@ -1,3 +1,4 @@
+using GameServer.Combat;
 using GameServer.Logging;
 using Microsoft.Extensions.Logging;
 using GameServer.Items;
@@ -28,6 +29,9 @@ using var loggerFactory = LoggerFactory.Create(builder => builder
         options.TimestampFormat = "HH:mm:ss ";
     }));
 GameLog.Configure(loggerFactory);
+
+// 전투 튜닝 값(대쉬 무적, 몬스터 선딜 등)은 appsettings.json의 Combat 섹션으로 조정하며, 잘못된 값이면 여기서 시작을 막는다.
+CombatTuning.Configure(configuration);
 
 // 스폰 포인트 파일이 잘못돼 있으면 첫 플레이어가 접속하는 순간이 아니라 여기서 바로 서버 시작을 막는다.
 MonsterSpawnCatalog.EnsureLoaded();

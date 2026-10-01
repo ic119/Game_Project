@@ -23,8 +23,6 @@ namespace GameServer.Networking
         // 정상적인 콤보 2타 요청까지 여기서 조용히 드롭되어 "애니메이션은 2콤보, 데미지는 1타"만 반영되는
         // 문제가 생기므로, comboInputGuard보다 여유를 두고 짧게 잡아 정상 콤보는 통과시키고 그보다
         // 빠른(매크로 등) 연타만 차단한다. comboInputGuard를 바꾸면 이 값도 함께 맞춰야 한다.
-        private const double MinAttackIntervalMs = 100;
-        private const float MaxAttackRangeSquared = 5f * 5f;
         private DateTime _lastAttackAtUtc = DateTime.MinValue;
 
         private void HandleAttackRequest(byte[] body)
@@ -38,7 +36,7 @@ namespace GameServer.Networking
             }
 
             var now = DateTime.UtcNow;
-            if ((now - _lastAttackAtUtc).TotalMilliseconds < MinAttackIntervalMs)
+            if ((now - _lastAttackAtUtc).TotalMilliseconds < CombatTuning.Current.MinAttackIntervalMs)
             {
                 return;
             }
@@ -52,7 +50,7 @@ namespace GameServer.Networking
             float dx = attacker.X - target.X;
             float dy = attacker.Y - target.Y;
             float dz = attacker.Z - target.Z;
-            if (dx * dx + dy * dy + dz * dz > MaxAttackRangeSquared)
+            if (dx * dx + dy * dy + dz * dz > CombatTuning.Current.MaxAttackRangeSquared)
             {
                 return;
             }
@@ -111,7 +109,7 @@ namespace GameServer.Networking
             }
 
             var now = DateTime.UtcNow;
-            if ((now - _lastAttackAtUtc).TotalMilliseconds < MinAttackIntervalMs)
+            if ((now - _lastAttackAtUtc).TotalMilliseconds < CombatTuning.Current.MinAttackIntervalMs)
             {
                 return;
             }
@@ -126,7 +124,7 @@ namespace GameServer.Networking
             float dx = attacker.X - monsterPosition.X;
             float dy = attacker.Y - monsterPosition.Y;
             float dz = attacker.Z - monsterPosition.Z;
-            if (dx * dx + dy * dy + dz * dz > MaxAttackRangeSquared)
+            if (dx * dx + dy * dy + dz * dz > CombatTuning.Current.MaxAttackRangeSquared)
             {
                 return;
             }

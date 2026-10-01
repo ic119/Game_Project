@@ -4,11 +4,9 @@ using Incheol.Modules;
 using Incheol.Modules.Networking;
 using Incheol.Utils;
 using Incheol.View.UI;
-using System;
 using System.Collections.Generic;
 using Unity.Cinemachine;
 using UnityEngine;
-using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace Incheol.Presenter.Scene
 {
@@ -26,10 +24,10 @@ namespace Incheol.Presenter.Scene
         private UI_PlayerRespawnPopupView respawnPopupView;
 
         /// <summary>
-        /// 사망 후 자동 부활까지 걸리는 시간(초). 서버 GameRoom.ReviveDelay와 같아야 한다 - 서버는 남은 시간을 보내지 않으므로
+        /// 사망 후 자동 부활까지 걸리는 시간(초). 서버 CombatTuning.ReviveDelaySeconds와 같아야 한다(CombatTimings가 단일 출처, 서버 테스트가 일치를 검사한다) - 서버는 남은 시간을 보내지 않으므로
         /// 부활 팝업(UI_PlayerRespawnPopupView)의 카운트다운에 이 값을 쓴다. 실제 부활은 서버의 Game_PlayerRevived를 받을 때 일어난다.
         /// </summary>
-        private const float ReviveDelaySeconds = 5f;
+        private const float ReviveDelaySeconds = CombatTimings.ReviveDelaySeconds;
         private float lastMonsterTargetedTime;
         private const float MonsterTargetLostTimeoutSeconds = 8f;
 

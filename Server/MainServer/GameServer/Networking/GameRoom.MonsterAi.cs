@@ -127,12 +127,12 @@ namespace GameServer.Networking
 
         // 근접 사거리(공격 판정 자체는 서버 권위 - ApplyMonsterAttack/HandleMonsterAttackRequestAsync와
         // 같은 이유로 몬스터는 신뢰할 공격 요청 주체가 없다) 및 공격 쿨다운.
-        private const float MeleeAttackRange = 1.5f;
-        private const float AttackIntervalSeconds = 1.5f;
+        private static float MeleeAttackRange => CombatTuning.Current.MonsterMeleeRange;
+        private static float AttackIntervalSeconds => CombatTuning.Current.MonsterAttackIntervalSeconds;
 
         // 공격 시작(Game_MonsterAttackStartBroadcast)부터 피해 판정까지의 선딜. 클라이언트 공격 모션(약 0.83초)의 중간쯤에 맞고,
         // 플레이어가 모션을 보고 대쉬(0.25초)로 반응할 시간을 준다. 쿨다운(AttackIntervalSeconds)은 선딜 시작 시점부터 센다.
-        private const float MonsterAttackWindupSeconds = 0.4f;
+        private static float MonsterAttackWindupSeconds => CombatTuning.Current.MonsterAttackWindupSeconds;
 
         private bool TickChasing(MonsterRuntime runtime, float deltaSeconds)
         {
