@@ -20,7 +20,11 @@ namespace Incheol.Controller.Interaction
         [SerializeField] private string chestId;
 
         [Tooltip("Drops/DropTables.json에서 이 상자가 쓸 항목의 키(몬스터 타입과 같은 딕셔너리를 공유한다).")]
+        // 런타임 코드는 읽지 않는다(드롭은 서버가 굴린다). 대신 에디터의 MapDataExporter가 SerializedObject로 이 값을 읽어
+        // 서버 맵 데이터에 내보내므로 지우면 안 된다 - 컴파일러의 "할당만 되고 쓰이지 않음"(CS0414) 경고는 그래서 의도적으로 끈다.
+#pragma warning disable CS0414
         [SerializeField] private string lootTableKey = "TreasureChestBasic";
+#pragma warning restore CS0414
 
         [Tooltip("회전시킬 뚜껑 Transform")]
         [SerializeField] private Transform chestLid;

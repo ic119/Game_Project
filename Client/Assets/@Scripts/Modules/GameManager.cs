@@ -321,12 +321,6 @@ namespace Incheol.Modules
             SceneLoadManager.Instance.LoadSceneByTags("LoginScene");
         }
 
-        // Update is called once per frame
-        void Update()
-        {
-
-        }
-
 
         public UI_LoadingBarView LoadingBarView { get; private set; }
 

@@ -11,16 +11,12 @@ public class CombatStatComponent : MonoBehaviour
     [SerializeField] private int baseAttackPower = 5;
     [SerializeField] private int baseDefense = 0;
 
-    // 스킬/버프등으로 일시적으로 더해지는 공격력(예: PlayerController의 D스킬). baseAttackPower는 건드리지 않고
-    // AttackPower를 읽을 때만 더해진다. 지속시간 관리는 호출측(PlayerController)의 몫이다.
-    private int bonusAttackPower;
-
-    // 장착 중인 장비(ItemData.bonusAttackPower/bonusDefense 합계)로 더해지는 공격력/방어력. bonusAttackPower(스킬
-    // 버프)와 별도의 덧셈 레이어라 스킬 버프 지속 중에 장비를 바꿔도 서로 값을 덮어쓰지 않는다.
+    // 장착 중인 장비(ItemData.bonusAttackPower/bonusDefense 합계)로 더해지는 공격력/방어력. 기본 수치(base*)와 별도의
+    // 덧셈 레이어라 장비를 바꿔도 기본 수치를 덮어쓰지 않는다.
     private int equipmentAttackBonus;
     private int equipmentDefenseBonus;
 
-    public int AttackPower => baseAttackPower + bonusAttackPower + equipmentAttackBonus;
+    public int AttackPower => baseAttackPower + equipmentAttackBonus;
     public int Defense => baseDefense + equipmentDefenseBonus;
 
     // UserStats(str/agi/intel)와 레벨로부터 공격력/방어력을 계산해 반영한다.
@@ -46,13 +42,6 @@ public class CombatStatComponent : MonoBehaviour
     {
         baseAttackPower = attackPower;
         baseDefense = defense;
-    }
-
-    // 일시적인 공격력 보너스를 설정/해제한다. AttackPower에 그대로 더해지므로, 버프가 끝나면
-    // 0을 넘겨 원래 수치로 되돌려야 한다(호출측이 타이머로 관리).
-    public void SetBonusAttackPower(int amount)
-    {
-        bonusAttackPower = amount;
     }
 
     // 장비 장착/해제로 바뀐 공격력/방어력 보너스를 설정한다. 델타가 아니라 항상 현재 장착 중인 장비 전체의

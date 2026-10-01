@@ -294,14 +294,6 @@ public class PlayerCharacterModel : MonoBehaviour
     }
 
     /// <summary>
-    /// 세이브 데이터의 UserStats(str/agi/intel)로부터 공격력/방어력을 계산해 반영한다(스폰 시 최초 1회).
-    /// </summary>
-    public void ApplyCombatStat(UserStats userStats)
-    {
-        combatStatComponent.ApplyFromUserStats(userStats, level);
-    }
-
-    /// <summary>
     /// 원격 플레이어 스폰 시(RemotePlayerManager.HandlePlayerJoined) 서버가 중계한 GamePlayerInfo의
     /// 전투 스냅샷을 그대로 반영한다. 원격 캐릭터는 UserSaveData를 직접 조회할 수 없으므로,
     /// 이미 계산되어 넘어온 값을 그대로 HealthComponent/CombatStatComponent에 채운다.

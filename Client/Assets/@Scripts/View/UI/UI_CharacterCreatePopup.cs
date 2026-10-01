@@ -542,7 +542,7 @@ public void InitializeComponents()
         if (OnCreateRequested == null)
         {
             DebugLogManager.GenerateErrorMessage<UI_CharacterCreatePopup>(
-                $"OnCreateRequested가 null입니다. popup InstanceID={GetInstanceID()}. LobbySceneController.WireCharacterCreatePopup 로그의 InstanceID와 비교해주세요.");
+                $"OnCreateRequested가 null입니다. popup InstanceID={GetEntityId()}. LobbySceneController.WireCharacterCreatePopup 로그의 InstanceID와 비교해주세요.");
             SetFeedback("저장 처리기가 연결되지 않아 저장에 실패했습니다.", new Color(1f, 0.4f, 0.4f, 1f));
             return;
         }

@@ -386,7 +386,7 @@ private const string PreviewStageName = "LobbySelectedCharacterPreviewStage";
                 // 도메인 리로드/씨 재진입 등으로 previewStage 참조를 잃어버렸더라도, 새로 만들기 전에
                 // 씨에 이미 남아있는 동일 이름의 고아 스테이지가 있는지 먼저 찾아 재사용하고,
                 // 남아도는(이미 하나 재사용한 뒤의 나머지) 모두 파괴해 캐릭터가 겹쳐 보이는 상황을 방지한다.
-                CharacterPreviewStage[] existingStages = FindObjectsByType<CharacterPreviewStage>(FindObjectsSortMode.None);
+                CharacterPreviewStage[] existingStages = FindObjectsByType<CharacterPreviewStage>();
                 for (int i = 0; i < existingStages.Length; i++)
                 {
                     CharacterPreviewStage existing = existingStages[i];

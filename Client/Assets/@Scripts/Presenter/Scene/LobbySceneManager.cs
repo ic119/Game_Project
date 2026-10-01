@@ -139,7 +139,7 @@ namespace Incheol.Presenter.Scene
             }
 
             characterCreatePopup.OnCreateRequested = OnCharacterCreateRequested;
-            DebugLogManager.GenerateLogMessage<LobbySceneManager>($"UI_CharacterCreatePopup 연결 완료. InstanceID={characterCreatePopup.GetInstanceID()}");
+            DebugLogManager.GenerateLogMessage<LobbySceneManager>($"UI_CharacterCreatePopup 연결 완료. InstanceID={characterCreatePopup.GetEntityId()}");
         }
 
         private bool OnCharacterCreateRequested(UserSaveData _saveData)

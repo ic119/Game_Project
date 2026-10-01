@@ -228,7 +228,7 @@ namespace Incheol.Modules
         {
             spawnPointCache.Clear();
 
-            foreach (MonsterSpawnPointMarker marker in FindObjectsByType<MonsterSpawnPointMarker>(FindObjectsSortMode.None))
+            foreach (MonsterSpawnPointMarker marker in FindObjectsByType<MonsterSpawnPointMarker>())
             {
                 spawnPointCache.TryAdd(marker.gameObject.name, marker.transform);
             }
