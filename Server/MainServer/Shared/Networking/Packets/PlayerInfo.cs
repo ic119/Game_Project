@@ -41,6 +41,14 @@ namespace Shared.Networking.Packets
         public string ArmorItemId { get; set; } = string.Empty;
         public string HelmetItemId { get; set; } = string.Empty;
 
+        // 서버 전용 전투 스탯 기준값. WriteTo/ReadFrom에 포함하지 않는다(네트워크로 나가지 않는다). 공격력/방어력/최대 체력은
+        // "현재 레벨 + 이 기준값"으로 항상 처음부터 다시 계산한다(GameServer PlayerCombatStats) - 레벨업/장비 변경이 겹쳐도
+        // 증분이 두 번 더해지거나 사라지지 않게 하기 위해서다. Game_EnterRequest/Game_StatUpdateRequest 때 DB 원본으로 채운다.
+        public int BaseStr { get; set; }
+        public int BaseAgi { get; set; }
+        public int EquipmentAttackBonus { get; set; }
+        public int EquipmentDefenseBonus { get; set; }
+
         public void WriteTo(BinaryWriter writer)
         {
             writer.Write(PlayerId);

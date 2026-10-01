@@ -148,15 +148,15 @@ namespace GameServer.Networking
         // class(참조 타입)라 이 메서드로 값만 바꿔주면 ApplyMonsterAttack/AttackPlayer가 다음 판정부터
         // 곧바로 새 값을 쓴다 - Game_EnterRequest 스냅샷 이후 갱신 경로가 이것뿐이므로, 호출하지 않으면 세션 내내
         // 접속 시점 스탯으로 고정된다. 다른 접속자에게 알릴 필요는 없다(PvP 피해도 서버가 이 값으로 계산해 결과만 보낸다).
-        public bool TryUpdateCombatStats(long playerId, int attackPower, int defense)
+        // snapshot(DB 원본)의 기본 스탯/장비를 서버 전용 기준값으로 갱신하고, 현재 레벨(접속 중 오른 레벨 포함) 기준으로 다시 계산한다.
+        public bool TryUpdateCombatStats(long playerId, CharacterSnapshot snapshot)
         {
             if (!_players.TryGetValue(playerId, out var entry))
             {
                 return false;
             }
 
-            entry.Info.AttackPower = attackPower;
-            entry.Info.Defense = defense;
+            PlayerCombatStats.ApplySnapshot(entry.Info, snapshot);
             return true;
         }
 
@@ -283,7 +283,7 @@ namespace GameServer.Networking
 
             if (didLevelUp)
             {
-                ApplyLevelUpHealth(attackerEntry.Info, level - previousLevel);
+                ApplyLevelUp(attackerEntry.Info, previousLevel);
             }
 
             return new MonsterAttackResult
@@ -570,18 +570,15 @@ namespace GameServer.Networking
             return true;
         }
 
-        // 레벨업 시 최대 체력을 올리고 체력을 가득 채운다(클라이언트가 레벨업 때 하던 처리를 서버로 옮긴 것).
-        private void ApplyLevelUpHealth(PlayerInfo player, int levelsGained)
+        // 레벨업 시 공격력/방어력/최대 체력을 새 레벨 기준으로 다시 계산하고 체력을 가득 채운다(PlayerCombatStats.ApplyLevelUp).
+        // player.Level은 호출 전에 이미 새 레벨로 바뀌어 있다. 공격력/방어력은 서버 메모리의 PlayerInfo 값이라 이 호출이 끝나는 순간부터
+        // 다음 몬스터 판정/피해 계산이 바로 새 값을 쓴다. 클라이언트에는 체력(Game_PlayerHpBroadcast)만 보낸다 - 공격력/방어력은
+        // 클라이언트가 레벨(Game_ExpGainBroadcast)로 같은 공식(StatGrowth)을 계산해 표시한다.
+        private void ApplyLevelUp(PlayerInfo player, int previousLevel)
         {
-            int currentHp;
-            int maxHp;
-            lock (player)
-            {
-                player.MaxHp += levelsGained * CombatStatCalculator.MaxHpPerLevel;
-                player.CurrentHp = player.MaxHp;
-                currentHp = player.CurrentHp;
-                maxHp = player.MaxHp;
-            }
+            (int currentHp, int maxHp) = PlayerCombatStats.ApplyLevelUp(player);
+
+            Console.WriteLine($"[GameServer] 레벨업 (PlayerId={player.PlayerId}) : Lv{previousLevel} -> Lv{player.Level}, 공격력 {player.AttackPower}, 방어력 {player.Defense}, 최대 체력 {maxHp}");
 
             var broadcast = new S2CPlayerHpBroadcast { PlayerId = player.PlayerId, CurrentHp = currentHp, MaxHp = maxHp };
             SendToViewersOfPlayer(broadcast.PlayerId, OpCode.Game_PlayerHpBroadcast, broadcast.Encode());
