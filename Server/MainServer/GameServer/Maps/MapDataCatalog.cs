@@ -133,7 +133,34 @@ namespace GameServer.Maps
                 }
             }
 
+            // 도착 맵 데이터가 없는 맵 이동 포탈은 부팅을 막지 않고 경고만 한다 - 도착 맵이 아직 준비되지 않았거나 그 맵의 데이터를
+            // 아직 내보내지 않았을 수 있어서(맵을 하나씩 내보내므로 순서에 따라 일시적으로 생긴다). 이 포탈로 맵 이동을 요청하면
+            // 서버가 UnknownMap으로 거부한다(ClientSession.HandleMapChangeRequest) - 클라이언트는 사유를 안내하고 이전 맵에 남는다.
+            foreach (string problem in FindPortalsWithMissingTargetMap(result))
+            {
+                Console.WriteLine($"[GameServer] 경고: 도착 맵 데이터(MapData/{{도착 맵}}.json)가 없는 맵 이동 포탈이 있습니다 - 이 포탈로의 이동 요청은 거부됩니다 : {problem}");
+            }
+
             _mapDataById = result;
+        }
+
+        // 도착 맵 데이터가 로드된 목록에 없는 MapSwap 포탈을 "'출발 맵'의 포탈(x, z) -> '도착 맵'" 형태의 설명으로 돌려준다.
+        public static List<string> FindPortalsWithMissingTargetMap(IReadOnlyDictionary<string, MapData> maps)
+        {
+            var problems = new List<string>();
+
+            foreach (var (mapId, data) in maps)
+            {
+                foreach (MapPortal portal in data.Portals)
+                {
+                    if (portal.Type == MapPortal.MapSwapType && !maps.ContainsKey(portal.TargetMapId))
+                    {
+                        problems.Add($"'{mapId}'의 포탈({portal.X:F1}, {portal.Z:F1}) -> '{portal.TargetMapId}'");
+                    }
+                }
+            }
+
+            return problems;
         }
 
         public static bool TryGet(string mapId, out MapData data)
