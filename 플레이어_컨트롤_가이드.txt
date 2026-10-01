@@ -1,0 +1,505 @@
+================================================================================
+ 플레이어 컨트롤 가이드
+ (구현 방법 / 구조 / 사용된 자료구조와 알고리즘)
+================================================================================
+
+ 대상 범위 : 로컬 플레이어의 이동·회전·대쉬(전방/후방)·공격 콤보·피격/사망 처리,
+             그리고 이를 서버와 동기화하고 다른 플레이어에게 보여주는 흐름.
+ 기준 코드 : Client/Assets/@Scripts, Server/MainServer (GameServer, Shared)
+ 작성 기준 : 2026-10 시점 코드. 수치(상수)는 코드가 원본이며, 아래 표는 참고용이다.
+
+
+--------------------------------------------------------------------------------
+ 1. 조작 키 한눈에 보기
+--------------------------------------------------------------------------------
+
+   위 방향키            전진
+   아래 방향키          후진
+   왼쪽 / 오른쪽 방향키  제자리 회전 (좌/우)
+   Space                전방 대쉬
+   아래 방향키 + Space   후방 대쉬 (위 방향키와 함께 눌러 상쇄되면 전방 대쉬)
+   C                    공격 (연타하면 2타 콤보)
+
+ * 이 게임은 "탱크 컨트롤" 방식이다. 좌/우 키는 캐릭터가 바라보는 방향을 돌리고,
+   위/아래 키는 바라보는 방향의 앞/뒤로 이동한다.
+ * 카메라(Cinemachine ThirdPersonFollow)가 캐릭터의 회전을 그대로 따라가므로,
+   캐릭터 회전이 의도치 않게 흔들리면 카메라도 같이 흔들린다(3-3 참고).
+
+
+--------------------------------------------------------------------------------
+ 2. 전체 구조
+--------------------------------------------------------------------------------
+
+ 2-1. 구성 요소와 역할
+
+   [로컬 플레이어 프리팹 (BasicCharacter)]
+     PlayerMoveController   이동 / 회전 / 대쉬 / 후방 대쉬, 이동 관련 애니메이터 파라미터 갱신
+     PlayerAttackController 공격 입력, 2타 콤보 상태 관리, 타격 대상 탐색, 서버로 공격 요청
+     PlayerNetworkSender    자신의 위치/회전을 주기적으로 서버에 보고
+     PlayerCharacterModel   레벨/경험치/골드/장비/체력 상태의 모음, 사망 시 애니메이션 정리
+     HealthComponent        체력(서버 권위값을 그대로 반영), 사망/부활/피격 이벤트
+     CombatStatComponent    공격력/방어력
+     Animator               BasicCharacterStance 컨트롤러 (Base Layer + Attack Layer)
+
+   [원격 플레이어 프리팹 (같은 BasicCharacter)]
+     RemoteCharacterController  서버 스냅샷을 보간해 움직임/이동 애니메이션 재생, 공격 모션 재생
+     PlayerCharacterModel       체력/사망 상태 (서버가 보낸 값 반영)
+
+   [씬 / 매니저]
+     GameSceneManager        로컬 플레이어 생성, 사망 시 조작 끄기/켜기, 서버 이벤트 라우팅
+     GameServerConnectManager  TCP 연결, 패킷 송수신, 서버 이벤트를 메인 스레드로 전달
+     RemotePlayerManager     원격 플레이어 생성/삭제, 스냅샷 전달
+     RemoteMonsterManager    몬스터 생성/삭제, 공격 모션 재생
+     ObjectPoolManager       대쉬/회피 이펙트 등 오브젝트 풀링
+     CharacterVfxManager     회피/레벨업/물약 이펙트 재생 진입점
+
+   [서버 (GameServer)]
+     ClientSession    클라이언트 1명당 1개. 요청 검증(이동 거리, 공격 사거리, 요청 빈도)
+     GameRoom         맵 1개당 1개. 20Hz 방 틱, 몬스터 AI, 피해 계산, 대쉬 무적 판정
+     MonsterAttackJudge  몬스터 공격 판정 규칙(명중 / 회피 / 헛스윙)
+
+ 2-2. 데이터 흐름 (요약)
+
+   키 입력
+     |
+     v
+   PlayerMoveController / PlayerAttackController   (로컬에서 즉시 반응: 이동, 모션, 이펙트)
+     |                                |
+     | 위치 보고(0.1초)               | 공격 요청 / 대쉬 알림 / 공격 모션 알림
+     v                                v
+   PlayerNetworkSender  ----------->  GameServer (ClientSession -> GameRoom)
+                                          |  이동 거리 검증, 공격 사거리/빈도 검증,
+                                          |  몬스터 AI(20Hz), 피해 계산(서버 권위)
+                                          v
+                              월드 스냅샷 / 피해 / 회피 / 모션 브로드캐스트
+                                          |
+                                          v
+   GameServerConnectManager (수신 -> 메인 스레드 큐) -> 각 매니저/컨트롤러가 반영
+
+ 2-3. 설계 원칙
+
+   (1) 로컬 반응은 즉시, 결과는 서버 권위.
+       이동과 모션은 클라이언트가 바로 처리하고(조작감), 체력/피해/사망/무적 같은
+       "결과"는 서버가 계산한 값을 그대로 반영한다. 클라이언트가 계산하던 예전 방식은
+       변조된 클라이언트가 무적이 될 수 있었다.
+   (2) 서버는 클라이언트를 믿지 않고 검증한다.
+       이동 거리 예산, 공격 사거리/최소 간격, 요청 빈도 제한, 대쉬 쿨다운을 서버가 따로 센다.
+   (3) 입력과 물리를 분리한다.
+       Update에서 입력만 읽고, FixedUpdate에서 Rigidbody로 실제 이동한다.
+
+
+--------------------------------------------------------------------------------
+ 3. 이동 / 회전  (PlayerMoveController)
+--------------------------------------------------------------------------------
+
+ 3-1. 구현 방법
+
+   - Update():
+       위/아래 키 -> moveInput(-1 ~ +1), 좌/우 키 -> turnInput(-1 ~ +1) 계산.
+       두 키를 동시에 누르면 서로 상쇄되어 0이 된다.
+       대쉬 상태 갱신 후 UpdateAnimatorState()로 애니메이터 파라미터 반영.
+   - FixedUpdate():
+       turnInput != 0  -> rigidBody.MoveRotation(현재 회전 * Euler(0, turnInput*rotateSpeed*dt, 0))
+       moveInput != 0  -> rigidBody.MovePosition(현재 위치 + forward * moveInput*moveSpeed*dt)
+   - 대쉬 중에는 위 이동/회전 입력을 무시하고 대쉬 이동만 한다.
+   - 이동 수치: moveSpeed 5 m/s, rotateSpeed 150 deg/s.
+
+ 3-2. 애니메이터 파라미터
+
+   IsMove   moveInput 또는 turnInput 이 0이 아니면 true
+   IsIdle   IsMove 의 반대
+   IsDash   전방 대쉬 중
+   IsBackDash  후방 대쉬 중
+   (애니메이터 컨트롤러: Client/Assets/@Graphics/Animator/PlayerCharacter/BasicCharacterStance.controller)
+
+ 3-3. 물리 설정에서 주의한 점 (Awake)
+
+   - Rigidbody.constraints = FreezeRotation
+       충돌 토크가 Y축 회전에 새어 들어가 카메라(ThirdPersonFollow)까지 돌아가는 문제를 막는다.
+       회전은 MoveRotation 으로만 제어하므로 Freeze 해도 방향키 회전에는 영향이 없다.
+   - Rigidbody.interpolation = Interpolate
+       FixedUpdate(고정 간격)로 움직이는 물체를 렌더 프레임에 맞춰 부드럽게 그린다.
+   - Animator.applyRootMotion = false
+       애니메이션의 루트 모션과 Rigidbody 이동이 겹쳐 밀리는 것을 막는다. 이동은 전적으로 스크립트가 담당한다.
+   - CapsuleCollider: 높이 1.8, 반지름 0.4, 중심 (0, 0.9, 0)  (캐릭터 원점이 발밑)
+
+ 3-4. 자료구조 / 알고리즘
+
+   - 입력 -> 상태 값(float 2개): 별도 자료구조 없이 부호 있는 스칼라로 방향을 표현한다.
+   - 이동은 "방향 벡터 x 속도 x 고정 시간 간격"의 단순 적분(Euler integration).
+   - 해시 캐시: Animator.StringToHash 로 파라미터 이름을 static readonly int 로 미리 변환한다.
+       (문자열 비교 없이 정수 키로 접근하므로 매 프레임 호출해도 할당/비교 비용이 없다.)
+
+
+--------------------------------------------------------------------------------
+ 4. 대쉬 / 후방 대쉬  (PlayerMoveController)
+--------------------------------------------------------------------------------
+
+ 4-1. 동작 규칙
+
+   - Space 를 누르면 대쉬 시작. 이때 moveInput < 0 (아래키만 눌린 상태) 이면 후방 대쉬.
+   - 수치: 이동 거리 3m, 지속 0.25초, 쿨다운 1초.
+       속도 = 거리 / 지속시간 = 12 m/s  (걷기 5 m/s 의 2.4배)
+   - 쿨다운은 "대쉬가 끝난 시점부터" 1초. 따라서 대쉬 시작 간격은 최소 1.25초.
+   - 후방 대쉬도 몸의 방향은 그대로 두고 뒤로 물러난다 (-transform.forward 방향).
+   - 거리/지속시간/쿨다운/이펙트는 전방과 후방이 공유한다.
+
+ 4-2. 상태 변수
+
+   isDashing        대쉬 중인가
+   isBackDashing    후방 대쉬인가 (isDashing 이 true 일 때만 의미 있음)
+   dashEndTime      이 시각(Time.time)이 지나면 대쉬 종료
+   nextDashReadyTime  이 시각 이후에만 새 대쉬 가능
+   currentDashSpeed 이번 대쉬의 속도(m/s)
+
+ 4-3. 처리 순서
+
+   StartDash(backward):
+     isDashing = true, isBackDashing = backward
+     dashEndTime = now + 0.25,  nextDashReadyTime = dashEndTime + 1.0
+     PlayDashEffect()           -> ObjectPoolManager 에서 "Dash01" 이펙트 대여 (전/후방 동일)
+     GameServerConnectManager.SendDash()  -> 서버에 대쉬 시작을 알림 (무적 판정의 근거)
+   FixedUpdate: 대쉬 방향(+/-forward) 으로 MovePosition
+   Update: Time.time >= dashEndTime 이면 EndDash() -> 두 플래그를 false 로
+
+ 4-4. 애니메이션 연결
+
+   - 애니메이터에서 "AnyState -> Dash (IsDash = true)", "AnyState -> BackDash (IsBackDash = true)" 전이.
+   - 전/후방 대쉬는 서로 다른 전이이므로 둘이 동시에 켜지지 않게 한쪽만 켠다.
+       IsDash      = isDashing && !isBackDashing
+       IsBackDash  = isDashing &&  isBackDashing
+   - 대쉬가 끝나 플래그가 꺼지면 BackDash/Dash -> Move 또는 Idle 로 돌아간다
+       (그 시점의 IsMove 값으로 결정, 블렌드 0.15초).
+   - 클립: Dash = DashFWD_Battle_RM_NoWeapon, BackDash = DashBWD_Battle_RM_NoWeapon
+       (RPGTinyHero 팩, 루트 모션 변형이지만 applyRootMotion 이 꺼져 있어 제자리 모션으로 쓰인다).
+
+ 4-5. 자료구조 / 알고리즘
+
+   - 유한 상태 기계(FSM)를 불리언 플래그 2개(isDashing, isBackDashing)와 시각 값으로 단순하게 구현.
+   - 시간 기반 쿨다운: 타이머 감산이 아니라 "다음 허용 시각"을 저장하고 현재 시각과 비교한다 (O(1)).
+   - 이펙트 오브젝트 풀(ObjectPoolManager): 5-6절 참고.
+
+
+--------------------------------------------------------------------------------
+ 5. 공격 / 2타 콤보  (PlayerAttackController)
+--------------------------------------------------------------------------------
+
+ 5-1. 동작 규칙
+
+   - C 키를 누르면 1타 시작. 1타 진행 중 입력 가드(0.15초)가 지난 뒤 C 를 다시 누르면 2타로 이어진다.
+   - 각 타수는 "무기 타입별 애니메이션 길이" 만큼 진행되고, 끝나면 즉시 대기 자세로 복귀한다.
+   - 2타(마지막 타수)가 끝난 뒤 0.25초 동안은 새 공격 입력을 받지 않는다 (판정 중복 방지).
+   - 사망 중에는 입력을 받지 않는다.
+
+ 5-2. 콤보 상태 기계
+
+   comboStage:  0 (대기)  --C-->  1  --C(가드 이후)-->  2  --시간 경과--> 0
+                              |                       |
+                              +----- 시간 경과 ------>+  (각 단계의 지속시간이 지나면 ResetCombo)
+
+   - ResetCombo(): ComboIndex = 0, Attack Layer weight = 0.
+   - Attack Layer 는 평소 weight 0 이라 이동/대기 모션을 가리지 않고, 콤보가 진행되는 동안만 1 이다.
+   - 애니메이터 파라미터: ComboIndex(int), WeaponIndex(float; 무기 타입별 BlendTree 임계값)
+
+ 5-3. 무기별 타이밍 표
+
+   무기        1타      2타
+   OneHanded   16/30초  16/30초
+   TwoHanded   18/30초  18/30초
+   Wand        16/30초  16/30초
+   Spear       16/30초  20/30초
+   (표에 없는 무기는 16/30초 기본값)
+   * RemoteCharacterController 에도 같은 표가 복제되어 있다. 한쪽을 고치면 다른 쪽도 같이 고칠 것.
+
+ 5-4. 타격 대상 탐색
+
+   1) 캐릭터 전방 1.5m 지점을 중심으로 반경 1.0m 구 안의 콜라이더를 모은다.
+        Physics.OverlapSphereNonAlloc(origin, radius, overlapBuffer)   // 정적 Collider[16] 버퍼 재사용
+   2) 결과를 순회하며 원격 플레이어 / 살아 있는 몬스터만 후보로 보고,
+      캐릭터와의 거리 제곱(sqrMagnitude)이 가장 작은 하나를 고른다.      // 선형 탐색 O(n), n <= 16
+   3) 대상 종류에 따라 서로 다른 요청을 보낸다.
+        몬스터 -> Game_MonsterAttackRequest,  플레이어(PvP) -> Game_AttackRequest
+   - 데미지 계산은 클라이언트가 하지 않는다. 서버가 계산한 결과 패킷을 받는 쪽에서 반영한다.
+
+ 5-5. 공격 모션 중계
+
+   - 콤보 타수마다 Game_AttackAnimationRequest 를 보낸다 (허공 스윙 포함).
+     서버는 판정 없이 주변 플레이어에게 그대로 중계하고, 받는 쪽 RemoteCharacterController 가 재생한다.
+   - 서버 쪽 공격 검증: 최소 간격 100ms, 최대 사거리 5m (둘 다 서버 상수).
+
+ 5-6. 자료구조 / 알고리즘
+
+   - 정적 고정 크기 배열(Collider[16]) 재사용: 공격마다 배열을 새로 만들지 않아 GC 할당이 없다.
+   - 거리 제곱 비교: 제곱근 계산 없이 가까운 순서를 비교한다.
+   - 무기 타이밍 표: 항목이 4개뿐이라 배열 선형 탐색(foreach)으로 충분하다 (딕셔너리 불필요).
+   - 오브젝트 풀링(ObjectPoolManager):
+       Dictionary<string, Queue<GameObject>> 로 키(Addressable 키)별 비활성 인스턴스 큐를 보관.
+       Get: 큐에서 꺼내(없으면 생성) 활성화 후 IPoolable.OnGetFromPool 호출.
+       Release: 비활성화 후 큐에 반환. PooledEffect 컴포넌트가 파티클 재생시간(duration + startLifetime)
+       뒤에 스스로 반환하므로 호출측은 타이머를 관리하지 않는다.
+       프리팹은 미리 로드되어 있어야 하므로 AddressableAssetModelSO 의 씬별 preload 목록에 키를 등록해야 한다
+       (Dash01, Dodge01 등 신규 이펙트를 추가할 때 이 목록 등록을 빠뜨리지 말 것).
+
+
+--------------------------------------------------------------------------------
+ 6. 네트워크 동기화
+--------------------------------------------------------------------------------
+
+ 6-1. 내 위치 보고  (PlayerNetworkSender -> 서버)
+
+   - 0.1초마다 위치/회전을 Game_MoveRequest 로 보낸다.
+   - 변화 감지(dirty check): 직전 전송값과 위치 0.01m, 회전 0.5도 이내로 같으면 보내지 않는다 (정지 상태 트래픽 절약).
+
+ 6-2. 서버의 이동 검증  (ClientSession.HandleMoveRequest)
+
+   알고리즘: "이동 거리 예산" 방식 (토큰 버킷과 같은 원리)
+     - 예산은 초당 9m 씩 차고 최대 5m 까지 쌓인다.
+     - 이동 요청마다 "직전 인정 위치로부터의 수평 이동 거리" 만큼 예산을 쓴다.
+     - 예산보다 먼 이동은 거부하고, 본인에게 서버가 인정한 마지막 위치(Game_PositionCorrection)를 보내 되돌린다
+       (보정 패킷은 500ms 에 한 번만 보낸다).
+   수치 근거: 걷기 5 m/s, 대쉬(3m/0.25초 + 쿨다운 1초 -> 지속 최대 약 8 m/s) 보다 여유 있게 잡아
+              정상 이동과 네트워크 지연으로 몰려온 패킷은 통과시키고, 스피드핵/순간이동만 막는다.
+   한계: 높이(Y)는 서버에 지형 정보가 없어 검증하지 않는다.
+
+ 6-3. 요청 빈도 제한  (RequestRateLimiter, 토큰 버킷)
+
+   - 버킷은 초당 refillPerSecond 개씩 차고 최대 capacity 개까지 쌓이며, 요청 1건이 1개를 쓴다.
+   - 평소 빈도는 통과시키고 짧은 몰림은 capacity 만큼 허용하되, 도배만 막는다.
+   - 적용: 이동 (capacity 20, 초당 15), 채팅 (5, 초당 1), 대쉬 (3, 초당 1).
+   - 방 전체로 브로드캐스트되는 요청의 도배는 같은 방 모든 세션의 전송 대기열을 채우므로 반드시 제한한다.
+
+ 6-4. 다른 플레이어 보여주기  (RemoteCharacterController + SnapshotInterpolationBuffer)
+
+   서버는 방 틱(50ms, 20Hz)마다 "움직인 개체"만 모아 Game_WorldSnapshot 으로 보낸다.
+   받는 쪽은 최신 위치로 Lerp 하지 않고, "약간 과거"를 보간해서 그린다.
+
+   알고리즘: 스냅샷 보간 (Entity Interpolation)
+     - 개체마다 (서버시각, 위치, 회전) 샘플 리스트(List<Entry>, 최대 32개)를 쌓는다.
+     - 그릴 시각 = (추정 서버 시각) - 100ms.  이 시각을 사이에 둔 앞뒤 두 샘플을 찾아 선형 보간한다.
+         위치: Vector3.Lerp,  회전: Mathf.LerpAngle (각도 순환 처리)
+     - 지나간 구간의 샘플은 버린다 (RemoveRange).
+     - 순서가 뒤바뀌었거나 중복인 스냅샷(시각이 마지막 이하)은 버린다.
+     - 가장 최신 샘플보다 뒤면 그 자리에 멈춘다 (추측해서 앞질러 가지 않는다).
+     - 오래 멈춰 있다 움직이기 시작하면(샘플 간격 150ms 초과) "멈춰 있던 위치" 샘플을 새 샘플 50ms 앞에 끼워 넣는다.
+       (그렇지 않으면 멈춰 있던 긴 시간 동안 천천히 미끄러져 온 것처럼 보인다.)
+     - 100ms 지연은 서버 틱 2번 분량이라 스냅샷 하나가 늦거나 빠져도 보통 다음 샘플이 이미 와 있다.
+
+   서버 시각 추정  (ServerClock)
+     - 스냅샷에 담긴 서버 시각으로 (서버 시각 - 로컬 시각) 오프셋을 추정한다.
+     - 지연이 작은 샘플(오프셋이 큰 쪽)은 가중치 0.5 로 빠르게, 지연이 큰 샘플은 0.05 로 천천히 반영하는
+       비대칭 지수이동평균 -> "가장 빠르게 도착한 경우"에 가깝게 맞춘다.
+     - 500ms 이상 어긋나면(서버 재시작, 오래 끊김) 바로 재동기화한다.
+
+   원격 캐릭터의 이동 애니메이션
+     - 보간된 이동 속도가 0.2 m/s 를 넘으면 IsMove, 멈춘 뒤 0.15초가 지나야 IsIdle 로 바꾼다
+       (스냅샷 사이의 짧은 정지로 애니메이션이 깜빡이지 않게 하는 히스테리시스).
+   * 원격 플레이어의 대쉬 모션은 동기화하지 않는다 (위치만 보간되어 보인다).
+
+ 6-5. 서버 이벤트의 메인 스레드 전달
+
+   네트워크 수신은 별도 스레드에서 일어나지만 Unity API 는 메인 스레드에서만 쓸 수 있다.
+   GameServerConnectManager 가 수신한 패킷을 pendingActions 큐에 넣고, Update() 에서 꺼내 실행한다
+   (생산자-소비자 큐). 각 매니저는 C# 이벤트(OnMonsterAttacked 등)를 구독해 반응한다.
+
+
+--------------------------------------------------------------------------------
+ 7. 피격 / 사망 / 부활
+--------------------------------------------------------------------------------
+
+ 7-1. 체력은 서버 권위
+
+   - 피해 계산(공격력 - 방어력, 최소 1), 사망, 부활 예약은 모두 서버(GameRoom.TryDamagePlayer)가 한다.
+   - 클라이언트는 서버가 보낸 남은 체력(RemainingHp)을 PlayerCharacterModel.ApplyServerHp 로 그대로 덮어쓴다.
+     (델타를 누적하지 않으므로 패킷이 유실돼도 다음 패킷에서 자연히 복구된다.)
+   - HP 는 몬스터 AI 루프와 여러 세션(PvP)이 동시에 바꾸므로 PlayerInfo 인스턴스를 lock 으로 보호한다.
+
+ 7-2. 사망 처리 순서  (GameSceneManager.ApplyLocalServerHp -> PlayerCharacterModel.ApplyServerHp)
+
+   1) HealthComponent 가 사망을 감지한다 (살아 있다가 체력이 0이 되는 순간 한 번).
+   2) PlayerCharacterModel.ClearActionAnimations():
+        - Attack Layer weight = 0, ComboIndex = 0   (공격 모션이 Die 위에 덮이는 것을 막는다)
+        - IsDash = false, IsBackDash = false       (AnyState 전이가 Die 를 끊고 다시 대쉬로 끌고 가는 것을 막는다)
+   3) Animator.Play("Die") 로 사망 상태를 직접 재생한다.
+        (Die 상태는 들어오고 나가는 전이가 없으므로 파라미터가 아니라 상태를 직접 재생한다.)
+   4) GameSceneManager.SetLocalPlayerControlEnabled(false):
+        PlayerMoveController / PlayerAttackController 를 끄고 Rigidbody 속도를 0으로 만든다.
+   5) 부활 대기 팝업 표시 (서버가 5초 뒤 자동 부활).
+   - 부활 시 Idle 을 직접 재생하고 컨트롤러를 다시 켠다. 위치는 서버가 정한다 (Game_PlayerRevived).
+   - 원격 플레이어도 같은 ApplyServerHp 경로를 타므로 동일하게 정리된다.
+     사망한 원격 캐릭터에는 늦게 도착한 공격 모션 알림(PlayAttackAnimation)을 무시한다.
+
+ 7-3. 자료구조 / 알고리즘
+
+   - 사망 상태는 값에서 파생한다 (IsDead => currentHp <= 0). 별도의 플래그를 두지 않아 값과 상태가 어긋나지 않는다.
+   - 이전 상태와 비교해 "상태가 바뀌는 순간"에만 이벤트/애니메이션을 발생시킨다 (edge detection).
+
+
+--------------------------------------------------------------------------------
+ 8. 몬스터 공격 회피  (선딜 + 대쉬 무적)
+--------------------------------------------------------------------------------
+
+ 8-1. 왜 필요했나
+
+   예전에는 몬스터가 사거리(1.5m) 안에 들어온 틱에 서버가 즉시 피해를 확정하고, 공격 모션도 같은 패킷으로
+   재생했다. 모션이 보이는 순간 이미 맞은 뒤라 대쉬로 반응할 시간이 구조적으로 없었다.
+
+ 8-2. 새 흐름
+
+   몬스터 (서버 GameRoom.TickChasing, 틱 50ms)
+     사거리 1.5m 안 && 쿨다운(1.5초) 종료
+        -> StartMonsterAttack: 선딜 0.4초 시작, Game_MonsterAttackStartBroadcast 전송
+        -> (클라이언트는 이 알림으로 공격 모션을 재생)
+     선딜 동안: 제자리에서 대상을 바라보며 대기 (도중에 대상이 벗어나도 따라가지 않음)
+     선딜 종료 틱 -> ResolveMonsterAttack 에서 판정
+
+   판정 (GameServer/Combat/MonsterAttackJudge.cs)
+
+     사거리 안?   무적?   선딜 중 대쉬함?   결과
+     ----------   -----   --------------   -----------------------------------------
+     (무관)       예      (무관)           회피 (피해 없음, 회피 연출 알림)
+     예           아니오  (무관)           명중 (기존 피해 패킷)
+     아니오       아니오  예               회피 (후방 대쉬로 사거리 이탈)
+     아니오       아니오  아니오           헛스윙 (피해 없음, 알림 없음)
+
+   - 사거리 판정은 선딜 종료 시점의 위치로 하며, 위치 보고 지터를 고려해 0.25m 여유를 둔다 (1.5 + 0.25).
+   - 전방 대쉬는 몬스터 쪽으로 파고들어 사거리 안에 남아도 무적으로 피한다.
+     후방 대쉬는 거리를 벌려 사거리를 벗어나는 방식으로 피한다. 두 대쉬 모두 의미가 있다.
+
+ 8-3. 대쉬 무적을 서버가 정하는 방법  (GameRoom.RegisterDash)
+
+   - 클라이언트가 대쉬를 시작하면 Game_DashRequest 를 보낸다.
+   - 서버는 "무적이라는 클라이언트의 주장"을 믿지 않고, 요청 시각과 쿨다운으로 직접 정한다.
+       마지막 대쉬로부터 1.0초 미만이면 거부 (클라이언트 시작 간격 1.25초보다 약간 짧게 잡아 오차 허용)
+       통과하면 지금부터 0.35초 무적 (대쉬 지속 0.25초 + 패킷 지연 여유)
+   - 변조된 클라이언트가 요청을 도배해도 쿨다운마다 한 번의 짧은 무적밖에 얻지 못한다.
+   - 사망한 플레이어의 요청은 무시한다.
+
+ 8-4. 회피 가능 구간 (대략)
+
+   선딜 시작 후 약 0.05초 ~ 0.4초 사이에 대쉬를 시작해야 한다.
+     너무 이르면 무적(0.35초)이 판정 전에 풀리고, 너무 늦으면 판정 뒤에 대쉬가 도착해 맞는다.
+     단, 후방 대쉬로 선딜 도중 사거리를 벗어났다면 무적이 풀린 뒤에도 회피로 인정한다.
+
+ 8-5. 회피 연출
+
+   - 회피면 서버가 Game_MonsterAttackDodgedBroadcast 를 보내고, 클라이언트는 대상 플레이어(로컬/원격 모두)의
+     EffectBone 위치에 "Dodge01" 이펙트를 재생한다 (텍스트 없음).
+   - 대쉬 없이 사거리를 벗어난 헛스윙은 알리지 않는다.
+
+ 8-6. 자료구조 / 알고리즘
+
+   - ConcurrentDictionary<long, DashState>:  플레이어 ID -> 마지막 대쉬 시각, 무적 종료 시각.
+       대쉬 요청(세션 스레드)과 몬스터 판정(방 틱 스레드)이 동시에 접근하므로
+       딕셔너리는 스레드 안전 컬렉션을, 각 DashState 는 항목 단위 lock 으로 보호한다.
+       시각은 DateTime.UtcNow.Ticks(long) 로 저장해 비교 비용이 없다.
+   - 판정 규칙을 순수 함수(MonsterAttackJudge.Judge)로 분리해 단위 테스트가 가능하다
+       (GameServer.Tests/MonsterAttackJudgeTests.cs).
+   - 몬스터 공격 상태는 MonsterRuntime 의 타이머 두 개(AttackCooldownRemaining, AttackWindupRemaining)로 구현한
+     시간 기반 상태 기계다. 틱마다 deltaSeconds 를 빼고 0 이하가 되는 틱에 다음 단계로 넘어간다.
+
+
+--------------------------------------------------------------------------------
+ 9. 사용된 자료구조 / 알고리즘 요약
+--------------------------------------------------------------------------------
+
+   이름                          어디서                         목적 / 특징
+   ----------------------------  -----------------------------  ------------------------------------------
+   FSM (불리언 플래그 + 시각)     대쉬, 콤보, 몬스터 공격 단계     단순한 상태 전환, 시간 기반 쿨다운 O(1)
+   고정 크기 배열 재사용           Collider[16] (공격 탐색)        GC 할당 없는 충돌 검사 결과 버퍼
+   거리 제곱 비교 + 선형 탐색      최근접 대상 선택                 제곱근 없이 O(n) 로 가장 가까운 대상
+   Queue + Dictionary             ObjectPoolManager              키별 인스턴스 풀링, 이펙트 재사용
+   Animator 파라미터 해시          모든 컨트롤러                    문자열 대신 정수 키로 접근
+   List<Entry> 샘플 버퍼           SnapshotInterpolationBuffer    시간순 샘플 저장, 앞뒤 두 샘플 선형 보간
+   선형 보간 (Lerp / LerpAngle)    원격 캐릭터/몬스터 이동          끊김 없는 움직임, 각도 순환 처리
+   비대칭 지수이동평균              ServerClock                    서버 시각 오프셋 추정, 큰 어긋남은 즉시 재동기화
+   토큰 버킷                       RequestRateLimiter             평균 빈도는 허용, 도배만 차단
+   이동 거리 예산                  ClientSession.HandleMoveRequest  스피드핵/순간이동 차단 (토큰 버킷의 변형)
+   변화 감지 (dirty check)         PlayerNetworkSender            바뀐 값만 전송, 정지 시 트래픽 절약
+   히스테리시스                    원격 이동 애니메이션             짧은 정지로 모션이 깜빡이지 않게 지연 후 전환
+   생산자-소비자 큐                GameServerConnectManager       네트워크 스레드 -> 메인 스레드 안전 전달
+   ConcurrentDictionary + lock    GameRoom (플레이어, 대쉬 상태)   다중 스레드 접근 보호
+   서버 권위 + 상태 덮어쓰기        체력/경험치                      델타 누적 대신 최종값을 받아 유실에 강함
+   엣지 검출 (이전 상태와 비교)     사망/부활 처리                   상태가 바뀌는 순간에만 한 번 처리
+
+
+--------------------------------------------------------------------------------
+ 10. 주요 수치 모음 (튜닝 위치)
+--------------------------------------------------------------------------------
+
+   [클라이언트]
+   걷기 속도 5 m/s / 회전 150 deg/s ............ PlayerMoveController.moveSpeed / rotateSpeed
+   대쉬 거리 3m / 지속 0.25초 / 쿨다운 1초 ....... PlayerMoveController.dashDistance / dashDuration / dashCooldown
+   대쉬 이펙트 배율 0.45 ......................... PlayerMoveController.dashEffectScale
+   공격 판정 거리 1.5m / 반경 1.0m ............... PlayerAttackController.attackRange / attackRadius
+   콤보 입력 가드 0.15초 / 마무리 딜레이 0.25초 .... PlayerAttackController.comboInputGuard / comboFinishDelay
+   위치 보고 주기 0.1초 .......................... PlayerNetworkSender.sendInterval
+   보간 지연 100ms / 서버 틱 50ms / 정지 간격 150ms . SnapshotInterpolationBuffer 상수
+
+   [서버]
+   방 틱 50ms (20Hz) ............................. GameRoom.TickInterval
+   이동 예산 충전 9 m/s / 최대 5m ................. ClientSession.MoveBudgetRefillPerSecond / MoveBudgetCapacity
+   공격 최소 간격 100ms / 최대 사거리 5m ........... ClientSession.MinAttackIntervalMs / MaxAttackRangeSquared
+   몬스터 근접 사거리 1.5m / 공격 주기 1.5초 ....... GameRoom.MeleeAttackRange / AttackIntervalSeconds
+   몬스터 공격 선딜 0.4초 ......................... GameRoom.MonsterAttackWindupSeconds
+   판정 사거리 여유 0.25m ......................... MonsterAttackJudge.HitRangeTolerance
+   대쉬 무적 0.35초 / 최소 대쉬 간격 1.0초 ......... GameRoom.DashInvulnerableDuration / MinDashInterval
+   사망 후 자동 부활 5초 .......................... GameRoom.ReviveDelay (클라이언트 GameSceneManager.ReviveDelaySeconds 와 같아야 함)
+
+ * 서로 맞춰야 하는 값
+   - 클라이언트 대쉬 값(0.25초 / 1초 / 3m)을 바꾸면 서버의 대쉬 무적 시간, 최소 대쉬 간격, 이동 거리 예산도 함께 조정한다.
+   - 무기별 공격 타이밍 표는 PlayerAttackController 와 RemoteCharacterController 두 곳에 있다.
+   - 서버 방 틱 간격을 바꾸면 클라이언트 SnapshotInterpolationBuffer 의 ServerTickMs / InterpolationDelayMs 도 함께 확인한다.
+   - 서버와 클라이언트는 프로토콜(OpCode, 패킷 형식)이 같아야 한다. 한쪽만 배포하면 동작이 어긋난다.
+
+
+--------------------------------------------------------------------------------
+ 11. 알려진 한계 / 주의할 점
+--------------------------------------------------------------------------------
+
+   - 위치 보고가 0.1초 간격이라 서버가 아는 위치는 최대 0.1초 + 네트워크 지연만큼 늦다.
+     그래서 몬스터 판정 사거리에 0.25m 여유를 두었다.
+   - 서버는 높이(Y)를 검증하지 않는다 (지형 정보가 없음).
+   - 원격 플레이어의 대쉬 모션은 동기화하지 않아, 다른 사람 화면에서는 위치만 빠르게 이동해 보인다.
+   - 사망 중에는 PlayerAttackController 가 꺼지면서 이벤트 구독이 해제되어, 그동안 다른 플레이어의 공격 모션 알림이
+     로컬 클라이언트에서 재생되지 않는다 (알려진 동작).
+   - 몬스터 공격 선딜(0.4초)은 모든 몬스터 종류에 공통으로 적용된다. 몬스터별로 다르게 하려면 스폰 포인트 정의
+     (MonsterSpawnPointDefinition)에 값을 추가하는 방식으로 확장한다.
+   - PvP 공격에는 아직 선딜/회피가 적용되어 있지 않다 (몬스터 공격에만 적용).
+   - 에디터에서 측정한 프레임은 에디터 오버헤드(약 7ms)를 포함한다. 성능 판단은 Development Build 로 한다.
+
+
+--------------------------------------------------------------------------------
+ 12. 관련 파일 목록
+--------------------------------------------------------------------------------
+
+   [클라이언트]
+   Client/Assets/@Scripts/Controller/Player/PlayerMoveController.cs
+   Client/Assets/@Scripts/Controller/Player/PlayerAttackController.cs
+   Client/Assets/@Scripts/Controller/Player/PlayerNetworkSender.cs
+   Client/Assets/@Scripts/Controller/Player/RemoteCharacterController.cs
+   Client/Assets/@Scripts/Model/Character/PlayerCharacterModel.cs
+   Client/Assets/@Scripts/Model/Combat/HealthComponent.cs
+   Client/Assets/@Scripts/Presenter/Scene/GameSceneManager.cs
+   Client/Assets/@Scripts/Modules/GameServerConnectManager.cs
+   Client/Assets/@Scripts/Modules/RemotePlayerManager.cs
+   Client/Assets/@Scripts/Modules/RemoteMonsterManager.cs
+   Client/Assets/@Scripts/Modules/ObjectPoolManager.cs
+   Client/Assets/@Scripts/Modules/CharacterVfxManager.cs
+   Client/Assets/@Scripts/Utils/SnapshotInterpolationBuffer.cs
+   Client/Assets/@Scripts/Utils/PooledEffect.cs
+   Client/Assets/@Scripts/Modules/Networking/ServerClock.cs  (및 Game*Packet.cs)
+   Client/Assets/@Graphics/Animator/PlayerCharacter/BasicCharacterStance.controller
+   Client/Assets/@Scripts/Models/ScriptableObject/AddressableAssetModelSO.asset  (씬별 preload 목록)
+
+   [서버]
+   Server/MainServer/GameServer/Networking/ClientSession.cs
+   Server/MainServer/GameServer/Networking/GameRoom.cs
+   Server/MainServer/GameServer/Networking/GameRoom.Visibility.cs
+   Server/MainServer/GameServer/Networking/RequestRateLimiter.cs
+   Server/MainServer/GameServer/Combat/MonsterAttackJudge.cs
+   Server/MainServer/GameServer.Tests/MonsterAttackJudgeTests.cs
+   Server/MainServer/Shared/Networking/OpCode.cs
+   Server/MainServer/Shared/Networking/Packets/ (C2SDashRequest, S2CMonsterAttackStartBroadcast,
+                                                 S2CMonsterAttackDodgedBroadcast, S2CMonsterAttackBroadcast ...)
+
+================================================================================
