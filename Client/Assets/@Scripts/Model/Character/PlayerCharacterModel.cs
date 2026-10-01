@@ -248,6 +248,7 @@ public class PlayerCharacterModel : MonoBehaviour
     private const string AttackLayerName = "Attack Layer";
     private static readonly int ComboIndexHash = Animator.StringToHash("ComboIndex");
     private static readonly int IsDashHash = Animator.StringToHash("IsDash");
+    private static readonly int IsBackDashHash = Animator.StringToHash("IsBackDash");
 
     private void ClearActionAnimations()
     {
@@ -264,6 +265,7 @@ public class PlayerCharacterModel : MonoBehaviour
         }
 
         animator.SetBool(IsDashHash, false);
+        animator.SetBool(IsBackDashHash, false);
     }
 
     private void PlayStateAnimation(int stateHash)

@@ -38,6 +38,7 @@ namespace Incheol.Controller
         private float turnInput;
 
         private bool isDashing;
+        private bool isBackDashing;
         private float dashEndTime;
         private float nextDashReadyTime;
         private float currentDashSpeed;
@@ -45,6 +46,7 @@ namespace Incheol.Controller
         private static readonly int IsIdleHash = Animator.StringToHash("IsIdle");
         private static readonly int IsMoveHash = Animator.StringToHash("IsMove");
         private static readonly int IsDashHash = Animator.StringToHash("IsDash");
+        private static readonly int IsBackDashHash = Animator.StringToHash("IsBackDash");
         #endregion
 
         #region LifeCycle
@@ -100,7 +102,8 @@ namespace Incheol.Controller
             }
             else if (!isDashing && Input.GetKeyDown(dashKey) && Time.time >= nextDashReadyTime)
             {
-                StartDash();
+                // 아래 방향키를 누른 채(위 방향키와 상쇄되지 않은 순수 후진 입력)로 대쉬 키를 누르면 후방 대쉬다.
+                StartDash(moveInput < 0f);
             }
 
             UpdateAnimatorState();
@@ -110,8 +113,10 @@ namespace Incheol.Controller
         {
             if (isDashing)
             {
-                // 대쉬 중에는 화살표 입력(이동/회전)을 무시하고, 캐릭터가 바라보고 있는 전방으로만 이동한다.
-                Vector3 dashDelta = transform.forward * (currentDashSpeed * Time.fixedDeltaTime);
+                // 대쉬 중에는 화살표 입력(이동/회전)을 무시하고, 캐릭터가 바라보는 방향의 전방(후방 대쉬면 뒤쪽)으로만 이동한다.
+                // 후방 대쉬도 몸의 방향은 그대로 두고 뒤로 물러난다.
+                Vector3 dashDirection = isBackDashing ? -transform.forward : transform.forward;
+                Vector3 dashDelta = dashDirection * (currentDashSpeed * Time.fixedDeltaTime);
                 rigidBody.MovePosition(rigidBody.position + dashDelta);
                 return;
             }
@@ -141,17 +146,21 @@ namespace Incheol.Controller
             bool isMoving = moveInput != 0f || turnInput != 0f;
             animator.SetBool(IsMoveHash, isMoving);
             animator.SetBool(IsIdleHash, !isMoving);
-            animator.SetBool(IsDashHash, isDashing);
+            // 전방/후방 대쉬는 서로 다른 AnyState 전이(IsDash / IsBackDash)라, 둘이 동시에 켜지지 않게 한쪽만 켠다.
+            animator.SetBool(IsDashHash, isDashing && !isBackDashing);
+            animator.SetBool(IsBackDashHash, isDashing && isBackDashing);
         }
 
         /// <summary>
-        /// Space 입력으로 캐릭터 전방 대쉬를 시작한다. BasicCharacterStance의 IsDash(bool)를 켜서
-        /// AnyState -> Dash 전환을 트리거하고, 캐릭터 바닥면에 Dash01 이펙트를 재생한다.
+        /// Space 입력으로 캐릭터 대쉬를 시작한다. backward가 false면 전방 대쉬(IsDash -> Dash 상태), true면 후방 대쉬
+        /// (IsBackDash -> BackDash 상태)이며, 어느 쪽이든 BasicCharacterStance의 AnyState 전환을 트리거하고
+        /// 캐릭터 바닥면에 같은 Dash01 이펙트를 재생한다. 이동 거리/시간/쿨타임도 전방 대쉬와 공유한다.
         /// dashCooldown이 지나기 전까지는 재입력을 받지 않는다.
         /// </summary>
-        private void StartDash()
+        private void StartDash(bool backward)
         {
             isDashing = true;
+            isBackDashing = backward;
             dashEndTime = Time.time + dashDuration;
             nextDashReadyTime = dashEndTime + dashCooldown;
             // dashDuration이 0으로 설정된 경우(즉시 대쉬) 나눗셈을 피한다 - 어차피 다음 프레임에 바로 EndDash된다.
@@ -167,6 +176,7 @@ namespace Incheol.Controller
         private void EndDash()
         {
             isDashing = false;
+            isBackDashing = false;
         }
 
         /// <summary>
