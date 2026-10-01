@@ -202,3 +202,8 @@ dotnet test
 - `Server/몬스터_밸런싱_공식.txt` — 플레이어·몬스터 밸런싱 공식과 물약 표
 - `Server/몬스터_드랍_설정_가이드.txt` — 몬스터 드랍 아이템/재화 설정 절차
 - `Server/클라우드_배포_가이드.txt` — 배포 가이드
+
+## 9. 저장소 관리 메모
+- **줄바꿈**: `.gitattributes`가 텍스트 파일을 저장소에 항상 LF로 저장하도록 정규화합니다(Windows `core.autocrlf=true`여도 이 규칙이 우선). 편집기가 CRLF로 저장해도 커밋하면 LF로 정리되어 줄 전체가 바뀌는 diff가 생기지 않습니다. 새 파일 형식을 추가하면 `.gitattributes`에 텍스트/바이너리 구분을 함께 적어 주세요.
+- **자동으로 바뀌는 에셋**: `Client/Assets/Resources/Fonts/Maplestory Light SDF.asset`은 동적 TMP 폰트라, 플레이 중 새 글자를 만날 때마다 글리프가 추가되어 에디터가 파일을 수정합니다(수백 줄 diff). 의도한 변경이 아니면 커밋하지 말고 `git restore`로 되돌립니다. `addressables_content_state.bin`은 Addressables 빌드를 할 때만 바뀌어야 합니다.
+- **큰 파일**: `Floor001.prefab`(약 42MB)과 `Pretendard-*.asset`(각 약 37MB) 등이 커서 저장소가 1GB를 넘었습니다. GitHub는 파일당 50MB부터 경고, 100MB부터 푸시를 막으므로 더 커지기 전에 Git LFS 도입 또는 폰트 아틀라스 축소를 검토하세요.
