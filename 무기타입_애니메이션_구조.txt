@@ -1,0 +1,346 @@
+================================================================================
+ 무기 타입별 애니메이션 호출 구조
+ (WeaponType -> WeaponIndex -> Animator BlendTree)
+================================================================================
+
+ 대상 범위 : 플레이어가 들고 있는 무기 타입(한손검/양손검/완드/창/맨손)에 따라
+             대기·이동·대쉬·사망·공격 모션이 달라지는 구조.
+ 기준 코드 : Client/Assets/@Scripts, Client/Assets/@Graphics/Animator/PlayerCharacter
+ 작성 기준 : 2026-10 시점 코드. 클립 이름/수치는 에셋과 코드가 원본이다.
+
+
+--------------------------------------------------------------------------------
+ 1. 한눈에 보기
+--------------------------------------------------------------------------------
+
+ 핵심 아이디어는 하나다.
+
+   "무기 타입을 정수 하나(WeaponIndex)로 애니메이터에 넘기고,
+    애니메이터의 BlendTree가 그 값으로 무기별 클립을 고른다."
+
+   무기 장착/변경 --> PlayerCharacterModel.EquipWeapon --> Animator.SetFloat("WeaponIndex", 값)
+                                                              |
+                  +-------------------------------------------+
+                  v
+     Base Layer   : Idle / Move / Jump / Die / Dash / BackDash   (각각 WeaponIndex BlendTree)
+     Attack Layer : Attack1 / Attack2                              (각각 WeaponIndex BlendTree)
+
+ * 상태 이름과 전이 조건(IsMove, IsDash 등)은 무기와 무관하게 하나다.
+   "어느 상태에 있는가"는 기존 파라미터가, "그 상태에서 어떤 클립을 보여주는가"는 WeaponIndex가 정한다.
+   -> 무기가 늘어도 상태/전이를 복제할 필요가 없고 BlendTree의 클립 목록만 늘어난다.
+ * 이전에는 Base Layer가 맨손(NoWeapon) 클립 하나만 썼고, 공격만 무기별로 달랐다.
+   지금은 공격과 같은 방식으로 Base Layer도 무기별로 바뀐다.
+
+
+--------------------------------------------------------------------------------
+ 2. WeaponType 과 WeaponIndex
+--------------------------------------------------------------------------------
+
+ 2-1. 값 표  (Client/Assets/@Scripts/Models/Define/Define.cs)
+
+   WeaponType    값   의미                 모션 팩(클립 폴더)
+   ----------    --   -------------------  ------------------------------
+   None          0    맨손                  NoWeapon
+   OneHanded     1    한손무기류             SingleSword
+   TwoHanded     2    두손무기류             TwoHandSword  (파일 접미사 THS)
+   (3)           -    제거됨(예전 Shield)    사용하지 않음, 번호를 비워 둔다
+   Wand          4    완드류                 MagicWand
+   Spear         5    창류                   Spear
+
+ 2-2. 값이 고정되어 있는 이유
+
+   - WeaponType 의 정수 값은 세 곳에 그대로 쓰인다.
+       (1) 애니메이터 BlendTree 의 임계값(threshold)
+       (2) 직렬화된 데이터 (ItemDatabaseSO, WeaponVfxDatabaseSO)
+       (3) 서버로 보내는 공격 모션 알림 패킷 (정수 그대로 중계)
+   - 그래서 enum 값을 명시적으로 고정했다. 순서를 바꾸거나 중간에 끼워 넣거나,
+     3번을 다른 무기에 재사용하거나, Wand/Spear 번호를 당기면 BlendTree 의 클립 매핑이 어긋난다.
+
+ 2-3. WeaponIndex 파라미터
+
+   - 타입: Float.  C# 에서는 (float)weaponType 으로 넣는다.
+   - 값이 BlendTree 임계값과 "정확히 일치"해야 블렌딩 없이 그 무기의 클립 하나만 재생된다.
+     (Simple1D BlendTree 는 임계값 사이의 값이면 이웃한 두 클립을 섞는다. 정수 값만 쓰므로
+      항상 한 클립만 재생된다. 예: WeaponIndex=4 -> MagicWand 클립 가중치 1.00)
+
+
+--------------------------------------------------------------------------------
+ 3. 무기 타입이 정해지는 경로
+--------------------------------------------------------------------------------
+
+ 3-1. 데이터
+
+   ItemData (Client/Assets/@Scripts/Models/ItemData.cs)
+     equipSlotType     장비 슬롯 (Weapon / Armor / Helmet)
+     weaponType        슬롯이 Weapon 일 때만 의미 있음 (한손/두손/완드/창)
+     equipVisualName   화면에 보일 무기 메시 오브젝트 이름 (예: OHS03_Sword, Wand01)
+
+   -> 아이템 하나가 "어떤 모양(visual)"과 "어떤 모션 계열(weaponType)"을 함께 정한다.
+
+ 3-2. 장착 호출 흐름 (로컬/원격/로비 미리보기 모두 같은 경로)
+
+   PlayerCharacterModel.EquipItem(ItemData)
+     |  슬롯이 Weapon 이면
+     v
+   PlayerCharacterModel.EquipWeapon(weaponType, visualName)
+     1) currentWeaponType = weaponType                  (현재 무기 타입 기록)
+     2) EquipmentController.Equip(Weapon, visualName)   (무기 메시 SetActive 전환)
+     3) SyncWeaponAnimation()                           (Animator "WeaponIndex" = (float)weaponType)
+
+   - 해제(UnequipItem(Weapon)) 는 맨손이 아니라 "기본 무기"(defaultWeaponType / defaultWeaponVisualName)로
+     되돌린다. 이 캐릭터는 항상 최소한 기본 무기를 든 것이 정상 상태다.
+   - 스폰 시(Awake) 에도 기본 무기로 EquipWeapon 을 호출하므로 WeaponIndex 의 초기값이 맞춰진다.
+   - Animator.Play / 전이는 건드리지 않는다. 값만 바꾸면 BlendTree 가 바로 다른 클립을 고른다.
+
+ 3-3. 무기 메시 전환 (EquipmentController)
+
+   - 장비 컨테이너(rightArmEquipment 등) 하위에 미리 배치된 메시 변형들 중 하나만 활성화한다.
+   - 컨테이너의 자식을 "이름 -> GameObject" 딕셔너리로 자동 인덱싱하므로, 프리팹에 새 무기 메시가
+     추가돼도 코드를 고치지 않고 equipVisualName 만 맞추면 장착 대상이 된다.
+   - 인덱싱은 Awake 가 아니라 최초 Equip 시점에 지연 수행한다(Awake 순서가 보장되지 않기 때문).
+   - Weapon 슬롯은 오른팔 컨테이너를 먼저, 없으면 왼팔에서 찾는다(한손/두손/완드/창은 오른팔, 활은 왼팔).
+
+ 3-4. 시점별 갱신 요약
+
+   언제                              누가 WeaponIndex 를 설정하나
+   --------------------------------  ----------------------------------------------------------
+   스폰(Awake)                        PlayerCharacterModel.EquipWeapon (기본 무기)
+   장비창에서 무기 교체/해제            PlayerCharacterModel.EquipWeapon -> SyncWeaponAnimation
+   공격 콤보 1타/2타 시작              PlayerAttackController.SyncWeaponIndex (최신 무기로 재동기화)
+   원격 플레이어의 공격 모션 수신        RemoteCharacterController.PlayAttackAnimation (패킷의 weaponType)
+
+   * 장착 시점에 한 번 맞추고, 공격 때 한 번 더 맞춘다. 공격 도중 장비를 바꾸는 경우에도
+     다음 콤보 단계부터는 항상 최신 무기 모션이 재생되게 하기 위해서다.
+
+
+--------------------------------------------------------------------------------
+ 4. 애니메이터 구조  (BasicCharacterStance.controller)
+--------------------------------------------------------------------------------
+
+ 4-1. 레이어
+
+   Base Layer    weight 1  전신. 이동/대기/대쉬/사망/점프.
+   Attack Layer  weight 0  AttackLayerUpperBodyMask(상체 마스크). 콤보가 진행되는 동안만 1 로 올린다.
+                           -> 공격 중에도 하체는 Base Layer 의 (무기별) 이동 모션을 그대로 유지한다.
+
+ 4-2. 파라미터
+
+   IsIdle / IsMove / IsDash / IsBackDash / IsJump   Bool   상태 전이 조건 (무기와 무관)
+   ComboIndex                                       Int    공격 콤보 단계 (0 = 대기, 1, 2)
+   WeaponIndex                                      Float  무기 타입 -> BlendTree 클립 선택
+   JumpSpeed / SkillIndex / HitIndex                       기타
+
+ 4-3. Base Layer 의 무기별 BlendTree  (임계값 0, 1, 2, 4, 5)
+
+   상태        BlendTree 이름          클립 (무기 접미사만 달라진다)
+   ----------  ----------------------  ----------------------------------------------------
+   Idle        Idle_WeaponBlend        Idle_Normal_<접미사>
+   Move        Move_WeaponBlend        MoveFWD_Normal_InPlace_<접미사>   (None 만 ..._RM_NoWeapon)
+   Jump        Jump_WeaponBlend        JumpFull_RM_<접미사>
+   Die         Die_WeaponBlend         Die02_<접미사>
+   Dash        Dash_WeaponBlend        DashFWD_Battle_RM_<접미사>
+   BackDash    BackDash_WeaponBlend    DashBWD_Battle_RM_<접미사>
+
+   접미사:  0 None = NoWeapon,  1 = SingleSword,  2 = THS,  4 = MagicWand,  5 = Spear
+   클립 위치: Assets/@ThirdParty/RPGTinyHeroWorldBundlePBR/RPGTinyHeroWavePBR/Animation/<팩>/...
+
+   * 모든 무기의 같은 종류 클립은 길이가 같다(Idle 4.67초, Move 0.53초, Dash 0.60초, Die 1.00초 등).
+     BlendTree 안의 클립 길이가 다르면 정규화 시간 기준으로 재생 속도가 섞이므로 이 점이 중요한 전제다.
+   * 루트 모션 변형(RM) 클립을 쓰지만 Animator.applyRootMotion = false 이므로 제자리 모션으로 재생된다.
+     실제 이동은 PlayerMoveController 가 Rigidbody 로 한다.
+   * 모든 상태는 기존 전이(Idle <-> Move, AnyState -> Dash/BackDash/Jump 등)를 그대로 쓴다.
+
+ 4-4. Attack Layer 의 무기별 BlendTree  (임계값 1, 2, 4, 5)
+
+   상태     BlendTree 이름          클립
+   -------  ----------------------  ----------------------------------------------
+   Attack1  Attack1_WeaponBlend     Attack01_<접미사>   (SingleSword / THS / MagicWand / Spear)
+   Attack2  Attack2_WeaponBlend     Attack02_<접미사>
+
+   * 공격에는 None(0) 항목이 없다. 범위 밖 값은 가장 가까운 끝 클립(한손검)으로 고정되어 재생된다.
+   * 상태 전이: AttackLayerIdle (ComboIndex=0) -> Attack1 (ComboIndex=1) -> Attack2 (ComboIndex=2) -> AttackLayerIdle.
+   * AttackLayerIdle 은 NoWeapon 대기 클립이다(상체 마스크 영역, 콤보 사이의 아주 짧은 구간에만 보인다).
+
+ 4-5. 상태 기계는 하나, 클립만 무기별
+
+   만약 무기마다 별도 상태(IdleTHS, IdleSpear, DashTHS ...)를 두면 상태 수가 (상태 종류 x 무기 수)로 늘고,
+   각 상태마다 WeaponIndex 조건이 붙은 전이를 복제해야 한다. BlendTree 방식은 상태 수가 그대로이고
+   전이도 한 벌이라 유지보수가 훨씬 단순하다.
+
+
+--------------------------------------------------------------------------------
+ 5. 로컬 플레이어 흐름
+--------------------------------------------------------------------------------
+
+ 5-1. 평상시 모션 (대기/이동/대쉬/후방 대쉬)
+
+   PlayerMoveController 가 IsIdle/IsMove/IsDash/IsBackDash 를 매 프레임 갱신한다.
+   무기 타입은 이미 WeaponIndex 에 들어 있으므로, 같은 파라미터 조합이라도
+   장착한 무기에 따라 해당 무기의 클립이 재생된다.
+   예) IsMove=true, WeaponIndex=5(Spear)  -> MoveFWD_Normal_InPlace_Spear
+
+ 5-2. 공격 모션
+
+   C 키 -> PlayerAttackController.StartCombo / AdvanceCombo
+     1) SyncWeaponIndex()      Animator.SetFloat(WeaponIndex, CurrentWeaponType)
+     2) Attack Layer weight=1, ComboIndex = 콤보 단계
+     3) PlaySwingEffect()      WeaponVfxManager 가 무기 타입별 스윙 이펙트 재생
+     4) BroadcastAttackAnimation()  서버에 (콤보 단계, 무기 타입) 알림
+     5) RequestAttack()        대상 탐색 후 서버에 공격 요청
+   각 타수 길이(무기별 클립 길이)가 지나면 ResetCombo (ComboIndex=0, weight=0).
+
+   무기별 타수 길이 표 (PlayerAttackController.weaponAttackTimings):
+
+     무기        1타       2타
+     OneHanded   16/30초   16/30초
+     TwoHanded   18/30초   18/30초
+     Wand        16/30초   16/30초
+     Spear       16/30초   20/30초
+     (표에 없는 무기는 16/30초 기본값)
+
+   * 같은 BlendTree 를 쓰므로 무기마다 실제 재생되는 클립이 다르고 길이도 다르다.
+     그래서 길이는 코드의 표로 따로 관리한다(클립 길이를 런타임에 읽어 오지 않는다).
+   * RemoteCharacterController 에도 같은 표가 복제되어 있다. 한쪽을 고치면 다른 쪽도 고칠 것.
+
+ 5-3. 무기별 이펙트  (WeaponVfxManager)
+
+   - 스윙 이펙트(휘두르는 순간)와 임팩트 이펙트(명중 순간)를 WeaponType 으로 고른다.
+   - WeaponVfxDatabaseSO(Addressable) 에 WeaponType -> (swingEffectKey, impactEffectKey) 항목이 있고,
+     TryGetEntry(weaponType) 로 조회한다. 등록되지 않은 무기는 이펙트를 조용히 건너뛴다(연출일 뿐이므로 공격은 막지 않는다).
+   - 실제 스폰은 ObjectPoolManager + PooledEffect 가 담당한다.
+
+ 5-4. 사망 시 정리
+
+   사망하면 Attack Layer weight=0, ComboIndex=0, IsDash/IsBackDash=false 로 정리한 뒤 Die 상태를 직접 재생한다
+   (PlayerCharacterModel.ClearActionAnimations). Die 상태의 클립은 WeaponIndex 로 고르므로
+   무기별 사망 모션(Die02_<접미사>)이 재생된다.
+
+
+--------------------------------------------------------------------------------
+ 6. 원격 플레이어 / 로비 미리보기 흐름
+--------------------------------------------------------------------------------
+
+ 6-1. 원격 플레이어 (다른 사람 화면에서 보이는 내 캐릭터)
+
+   서버(GameServer)는 무기 타입을 해석하지 않는다. 두 가지 정보만 중계한다.
+
+   (a) 장비 정보: 서버가 DB 원본에서 가져온 장착 아이템 id(WeaponItemId 등)를 PlayerInfo 에 담아 보내고,
+       장비가 바뀌면 주변에 Game_EquipmentChangedBroadcast 를 보낸다.
+         -> RemotePlayerManager.ApplyLatestEquipment -> ApplySlot
+         -> ItemDatabaseManager.FindById(itemId) 로 ItemData 를 찾아 model.EquipItem(itemData)
+         -> (3-2 와 같은 경로) EquipWeapon -> WeaponIndex 설정
+       아이템 데이터베이스가 아직 로드되지 않았으면 건너뛰고, 로드가 끝난 뒤 다시 적용한다.
+       빈 슬롯이거나 DB 에 없는 itemId 는 해제로 취급해 기본 무기로 돌아간다.
+
+   (b) 공격 모션: 공격자가 콤보 타수마다 (콤보 단계, 무기 타입) 을 서버로 보내면
+       서버가 판정 없이 주변에 그대로 중계한다(Game_AttackAnimationBroadcast).
+         -> RemoteCharacterController.PlayAttackAnimation(comboStage, weaponType)
+              WeaponIndex = weaponType, ComboIndex = comboStage, Attack Layer weight = 1
+              종료 시각 = 지금 + 무기별 타수 길이 -> Update 에서 시간이 지나면 weight=0
+         사망한 원격 캐릭터에는 늦게 도착한 알림을 무시한다.
+
+   원격 캐릭터의 대기/이동 모션은 RemoteCharacterController 가 보간된 이동 속도로 IsMove/IsIdle 를 정하고,
+   무기 타입은 (a) 로 이미 WeaponIndex 에 들어 있으므로 그 무기의 대기/이동 모션이 재생된다.
+   * 원격 플레이어의 대쉬 모션은 동기화하지 않는다.
+
+ 6-2. 로비 캐릭터 미리보기 (CharacterPreviewStage)
+
+   미리보기도 같은 프리팹(BasicCharacter)과 PlayerCharacterModel.EquipItem 을 쓰므로
+   장비를 바꾸면 곧바로 그 무기의 대기 모션이 재생된다(별도 코드 없음).
+
+
+--------------------------------------------------------------------------------
+ 7. 사용된 자료구조 / 알고리즘
+--------------------------------------------------------------------------------
+
+   이름                        어디서                        목적 / 특징
+   --------------------------  ----------------------------  -----------------------------------------------
+   Simple1D BlendTree          BasicCharacterStance          float 하나(WeaponIndex)로 클립 선택. 임계값에 정확히
+                                                             일치하면 한 클립, 사이 값이면 이웃 두 클립을 선형 보간
+   정수 값 고정 enum            WeaponType                    직렬화 데이터/패킷/BlendTree 임계값을 같은 정수로 공유
+   파라미터 기반 상태 기계       Animator                      "상태"(IsMove 등)와 "변형"(WeaponIndex)을 분리해
+                                                             상태 수가 무기 수에 비례해 늘지 않게 함
+   Dictionary<이름, GameObject>  EquipmentController           컨테이너 자식을 이름으로 인덱싱, 무기 메시 SetActive 전환 O(1)
+   지연 인덱싱 (lazy init)       EquipmentController           Awake 순서 비의존
+   데이터 주도 조회 테이블        WeaponVfxDatabaseSO,          무기 타입 -> 이펙트/아이템 정보를 코드가 아닌 데이터로 관리
+                                ItemDatabaseSO
+   무기별 타이밍 표 (배열)        PlayerAttackController,       무기 4종 선형 탐색으로 충분. 클립 길이를 코드에 복제
+                                RemoteCharacterController
+   시간 기반 종료 (종료 시각 비교) RemoteCharacterController    공격 모션 시작 시 종료 시각을 저장, Update 에서 비교 O(1)
+   Animator 파라미터 해시         모든 컨트롤러                  문자열 대신 정수 키로 접근
+   서버 중계 (판정 없는 릴레이)    GameServer                    장비 id/무기 타입을 해석하지 않고 그대로 전달
+   오브젝트 풀링                 ObjectPoolManager             스윙/임팩트 이펙트 재사용
+
+
+--------------------------------------------------------------------------------
+ 8. 새 무기 타입을 추가하는 방법 (체크리스트)
+--------------------------------------------------------------------------------
+
+   예) "도끼(Axe)" 를 추가한다고 하면
+
+   [1] WeaponType 에 새 값 추가 (Define.cs)
+         - 사용하지 않은 번호를 명시적으로 쓴다(예: 6). 3번 재사용 금지, 기존 번호 변경 금지.
+   [2] 애니메이션 클립 준비
+         - 같은 종류 클립(Idle/Move/Jump/Die/Dash/BackDash, Attack01/02)이 필요하고,
+           기존 무기와 길이가 같은지 확인한다.
+   [3] BasicCharacterStance.controller 의 BlendTree 에 클립 추가
+         - Base Layer 6개 + Attack Layer 2개 트리 모두에, 임계값 = 새 WeaponType 값 으로 추가한다.
+         - Simple1D 의 "Automatic Thresholds" 는 반드시 끄고 임계값을 직접 입력한다.
+           (켜면 임계값이 균등 분할되어 WeaponIndex=1 에서도 두 클립이 섞여 재생된다.)
+         - 최대 임계값(maxThreshold)도 새 값 이상으로 맞춘다.
+   [4] 무기 아이템 데이터 등록
+         - ItemData 의 weaponType, equipVisualName 설정, 무기 메시 프리팹 변형을 장비 컨테이너 아래에 배치.
+   [5] 공격 타이밍 표 갱신
+         - PlayerAttackController.weaponAttackTimings 와 RemoteCharacterController.WeaponAttackTimings 두 곳.
+   [6] 이펙트 등록
+         - WeaponVfxDatabaseSO 에 (swingEffectKey, impactEffectKey) 항목 추가,
+           이펙트 프리팹을 Addressables 에 등록하고 씬 preload 목록(AddressableAssetModelSO)에 넣는다.
+   [7] 서버
+         - 서버는 무기 타입을 해석하지 않으므로 보통 수정할 것이 없다
+           (장착 아이템 id 는 DB 값, 공격 모션의 무기 타입은 정수 그대로 중계).
+           단 서버가 아이템 정의에서 무기 관련 값을 검증하게 된다면 그때 함께 확인한다.
+
+   검증 방법: 에디터에서 Animator 에 WeaponIndex 를 바꿔 가며 현재 재생 클립을 읽어 확인할 수 있다
+   (각 무기 값에서 해당 클립 가중치가 1.00 이어야 한다).
+
+
+--------------------------------------------------------------------------------
+ 9. 알려진 한계 / 주의할 점
+--------------------------------------------------------------------------------
+
+   - WeaponIndex 는 정수 값만 써야 한다. 소수 값을 넣으면 이웃 무기 클립이 섞인다.
+   - 무기를 바꾸는 순간 모션이 즉시 바뀐다(블렌드 없이). 무기 메시도 즉시 교체되므로 어색하지는 않다.
+   - 공격 타이밍 표가 두 곳(로컬/원격)에 복제되어 있어 한쪽만 고치면 원격 캐릭터의 모션 리셋 타이밍만 어긋난다.
+   - 공격 애니메이션에는 맨손(None) 항목이 없다. 맨손으로 공격하면 한손검 모션이 재생된다.
+   - AttackLayerIdle 은 맨손 대기 클립 그대로다(콤보 사이의 짧은 구간 외에는 거의 보이지 않는다).
+   - Jump 상태도 무기별 BlendTree 로 만들어 두었지만 현재 스크립트에서 IsJump 를 켜는 곳이 없어 실제로는 쓰이지 않는다.
+   - Move 클립은 None 만 RootMotion 변형이고 나머지는 InPlace 변형이다. 루트 모션이 꺼져 있어 화면상 차이는 없다.
+   - 모션 팩에 있는 SwordAndShield / DoubleSword / BowAndArrow 는 WeaponType 에 대응하는 값이 없어 사용하지 않는다.
+
+
+--------------------------------------------------------------------------------
+ 10. 관련 파일 목록
+--------------------------------------------------------------------------------
+
+   [애니메이터]
+   Client/Assets/@Graphics/Animator/PlayerCharacter/BasicCharacterStance.controller
+   Client/Assets/@Graphics/Animator/PlayerCharacter/AttackLayerUpperBodyMask.mask
+
+   [스크립트]
+   Client/Assets/@Scripts/Models/Define/Define.cs                          (WeaponType)
+   Client/Assets/@Scripts/Models/ItemData.cs                               (weaponType, equipVisualName)
+   Client/Assets/@Scripts/Model/Character/PlayerCharacterModel.cs          (EquipItem/EquipWeapon/SyncWeaponAnimation)
+   Client/Assets/@Scripts/Model/Character/EquipmentController.cs           (무기 메시 전환)
+   Client/Assets/@Scripts/Controller/Player/PlayerAttackController.cs      (콤보, SyncWeaponIndex, 타이밍 표)
+   Client/Assets/@Scripts/Controller/Player/RemoteCharacterController.cs   (원격 공격 모션, 타이밍 표)
+   Client/Assets/@Scripts/Controller/Player/PlayerMoveController.cs        (IsMove/IsDash/IsBackDash)
+   Client/Assets/@Scripts/Modules/RemotePlayerManager.cs                   (원격 장비 반영)
+   Client/Assets/@Scripts/Modules/WeaponVfxManager.cs                      (무기별 스윙/임팩트 이펙트)
+   Client/Assets/@Scripts/View/UI/CharacterPreviewStage.cs                 (로비 미리보기)
+
+   [모션 팩]
+   Client/Assets/@ThirdParty/RPGTinyHeroWorldBundlePBR/RPGTinyHeroWavePBR/Animation/
+       NoWeapon / SingleSword / TwoHandSword / MagicWand / Spear   (사용 중)
+       DoubleSword / BowAndArrow / SwordAndShield                  (현재 미사용)
+
+================================================================================
