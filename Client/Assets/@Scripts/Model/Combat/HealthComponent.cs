@@ -1,4 +1,5 @@
 using System;
+using Incheol.Utils;
 using UnityEngine;
 
 /// <summary>
@@ -47,6 +48,8 @@ public class HealthComponent : MonoBehaviour
     /// UserStats(agi)와 레벨로부터 최대 체력을 계산해 만피로 초기화한다(스폰 시 최초 1회).
     /// agi 1당 체력 5, 레벨 1당 체력 10으로 잡은 임시 공식이며, CombatStatComponent.ApplyFromUserStats와
     /// 같은 성격의 임시값이다 - 실제 밸런스 기획이 정해지면 이 메서드 하나만 바꾸면 된다.
+    /// agi에는 레벨 성장 보너스(StatGrowth)가 더해진다 - 서버(CombatStatCalculator.CalculateMaxHp)와 같은 공식이다.
+    /// 이후 최대 체력은 서버가 보낸 값(ApplyServerHp)을 그대로 쓰므로 이 값은 스폰 직후 서버 응답을 받기 전까지의 표시값이다.
     /// </summary>
     public void ApplyFromUserStats(UserStats userStats, int level)
     {
@@ -55,7 +58,8 @@ public class HealthComponent : MonoBehaviour
             return;
         }
 
-        int calculatedMaxHp = 100 + userStats.agi * 5 + Mathf.Max(0, level - 1) * 10;
+        int agi = userStats.agi + StatGrowth.BonusAtLevel(level);
+        int calculatedMaxHp = 100 + agi * 5 + Mathf.Max(0, level - 1) * 10;
         ApplyHealth(calculatedMaxHp, calculatedMaxHp);
     }
 

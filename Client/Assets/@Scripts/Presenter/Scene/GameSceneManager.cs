@@ -811,6 +811,12 @@ namespace Incheol.Presenter.Scene
             bool wasDead = spawnedPlayerModel.IsDead;
             spawnedPlayerModel.ApplyServerHp(currentHp, maxHp, wasHit);
 
+            // 피격이 아닌 체력 변화(레벨업으로 최대 체력이 오름, 부활)는 인벤토리 스탯 패널의 최대 체력 표시도 바꾼다.
+            if (!wasHit)
+            {
+                RefreshStatsPanel();
+            }
+
             if (wasDead == spawnedPlayerModel.IsDead)
             {
                 return;
@@ -909,6 +915,10 @@ namespace Incheol.Presenter.Scene
             if (packet.DidLevelUp)
             {
                 PlayLevelUpEffect();
+
+                // 레벨이 오르면 능력치(str/agi/intel)와 공격력/방어력이 바로 달라진다(PlayerCharacterModel.ApplyLevel). 최대 체력은
+                // 곧이어 오는 Game_PlayerHpBroadcast에서 바뀌므로(ApplyLocalServerHp) 그때 한 번 더 갱신된다.
+                RefreshStatsPanel();
             }
         }
 
@@ -1035,6 +1045,22 @@ namespace Incheol.Presenter.Scene
             Func<string, ItemData> itemLookup = ItemDatabaseManager.Instance != null ? ItemDatabaseManager.Instance.FindById : null;
             inventoryView.RefreshInventory(spawnedPlayerModel.Gold, localInventoryItems, itemLookup);
             inventoryView.SetPotionCooldown(PotionCooldownRemainingSeconds); // 다시 그려진 선택 슬롯의 사용 버튼에 남은 대기시간을 반영한다.
+            inventoryView.UpdateStatsUI(spawnedPlayerModel.Stats, spawnedPlayerModel.AttackPower, spawnedPlayerModel.Defense, spawnedPlayerModel.MaxHp);
+        }
+
+        /// <summary>
+        /// 인벤토리가 열려 있을 때만 스탯 패널(능력치/공격력/방어력/최대 체력)을 현재 값으로 다시 그린다. 레벨업처럼 인벤토리를
+        /// 열어 둔 채 값이 바뀌는 경우를 위한 가벼운 갱신이다(아이템 슬롯까지 다시 그리는 RefreshInventoryDisplay를 부르지 않는다).
+        /// 닫혀 있으면 아무것도 하지 않는다 - 비활성 UI는 텍스트를 바꿔도 다시 그려지지 않고, 어차피 여는 시점
+        /// (ToggleInventory)에 RefreshInventoryDisplay가 최신 값으로 그린다.
+        /// </summary>
+        private void RefreshStatsPanel()
+        {
+            if (!isInventoryActive || inventoryView == null || spawnedPlayerModel == null)
+            {
+                return;
+            }
+
             inventoryView.UpdateStatsUI(spawnedPlayerModel.Stats, spawnedPlayerModel.AttackPower, spawnedPlayerModel.Defense, spawnedPlayerModel.MaxHp);
         }
 

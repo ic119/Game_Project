@@ -38,7 +38,8 @@ public class PlayerCharacterModel : MonoBehaviour
     /// </summary>
     private long gold;
 
-    // 스폰 시점의 원본 스탯(str/agi/intel). 인벤토리 스탯 패널 표시용으로 캐싱해둔다.
+    // 스폰 시점의 원본 스탯(str/agi/intel, DB에 저장된 기본값 - 레벨 성장 보너스는 들어 있지 않다). 레벨이 바뀔 때마다
+    // 이 값에 StatGrowth 보너스를 더해 공격력/방어력을 다시 계산하고, 인벤토리 스탯 패널 표시용으로도 쓴다.
     private UserStats cachedUserStats;
     private HealthComponent healthComponent;
     private CombatStatComponent combatStatComponent;
@@ -56,8 +57,29 @@ public class PlayerCharacterModel : MonoBehaviour
     public int AttackPower => combatStatComponent.AttackPower;
     public int Defense => combatStatComponent.Defense;
 
-    /// <summary>ApplyUserSaveData가 캐싱해둔 원본 스탯(str/agi/intel). 인벤토리 스탯 패널 표시용.</summary>
-    public UserStats Stats => cachedUserStats;
+    /// <summary>
+    /// 인벤토리 스탯 패널에 표시할 능력치(str/agi/intel). ApplyUserSaveData가 캐싱해둔 원본 스탯에 현재 레벨의 성장 보너스
+    /// (StatGrowth)를 더한 값이라, 공격력/방어력 계산에 실제로 쓰이는 값과 같다. 호출할 때마다 새 객체를 만들므로
+    /// 매 프레임 호출하지 말고 UI를 갱신할 때만 쓴다. 아직 세이브 데이터가 적용되지 않았으면 null.
+    /// </summary>
+    public UserStats Stats
+    {
+        get
+        {
+            if (cachedUserStats == null)
+            {
+                return null;
+            }
+
+            int growth = StatGrowth.BonusAtLevel(level);
+            return new UserStats
+            {
+                str = cachedUserStats.str + growth,
+                agi = cachedUserStats.agi + growth,
+                intel = cachedUserStats.intel + growth
+            };
+        }
+    }
     #endregion
 
     #region LifeCycle
@@ -183,10 +205,18 @@ public class PlayerCharacterModel : MonoBehaviour
 
     /// <summary>
     /// 캐릭터 레벨을 설정한다. 1 미만으로는 내려가지 않는다.
+    /// 레벨이 오르면 레벨 성장 보너스(StatGrowth)가 달라지므로 공격력/방어력도 곧바로 다시 계산한다(서버가 같은 시점에 같은 공식으로
+    /// 자기 쪽 값을 갱신하고 있다). 최대 체력은 서버가 보내는 값(Game_PlayerHpBroadcast)을 ApplyServerHp로 받아 반영한다.
+    /// 원격 플레이어처럼 원본 스탯이 없는 캐릭터(ApplyRemoteCombatState로 서버가 계산한 값을 받는 경우)는 다시 계산하지 않는다.
     /// </summary>
     public void ApplyLevel(int newLevel)
     {
         level = Mathf.Max(1, newLevel);
+
+        if (cachedUserStats != null)
+        {
+            combatStatComponent.ApplyFromUserStats(cachedUserStats, level);
+        }
     }
 
     /// <summary>
@@ -205,7 +235,7 @@ public class PlayerCharacterModel : MonoBehaviour
         SetNickname(saveData.nickname);
         ApplyLevel(saveData.level);
         healthComponent.ApplyFromUserStats(saveData.userStats, saveData.level);
-        combatStatComponent.ApplyFromUserStats(saveData.userStats);
+        combatStatComponent.ApplyFromUserStats(saveData.userStats, saveData.level);
         ApplyExp(saveData.exp);
         ApplyGold(saveData.gold);
     }
@@ -215,7 +245,7 @@ public class PlayerCharacterModel : MonoBehaviour
     /// </summary>
     public void ApplyCombatStat(UserStats userStats)
     {
-        combatStatComponent.ApplyFromUserStats(userStats);
+        combatStatComponent.ApplyFromUserStats(userStats, level);
     }
 
     /// <summary>
