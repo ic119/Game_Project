@@ -120,8 +120,14 @@ namespace Incheol.Modules
                 return;
             }
 
-            ObjectPoolManager.Instance.Get(AddressableAssetKey.UI_AlarmPopup.ToString());
-            AlarmPopup?.SetAlarmText(_title, _content);
+            // 풀이 돌려준 인스턴스에 직접 텍스트를 넣는다. 캐시된 AlarmPopup 참조가 풀에서 나온 인스턴스와 다를 수 있어
+            // (참조 쪽에만 텍스트를 넣으면 화면에는 기본 문구 "New Text"의 빈 팝업이 뜬다) 반환값을 신뢰한다.
+            GameObject instance = ObjectPoolManager.Instance.Get(AddressableAssetKey.UI_AlarmPopup.ToString());
+            if (instance != null && instance.TryGetComponent(out UI_AlarmPopup alarmPopup))
+            {
+                AlarmPopup = alarmPopup;
+                alarmPopup.SetAlarmText(_title, _content);
+            }
         }
 
         /// <summary>
@@ -240,6 +246,14 @@ namespace Incheol.Modules
                 if (AddressableAssetManager.Instance.GetHandler(keyString, out AsyncOperationHandle loadedHandle) &&
                     loadedHandle.Result is GameObject)
                 {
+                    // 알림 팝업은 한 번 만들어 캐시해 두면 충분하다. 다른 씬 태그에도 같은 키가 있거나 로딩이 겹치면
+                    // 여기서 또 Get해 풀에 중복 인스턴스가 생기고, 그중 하나가 텍스트 없이 활성화되어 화면에 남을 수 있다.
+                    if (key == AddressableAssetKey.UI_AlarmPopup && AlarmPopup != null)
+                    {
+                        _onProgress?.Invoke(i + 1, totalCount);
+                        continue;
+                    }
+
                     // ObjectPoolManager를 통해 생성하면 ObjectPoolManager(PersistAcrossScenes)의 자식으로 붙어
                     // 씬 전환에도 파괴되지 않고, 이후 다른 씬에서 같은 Key로 Get()하면 재사용된다.
                     GameObject instance = ObjectPoolManager.Instance.Get(keyString);

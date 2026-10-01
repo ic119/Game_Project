@@ -50,6 +50,26 @@ namespace Incheol.Modules
         #endregion
 
         #region LifeCycle
+        private const string PoolRootName = "@ObjectPools";
+
+        protected override void Awake()
+        {
+            base.Awake();
+
+            // poolRoot 필드는 직렬화되지 않아 Awake 시점엔 항상 비어 있는데, 씬에 저장돼 있던(또는 에디터에서 남은) 이전
+            // "@ObjectPools" 자식이 있으면 GetOrCreatePoolRoot가 새 루트를 또 만들어 루트가 둘이 된다. 더 나쁜 점은 옛 루트
+            // 안의 인스턴스는 풀(poolDictionary)이 모르는 고아라서, 활성 상태면 화면에 그대로 남는다(텍스트 없는 알림 팝업 등).
+            // 풀은 이 시점에 비어 있으므로 남아 있는 옛 루트는 모두 정리한다.
+            for (int i = transform.childCount - 1; i >= 0; i--)
+            {
+                Transform child = transform.GetChild(i);
+                if (child.name == PoolRootName)
+                {
+                    Destroy(child.gameObject);
+                }
+            }
+        }
+
         protected override void OnDestroy()
         {
             base.OnDestroy();
@@ -543,7 +563,7 @@ namespace Incheol.Modules
 
             if (poolRoot == null)
             {
-                poolRoot = new GameObject("@ObjectPools").transform;
+                poolRoot = new GameObject(PoolRootName).transform;
                 poolRoot.SetParent(transform, false);
             }
 
