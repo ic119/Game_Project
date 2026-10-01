@@ -905,7 +905,10 @@ namespace GameServer.Networking
                     }
                     else if (_room is { } room)
                     {
-                        (int attackPower, int defense) = CombatStatCalculator.Calculate(snapshot);
+                        // 레벨은 서버 메모리의 값(접속 중 오른 레벨)을 쓴다. DB의 snapshot.Level은 킬 보상 저장이 늦으면 아직 이전
+                        // 레벨일 수 있어, 그 값으로 계산하면 레벨 성장 보너스(StatGrowth)가 장비를 바꿀 때 되돌아간다.
+                        int level = room.TryGetInfo(playerId, out PlayerInfo? current) ? Math.Max(current.Level, snapshot.Level) : snapshot.Level;
+                        (int attackPower, int defense) = CombatStatCalculator.Calculate(snapshot, level);
                         room.TryUpdateCombatStats(playerId, attackPower, defense);
                         room.TryUpdateEquipment(playerId, EquippedVisuals.From(snapshot, ItemCatalog.Exists));
                     }

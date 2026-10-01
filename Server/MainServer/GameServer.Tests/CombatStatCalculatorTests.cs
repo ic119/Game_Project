@@ -12,7 +12,9 @@ public class CombatStatCalculatorTests
     [Theory]
     [InlineData(0, 1, 100)]  // 100 + agi 0*5 + (레벨 1은 레벨 보너스 없음)
     [InlineData(10, 1, 150)] // 100 + 10*5
-    [InlineData(10, 5, 190)] // 100 + 10*5 + (5-1)*10
+    [InlineData(10, 5, 200)] // 100 + (10+2)*5 + (5-1)*10  (5레벨 성장 보너스 +2가 agi에 더해진다)
+    [InlineData(10, 10, 260)] // 100 + (10+4)*5 + (10-1)*10
+    [InlineData(10, 28, 485)] // 100 + (10+13)*5 + (28-1)*10
     public void CalculateMaxHp_MatchesClientHealthComponentFormula(int agi, int level, int expectedMaxHp)
     {
         var snapshot = new CharacterSnapshot("tester", 0, 0, 0, level, 0, 0, agi, Array.Empty<string>());
@@ -33,6 +35,37 @@ public class CombatStatCalculatorTests
 
         Assert.Equal(str, attackPower);
         Assert.Equal(agi / 2, defense);
+    }
+
+    [Theory]
+    [InlineData(1, 10, 5)]   // 1레벨은 보너스 없음 (기본 str/agi 10 -> 공격 10, 방어 5)
+    [InlineData(2, 10, 5)]   // 2레벨도 아직 보너스 없음
+    [InlineData(3, 11, 5)]   // 3레벨 보너스 +1 -> 공격 11, 방어 (10+1)/2 = 5
+    [InlineData(10, 14, 7)]  // 보너스 +4 -> 공격 14, 방어 (10+4)/2 = 7
+    [InlineData(28, 23, 11)] // 보너스 +13 -> 공격 23, 방어 (10+13)/2 = 11
+    [InlineData(30, 24, 12)] // 보너스 +14 -> 공격 24, 방어 (10+14)/2 = 12
+    public void Calculate_AddsLevelGrowthToStrAndAgi(int level, int expectedAttack, int expectedDefense)
+    {
+        var snapshot = new CharacterSnapshot("tester", 0, 0, 0, level, 0, 10, 10, Array.Empty<string>());
+
+        (int attackPower, int defense) = CombatStatCalculator.Calculate(snapshot);
+
+        Assert.Equal(expectedAttack, attackPower);
+        Assert.Equal(expectedDefense, defense);
+    }
+
+    [Fact]
+    public void Calculate_LevelOverrideTakesPrecedenceOverSnapshotLevel()
+    {
+        // 접속 중 레벨업하면 서버 메모리 레벨이 DB(snapshot.Level)보다 앞선다 - 이미 오른 레벨 기준으로 계산해야 한다.
+        var snapshot = new CharacterSnapshot("tester", 0, 0, 0, 1, 0, 10, 10, Array.Empty<string>());
+
+        (int attackPower, int defense) = CombatStatCalculator.Calculate(snapshot, level: 10);
+        int maxHp = CombatStatCalculator.CalculateMaxHp(snapshot, level: 10);
+
+        Assert.Equal(14, attackPower);
+        Assert.Equal(7, defense);
+        Assert.Equal(260, maxHp);
     }
 
     [Fact]

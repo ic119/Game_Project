@@ -1,4 +1,5 @@
 using GameServer.Items;
+using Shared;
 
 namespace GameServer.Combat
 {
@@ -13,9 +14,13 @@ namespace GameServer.Combat
         public const int MaxHpPerLevel = 10;
 
         // Client HealthComponent.ApplyFromUserStats와 동일한 임시 공식: 기본 100 + agi 1당 5 + 레벨 1당 10(1레벨 제외).
-        public static int CalculateMaxHp(CharacterSnapshot snapshot)
+        // agi에는 레벨 성장 보너스(StatGrowth)가 더해진다. level을 주면 그 값으로 계산한다 - 접속 중 레벨업하면 서버 메모리의 레벨이
+        // DB(snapshot.Level)보다 앞서므로, 이미 오른 레벨 기준으로 계산해야 할 때 쓴다. 생략하면 snapshot.Level이다.
+        public static int CalculateMaxHp(CharacterSnapshot snapshot, int? level = null)
         {
-            return 100 + snapshot.Agi * 5 + Math.Max(0, snapshot.Level - 1) * MaxHpPerLevel;
+            int currentLevel = level ?? snapshot.Level;
+            int agi = snapshot.Agi + StatGrowth.BonusAtLevel(currentLevel);
+            return 100 + agi * 5 + Math.Max(0, currentLevel - 1) * MaxHpPerLevel;
         }
 
         // 물약 회복량: 최대 체력의 healPercent%, 최소 1(Client 쪽 기존 CombatCalculator.CalculateHealAmount와 같은 공식).
@@ -30,11 +35,14 @@ namespace GameServer.Combat
             return Math.Max(1, rawDamage - defense);
         }
 
-        public static (int AttackPower, int Defense) Calculate(CharacterSnapshot snapshot)
+        // level 인자의 의미는 CalculateMaxHp와 같다(생략하면 snapshot.Level).
+        public static (int AttackPower, int Defense) Calculate(CharacterSnapshot snapshot, int? level = null)
         {
             // str 1당 공격력 1, agi 2당 방어력 1 - CombatStatComponent.ApplyFromUserStats와 동일한 임시 공식.
-            int attackPower = snapshot.Str;
-            int defense = snapshot.Agi / 2;
+            // str/agi에는 레벨 성장 보너스(StatGrowth)가 더해진다.
+            int growth = StatGrowth.BonusAtLevel(level ?? snapshot.Level);
+            int attackPower = snapshot.Str + growth;
+            int defense = (snapshot.Agi + growth) / 2;
 
             foreach (string itemId in snapshot.EquippedItemIds)
             {
