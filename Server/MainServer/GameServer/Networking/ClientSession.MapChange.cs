@@ -1,3 +1,5 @@
+using GameServer.Logging;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -132,7 +134,7 @@ namespace GameServer.Networking
         // 맵 이동 요청을 거부하고 사유를 알린다. 서버 상태(방, 위치)는 건드리지 않는다.
         private void RejectMapChange(string requestedMapId, MapChangeRejectReason reason, string logMessage)
         {
-            Console.WriteLine(logMessage);
+            Log.LogWarning("맵 이동 거부: {Reason}", logMessage);
             Send(OpCode.Game_MapChangeRejected, new S2CMapChangeRejected { MapId = requestedMapId, Reason = reason }.Encode());
         }
     }

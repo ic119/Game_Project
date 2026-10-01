@@ -1,3 +1,5 @@
+using GameServer.Logging;
+using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Configuration;
@@ -14,6 +16,8 @@ namespace GameServer.Networking
     // 프로덕션 빌드는 반드시 TlsCertPath에 실제 인증서를 지정해야 접속할 수 있다.
     public static class GameServerCertificateProvider
     {
+        private static readonly ILogger Log = GameLog.For("GameServer.Networking.GameServerCertificateProvider");
+
         private const string SelfSignedCertFileName = "gameserver-dev.pfx";
         private const string SelfSignedCertPassword = "dev-only";
 
@@ -23,19 +27,18 @@ namespace GameServer.Networking
             if (!string.IsNullOrEmpty(configuredPath))
             {
                 string password = configuration["GameServer:TlsCertPassword"] ?? string.Empty;
-                Console.WriteLine($"[GameServer] TLS 인증서 로드 : {configuredPath}");
+                Log.LogInformation("TLS 인증서 로드 : {Path}", configuredPath);
                 return new X509Certificate2(configuredPath, password, X509KeyStorageFlags.Exportable);
             }
 
             string selfSignedPath = Path.Combine(AppContext.BaseDirectory, SelfSignedCertFileName);
             if (File.Exists(selfSignedPath))
             {
-                Console.WriteLine("[GameServer] 기존 자체 서명 인증서를 재사용합니다(개발용).");
+                Log.LogInformation("기존 자체 서명 인증서를 재사용합니다(개발용).");
                 return new X509Certificate2(selfSignedPath, SelfSignedCertPassword, X509KeyStorageFlags.Exportable);
             }
 
-            Console.WriteLine("[GameServer] GameServer:TlsCertPath 설정이 없어 자체 서명 인증서를 새로 생성합니다" +
-                "(개발/테스트 전용 - 프로덕션 배포 시에는 반드시 실제 인증서를 지정할 것).");
+            Log.LogWarning("GameServer:TlsCertPath 설정이 없어 자체 서명 인증서를 새로 생성합니다(개발/테스트 전용 - 프로덕션 배포 시에는 반드시 실제 인증서를 지정할 것).");
 
             byte[] pfxBytes = GenerateSelfSignedPfx();
             File.WriteAllBytes(selfSignedPath, pfxBytes);

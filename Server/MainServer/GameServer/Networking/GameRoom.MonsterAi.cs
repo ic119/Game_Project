@@ -1,3 +1,5 @@
+using GameServer.Logging;
+using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using GameServer.Combat;
@@ -44,7 +46,7 @@ namespace GameServer.Networking
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"[GameServer] 방 틱 오류 ({_mapId}) : {ex}");
+                        Log.LogError(ex, "방 틱 오류 ({MapId})", _mapId);
                     }
                 }
             }

@@ -1,3 +1,5 @@
+using GameServer.Logging;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -75,7 +77,7 @@ namespace GameServer.Networking
 
             if (horizontalDistance > _moveBudget)
             {
-                Console.WriteLine($"[GameServer] 이동 거부 (PlayerId={playerId}) : {horizontalDistance:F2}m > 허용 {_moveBudget:F2}m");
+                Log.LogDebug("이동 거부 (PlayerId={PlayerId}) : {Distance:F2}m > 허용 {Budget:F2}m", playerId, horizontalDistance, _moveBudget);
                 SendPositionCorrection(info, now);
                 return;
             }

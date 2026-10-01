@@ -1,3 +1,5 @@
+using GameServer.Logging;
+using Microsoft.Extensions.Logging;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
@@ -7,6 +9,8 @@ namespace GameServer.Networking
 {
     public class GameTcpServer
     {
+        private static readonly ILogger Log = GameLog.For<GameTcpServer>();
+
         private readonly TcpListener _listener;
         private readonly PlayerAuthValidator _authValidator;
         private readonly MainServerInternalApi _mainServerApi;
@@ -35,7 +39,7 @@ namespace GameServer.Networking
             var mapRooms = new MapRoomRegistry(ct);
 
             _listener.Start();
-            Console.WriteLine($"[GameServer] TCP 리스너 시작 (Port: {((IPEndPoint)_listener.LocalEndpoint).Port})");
+            Log.LogInformation("TCP 리스너 시작 (Port: {Port})", ((IPEndPoint)_listener.LocalEndpoint).Port);
 
             try
             {

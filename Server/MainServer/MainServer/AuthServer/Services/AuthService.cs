@@ -17,12 +17,14 @@ namespace MainServer.AuthServer.Services
         private readonly AppDbContext _db;
         private readonly IConfiguration _config;
         private readonly LoginAttemptTracker _loginAttempts;
+        private readonly ILogger<AuthService> _logger;
 
-        public AuthService(AppDbContext db, IConfiguration config, LoginAttemptTracker loginAttempts)
+        public AuthService(AppDbContext db, IConfiguration config, LoginAttemptTracker loginAttempts, ILogger<AuthService> logger)
         {
             _db = db;
             _config = config;
             _loginAttempts = loginAttempts;
+            _logger = logger;
         }
 
         // 아이디/비밀번호가 틀리면 null. 연속 실패로 잠긴 계정이면 LoginLockedException(429).
@@ -75,7 +77,7 @@ namespace MainServer.AuthServer.Services
                     .Where(rt => rt.UserId == existing.UserId && !rt.IsRevoked)
                     .ExecuteUpdateAsync(setters => setters.SetProperty(rt => rt.IsRevoked, true));
 
-                Console.WriteLine($"[MainServer] 폐기된 refresh token 재사용 감지 - 계정의 모든 토큰을 폐기합니다 (UserId={existing.UserId})");
+                _logger.LogWarning("폐기된 refresh token 재사용 감지 - 계정의 모든 토큰을 폐기합니다 (UserId={UserId})", existing.UserId);
                 return null;
             }
 

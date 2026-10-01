@@ -1,3 +1,5 @@
+using GameServer.Logging;
+using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using GameServer.Combat;
@@ -133,7 +135,7 @@ namespace GameServer.Networking
         {
             (int currentHp, int maxHp) = PlayerCombatStats.ApplyLevelUp(player);
 
-            Console.WriteLine($"[GameServer] 레벨업 (PlayerId={player.PlayerId}) : Lv{previousLevel} -> Lv{player.Level}, 공격력 {player.AttackPower}, 방어력 {player.Defense}, 최대 체력 {maxHp}");
+            Log.LogInformation("레벨업 (PlayerId={PlayerId}) : Lv{PreviousLevel} -> Lv{Level}, 공격력 {AttackPower}, 방어력 {Defense}, 최대 체력 {MaxHp}", player.PlayerId, previousLevel, player.Level, player.AttackPower, player.Defense, maxHp);
 
             var broadcast = new S2CPlayerHpBroadcast { PlayerId = player.PlayerId, CurrentHp = currentHp, MaxHp = maxHp };
             SendToViewersOfPlayer(broadcast.PlayerId, OpCode.Game_PlayerHpBroadcast, broadcast.Encode());

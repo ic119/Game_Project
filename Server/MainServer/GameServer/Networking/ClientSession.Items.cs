@@ -1,3 +1,5 @@
+using GameServer.Logging;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -60,7 +62,7 @@ namespace GameServer.Networking
                     if (snapshot is null)
                     {
                         // MainServer 순단 등으로 조회에 실패한 경우 - 이전에 검증된 값을 그대로 유지하고 이번 갱신만 건너뛴다.
-                        Console.WriteLine($"[GameServer] Game_StatUpdateRequest 스탯 재조회 실패 (PlayerId={playerId}) - 이전 값을 유지합니다.");
+                        Log.LogWarning("Game_StatUpdateRequest 스탯 재조회 실패 (PlayerId={PlayerId}) - 이전 값을 유지합니다.", playerId);
                     }
                     else if (_room is { } room)
                     {

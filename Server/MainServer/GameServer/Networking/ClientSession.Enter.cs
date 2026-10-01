@@ -1,3 +1,5 @@
+using GameServer.Logging;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -93,7 +95,7 @@ namespace GameServer.Networking
             PlayerStateSnapshot? previousState = null;
             if (_sessions.Register(info.PlayerId, this) is { } previousSession)
             {
-                Console.WriteLine($"[GameServer] 중복 접속 (PlayerId={info.PlayerId}) - 이전 세션을 종료합니다.");
+                Log.LogWarning("중복 접속 (PlayerId={PlayerId}) - 이전 세션을 종료합니다.", info.PlayerId);
                 previousState = previousSession.CaptureState();
                 previousSession.Kick("다른 곳에서 같은 캐릭터로 접속하여 연결이 종료되었습니다.");
             }
@@ -148,7 +150,7 @@ namespace GameServer.Networking
         [DoesNotReturn]
         private void RejectEnter(string logMessage, string clientMessage)
         {
-            Console.WriteLine($"[GameServer] {logMessage} - 연결을 종료합니다.");
+            Log.LogWarning("{Reason} - 연결을 종료합니다.", logMessage);
             Send(OpCode.System_Error, Encoding.UTF8.GetBytes(clientMessage));
             throw new EnterRejectedException();
         }

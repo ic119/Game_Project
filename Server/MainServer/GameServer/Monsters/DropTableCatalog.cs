@@ -1,3 +1,5 @@
+using GameServer.Logging;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using GameServer.Items;
 
@@ -9,6 +11,8 @@ namespace GameServer.Monsters
     // 조용히 "드롭 없음"으로 취급한다(모든 몬스터가 아이템을 드롭할 필요는 없다).
     public static class DropTableCatalog
     {
+        private static readonly ILogger Log = GameLog.For("GameServer.Monsters.DropTableCatalog");
+
         private const string DropsDirectoryName = "Drops";
         private const string DropTablesFileName = "DropTables.json";
 
@@ -32,7 +36,7 @@ namespace GameServer.Monsters
 
             if (!File.Exists(path))
             {
-                Console.WriteLine($"[GameServer] 드롭 테이블 파일이 없습니다({path}) - 모든 몬스터가 드롭 없이 처치됩니다.");
+                Log.LogWarning("드롭 테이블 파일이 없습니다({Path}) - 모든 몬스터가 드롭 없이 처치됩니다.", path);
                 _tablesByMonsterType = new Dictionary<string, MonsterDropTable>();
                 return;
             }
@@ -100,7 +104,7 @@ namespace GameServer.Monsters
             }
 
             _tablesByMonsterType = result;
-            Console.WriteLine($"[GameServer] 드롭 테이블 로드 완료 : {result.Count}종");
+            Log.LogInformation("드롭 테이블 로드 완료 : {Count}종", result.Count);
         }
 
         // key(몬스터 타입 또는 상자 LootTableKey)에 해당하는 드롭 테이블이 정의돼 있는지. MapDataCatalog가

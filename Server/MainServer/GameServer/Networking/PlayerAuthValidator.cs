@@ -1,3 +1,5 @@
+using GameServer.Logging;
+using Microsoft.Extensions.Logging;
 using System.Net.Http.Headers;
 using GameServer.Combat;
 using Microsoft.Extensions.Configuration;
@@ -15,6 +17,8 @@ namespace GameServer.Networking
     // 입장 이후(장비 변경 등)의 재조회는 사용자 토큰(30분 만료)이 아니라 MainServerInternalApi.FetchCharacterAsync로 한다.
     public class PlayerAuthValidator
     {
+        private static readonly ILogger Log = GameLog.For<PlayerAuthValidator>();
+
         private readonly HttpClient _httpClient;
 
         public PlayerAuthValidator(IConfiguration configuration)
@@ -59,7 +63,7 @@ namespace GameServer.Networking
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 // AuthServer에 연결할 수 없는 등 확인 자체가 실패한 경우 - 신원을 증명할 수 없으므로 안전하게 거부한다.
-                Console.WriteLine($"[GameServer] AuthServer 소유권/스탯 확인 실패 : {ex.Message}");
+                Log.LogWarning("AuthServer 소유권/스탯 확인 실패 : {Reason}", ex.Message);
                 return null;
             }
         }

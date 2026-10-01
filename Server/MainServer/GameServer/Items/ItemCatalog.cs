@@ -1,3 +1,5 @@
+using GameServer.Logging;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
 namespace GameServer.Items
@@ -7,6 +9,8 @@ namespace GameServer.Items
     // DropTableCatalog가 이 카탈로그를 이용해 존재하지 않는 ItemId를 참조하는 드롭 항목을 걸러낸다.
     public static class ItemCatalog
     {
+        private static readonly ILogger Log = GameLog.For("GameServer.Items.ItemCatalog");
+
         private const string ItemsDirectoryName = "Items";
         private const string ItemDefinitionsFileName = "ItemDefinitions.json";
 
@@ -44,7 +48,7 @@ namespace GameServer.Items
 
                 if (!File.Exists(path))
                 {
-                    Console.WriteLine($"[GameServer] 아이템 정의 파일이 없습니다({path}) - 드롭 테이블의 아이템 참조를 검증할 수 없습니다.");
+                    Log.LogWarning("아이템 정의 파일이 없습니다({Path}) - 드롭 테이블의 아이템 참조를 검증할 수 없습니다.", path);
                     _itemIdsByGrade = new Dictionary<string, List<string>>();
                     _definitionsByItemId = new Dictionary<string, ItemDefinition>();
                     return;
@@ -84,7 +88,7 @@ namespace GameServer.Items
                 // 않도록, 완전히 다 만든 뒤 마지막에 대입한다.
                 _definitionsByItemId = definitions;
 
-                Console.WriteLine($"[GameServer] 아이템 정의 로드 완료 : {definitions.Count}종");
+                Log.LogInformation("아이템 정의 로드 완료 : {Count}종", definitions.Count);
             }
         }
 

@@ -1,3 +1,5 @@
+using GameServer.Logging;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using GameServer.Monsters;
 
@@ -9,6 +11,8 @@ namespace GameServer.Maps
     // 이동 속도 검증을 우회할 수 있기 때문이다.
     public static class MapDataCatalog
     {
+        private static readonly ILogger Log = GameLog.For("GameServer.Maps.MapDataCatalog");
+
         private const string MapDataDirectoryName = "MapData";
 
         private static readonly JsonSerializerOptions JsonOptions = new()
@@ -31,7 +35,7 @@ namespace GameServer.Maps
 
             if (!Directory.Exists(directory))
             {
-                Console.WriteLine($"[GameServer] 맵 데이터 폴더가 없습니다({directory}) - 입장/부활 위치를 클라이언트 좌표 그대로 사용합니다.");
+                Log.LogWarning("맵 데이터 폴더가 없습니다({Directory}) - 입장/부활 위치를 클라이언트 좌표 그대로 사용합니다.", directory);
                 _mapDataById = result;
                 return;
             }
@@ -125,7 +129,7 @@ namespace GameServer.Maps
                     }
 
                     result[mapId] = data;
-                    Console.WriteLine($"[GameServer] 맵 데이터 로드 완료 : {mapId}");
+                    Log.LogInformation("맵 데이터 로드 완료 : {MapId}", mapId);
                 }
                 catch (Exception exception)
                 {
@@ -138,7 +142,7 @@ namespace GameServer.Maps
             // 서버가 UnknownMap으로 거부한다(ClientSession.HandleMapChangeRequest) - 클라이언트는 사유를 안내하고 이전 맵에 남는다.
             foreach (string problem in FindPortalsWithMissingTargetMap(result))
             {
-                Console.WriteLine($"[GameServer] 경고: 도착 맵 데이터(MapData/{{도착 맵}}.json)가 없는 맵 이동 포탈이 있습니다 - 이 포탈로의 이동 요청은 거부됩니다 : {problem}");
+                Log.LogWarning("도착 맵 데이터(MapData/{{도착 맵}}.json)가 없는 맵 이동 포탈이 있습니다 - 이 포탈로의 이동 요청은 거부됩니다 : {Problem}", problem);
             }
 
             _mapDataById = result;

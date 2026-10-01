@@ -1,3 +1,5 @@
+using GameServer.Logging;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -16,6 +18,8 @@ namespace GameServer.Networking
     // 접속 클라이언트 1개를 담당: TLS 핸드셰이크 + 프레임 수신 루프 + OpCode 디스패치 + 전송 대기열/전송 루프
     public partial class ClientSession : ISessionSender
     {
+        private static readonly ILogger Log = GameLog.For<ClientSession>();
+
         private readonly TcpClient _tcpClient;
 
         // 생성 시점에는 아직 평문 NetworkStream이다. RunAsync가 TLS 핸드셰이크에 성공하면 이 필드를
@@ -87,7 +91,7 @@ namespace GameServer.Networking
         public async Task RunAsync(CancellationToken ct)
         {
             var endpoint = _tcpClient.Client.RemoteEndPoint;
-            Console.WriteLine($"[GameServer] 클라이언트 접속: {endpoint}");
+            Log.LogInformation("클라이언트 접속: {Endpoint}", endpoint);
 
             // 서버 종료(ct) 또는 강제 종료(Kick/전송 실패) 중 먼저 오는 쪽으로 수신 루프와 요청 처리를 멈춘다.
             using var sessionCts = CancellationTokenSource.CreateLinkedTokenSource(ct, _kickCts.Token);
@@ -133,16 +137,16 @@ namespace GameServer.Networking
             catch (InvalidDataException ex)
             {
                 // 프레임 길이가 규격을 벗어남(PacketFrame.ReadFrameAsync) - 손상/조작된 스트림이라 끊는다.
-                Console.WriteLine($"[GameServer] 잘못된 프레임으로 연결 종료: {endpoint}, PlayerId={_playerId} - {ex.Message}");
+                Log.LogWarning("잘못된 프레임으로 연결 종료: {Endpoint}, PlayerId={PlayerId} - {Reason}", endpoint, _playerId, ex.Message);
             }
             catch (EndOfStreamException ex)
             {
                 // 바디가 OpCode가 기대하는 형식보다 짧음(BinaryReader) - 잘못 만들어진/조작된 패킷이라 끊는다.
-                Console.WriteLine($"[GameServer] 잘못된 패킷으로 연결 종료: {endpoint}, PlayerId={_playerId}, OpCode=0x{lastOpCode:X4} - {ex.Message}");
+                Log.LogWarning("잘못된 패킷으로 연결 종료: {Endpoint}, PlayerId={PlayerId}, OpCode=0x{OpCode:X4} - {Reason}", endpoint, _playerId, lastOpCode, ex.Message);
             }
             catch (OperationCanceledException) when (idleCts.IsCancellationRequested && !sessionCt.IsCancellationRequested)
             {
-                Console.WriteLine($"[GameServer] 응답 없는 연결 종료(시간 초과): {endpoint}, PlayerId={_playerId}");
+                Log.LogWarning("응답 없는 연결 종료(시간 초과): {Endpoint}, PlayerId={PlayerId}", endpoint, _playerId);
             }
             catch (OperationCanceledException)
             {
@@ -156,7 +160,7 @@ namespace GameServer.Networking
             {
                 // TLS 핸드셰이크 실패(프로토콜 불일치, 인증서 미신뢰 등) - 위조/스캐너 트래픽일 수 있으므로
                 // 조용히 연결만 닫는다.
-                Console.WriteLine($"[GameServer] TLS 핸드셰이크 실패: {endpoint} - {ex.Message}");
+                Log.LogWarning("TLS 핸드셰이크 실패: {Endpoint} - {Reason}", endpoint, ex.Message);
             }
             catch (EnterRejectedException)
             {
@@ -166,7 +170,7 @@ namespace GameServer.Networking
             {
                 // 그 밖의 예외(요청 처리 중 서버 버그, 예상 못 한 해석 오류 등). 예전에는 여기서 잡지 않아 세션 Task가 관찰되지 않은
                 // 예외로 끝났다(GameTcpServer가 기다리지 않는 fire-and-forget) - 원인을 남기고 이 연결만 정리한다.
-                Console.WriteLine($"[GameServer] 요청 처리 중 오류로 연결 종료: {endpoint}, PlayerId={_playerId}, OpCode=0x{lastOpCode:X4} - {ex}");
+                Log.LogError(ex, "요청 처리 중 오류로 연결 종료: {Endpoint}, PlayerId={PlayerId}, OpCode=0x{OpCode:X4}", endpoint, _playerId, lastOpCode);
             }
             finally
             {
@@ -195,7 +199,7 @@ namespace GameServer.Networking
                     await Task.WhenAny(_sendLoop, Task.Delay(FlushTimeoutOnClose));
                 }
 
-                Console.WriteLine($"[GameServer] 클라이언트 종료: {endpoint}");
+                Log.LogInformation("클라이언트 종료: {Endpoint}", endpoint);
                 _tcpClient.Close();
             }
         }
@@ -232,7 +236,7 @@ namespace GameServer.Networking
                 return;
             }
 
-            Console.WriteLine($"[GameServer] 전송 대기열 초과({MaxQueuedFrames}) - 느린 클라이언트 연결을 종료합니다 (PlayerId={_playerId}).");
+            Log.LogWarning("전송 대기열 초과({MaxQueuedFrames}) - 느린 클라이언트 연결을 종료합니다 (PlayerId={PlayerId}).", MaxQueuedFrames, _playerId);
             CloseOutgoing();
 
             // Send는 GameRoom이 시야 목록 락(_viewLock)을 잡고 순회하는 중에 호출될 수 있다. 취소 콜백은 Cancel을 호출한 스레드에서
@@ -301,7 +305,7 @@ namespace GameServer.Networking
                 case OpCode.Game_UseItemRequest:
                     return HandleUseItemRequestAsync(body, ct);
                 default:
-                    Console.WriteLine($"[GameServer] 처리되지 않은 OpCode: 0x{opCode:X4}");
+                    Log.LogWarning("처리되지 않은 OpCode: 0x{OpCode:X4}", opCode);
                     return Task.CompletedTask;
             }
         }

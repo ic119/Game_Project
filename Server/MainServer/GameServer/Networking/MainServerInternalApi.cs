@@ -1,3 +1,5 @@
+using GameServer.Logging;
+using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
 using GameServer.Combat;
 using Microsoft.Extensions.Configuration;
@@ -10,6 +12,8 @@ namespace GameServer.Networking
     // 따로 처리할 수 있었다. 이제 GameServer가 결과를 계산/적용하면서 이 경로로만 저장하고, 클라이언트는 표시만 한다.
     public class MainServerInternalApi
     {
+        private static readonly ILogger Log = GameLog.For<MainServerInternalApi>();
+
         private const string InternalApiKeyHeader = "X-Internal-Api-Key";
 
         private readonly HttpClient _httpClient;
@@ -87,7 +91,7 @@ namespace GameServer.Networking
                 using HttpResponseMessage response = await _httpClient.SendAsync(request, ct);
                 if (!response.IsSuccessStatusCode)
                 {
-                    Console.WriteLine($"[GameServer] 캐릭터 조회 실패 (CharacterId={characterId}) : HTTP {(int)response.StatusCode}");
+                    Log.LogWarning("캐릭터 조회 실패 (CharacterId={CharacterId}) : HTTP {StatusCode}", characterId, (int)response.StatusCode);
                     return null;
                 }
 
@@ -95,7 +99,7 @@ namespace GameServer.Networking
             }
             catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
             {
-                Console.WriteLine($"[GameServer] 캐릭터 조회 실패 (CharacterId={characterId}) : {ex.Message}");
+                Log.LogWarning("캐릭터 조회 실패 (CharacterId={CharacterId}) : {Reason}", characterId, ex.Message);
                 return null;
             }
         }
@@ -112,7 +116,7 @@ namespace GameServer.Networking
                 using HttpResponseMessage response = await _httpClient.SendAsync(request, ct);
                 if (!response.IsSuccessStatusCode)
                 {
-                    Console.WriteLine($"[GameServer] {actionName} 실패 (CharacterId={characterId}) : HTTP {(int)response.StatusCode}");
+                    Log.LogWarning("{Action} 실패 (CharacterId={CharacterId}) : HTTP {StatusCode}", actionName, characterId, (int)response.StatusCode);
                 }
 
                 return (int)response.StatusCode;
@@ -121,7 +125,7 @@ namespace GameServer.Networking
             {
                 // MainServer 연결 실패/타임아웃(HttpClient 타임아웃은 TaskCanceledException으로 온다) - 서버 종료로 인한
                 // 취소만 호출측으로 흘려보내고, 나머지는 로그만 남긴다.
-                Console.WriteLine($"[GameServer] {actionName} 실패 (CharacterId={characterId}) : {ex.Message}");
+                Log.LogWarning("{Action} 실패 (CharacterId={CharacterId}) : {Reason}", actionName, characterId, ex.Message);
                 return null;
             }
         }

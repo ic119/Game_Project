@@ -1,3 +1,5 @@
+using GameServer.Logging;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
 namespace GameServer.Monsters
@@ -7,6 +9,8 @@ namespace GameServer.Monsters
     // 되고, GameRoom/ClientSession 등 호출측은 GetPointsForMap만 알면 되므로 영향받지 않는다.
     public static class MonsterSpawnCatalog
     {
+        private static readonly ILogger Log = GameLog.For("GameServer.Monsters.MonsterSpawnCatalog");
+
         private const string SpawnPointsDirectoryName = "SpawnPoints";
 
         private static readonly JsonSerializerOptions JsonOptions = new()
@@ -30,7 +34,7 @@ namespace GameServer.Monsters
 
             if (!Directory.Exists(directory))
             {
-                Console.WriteLine($"[GameServer] 스폰 포인트 폴더가 없습니다({directory}) - 모든 맵이 몬스터 없이 시작합니다.");
+                Log.LogWarning("스폰 포인트 폴더가 없습니다({Directory}) - 모든 맵이 몬스터 없이 시작합니다.", directory);
                 _pointsByMap = result;
                 return;
             }
@@ -58,7 +62,7 @@ namespace GameServer.Monsters
                     }
 
                     result[mapId] = points;
-                    Console.WriteLine($"[GameServer] 스폰 포인트 로드 완료 : {mapId} ({points.Count}개)");
+                    Log.LogInformation("스폰 포인트 로드 완료 : {MapId} ({Count}개)", mapId, points.Count);
                 }
                 catch (Exception exception)
                 {

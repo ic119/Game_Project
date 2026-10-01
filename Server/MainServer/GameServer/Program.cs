@@ -1,3 +1,5 @@
+using GameServer.Logging;
+using Microsoft.Extensions.Logging;
 using GameServer.Items;
 using GameServer.Maps;
 using GameServer.Monsters;
@@ -15,6 +17,17 @@ IConfiguration configuration = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
     .AddEnvironmentVariables()
     .Build();
+
+// 로깅은 카탈로그 로드(EnsureLoaded)보다 먼저 설정해야 로드 로그가 출력된다. 레벨은 appsettings.json 또는 환경변수
+// (Logging__LogLevel__Default 등)로 바꾼다 - 이동 거부 같은 잦은 진단 로그는 Debug라 기본값(Information)에서는 보이지 않는다.
+using var loggerFactory = LoggerFactory.Create(builder => builder
+    .AddConfiguration(configuration.GetSection("Logging"))
+    .AddSimpleConsole(options =>
+    {
+        options.SingleLine = true;
+        options.TimestampFormat = "HH:mm:ss ";
+    }));
+GameLog.Configure(loggerFactory);
 
 // 스폰 포인트 파일이 잘못돼 있으면 첫 플레이어가 접속하는 순간이 아니라 여기서 바로 서버 시작을 막는다.
 MonsterSpawnCatalog.EnsureLoaded();
@@ -35,4 +48,4 @@ Console.CancelKeyPress += (_, e) =>
 var server = new GameTcpServer(Port, configuration);
 await server.RunAsync(cts.Token);
 
-Console.WriteLine("[GameServer] 종료되었습니다.");
+GameLog.For("GameServer").LogInformation("종료되었습니다.");

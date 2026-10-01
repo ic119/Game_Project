@@ -1,3 +1,5 @@
+using GameServer.Logging;
+using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using GameServer.Combat;
@@ -31,6 +33,8 @@ namespace GameServer.Networking
     // 누가 누구를 보는지(관심 영역, 입장/퇴장/시야 진입·이탈, 대상별 알림)는 GameRoom.Visibility.cs에 있다.
     public partial class GameRoom
     {
+        private static readonly ILogger Log = GameLog.For<GameRoom>();
+
         private readonly ConcurrentDictionary<long, (PlayerInfo Info, ISessionSender Session)> _players = new();
 
         // 몬스터 id -> 현재 상태(+ 어느 스폰 포인트 소속인지). 포인트 단위 개체수/리스폰 판정에 쓴다.

@@ -1,3 +1,5 @@
+using GameServer.Logging;
+using Microsoft.Extensions.Logging;
 namespace GameServer.Networking
 {
     // 몬스터 처치 보상을 MainServer에 저장한다. 세션과 분리된 백그라운드 작업으로, 실패하면 잠시 뒤 다시 보낸다.
@@ -13,6 +15,8 @@ namespace GameServer.Networking
     //   남은 저장을 먼저 기다린다.
     public class KillRewardSaver
     {
+        private static readonly ILogger Log = GameLog.For<KillRewardSaver>();
+
         // 재시도 간격. 합계 약 4분 반 동안 다시 보낸다 - MainServer 재시작 정도는 이 안에 끝난다.
         private static readonly TimeSpan[] RetryDelays =
         {
@@ -82,7 +86,7 @@ namespace GameServer.Networking
 
             if (pending.Length > 0)
             {
-                Console.WriteLine($"[GameServer] 종료 전 처치 보상 저장 대기 중 ({pending.Length}명)...");
+                Log.LogInformation("종료 전 처치 보상 저장 대기 중 ({Count}명)...", pending.Length);
                 await Task.WhenAny(Task.WhenAll(pending), Task.Delay(timeout));
             }
 
@@ -120,20 +124,20 @@ namespace GameServer.Networking
                     {
                         if (attempt > 0)
                         {
-                            Console.WriteLine($"[GameServer] 처치 보상 저장 재시도 성공 ({attempt}회 재시도) : {reward}");
+                            Log.LogInformation("처치 보상 저장 재시도 성공 ({Attempt}회 재시도) : {Reward}", attempt, reward);
                         }
                         return;
                     }
 
                     if (result == InternalApiResult.PermanentFailure)
                     {
-                        Console.WriteLine($"[GameServer] 처치 보상 저장 거부 - 보상이 반영되지 않았습니다 : {reward}");
+                        Log.LogWarning("처치 보상 저장 거부 - 보상이 반영되지 않았습니다 : {Reward}", reward);
                         return;
                     }
 
                     if (attempt >= RetryDelays.Length)
                     {
-                        Console.WriteLine($"[GameServer] 처치 보상 저장 재시도 한도 초과 - 보상이 반영되지 않았습니다 : {reward}");
+                        Log.LogError("처치 보상 저장 재시도 한도 초과 - 보상이 반영되지 않았습니다 : {Reward}", reward);
                         return;
                     }
 
@@ -142,11 +146,11 @@ namespace GameServer.Networking
             }
             catch (OperationCanceledException)
             {
-                Console.WriteLine($"[GameServer] 서버 종료로 처치 보상 저장 취소 - 보상이 반영되지 않았습니다 : {reward}");
+                Log.LogWarning("서버 종료로 처치 보상 저장 취소 - 보상이 반영되지 않았습니다 : {Reward}", reward);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[GameServer] 처치 보상 저장 중 오류 - 보상이 반영되지 않았습니다 : {reward} - {ex}");
+                Log.LogError(ex, "처치 보상 저장 중 오류 - 보상이 반영되지 않았습니다 : {Reward}", reward);
             }
         }
 
