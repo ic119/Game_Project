@@ -23,6 +23,28 @@ public class PlayerCharacterModel : MonoBehaviour
 
     private EquipmentController equipmentController;
 
+    [Header("피격 연출")]
+    [Tooltip("피격 모션(Attack Layer의 GetHit01/02, 상체 마스크)을 재생하는 시간(초). 모션 클립 길이(0.47초)보다 짧게 잡아 연속으로 맞아도 둔해 보이지 않게 한다.")]
+    [SerializeField, Min(0.05f)] private float hitReactionDuration = 0.35f;
+
+    [Tooltip("피격 모션이 끝난 뒤 Attack Layer 가중치를 0으로 서서히 내리는 시간(초). 0이면 즉시 끊겨 상체가 튄다.")]
+    [SerializeField, Min(0f)] private float hitReactionFadeOutSeconds = 0.1f;
+
+    // 캐릭터의 Animator와 Attack Layer 번호. Awake에서 한 번 찾아 둔다(피격마다 GetComponent/레이어 검색을 하지 않는다).
+    private Animator characterAnimator;
+    private int attackLayerIndex = -1;
+
+    private enum HitReactionPhase
+    {
+        None,
+        Playing,    // 피격 모션 재생 중(Attack Layer 가중치 1)
+        FadingOut   // 모션이 끝나 가중치를 0으로 내리는 중
+    }
+
+    private HitReactionPhase hitReactionPhase = HitReactionPhase.None;
+    private float hitReactionPhaseStartTime;
+    private int nextHitVariant = 1;
+
     /// <summary>
     /// 세이브 데이터(UserSaveData.userExp)로부터 GameSceneController가 채워주는 경험치 런타임 상태.
     /// ApplyExp로 초기화된 뒤에는 GainExp로 갱신된다. 체력/공격력/방어력은 각각 HealthComponent/CombatStatComponent가 전담한다.
@@ -89,6 +111,12 @@ public class PlayerCharacterModel : MonoBehaviour
         combatStatComponent = GetComponent<CombatStatComponent>();
         equipmentController = GetComponent<EquipmentController>();
 
+        characterAnimator = GetComponent<Animator>();
+        if (characterAnimator != null)
+        {
+            attackLayerIndex = characterAnimator.GetLayerIndex(AttackLayerName);
+        }
+
         if (nameLabel == null)
         {
             nameLabel = GetComponentInChildren<UI_NameLabel>(true);
@@ -101,6 +129,31 @@ public class PlayerCharacterModel : MonoBehaviour
 
         defaultWeaponType = currentWeaponType;
         EquipWeapon(currentWeaponType, defaultWeaponVisualName);
+    }
+
+    private void OnEnable()
+    {
+        // 로컬/원격 플레이어 모두 서버가 알린 피격(ApplyServerHp wasHit=true)이 HealthComponent.OnDamaged로 오므로
+        // 여기 한 곳에서 피격 모션을 재생하면 다른 플레이어 화면에서도 똑같이 보인다.
+        if (healthComponent != null)
+        {
+            healthComponent.OnDamaged += PlayHitReaction;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (healthComponent != null)
+        {
+            healthComponent.OnDamaged -= PlayHitReaction;
+        }
+
+        CancelHitReaction();
+    }
+
+    private void Update()
+    {
+        UpdateHitReaction();
     }
     #endregion
 
@@ -311,6 +364,108 @@ public class PlayerCharacterModel : MonoBehaviour
 
         animator.SetBool(IsDashHash, false);
         animator.SetBool(IsBackDashHash, false);
+
+        // 피격 모션도 걷어낸다(HitIndex가 남으면 GetHit 상태가 Die 위에 덮이고 루프 클립이라 계속 반복된다). 가중치는 위에서 0이 됐다.
+        animator.SetInteger(HitIndexHash, 0);
+        hitReactionPhase = HitReactionPhase.None;
+    }
+
+    // 피격 모션은 Attack Layer(상체 마스크)의 GetHit01/GetHit02 상태다. AnyState에서 HitIndex 값(1/2)으로 들어가고 HitIndex가 0이
+    // 되면 AttackLayerIdle로 나가는데, 클립이 루프라 HitIndex를 0으로 되돌리지 않으면 영원히 반복된다. Attack Layer는 평소
+    // 가중치 0이라 재생하는 동안만 1로 올렸다가 끝나면 서서히 내린다.
+    private static readonly int HitIndexHash = Animator.StringToHash("HitIndex");
+
+    /// <summary>
+    /// 피격 모션을 재생한다. HealthComponent.OnDamaged(서버가 알린 피격)에 연결돼 있다. 다음 경우에는 재생하지 않는다 -
+    ///  · 사망(이 피격으로 죽었으면 OnDamaged가 사망 처리보다 먼저 오지만 이미 IsDead라 걸러진다): 사망 모션이 대신한다.
+    ///  · 공격 콤보 중(ComboIndex > 0): 피격 모션이 콤보 상태를 끊으면 이후 AttackLayerIdle이 남은 ComboIndex를 보고 공격
+    ///    모션을 저절로 다시 시작한다. 공격 중에는 끊기지 않는 방식이라 오히려 조작감이 낫다.
+    /// 이미 재생 중에 또 맞으면 반대 모션(GetHit01 <-> GetHit02)으로 바꿔 다시 재생한다.
+    /// </summary>
+    private void PlayHitReaction()
+    {
+        if (healthComponent.IsDead || characterAnimator == null || attackLayerIndex < 0)
+        {
+            return;
+        }
+
+        if (characterAnimator.GetInteger(ComboIndexHash) > 0)
+        {
+            return;
+        }
+
+        characterAnimator.SetInteger(HitIndexHash, nextHitVariant);
+        nextHitVariant = nextHitVariant == 1 ? 2 : 1;
+        characterAnimator.SetLayerWeight(attackLayerIndex, 1f);
+
+        hitReactionPhase = HitReactionPhase.Playing;
+        hitReactionPhaseStartTime = Time.time;
+    }
+
+    /// <summary>
+    /// 피격 모션이 재생 중이거나 사라지는 중인지. RemoteCharacterController가 Attack Layer 가중치를 자기 공격 모션 시간표대로
+    /// 0으로 되돌리는데, 피격 모션 동안에는 그걸 건너뛰어야 다른 플레이어 화면에서도 피격 모션이 보인다.
+    /// </summary>
+    public bool IsHitReactionPlaying => hitReactionPhase != HitReactionPhase.None;
+
+    /// <summary>
+    /// 피격 모션을 즉시 끝낸다. 공격이 시작될 때(PlayerAttackController.StartCombo) 불러, 피격 모션이 끝나기를 기다리느라 공격이
+    /// 늦어지지 않게 한다. 공격이 Attack Layer를 쓰고 있으면(ComboIndex > 0) 가중치는 공격 쪽이 관리하므로 건드리지 않는다.
+    /// </summary>
+    public void CancelHitReaction()
+    {
+        if (hitReactionPhase == HitReactionPhase.None || characterAnimator == null)
+        {
+            hitReactionPhase = HitReactionPhase.None;
+            return;
+        }
+
+        hitReactionPhase = HitReactionPhase.None;
+        characterAnimator.SetInteger(HitIndexHash, 0);
+
+        if (attackLayerIndex >= 0 && characterAnimator.GetInteger(ComboIndexHash) == 0)
+        {
+            characterAnimator.SetLayerWeight(attackLayerIndex, 0f);
+        }
+    }
+
+    private void UpdateHitReaction()
+    {
+        if (hitReactionPhase == HitReactionPhase.None || characterAnimator == null)
+        {
+            return;
+        }
+
+        // 피격 모션 도중 공격이 시작돼 Attack Layer를 가져갔으면 더 이상 건드리지 않는다.
+        if (characterAnimator.GetInteger(ComboIndexHash) > 0)
+        {
+            hitReactionPhase = HitReactionPhase.None;
+            return;
+        }
+
+        float elapsed = Time.time - hitReactionPhaseStartTime;
+
+        if (hitReactionPhase == HitReactionPhase.Playing)
+        {
+            if (elapsed < hitReactionDuration)
+            {
+                return;
+            }
+
+            // 모션이 끝났다: HitIndex를 0으로 돌려 GetHit -> AttackLayerIdle로 나가게 하고, 가중치를 서서히 내린다.
+            characterAnimator.SetInteger(HitIndexHash, 0);
+            hitReactionPhase = HitReactionPhase.FadingOut;
+            hitReactionPhaseStartTime = Time.time;
+            return;
+        }
+
+        float fade = hitReactionFadeOutSeconds > 0f ? Mathf.Clamp01(elapsed / hitReactionFadeOutSeconds) : 1f;
+        characterAnimator.SetLayerWeight(attackLayerIndex, 1f - fade);
+
+        if (fade >= 1f)
+        {
+            hitReactionPhase = HitReactionPhase.None;
+        }
     }
 
     private void PlayStateAnimation(int stateHash)

@@ -148,6 +148,13 @@ namespace Incheol.Controller
 
         private void StartCombo()
         {
+            // 피격 모션을 재생 중이면 끝내고 공격으로 넘어간다 - 피격 모션이 끝나기를 기다리느라 공격이 늦어지면 조작감이 나빠진다.
+            // ComboIndex를 올리기 전에 불러야 한다(CancelHitReaction은 ComboIndex가 0일 때만 Attack Layer 가중치를 내린다).
+            if (playerCharacterModel != null)
+            {
+                playerCharacterModel.CancelHitReaction();
+            }
+
             comboStage = 1;
             stageStartTime = Time.time;
             currentStageDuration = GetStageDuration(comboStage);

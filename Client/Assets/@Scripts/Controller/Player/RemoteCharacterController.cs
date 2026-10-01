@@ -83,7 +83,11 @@ namespace Incheol.Controller
             }
 
             // 공격 모션 재생 시간이 끝나면 Attack Layer 가중치를 다시 0으로 내린다(PlayerAttackController.ResetCombo와 동일한 목적).
-            if (attackLayerIndex >= 0 && animator != null && animator.GetLayerWeight(attackLayerIndex) > 0f
+            // 피격 모션(PlayerCharacterModel)이 재생 중일 때는 건드리지 않는다 - 피격 모션도 Attack Layer를 쓰므로, 여기서 가중치를
+            // 0으로 되돌리면 다른 플레이어 화면에서는 피격 모션이 보이지 않는다. 가중치는 피격 모션 쪽이 직접 내린다.
+            bool hitReactionActive = playerCharacterModel != null && playerCharacterModel.IsHitReactionPlaying;
+
+            if (attackLayerIndex >= 0 && animator != null && !hitReactionActive && animator.GetLayerWeight(attackLayerIndex) > 0f
                 && Time.time >= attackAnimationEndTime)
             {
                 animator.SetInteger(ComboIndexHash, 0);
@@ -108,6 +112,12 @@ namespace Incheol.Controller
             if (playerCharacterModel != null && playerCharacterModel.IsDead)
             {
                 return;
+            }
+
+            // 피격 모션을 재생 중이었다면 끝내고 공격 모션으로 넘어간다(ComboIndex를 올리기 전에 불러야 한다).
+            if (playerCharacterModel != null)
+            {
+                playerCharacterModel.CancelHitReaction();
             }
 
             animator.SetFloat(WeaponIndexHash, (float)weaponType);
