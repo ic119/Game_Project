@@ -117,7 +117,8 @@ namespace Incheol.Controller.Interaction
 
             if (isPlayerInside && requireInteractionKey && !isTeleporting && !isCoolingDown)
             {
-                if (Input.GetKeyDown(interactionKey))
+                // 채팅 입력 중에 상호작용 키 글자를 쳐서 맵이 이동되지 않도록 한다(InputBlocker).
+                if (!InputBlocker.IsBlocked && Input.GetKeyDown(interactionKey))
                 {
                     StartTeleportSequence(currentPlayerObject);
                 }

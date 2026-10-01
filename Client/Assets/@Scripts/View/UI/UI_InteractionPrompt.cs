@@ -1,5 +1,6 @@
 using System;
 using Incheol.Controller;
+using Incheol.Utils;
 using TMPro;
 using UnityEngine;
 
@@ -58,7 +59,8 @@ namespace Incheol.View.UI
 
         private void Update()
         {
-            if (currentPlayerObject != null && Input.GetKeyDown(interactionKey))
+            // 채팅 입력 중에 상호작용 키 글자를 쳐서 상호작용(상자 열기 등)이 호출되지 않도록 한다(InputBlocker).
+            if (currentPlayerObject != null && !InputBlocker.IsBlocked && Input.GetKeyDown(interactionKey))
             {
                 OnInteract?.Invoke();
             }

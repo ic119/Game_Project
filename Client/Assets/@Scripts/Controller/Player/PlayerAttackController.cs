@@ -117,7 +117,8 @@ namespace Incheol.Controller
                 ResetCombo();
             }
 
-            if (!Input.GetKeyDown(attackKey))
+            // 채팅 입력 중처럼 게임플레이 입력이 막혀 있으면(InputBlocker) 공격 키를 읽지 않는다. 위의 콤보 종료 처리는 계속 돈다.
+            if (InputBlocker.IsBlocked || !Input.GetKeyDown(attackKey))
             {
                 return;
             }

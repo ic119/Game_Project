@@ -178,7 +178,8 @@ namespace Incheol.Presenter.Scene
 
         private void Update()
         {
-            if (Input.GetKeyDown(KeyCode.I))
+            // 채팅 입력 중에 "i"를 치면 인벤토리가 열리고 닫히지 않도록 단축키를 읽지 않는다(InputBlocker).
+            if (!InputBlocker.IsBlocked && Input.GetKeyDown(KeyCode.I))
             {
                 ToggleInventory();
             }

@@ -1,5 +1,6 @@
 using Incheol.Models.Define;
 using Incheol.Modules;
+using Incheol.Utils;
 using UnityEngine;
 
 namespace Incheol.Controller
@@ -76,22 +77,26 @@ namespace Incheol.Controller
 
         private void Update()
         {
+            // 채팅 입력 중처럼 게임플레이 입력이 막혀 있으면(InputBlocker) 방향키/대쉬 키를 아예 읽지 않는다 - 입력이 0으로 남아
+            // 이동/회전이 멈추고(이미 진행 중인 대쉬는 그대로 끝난다), 입력창에서 쓰는 방향키/Space가 이동/대쉬로 새지 않는다.
+            bool inputBlocked = InputBlocker.IsBlocked;
+
             moveInput = 0f;
-            if (Input.GetKey(KeyCode.UpArrow))
+            if (!inputBlocked && Input.GetKey(KeyCode.UpArrow))
             {
                 moveInput += 1f;
             }
-            if (Input.GetKey(KeyCode.DownArrow))
+            if (!inputBlocked && Input.GetKey(KeyCode.DownArrow))
             {
                 moveInput -= 1f;
             }
 
             turnInput = 0f;
-            if (Input.GetKey(KeyCode.RightArrow))
+            if (!inputBlocked && Input.GetKey(KeyCode.RightArrow))
             {
                 turnInput += 1f;
             }
-            if (Input.GetKey(KeyCode.LeftArrow))
+            if (!inputBlocked && Input.GetKey(KeyCode.LeftArrow))
             {
                 turnInput -= 1f;
             }
@@ -100,7 +105,7 @@ namespace Incheol.Controller
             {
                 EndDash();
             }
-            else if (!isDashing && Input.GetKeyDown(dashKey) && Time.time >= nextDashReadyTime)
+            else if (!inputBlocked && !isDashing && Input.GetKeyDown(dashKey) && Time.time >= nextDashReadyTime)
             {
                 // 아래 방향키를 누른 채(위 방향키와 상쇄되지 않은 순수 후진 입력)로 대쉬 키를 누르면 후방 대쉬다.
                 StartDash(moveInput < 0f);

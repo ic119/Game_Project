@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Incheol.Utils;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -26,6 +27,9 @@ public class UI_ChatView : MonoBehaviour
 
     public event Action<string> MessageSubmitted;
 
+    // 입력창이 포커스된 상태를 마지막으로 InputBlocker에 알린 값. 바뀔 때만 다시 알린다.
+    private bool isBlockingGameplayInput;
+
     private void OnEnable()
     {
         if (chatInputField != null)
@@ -40,6 +44,30 @@ public class UI_ChatView : MonoBehaviour
         {
             chatInputField.onSubmit.RemoveListener(OnChatInputSubmit);
         }
+
+        // 입력창에 포커스가 있는 채로 이 뷰가 꺼지거나 파괴되면(맵 전환, 로그아웃 등) 입력이 영원히 막히므로 반드시 푼다.
+        SetGameplayInputBlocked(false);
+    }
+
+    /// <summary>
+    /// 채팅 입력창에 글자를 치는 동안(포커스 상태)에는 채팅 입력으로 이동/대쉬/공격/단축키/상호작용이 호출되지 않도록
+    /// InputBlocker로 게임플레이 입력을 막는다. 이벤트(onSelect/onDeselect) 대신 isFocused를 매 프레임 확인한다 -
+    /// Esc로 입력을 취소하면 입력창은 선택된 채로 입력만 끝나 onDeselect가 오지 않기 때문에, 상태를 직접 읽어야 놓치지 않는다.
+    /// </summary>
+    private void Update()
+    {
+        SetGameplayInputBlocked(chatInputField != null && chatInputField.isFocused);
+    }
+
+    private void SetGameplayInputBlocked(bool blocked)
+    {
+        if (isBlockingGameplayInput == blocked)
+        {
+            return;
+        }
+
+        isBlockingGameplayInput = blocked;
+        InputBlocker.SetBlocked(this, blocked);
     }
 
     /// <summary>
