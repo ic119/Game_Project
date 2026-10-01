@@ -129,8 +129,19 @@ namespace Incheol.Editor
 
                 var fileData = new MapDataJson { respawnPoint = ToPointJson(respawnPoint) };
 
+                int closedPortalCount = 0;
                 foreach (MapPortalController portal in root.GetComponentsInChildren<MapPortalController>(true))
                 {
+                    // 닫힌 포탈(Is Open 꺼짐)은 도착 맵이 아직 준비되지 않았다는 뜻이다 - 클라이언트도 이동하지 않고 안내만 하므로
+                    // 서버 데이터에서 뺀다. 이걸 빼지 않으면 도착 맵 프리팹이 없다는 이유로 이 맵의 전체 데이터(상자 등) 내보내기가 막힌다.
+                    // 도착 맵이 준비되면 포탈의 Is Open을 켜고 다시 내보낸다.
+                    if (IsClosedPortal(portal))
+                    {
+                        closedPortalCount++;
+                        Debug.LogWarning($"[MapDataExporter] '{mapId}'의 포탈 '{portal.gameObject.name}'은(는) 닫혀 있어(Is Open 꺼짐) 서버 맵 데이터에서 제외했습니다.");
+                        continue;
+                    }
+
                     if (!TryBuildPortalJson(portal, out PortalJson portalJson, out string error))
                     {
                         // 목적지를 알 수 없는 포탈을 빼고 내보내면 그 포탈만 조용히 "항상 거부"가 된다 - 통째로 중단한다.
@@ -167,7 +178,8 @@ namespace Incheol.Editor
                 string outputPath = Path.Combine(outputDirectory, $"{mapId}.json");
                 File.WriteAllText(outputPath, json);
 
-                Debug.Log($"[MapDataExporter] '{mapId}' 맵 데이터(포탈 {fileData.portals.Count}개, 상자 {fileData.chests.Count}개, 상자 후보 {fileData.chestCandidates.Count}개)를 내보냈습니다 : {outputPath}");
+                string closedNote = closedPortalCount > 0 ? $", 닫힌 포탈 {closedPortalCount}개 제외" : string.Empty;
+                Debug.Log($"[MapDataExporter] '{mapId}' 맵 데이터(포탈 {fileData.portals.Count}개{closedNote}, 상자 {fileData.chests.Count}개, 상자 후보 {fileData.chestCandidates.Count}개)를 내보냈습니다 : {outputPath}");
                 return true;
             }
             finally
@@ -184,11 +196,26 @@ namespace Incheol.Editor
         }
 
         // MapPortalController의 설정 필드는 private [SerializeField]라 SerializedObject로 읽는다.
+        // Is Open이 꺼진 포탈인지. 필드가 없는 옛 프리팹은 열린 포탈로 취급한다(필드 기본값이 true).
+        private static bool IsClosedPortal(MapPortalController portal)
+        {
+            SerializedProperty isOpenProperty = new SerializedObject(portal).FindProperty("isOpen");
+            return isOpenProperty != null && !isOpenProperty.boolValue;
+        }
+
         private static bool TryBuildPortalJson(MapPortalController portal, out PortalJson portalJson, out string error)
         {
             portalJson = null;
             var serialized = new SerializedObject(portal);
             SerializedProperty typeProperty = serialized.FindProperty("teleportType");
+
+            // 프리팹에는 enum이 정수로 저장되므로, 번호가 폐기된 옛 값(예: 과거 SceneLoad=0)이 남아 있으면 정의된 항목이 없다.
+            if (typeProperty.enumValueIndex < 0)
+            {
+                error = $"포탈 종류(Teleport Type) 값({typeProperty.intValue})이 올바르지 않습니다. 인스펙터에서 CoordinateTeleport 또는 MapSwap을 다시 선택하세요.";
+                return false;
+            }
+
             string type = typeProperty.enumNames[typeProperty.enumValueIndex];
 
             PointJson destination;
@@ -197,6 +224,12 @@ namespace Incheol.Editor
             if (type == nameof(PortalTeleportType.MapSwap))
             {
                 SerializedProperty mapKeyProperty = serialized.FindProperty("targetMapKey");
+                if (mapKeyProperty.enumValueIndex < 0 || mapKeyProperty.enumNames[mapKeyProperty.enumValueIndex] == nameof(AddressableAssetKey.None))
+                {
+                    error = "도착 맵(Target Map Key)이 지정되지 않았습니다. 도착 맵이 아직 준비되지 않았다면 포탈의 Is Open을 끄세요.";
+                    return false;
+                }
+
                 targetMapId = mapKeyProperty.enumNames[mapKeyProperty.enumValueIndex];
                 string entryPointName = serialized.FindProperty("targetMapEntryPointName").stringValue;
 
@@ -254,7 +287,7 @@ namespace Incheol.Editor
 
             if (targetPath == null)
             {
-                error = $"도착 맵 프리팹 '{targetMapId}'을(를) 찾을 수 없습니다.";
+                error = $"도착 맵 프리팹 '{targetMapId}'을(를) 찾을 수 없습니다. 도착 맵이 아직 준비되지 않았다면 포탈의 Is Open을 끄세요.";
                 return false;
             }
 

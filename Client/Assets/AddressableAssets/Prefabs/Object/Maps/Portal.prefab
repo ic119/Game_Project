@@ -107,7 +107,7 @@ CapsuleCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
@@ -127,13 +127,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e755a04608ef80240a9e4c2b90ec2ece, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.Controller.Interaction.MapPortalController
-  teleportType: 0
-  targetMapKey: 12
+  teleportType: 2
+  targetMapKey: 0
   targetMapEntryPointName: RespawnPoint
   targetDestination: {fileID: 0}
   targetCoordinate: {x: 0, y: 0, z: 0}
   teleportDelay: 0.5
   cooldownTime: 2
+  isOpen: 0
+  closedMessage: "\uC900\uBE44 \uC911\uC778 \uC9C0\uC5ED\uC785\uB2C8\uB2E4."
   requireInteractionKey: 0
   interactionKey: 102
   portalLight: {fileID: 0}

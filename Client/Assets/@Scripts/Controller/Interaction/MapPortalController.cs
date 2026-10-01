@@ -1,4 +1,5 @@
 using Incheol.Models.Define;
+using Incheol.Modules;
 using Incheol.Presenter.Scene;
 using Incheol.Utils;
 using System.Collections;
@@ -47,6 +48,16 @@ namespace Incheol.Controller.Interaction
         [Tooltip("포털 재사용 쿨다운 시간(초)")]
         [SerializeField, Min(0.1f)] private float cooldownTime = 2f;
 
+        [Header("Availability")]
+        [Tooltip("포털이 열려 있는지. 끄면(닫힌 포털) 들어가도 이동하지 않고 아래 안내 문구만 보여준다. 도착 맵이 아직 준비되지 않았을 때 " +
+            "포털을 먼저 배치해 두는 용도다 - 닫힌 포털은 서버 맵 데이터 내보내기(MapDataExporter)에서도 빠지므로, 도착 맵이 없어도 " +
+            "이 맵의 데이터(상자 등)를 내보낼 수 있다. 도착 맵이 준비되면 켜고 맵 데이터를 다시 내보낸다.")]
+        [SerializeField] private bool isOpen = true;
+
+        [Tooltip("닫힌 포털에 들어갔을 때 보여줄 안내 문구.")]
+        [SerializeField] private string closedMessage = "아직 갈 수 없는 지역입니다.";
+
+        [Header("Interaction")]
         [Tooltip("즉시 진입이 아닌 상호작용 키(F 등) 입력이 필요한지 여부")]
         [SerializeField] private bool requireInteractionKey = false;
 
@@ -91,6 +102,9 @@ namespace Incheol.Controller.Interaction
         private bool isPlayerInside = false;
         private GameObject currentPlayerObject;
         private AudioSource audioSource;
+
+        /// <summary>포털이 열려 있는지(닫힌 포털은 이동하지 않고 안내만 한다).</summary>
+        public bool IsOpen => isOpen;
         #endregion
 
         #region LifeCycle
@@ -108,6 +122,27 @@ namespace Incheol.Controller.Interaction
                 audioSource = gameObject.AddComponent<AudioSource>();
                 audioSource.playOnAwake = false;
                 audioSource.spatialBlend = 0.8f;
+            }
+
+            ValidateSettings();
+        }
+
+        /// <summary>
+        /// 잘못된 설정을 시작 시점에 알린다. 프리팹에는 정수값으로 직렬화되므로 enum에서 번호가 폐기되면(과거 SceneLoad=0) 옛 프리팹에
+        /// 정의되지 않은 값이 남아, switch에 걸리는 case가 없어 연출만 나오고 이동하지 않는 조용한 실패가 된다.
+        /// 닫힌 포털은 이동하지 않으므로 목적지 설정을 검사하지 않는다(도착 맵이 아직 준비되지 않았을 수 있다).
+        /// </summary>
+        private void ValidateSettings()
+        {
+            if (!System.Enum.IsDefined(typeof(PortalTeleportType), teleportType))
+            {
+                DebugLogManager.GenerateErrorMessage<MapPortalController>($"'{name}' 포털의 종류 값({(int)teleportType})이 올바르지 않습니다. 인스펙터에서 Teleport Type을 다시 선택하세요.");
+                return;
+            }
+
+            if (isOpen && teleportType == PortalTeleportType.MapSwap && targetMapKey == AddressableAssetKey.None)
+            {
+                DebugLogManager.GenerateErrorMessage<MapPortalController>($"'{name}' 포털은 열려 있는데 도착 맵(Target Map Key)이 지정되지 않았습니다. 도착 맵이 아직 없다면 Is Open을 끄세요.");
             }
         }
 
@@ -207,7 +242,20 @@ namespace Incheol.Controller.Interaction
                 return;
             }
 
+            // 닫힌 포털은 이동 연출/입력 잠금/서버 요청 없이 안내만 한다. 쿨다운을 걸어 포털 안에 서 있어도 안내가 반복되지 않게 한다.
+            if (!isOpen)
+            {
+                ShowClosedMessage();
+                return;
+            }
+
             StartCoroutine(TeleportRoutine(player));
+        }
+
+        private void ShowClosedMessage()
+        {
+            GameManager.Instance?.ShowAlarmPopup("포털", closedMessage);
+            StartCoroutine(CooldownRoutine());
         }
 
         private IEnumerator TeleportRoutine(GameObject player)
