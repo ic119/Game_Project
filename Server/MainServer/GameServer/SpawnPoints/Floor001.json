@@ -11,7 +11,7 @@
             "entries": [
                 {
                     "monsterType": "RedMushroom",
-                    "maxHp": 205,
+                    "maxHp": 235,
                     "attackPower": 13,
                     "defense": 3,
                     "expReward": 40
@@ -32,7 +32,7 @@
             "entries": [
                 {
                     "monsterType": "RedMushroom",
-                    "maxHp": 205,
+                    "maxHp": 235,
                     "attackPower": 13,
                     "defense": 3,
                     "expReward": 40
@@ -53,9 +53,9 @@
             "entries": [
                 {
                     "monsterType": "Spider",
-                    "maxHp": 355,
-                    "attackPower": 23,
-                    "defense": 4,
+                    "maxHp": 440,
+                    "attackPower": 26,
+                    "defense": 5,
                     "expReward": 160
                 }
             ],
@@ -74,9 +74,9 @@
             "entries": [
                 {
                     "monsterType": "Orc",
-                    "maxHp": 470,
-                    "attackPower": 38,
-                    "defense": 6,
+                    "maxHp": 645,
+                    "attackPower": 42,
+                    "defense": 7,
                     "expReward": 320
                 }
             ],
@@ -95,9 +95,9 @@
             "entries": [
                 {
                     "monsterType": "Werewolf",
-                    "maxHp": 645,
-                    "attackPower": 54,
-                    "defense": 8,
+                    "maxHp": 880,
+                    "attackPower": 62,
+                    "defense": 10,
                     "expReward": 515
                 }
             ],
@@ -116,9 +116,9 @@
             "entries": [
                 {
                     "monsterType": "Golem",
-                    "maxHp": 825,
-                    "attackPower": 74,
-                    "defense": 10,
+                    "maxHp": 1115,
+                    "attackPower": 83,
+                    "defense": 13,
                     "expReward": 700
                 }
             ],
