@@ -57,7 +57,7 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnMonsterDied += HandleMonsterDied;
             GameServerConnectManager.Instance.OnWorldSnapshot += HandleWorldSnapshot;
             GameServerConnectManager.Instance.OnMonsterLeftView += HandleMonsterLeftView;
-            GameServerConnectManager.Instance.OnMonsterAttacked += HandleMonsterAttacked;
+            GameServerConnectManager.Instance.OnMonsterAttackStarted += HandleMonsterAttackStarted;
         }
 
         private void OnDisable()
@@ -72,7 +72,7 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnMonsterDied -= HandleMonsterDied;
             GameServerConnectManager.Instance.OnWorldSnapshot -= HandleWorldSnapshot;
             GameServerConnectManager.Instance.OnMonsterLeftView -= HandleMonsterLeftView;
-            GameServerConnectManager.Instance.OnMonsterAttacked -= HandleMonsterAttacked;
+            GameServerConnectManager.Instance.OnMonsterAttackStarted -= HandleMonsterAttackStarted;
         }
         #endregion
 
@@ -280,11 +280,11 @@ namespace Incheol.Modules
         }
 
         /// <summary>
-        /// Game_MonsterAttackBroadcast는 전원에게 온다(몬스터가 근접 사거리 안의 플레이어를 공격할 때마다).
-        /// 여기서는 공격 애니메이션만 재생한다 - 실제 데미지 적용은 대상이 로컬 플레이어인 경우
-        /// GameSceneManager.HandleMonsterAttackReceived가 별도로 처리한다.
+        /// Game_MonsterAttackStartBroadcast는 몬스터가 근접 사거리 안의 플레이어를 공격하기 시작할 때마다 온다(선딜 시작).
+        /// 여기서는 공격 애니메이션만 재생한다 - 피해는 선딜이 끝난 뒤의 판정 결과(Game_MonsterAttackBroadcast, 대상이
+        /// 로컬 플레이어면 GameSceneManager.HandleMonsterAttackReceived)로 따로 온다. 그 사이 플레이어는 대쉬로 피할 수 있다.
         /// </summary>
-        private void HandleMonsterAttacked(GameMonsterAttackBroadcastPacket packet)
+        private void HandleMonsterAttackStarted(GameMonsterAttackStartBroadcastPacket packet)
         {
             if (!remoteMonsters.TryGetValue(packet.MonsterId, out RemoteMonsterController controller) || controller == null)
             {

@@ -167,6 +167,9 @@ namespace Incheol.Controller
             currentDashSpeed = dashDuration > 0f ? dashDistance / dashDuration : 0f;
 
             PlayDashEffect();
+
+            // 서버가 무적 구간을 정하도록 알린다. 몬스터 공격 판정은 서버 권위라 이 알림이 있어야 대쉬로 피할 수 있다.
+            GameServerConnectManager.Instance?.SendDash();
         }
 
         /// <summary>

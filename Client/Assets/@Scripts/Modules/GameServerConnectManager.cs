@@ -128,6 +128,17 @@ namespace Incheol.Modules
         public event Action<GameMonsterDamageBroadcastPacket> OnMonsterDamaged;
         public event Action<GameMonsterDieBroadcastPacket> OnMonsterDied;
         public event Action<GameMonsterAttackBroadcastPacket> OnMonsterAttacked;
+
+        /// <summary>
+        /// 몬스터가 공격을 시작했을 때(Game_MonsterAttackStartBroadcast, 선딜 시작). 공격 모션 재생에 쓴다 -
+        /// 피해는 선딜이 끝난 뒤 OnMonsterAttacked(명중) 또는 OnMonsterAttackDodged(회피)로 따로 온다.
+        /// </summary>
+        public event Action<GameMonsterAttackStartBroadcastPacket> OnMonsterAttackStarted;
+
+        /// <summary>
+        /// 몬스터 공격이 대쉬 회피에 막혔을 때(Game_MonsterAttackDodgedBroadcast). HP 변화는 없고 회피 이펙트 재생에 쓴다.
+        /// </summary>
+        public event Action<GameMonsterAttackDodgedBroadcastPacket> OnMonsterAttackDodged;
         public event Action<GameExpGainBroadcastPacket> OnExpGained;
         public event Action<GameLootBroadcastPacket> OnLootReceived;
         public event Action<GamePlayerHpBroadcastPacket> OnPlayerHpChanged;
@@ -453,6 +464,22 @@ namespace Incheol.Modules
             };
 
             _ = SendAsync(GameOpCode.Game_AttackRequest, request.Encode());
+        }
+
+        /// <summary>
+        /// 대쉬 시작을 GameServer에 알린다(Game_DashRequest). 서버가 쿨다운을 검증한 뒤 짧은 무적 구간을 기록하고,
+        /// 그 구간(또는 선딜 도중 대쉬해 사거리를 벗어난 경우)에 도착한 몬스터 공격을 회피로 판정한다.
+        /// 대쉬 이동 자체는 클라이언트가 하고, 이 알림은 무적 판정의 근거로만 쓰인다.
+        /// </summary>
+        public void SendDash()
+        {
+            if (!isConnected)
+            {
+                return;
+            }
+
+            var request = new GameDashRequestPacket { PlayerId = localPlayerId };
+            _ = SendAsync(GameOpCode.Game_DashRequest, request.Encode());
         }
 
         /// <summary>
@@ -810,6 +837,16 @@ namespace Incheol.Modules
                 case GameOpCode.Game_MonsterAttackBroadcast:
                     var monsterAttack = GameMonsterAttackBroadcastPacket.Decode(body);
                     pendingActions.Enqueue(() => OnMonsterAttacked?.Invoke(monsterAttack));
+                    break;
+
+                case GameOpCode.Game_MonsterAttackStartBroadcast:
+                    var monsterAttackStart = GameMonsterAttackStartBroadcastPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnMonsterAttackStarted?.Invoke(monsterAttackStart));
+                    break;
+
+                case GameOpCode.Game_MonsterAttackDodgedBroadcast:
+                    var monsterAttackDodged = GameMonsterAttackDodgedBroadcastPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnMonsterAttackDodged?.Invoke(monsterAttackDodged));
                     break;
 
                 case GameOpCode.Game_ExpGainBroadcast:

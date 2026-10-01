@@ -124,6 +124,7 @@ namespace Incheol.Presenter.Scene
                 GameServerConnectManager.Instance.OnChatReceived += HandleChatReceived;
                 GameServerConnectManager.Instance.OnDamageReceived += HandleDamageReceived;
                 GameServerConnectManager.Instance.OnMonsterAttacked += HandleMonsterAttackReceived;
+                GameServerConnectManager.Instance.OnMonsterAttackDodged += HandleMonsterAttackDodged;
                 GameServerConnectManager.Instance.OnExpGained += HandleExpGained;
                 GameServerConnectManager.Instance.OnLootReceived += HandleLootReceived;
                 GameServerConnectManager.Instance.OnPlayerHpChanged += HandlePlayerHpChanged;
@@ -154,6 +155,7 @@ namespace Incheol.Presenter.Scene
                 GameServerConnectManager.Instance.OnChatReceived -= HandleChatReceived;
                 GameServerConnectManager.Instance.OnDamageReceived -= HandleDamageReceived;
                 GameServerConnectManager.Instance.OnMonsterAttacked -= HandleMonsterAttackReceived;
+                GameServerConnectManager.Instance.OnMonsterAttackDodged -= HandleMonsterAttackDodged;
                 GameServerConnectManager.Instance.OnExpGained -= HandleExpGained;
                 GameServerConnectManager.Instance.OnLootReceived -= HandleLootReceived;
                 GameServerConnectManager.Instance.OnPlayerHpChanged -= HandlePlayerHpChanged;
@@ -740,6 +742,21 @@ namespace Incheol.Presenter.Scene
             }
 
             ApplyLocalServerHp(packet.RemainingHp, spawnedPlayerModel.MaxHp, true);
+        }
+
+        /// <summary>
+        /// 몬스터 공격이 대쉬 회피에 막혔을 때(Game_MonsterAttackDodgedBroadcast) 내(로컬 플레이어)가 대상인 경우만 처리해
+        /// EffectBone 위치에 회피 이펙트를 재생한다. HP는 변하지 않는다. 다른 플레이어의 회피는 RemotePlayerManager가 처리한다.
+        /// </summary>
+        private void HandleMonsterAttackDodged(GameMonsterAttackDodgedBroadcastPacket packet)
+        {
+            if (!IsLocalPlayer(packet.TargetPlayerId) || localPlayerInstance == null)
+            {
+                return;
+            }
+
+            Transform effectAnchor = localPlayerInstance.transform.Find("EffectBone");
+            CharacterVfxManager.Instance?.PlayDodgeEffect(effectAnchor);
         }
 
         /// <summary>

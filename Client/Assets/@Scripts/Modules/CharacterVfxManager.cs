@@ -35,6 +35,15 @@ namespace Incheol.Modules
 
 
         /// <summary>
+        /// 몬스터 공격을 대쉬로 피한 순간 재생하는 이펙트. _anchor(보통 캐릭터의 EffectBone)의 월드 위치/회전에 그대로 스폰한다.
+        /// </summary>
+        public void PlayDodgeEffect(Transform _anchor)
+        {
+            PlayEffect(AddressableAssetKey.Dodge01, _anchor);
+        }
+
+
+        /// <summary>
         /// _key에 해당하는 이펙트를 _anchor 위치/회전에 스폰한다. 이후 버프 이펙트 등을 추가할 때도
         /// 이 메서드를 그대로 재사용하고, 공개 Play*Effect 메서드만 하나씩 늘리면 된다.
         /// </summary>

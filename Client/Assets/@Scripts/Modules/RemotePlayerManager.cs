@@ -34,6 +34,7 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnWorldSnapshot += HandleWorldSnapshot;
             GameServerConnectManager.Instance.OnDamageReceived += HandlePlayerDamaged;
             GameServerConnectManager.Instance.OnMonsterAttacked += HandleMonsterAttackedPlayer;
+            GameServerConnectManager.Instance.OnMonsterAttackDodged += HandleMonsterAttackDodgedPlayer;
             GameServerConnectManager.Instance.OnPlayerHpChanged += HandlePlayerHpChanged;
             GameServerConnectManager.Instance.OnPlayerRevived += HandlePlayerRevived;
             GameServerConnectManager.Instance.OnEquipmentChanged += HandleEquipmentChanged;
@@ -58,6 +59,7 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnWorldSnapshot -= HandleWorldSnapshot;
             GameServerConnectManager.Instance.OnDamageReceived -= HandlePlayerDamaged;
             GameServerConnectManager.Instance.OnMonsterAttacked -= HandleMonsterAttackedPlayer;
+            GameServerConnectManager.Instance.OnMonsterAttackDodged -= HandleMonsterAttackDodgedPlayer;
             GameServerConnectManager.Instance.OnPlayerHpChanged -= HandlePlayerHpChanged;
             GameServerConnectManager.Instance.OnPlayerRevived -= HandlePlayerRevived;
             GameServerConnectManager.Instance.OnEquipmentChanged -= HandleEquipmentChanged;
@@ -262,6 +264,20 @@ namespace Incheol.Modules
         private void HandleMonsterAttackedPlayer(GameMonsterAttackBroadcastPacket packet)
         {
             ApplyRemoteServerHp(packet.TargetPlayerId, packet.RemainingHp, null, true);
+        }
+
+        /// <summary>
+        /// 원격 플레이어가 몬스터 공격을 대쉬로 피했을 때 그 캐릭터의 EffectBone 위치에 회피 이펙트를 재생한다
+        /// (로컬 플레이어면 remotePlayers에 없으므로 자연히 무시된다 - GameSceneManager가 처리).
+        /// </summary>
+        private void HandleMonsterAttackDodgedPlayer(GameMonsterAttackDodgedBroadcastPacket packet)
+        {
+            if (!remotePlayers.TryGetValue(packet.TargetPlayerId, out RemoteCharacterController controller) || controller == null)
+            {
+                return;
+            }
+
+            CharacterVfxManager.Instance?.PlayDodgeEffect(controller.transform.Find("EffectBone"));
         }
 
         private void HandlePlayerHpChanged(GamePlayerHpBroadcastPacket packet)

@@ -55,6 +55,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ccec57015c7c4c54cbe01021a2ef2ab4
+    m_Address: Dodge01
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: cd221d5f145a2254797664c5758a2f31
     m_Address: SpearAttack01
     m_ReadOnly: 0

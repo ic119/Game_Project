@@ -26,7 +26,8 @@ namespace Incheol.Models.Define
         Dash01 = 20,
         LevelUp01 = 21,
         HpPotion01 = 22,
-        ChestDespawn01 = 23
+        ChestDespawn01 = 23,
+        Dodge01 = 24
     }
 
     /// <summary>
