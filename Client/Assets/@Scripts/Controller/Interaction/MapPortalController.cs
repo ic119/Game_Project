@@ -148,6 +148,12 @@ namespace Incheol.Controller.Interaction
             }
         }
 
+        private void OnDisable()
+        {
+            // 지연 중에 이 포털이 파괴/비활성화되면(코루틴이 중단돼 위의 해제 줄이 실행되지 않는다) 입력이 계속 막히므로 푼다.
+            InputBlocker.SetBlocked(this, false);
+        }
+
         private void OnTriggerExit(Collider other)
         {
             PlayerMoveController playerMove = other.GetComponentInParent<PlayerMoveController>();
@@ -209,6 +215,14 @@ namespace Incheol.Controller.Interaction
             isTeleporting = true;
             onTeleportStarted?.Invoke();
 
+            // 맵 이동 포털은 진입 순간부터 입력을 잠근다. 서버는 "포털 반경 + 2m 안"에 있을 때만 맵 이동을 승인하는데, 지연
+            // (teleportDelay) 동안 계속 걸어 나가면 로딩이 끝날 때 반경 밖이라 거부될 수 있다. 지연이 끝나면
+            // GameSceneManager.SwapMap이 자기 잠금을 먼저 걸므로(동기 호출) 아래에서 이 잠금을 풀어도 빈틈이 없다.
+            if (teleportType == PortalTeleportType.MapSwap)
+            {
+                InputBlocker.SetBlocked(this, true);
+            }
+
             // 진입 파티클 및 사운드 재생
             if (enterBurstEffect != null)
             {
@@ -226,6 +240,9 @@ namespace Incheol.Controller.Interaction
             }
 
             ExecuteTeleport(player);
+
+            // ExecuteTeleport가 일찍 끝난 경우(사망, 설정 오류)에도 반드시 푼다. 맵 이동이 시작됐다면 SwapMap의 잠금이 이어받는다.
+            InputBlocker.SetBlocked(this, false);
 
             isTeleporting = false;
             StartCoroutine(CooldownRoutine());

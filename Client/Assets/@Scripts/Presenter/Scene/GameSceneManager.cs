@@ -193,6 +193,9 @@ namespace Incheol.Presenter.Scene
 
         private void OnDestroy()
         {
+            // 맵 이동 도중에 이 매니저가 파괴되면(씬 전환 등) SwapMapAsync의 finally가 실행되지 않을 수 있어, 입력 잠금이 남지 않게 푼다.
+            InputBlocker.SetBlocked(this, false);
+
             if (gameSceneView != null)
             {
 
@@ -363,11 +366,14 @@ namespace Incheol.Presenter.Scene
         }
 
         /// <summary>
-        /// SwapMap의 실제 구현. 진행되는 동안(현재 맵 제거 -> 새 맵 생성 -> 플레이어 재배치) GameManager의
-        /// UI_LoadingBarView를 띄워 빈 화면이 보이지 않게 가리고, 끝나면 100%로 채운 뒤 다시 숨긴다.
-        /// try/finally로 감싸 어떤 경로로 리턴하든(성공/실패/조기 취소) isSwappingMap 해제와 로딩바 숨김이
-        /// 항상 실행되도록 보장한다 - 맵이 늘어나 이 메서드에 실패 분기가 추가되더라도 로딩바를 숨기는 걸
-        /// 깜빡할 여지가 없다.
+        /// SwapMap의 실제 구현. 순서는 "새 맵 로드 -> 검증 -> 교체(이전 맵 제거, 새 맵 생성, 플레이어 재배치, 서버 알림)"다.
+        /// 이전 맵은 새 맵을 끝까지 로드하고 진입 지점까지 확인한 뒤에야 제거한다 - 로드 실패/타임아웃/진입 지점 누락이면
+        /// 이전 맵을 그대로 둔 채 취소하고 서버에는 아무것도 보내지 않으므로, 플레이어가 맵 없는 빈 공간에 남거나 서버와 맵이
+        /// 어긋나지 않는다. 취소해도 포털을 다시 타면 재시도할 수 있다(실패한 로드는 캐시되지 않는다).
+        /// 맵을 바꾸는 동안(로딩 포함)에는 InputBlocker로 플레이어 입력을 잠가, 로딩 중에 포털 반경을 벗어나 서버가 맵 이동을
+        /// 거부하는 일을 막는다. 진행되는 동안 GameManager의 UI_LoadingBarView를 띄워 화면을 가리고, 끝나면 100%로 채운 뒤 숨긴다.
+        /// try/finally로 감싸 어떤 경로로 리턴하든(성공/실패/조기 취소) isSwappingMap 해제, 입력 잠금 해제, 로딩바 숨김이
+        /// 항상 실행되도록 보장한다 - 맵이 늘어나 이 메서드에 실패 분기가 추가되더라도 깜빡할 여지가 없다.
         /// </summary>
         private async Awaitable SwapMapAsync(AddressableAssetKey _newMapKey, string _entryPointName)
         {
@@ -386,6 +392,10 @@ namespace Incheol.Presenter.Scene
             isSwappingMap = true;
             GameManager.Instance?.ShowLoadingBar();
 
+            // 맵을 바꾸는 동안(로딩 포함) 이동/공격/단축키 입력을 잠근다. 이 줄은 첫 await 전에 동기적으로 실행되므로, 포털이
+            // 지연 구간에 걸어 둔 잠금(MapPortalController)을 풀기 전에 이미 이쪽 잠금이 걸려 있어 빈틈이 없다.
+            InputBlocker.SetBlocked(this, true);
+
             // LoadingBarView는 ObjectPoolManager가 씬 전환 없이 재사용하는 인스턴스라, BootstrapSceneManager가
             // 마지막으로 남긴 타이틀("메인 씬으로 전환 준비 완료" 등)이 지워지지 않은 채 그대로 남아있다.
             // 맵 전환에는 그 문구가 맞지 않으므로 빈 문자열로 지운다.
@@ -395,7 +405,51 @@ namespace Incheol.Presenter.Scene
             {
                 string newMapKeyString = _newMapKey.ToString();
 
-                // 지금 스폰돼있는 원격 플레이어/몬스터는 전부 이전 맵 소속이므로 미리 비운다.
+                const float loadTimeoutSeconds = 30f;
+                float loadStartTime = Time.unscaledTime;
+
+                // 1) 이전 맵을 그대로 둔 채 새 맵 프리팹만 먼저 로드한다. 원격 플레이어/몬스터도 아직 이전 맵 소속으로 유효하다.
+                AddressableAssetManager.Instance.LoadPrefabAddress<GameObject>(newMapKeyString);
+
+                // 새 맵을 로드하는 동안이 SwapMap 전체 소요 시간의 대부분을 차지하므로(나머지 단계는 전부 순간적),
+                // "0%에 머물다 끝나면 100%로 점프"가 아니라 Addressables가 보고하는 실제 진행률을 그대로 반영한다.
+                await AddressableAssetManager.Instance.WaitForLoadAsync(
+                    newMapKeyString,
+                    () => Time.unscaledTime - loadStartTime >= loadTimeoutSeconds,
+                    percentComplete => GameManager.Instance?.LoadingBarView?.UpdateProgress(percentComplete));
+
+                if (this == null || localPlayerInstance == null)
+                {
+                    return;
+                }
+
+                // 2) 교체하기 전에 검증한다. 하나라도 실패하면 이전 맵을 건드리지 않고 취소한다(서버에도 알리지 않는다).
+                if (!AddressableAssetManager.Instance.GetHandler(newMapKeyString, out AsyncOperationHandle handle) || handle.Result is not GameObject prefab)
+                {
+                    bool timedOut = Time.unscaledTime - loadStartTime >= loadTimeoutSeconds;
+                    CancelMapSwap(timedOut
+                        ? $"맵 로드 시간 초과({loadTimeoutSeconds:0}초) Key : {newMapKeyString}"
+                        : $"맵 로드 실패 Key : {newMapKeyString}");
+                    return;
+                }
+
+                // 프리팹 에셋에서 직접 찾아 확인한다 - 인스턴스를 만들면 이전 맵과 겹쳐 물리/Awake가 먼저 실행되므로, 만들기 전에 알아야 한다.
+                if (FindChildRecursive(prefab.transform, _entryPointName) == null)
+                {
+                    CancelMapSwap($"{newMapKeyString} 맵에서 {_entryPointName}을 찾을 수 없습니다.");
+                    return;
+                }
+
+                // 로딩하는 사이 사망했으면 교체하지 않는다 - 서버도 사망 중 맵 이동을 거부하므로 서버와 어긋나지 않게 한다
+                // (사망 처리는 별도로 진행되므로 안내 팝업은 띄우지 않는다).
+                if (spawnedPlayerModel != null && spawnedPlayerModel.IsDead)
+                {
+                    DebugLogManager.GenerateErrorMessage<GameSceneManager>($"맵 로딩 중 사망해 맵 이동을 취소합니다. 요청한 맵 : {newMapKeyString}");
+                    return;
+                }
+
+                // 3) 교체. 여기부터는 되돌리지 않는다.
+                // 지금 스폰돼있는 원격 플레이어/몬스터는 전부 이전 맵 소속이므로 비운다.
                 // 새 맵 목록은 Game_MapChangeAck 응답으로 다시 채워진다.
                 RemotePlayerManager.Instance?.ClearAll();
                 RemoteMonsterManager.Instance?.ClearAll();
@@ -411,36 +465,14 @@ namespace Incheol.Presenter.Scene
                     currentMapInstance = null;
                 }
 
-                const float loadTimeoutSeconds = 30f;
-                float loadStartTime = Time.unscaledTime;
-
-                AddressableAssetManager.Instance.LoadPrefabAddress<GameObject>(newMapKeyString);
-
-                // 새 맵을 로드하는 동안이 SwapMap 전체 소요 시간의 대부분을 차지하므로(나머지 단계는 전부 순간적),
-                // "0%에 머물다 끝나면 100%로 점프"가 아니라 Addressables가 보고하는 실제 진행률을 그대로 반영한다.
-                await AddressableAssetManager.Instance.WaitForLoadAsync(
-                    newMapKeyString,
-                    () => Time.unscaledTime - loadStartTime >= loadTimeoutSeconds,
-                    percentComplete => GameManager.Instance?.LoadingBarView?.UpdateProgress(percentComplete));
-
-                if (this == null || localPlayerInstance == null)
-                {
-                    return;
-                }
-
-                if (!AddressableAssetManager.Instance.GetHandler(newMapKeyString, out AsyncOperationHandle handle) || handle.Result is not GameObject prefab)
-                {
-                    DebugLogManager.GenerateErrorMessage<GameSceneManager>($"맵 로드 실패 Key : {newMapKeyString}");
-                    return;
-                }
-
                 currentMapInstance = AddressableAssetManager.Instance.InstantiatePrefab(prefab, transform);
                 currentMapId = newMapKeyString;
 
+                // 위에서 프리팹으로 확인했으므로 인스턴스에도 있어야 한다.
                 Transform entryPoint = FindChildRecursive(currentMapInstance.transform, _entryPointName);
                 if (entryPoint == null)
                 {
-                    DebugLogManager.GenerateErrorMessage<GameSceneManager>($"{newMapKeyString} 맵에서 {_entryPointName}을 찾을 수 없습니다.");
+                    DebugLogManager.GenerateErrorMessage<GameSceneManager>($"{newMapKeyString} 맵 인스턴스에서 {_entryPointName}을 찾을 수 없습니다.");
                     return;
                 }
 
@@ -453,8 +485,19 @@ namespace Incheol.Presenter.Scene
             finally
             {
                 isSwappingMap = false;
+                InputBlocker.SetBlocked(this, false);
                 GameManager.Instance?.HideLoadingBar();
             }
+        }
+
+        /// <summary>
+        /// 맵 이동을 취소한 이유를 로그로 남기고 플레이어에게 알린다. 이전 맵은 그대로이고 서버에도 알리지 않았으므로 상태는
+        /// 이동 전과 같다 - 포털을 다시 타면 재시도할 수 있다.
+        /// </summary>
+        private void CancelMapSwap(string _reason)
+        {
+            DebugLogManager.GenerateErrorMessage<GameSceneManager>($"맵 이동을 취소합니다 : {_reason}");
+            GameManager.Instance?.ShowAlarmPopup("맵 이동 실패", "맵을 불러오지 못해 이동하지 못했습니다. 잠시 후 다시 시도해 주세요.");
         }
 
         /// <summary>
