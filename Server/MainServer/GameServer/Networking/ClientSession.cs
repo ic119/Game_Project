@@ -525,22 +525,35 @@ namespace GameServer.Networking
                 return;
             }
 
-            // 사망 중에는 맵을 옮기지 않는다 - 부활 예약(GameRoom.ReviveAfterDelayAsync)이 사망한 방에 걸려 있어,
-            // 다른 방으로 옮겨 가면 부활 알림이 새 방에 전달되지 않는다. 클라이언트도 사망 중에는 포탈을 막는다.
-            if (!previousRoom.TryGetInfo(playerId, out var info) || info.CurrentHp <= 0)
+            // 방에 없는 세션(같은 캐릭터의 새 세션이 이미 방 항목을 차지했다)은 곧 끊기므로 응답하지 않는다.
+            if (!previousRoom.TryGetInfo(playerId, out var info))
             {
+                return;
+            }
+
+            // 사망 중에는 맵을 옮기지 않는다 - 부활 예약(GameRoom.ReviveAfterDelayAsync)이 사망한 방에 걸려 있어,
+            // 다른 방으로 옮겨 가면 부활 알림이 새 방에 전달되지 않는다. 클라이언트도 사망 중에는 포탈을 막지만, 로딩하는 사이에
+            // 죽었을 수 있다 - 응답이 없으면 클라이언트가 계속 기다리므로 반드시 거부 응답을 보낸다.
+            if (info.CurrentHp <= 0)
+            {
+                RejectMapChange(request.MapId, MapChangeRejectReason.Dead, $"[GameServer] 맵 이동 거부 (PlayerId={playerId}) : 사망 중, {previousMapId} -> {request.MapId}");
                 return;
             }
 
             // 현재 맵에서 요청한 맵으로 가는 MapSwap 포탈 근처에 있을 때만 옮겨 준다. 도착 위치도 클라이언트가 보낸 좌표가 아니라
             // 맵 데이터의 진입 지점으로 정한다 - 그렇지 않으면 아무 맵의 아무 좌표로나 순간이동할 수 있다.
+            // 클라이언트는 이 응답(승인/거부)을 받은 뒤에야 맵을 교체하므로, 여기서 거부해도 클라이언트와 서버의 맵이 어긋나지 않는다.
+            // 정상 클라이언트는 같은 맵 데이터로 포탈을 타므로 거부될 일이 드물다(맵 데이터를 다시 내보내지 않은 경우 제외).
             MapPortal? portal = FindMapSwapPortal(previousMapId, request.MapId, info);
-            if (portal?.Destination is not { } destination || !MapDataCatalog.TryGet(request.MapId, out _))
+            if (!MapDataCatalog.TryGet(request.MapId, out _))
             {
-                Console.WriteLine($"[GameServer] 맵 이동 거부 (PlayerId={playerId}) : {previousMapId} -> {request.MapId}, 위치=({info.X:F1},{info.Z:F1})");
-                // 클라이언트는 이미 새 맵을 로드했으므로 조용히 무시하면 서버와 맵이 어긋난 채로 남는다 - 사유를 알린다.
-                // 정상 클라이언트는 같은 맵 데이터로 포탈을 타므로 여기에 오지 않는다(맵 데이터를 다시 내보내지 않은 경우 제외).
-                Send(OpCode.System_Error, Encoding.UTF8.GetBytes("맵 이동이 거부되었습니다."));
+                RejectMapChange(request.MapId, MapChangeRejectReason.UnknownMap, $"[GameServer] 맵 이동 거부 (PlayerId={playerId}) : 알 수 없는 맵, {previousMapId} -> {request.MapId}");
+                return;
+            }
+
+            if (portal?.Destination is not { } destination)
+            {
+                RejectMapChange(request.MapId, MapChangeRejectReason.NotAtPortal, $"[GameServer] 맵 이동 거부 (PlayerId={playerId}) : {previousMapId} -> {request.MapId}, 위치=({info.X:F1},{info.Z:F1})");
                 return;
             }
 
@@ -567,6 +580,13 @@ namespace GameServer.Networking
             Send(OpCode.Game_MapChangeAck, ack.Encode());
 
             SendChestState(nextRoom);
+        }
+
+        // 맵 이동 요청을 거부하고 사유를 알린다. 서버 상태(방, 위치)는 건드리지 않는다.
+        private void RejectMapChange(string requestedMapId, MapChangeRejectReason reason, string logMessage)
+        {
+            Console.WriteLine(logMessage);
+            Send(OpCode.Game_MapChangeRejected, new S2CMapChangeRejected { MapId = requestedMapId, Reason = reason }.Encode());
         }
 
         // 이동 속도 검증 - "이동 거리 예산" 방식. 예산은 초당 MoveBudgetRefillPerSecond(m)씩 차고 최대 MoveBudgetCapacity(m)까지

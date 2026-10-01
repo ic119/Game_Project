@@ -72,6 +72,10 @@ namespace Shared.Networking
         Game_MonsterAttackStartBroadcast = 0x0226,
         Game_MonsterAttackDodgedBroadcast = 0x0227,
 
+        // 맵 이동 거부. 클라이언트는 Game_MapChangeRequest를 보낸 뒤 서버의 응답(승인: Game_MapChangeAck, 거부: 이것)을 받고서야
+        // 맵을 교체한다 - 거부된 요청이 이미 새 맵으로 넘어간 클라이언트와 서버의 맵을 어긋나게 만들지 않도록 한다.
+        Game_MapChangeRejected = 0x0228,
+
         // 0x03XX = Dungeon
     }
 }
