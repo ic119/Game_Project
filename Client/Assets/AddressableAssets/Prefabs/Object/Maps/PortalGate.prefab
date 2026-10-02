@@ -610,7 +610,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.Controller.Interaction.MapPortalController
   teleportType: 2
-  targetMapKey: 0
+  targetMapKey: 25
   targetMapEntryPointName: RespawnPoint
   targetDestination: {fileID: 0}
   targetCoordinate: {x: 0, y: 0, z: 0}

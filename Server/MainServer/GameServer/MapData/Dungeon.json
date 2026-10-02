@@ -1,0 +1,22 @@
+{
+    "respawnPoint": {
+        "x": -7.650000095367432,
+        "y": -1.3600000143051148,
+        "z": -13.949999809265137,
+        "rotationY": 0.0
+    },
+    "portals": [],
+    "chests": [],
+    "chestCandidates": [],
+    "chestSpawnCounts": [],
+    "gateCandidates": [],
+    "gatePlan": {
+        "targetMapId": "",
+        "destination": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0,
+            "rotationY": 0.0
+        }
+    }
+}
