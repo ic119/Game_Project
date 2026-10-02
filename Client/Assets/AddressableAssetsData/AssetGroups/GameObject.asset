@@ -30,6 +30,16 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a66c6a59baa4289409adc7fcacdbe71e
+    m_Address: PortalGate
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ae858dac82a59b548993284825e2121a
+    m_Address: Dungeon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: ed1e565911623534c9fc567fe2d0cd14
     m_Address: TreasureChest
     m_ReadOnly: 0
