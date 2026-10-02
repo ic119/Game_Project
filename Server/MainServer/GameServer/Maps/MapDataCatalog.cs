@@ -128,6 +128,8 @@ namespace GameServer.Maps
                         }
                     }
 
+                    ValidateGate(mapId, data);
+
                     result[mapId] = data;
                     Log.LogInformation("맵 데이터 로드 완료 : {MapId}", mapId);
                 }
@@ -148,7 +150,31 @@ namespace GameServer.Maps
             _mapDataById = result;
         }
 
-        // 도착 맵 데이터가 로드된 목록에 없는 MapSwap 포탈을 "'출발 맵'의 포탈(x, z) -> '도착 맵'" 형태의 설명으로 돌려준다.
+        // 던전 게이트 후보(gateCandidates)는 게이트 설정(gatePlan)과 함께 있어야 한다 - 뽑힌 후보가 곧 도착 맵으로 가는 포탈이 되므로
+        // 도착 맵/도착 위치가 없으면 그 게이트는 항상 "포탈 근처가 아님"으로 거부된다. 부팅 시점에 막는다.
+        private static void ValidateGate(string mapId, MapData data)
+        {
+            if (data.GateCandidates.Count == 0)
+            {
+                return;
+            }
+
+            if (data.GatePlan is null || string.IsNullOrEmpty(data.GatePlan.TargetMapId) || data.GatePlan.Destination is null)
+            {
+                throw new InvalidOperationException($"'{mapId}'에 게이트 후보가 있는데 gatePlan(targetMapId/destination)이 올바르지 않습니다.");
+            }
+
+            var seenGateIds = new HashSet<string>();
+            foreach (MapGateCandidate candidate in data.GateCandidates)
+            {
+                if (string.IsNullOrEmpty(candidate.Id) || !seenGateIds.Add(candidate.Id))
+                {
+                    throw new InvalidOperationException($"'{mapId}'의 게이트 후보 id '{candidate.Id}'가 비어 있거나 중복됩니다.");
+                }
+            }
+        }
+
+        // 도착 맵 데이터가 로드된 목록에 없는 MapSwap 포탈(던전 게이트 설정 포함)을 "'출발 맵'의 포탈(x, z) -> '도착 맵'" 형태의 설명으로 돌려준다.
         public static List<string> FindPortalsWithMissingTargetMap(IReadOnlyDictionary<string, MapData> maps)
         {
             var problems = new List<string>();
@@ -161,6 +187,11 @@ namespace GameServer.Maps
                     {
                         problems.Add($"'{mapId}'의 포탈({portal.X:F1}, {portal.Z:F1}) -> '{portal.TargetMapId}'");
                     }
+                }
+
+                if (data.GateCandidates.Count > 0 && data.GatePlan is { } gatePlan && !maps.ContainsKey(gatePlan.TargetMapId))
+                {
+                    problems.Add($"'{mapId}'의 던전 게이트 후보 {data.GateCandidates.Count}곳 -> '{gatePlan.TargetMapId}'");
                 }
             }
 
@@ -191,6 +222,35 @@ namespace GameServer.Maps
 
         // 등급(LootTableKey)별로 후보 중 몇 개를 뽑을지(Unity TreasureChestSpawnPlan).
         public List<MapChestSpawnCount> ChestSpawnCounts { get; init; } = new();
+
+        // 던전 게이트가 설 수 있는 후보 지점(Unity DungeonGateSpawnPointMarker). 방이 만들어질 때 RoomGateState가 이 중 정확히
+        // 한 곳만 뽑는다(없으면 게이트가 없는 맵). 뽑힌 후보는 GatePlan의 도착 정보와 합쳐 MapSwap 포탈로 취급된다.
+        public List<MapGateCandidate> GateCandidates { get; init; } = new();
+
+        // 게이트가 가는 곳(Unity DungeonGateSpawnPlan). 후보가 있으면 반드시 있어야 한다.
+        public MapGatePlan? GatePlan { get; init; }
+    }
+
+    public class MapGateCandidate
+    {
+        // 클라이언트 후보 마커 GameObject 이름(맵 안에서 고유). 서버가 뽑은 후보를 클라이언트에 알리는 id로 그대로 쓴다.
+        public string Id { get; init; } = string.Empty;
+
+        public float X { get; init; }
+        public float Y { get; init; }
+        public float Z { get; init; }
+
+        // 게이트 콜라이더의 수평 반경(m). MapPortal.Radius와 같은 용도.
+        public float Radius { get; init; }
+    }
+
+    public class MapGatePlan
+    {
+        // 게이트가 연결되는 도착 맵 id(MapPortal.TargetMapId와 같은 규칙).
+        public string TargetMapId { get; init; } = string.Empty;
+
+        // 도착 맵의 진입 지점(MapPortal.Destination과 같은 규칙).
+        public MapPoint? Destination { get; init; }
     }
 
     public class MapChestSpawnCount

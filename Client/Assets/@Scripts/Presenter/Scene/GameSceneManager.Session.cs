@@ -91,6 +91,7 @@ namespace Incheol.Presenter.Scene
                 RemotePlayerManager.Instance?.ClearAll();
                 RemoteMonsterManager.Instance?.ClearAll();
                 RemoteChestManager.Instance?.ClearAll();
+                RemoteGateManager.Instance?.ClearAll();
                 monsterTargetView?.ClearTarget();
                 GameManager.Instance?.ShowLoadingBar();
             }

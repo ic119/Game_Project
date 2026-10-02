@@ -66,6 +66,7 @@ namespace GameServer.Networking
 
             MapDataCatalog.TryGet(mapId, out MapData? mapData);
             _chests = new RoomChestState(mapData, Random.Shared, BroadcastToAll, _serverLifetimeCt);
+            _gate = new RoomGateState(mapData, Random.Shared);
 
             _ = RunTickLoopAsync(_serverLifetimeCt);
         }
@@ -76,6 +77,15 @@ namespace GameServer.Networking
 
         // 방에 새로 입장/맵 이동한 세션에게 상자 상태(서 있는 목록 -> 이미 열린 것)를 알린다.
         public void SendChestState(ISessionSender session) => _chests.SendState(session.Send);
+
+        // 이 방의 던전 게이트(후보 중 방 생성 시 뽑힌 한 곳). 방이 살아 있는 동안 바뀌지 않는다(RoomGateState 주석 참고).
+        private readonly RoomGateState _gate;
+
+        // 방에 새로 입장/맵 이동한 세션에게 게이트 위치를 알린다.
+        public void SendGateState(ISessionSender session) => _gate.SendState(session.Send);
+
+        // 맵 이동 검증용: 이 방의 게이트를 MapSwap 포탈로 바꾼 것(게이트가 없으면 null).
+        public MapPortal? ActiveGatePortal => _gate.ActivePortal;
 
         // 직전 틱 이후 위치가 바뀐 플레이어 id. 이동 요청은 위치만 갱신하고 여기에 표시하며, 실제 전송은 다음 틱의
         // 스냅샷(S2CWorldSnapshot)에 모아서 한다(RunTickLoopAsync). 값은 쓰지 않는다(ConcurrentDictionary를 집합으로 사용).

@@ -206,6 +206,11 @@ namespace Incheol.Modules
                     pendingActions.Enqueue(() => OnActiveChestsReceived?.Invoke(activeChests));
                     break;
 
+                case GameOpCode.Game_ActiveGateNotify:
+                    var activeGate = GameActiveGatePacket.Decode(body);
+                    pendingActions.Enqueue(() => OnActiveGateReceived?.Invoke(activeGate));
+                    break;
+
                 case GameOpCode.Game_ChestSpawnBroadcast:
                     var chestSpawn = GameChestSpawnPacket.Decode(body);
                     pendingActions.Enqueue(() => OnChestSpawned?.Invoke(chestSpawn.Chest));

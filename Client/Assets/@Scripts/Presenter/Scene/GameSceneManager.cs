@@ -516,6 +516,7 @@ namespace Incheol.Presenter.Scene
             _ = RemotePlayerManager.Instance;
             _ = RemoteMonsterManager.Instance;
             _ = RemoteChestManager.Instance;
+            _ = RemoteGateManager.Instance;
         }
 
         /// <summary>

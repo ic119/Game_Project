@@ -120,7 +120,12 @@ namespace GameServer.Networking
         // 부담이 없다. 입장/맵 이동 직후 서 있는 상자 목록 -> 이미 열린 상자 순으로 보낸다(GameRoom.SendChestState). 이후의 변화
         // (열림/제거/리스폰)는 방 전체 브로드캐스트로 온다. 이미 열린 상자는 Game_ChestOpenBroadcast를 그대로 재사용해, 실시간으로
         // 여는 경우와 클라이언트 처리 코드가 완전히 같다(TreasureChestInteractionController 입장에서는 구분할 필요가 없다).
-        private void SendChestState(GameRoom room) => room.SendChestState(this);
+        // 던전 게이트 위치(방 생성 시 후보 중 뽑힌 한 곳)도 같은 시점에 알린다 - 상자 목록 바로 뒤에 온다.
+        private void SendChestState(GameRoom room)
+        {
+            room.SendChestState(this);
+            room.SendGateState(this);
+        }
 
         // 입장하는 캐릭터에 이전 상태(끊기기 전, 또는 밀어낸 세션의 현재 상태)를 이어받게 한다. info는 가득 찬 체력과
         // 요청한 맵의 부활 지점으로 채워진 상태로 들어온다.

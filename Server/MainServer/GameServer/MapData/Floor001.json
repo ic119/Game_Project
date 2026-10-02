@@ -172,5 +172,37 @@
             "respawnSeconds": 900.0,
             "despawnDelaySeconds": 20.0
         }
-    ]
+    ],
+    "gateCandidates": [
+        {
+            "id": "DungeonGateSpawnPointMarker001",
+            "x": -81.43000030517578,
+            "y": 5.099999904632568,
+            "z": 35.279998779296878,
+            "radius": 2.748748779296875
+        },
+        {
+            "id": "DungeonGateSpawnPointMarker002",
+            "x": 2.0399999618530275,
+            "y": 0.05700000002980232,
+            "z": -13.75,
+            "radius": 2.748748779296875
+        },
+        {
+            "id": "DungeonGateSpawnPointMarker003",
+            "x": 0.07999999821186066,
+            "y": 0.05700000002980232,
+            "z": -15.34000015258789,
+            "radius": 2.748748779296875
+        }
+    ],
+    "gatePlan": {
+        "targetMapId": "Dungeon",
+        "destination": {
+            "x": -7.650000095367432,
+            "y": -1.3600000143051148,
+            "z": -13.949999809265137,
+            "rotationY": 0.0
+        }
+    }
 }

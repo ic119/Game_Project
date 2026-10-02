@@ -86,6 +86,26 @@ namespace Incheol.Editor
             public float despawnDelaySeconds;
         }
 
+        // 던전 게이트가 설 수 있는 후보 지점. 서버가 방을 만들 때 이 중 정확히 한 곳만 뽑는다.
+        [System.Serializable]
+        private class GateCandidateJson
+        {
+            // 후보 마커 GameObject 이름(맵 안에서 고유). 서버가 뽑은 후보를 클라이언트에 알리는 id로 그대로 쓴다.
+            public string id;
+            public float x;
+            public float y;
+            public float z;
+            public float radius;
+        }
+
+        // 게이트가 가는 곳. 뽑힌 후보는 이 도착 정보와 합쳐 서버에서 MapSwap 포탈로 검증된다.
+        [System.Serializable]
+        private class GatePlanJson
+        {
+            public string targetMapId;
+            public PointJson destination;
+        }
+
         [System.Serializable]
         private class MapDataJson
         {
@@ -94,6 +114,8 @@ namespace Incheol.Editor
             public List<ChestJson> chests = new();
             public List<ChestCandidateJson> chestCandidates = new();
             public List<ChestSpawnCountJson> chestSpawnCounts = new();
+            public List<GateCandidateJson> gateCandidates = new();
+            public GatePlanJson gatePlan = new();
         }
 
         [MenuItem("Tools/Map/Export Map Data From Selected Prefab")]
@@ -172,6 +194,11 @@ namespace Incheol.Editor
                     return Fail(showDialogs, $"'{mapId}' : {candidateError}");
                 }
 
+                if (!TryBuildGateCandidates(root, fileData, out string gateError))
+                {
+                    return Fail(showDialogs, $"'{mapId}' : {gateError}");
+                }
+
                 string json = JsonUtility.ToJson(fileData, true);
                 string outputDirectory = Path.GetFullPath(Path.Combine(Application.dataPath, ServerMapDataRelativePath));
                 Directory.CreateDirectory(outputDirectory);
@@ -179,7 +206,7 @@ namespace Incheol.Editor
                 File.WriteAllText(outputPath, json);
 
                 string closedNote = closedPortalCount > 0 ? $", 닫힌 포탈 {closedPortalCount}개 제외" : string.Empty;
-                Debug.Log($"[MapDataExporter] '{mapId}' 맵 데이터(포탈 {fileData.portals.Count}개{closedNote}, 상자 {fileData.chests.Count}개, 상자 후보 {fileData.chestCandidates.Count}개)를 내보냈습니다 : {outputPath}");
+                Debug.Log($"[MapDataExporter] '{mapId}' 맵 데이터(포탈 {fileData.portals.Count}개{closedNote}, 상자 {fileData.chests.Count}개, 상자 후보 {fileData.chestCandidates.Count}개, 게이트 후보 {fileData.gateCandidates.Count}개)를 내보냈습니다 : {outputPath}");
                 return true;
             }
             finally
@@ -455,6 +482,106 @@ namespace Incheol.Editor
 
             error = null;
             return true;
+        }
+
+        // 게이트 프리팹 이름(Addressables "PortalGate"와 같다, RemoteGateManager가 이 주소로 생성한다).
+        private const string GatePrefabName = "PortalGate";
+
+        // 게이트 후보 마커(DungeonGateSpawnPointMarker)와 도착 설정(DungeonGateSpawnPlan)을 검증해 내보낸다.
+        // 후보는 있는데 도착지를 알 수 없으면 서버가 뽑은 게이트가 항상 거부되므로 통째로 중단한다.
+        private static bool TryBuildGateCandidates(GameObject root, MapDataJson fileData, out string error)
+        {
+            DungeonGateSpawnPointMarker[] markers = root.GetComponentsInChildren<DungeonGateSpawnPointMarker>(true);
+            DungeonGateSpawnPlan plan = root.GetComponentInChildren<DungeonGateSpawnPlan>(true);
+
+            if (markers.Length == 0)
+            {
+                error = null;
+                return true;
+            }
+
+            if (plan == null)
+            {
+                error = "게이트 후보가 있는데 DungeonGateSpawnPlan 컴포넌트가 없습니다(맵 프리팹에 추가해 도착 맵을 지정하세요).";
+                return false;
+            }
+
+            if (plan.targetMapKey == AddressableAssetKey.None)
+            {
+                error = "DungeonGateSpawnPlan의 도착 맵(Target Map Key)이 지정되지 않았습니다.";
+                return false;
+            }
+
+            string targetMapId = plan.targetMapKey.ToString();
+            if (!TryFindEntryPointInMap(targetMapId, plan.targetMapEntryPointName, out PointJson destination, out error))
+            {
+                return false;
+            }
+
+            // 서버는 이 반경에 여유 거리를 더해 "게이트 앞에 있었는지"를 판정한다 - 게이트 프리팹의 콜라이더에서 구한다.
+            if (!TryGetGateRadius(out float radius, out error))
+            {
+                return false;
+            }
+
+            var seenIds = new HashSet<string>();
+            foreach (DungeonGateSpawnPointMarker marker in markers)
+            {
+                string id = marker.gameObject.name;
+                if (!seenIds.Add(id))
+                {
+                    error = $"게이트 후보 '{id}'의 이름이 다른 게이트 후보와 중복됩니다(후보 이름이 곧 id입니다).";
+                    return false;
+                }
+
+                Vector3 position = marker.transform.position;
+                fileData.gateCandidates.Add(new GateCandidateJson { id = id, x = position.x, y = position.y, z = position.z, radius = radius });
+            }
+
+            fileData.gatePlan = new GatePlanJson { targetMapId = targetMapId, destination = destination };
+            error = null;
+            return true;
+        }
+
+        private static bool TryGetGateRadius(out float radius, out string error)
+        {
+            radius = 0f;
+
+            string path = null;
+            foreach (string guid in AssetDatabase.FindAssets($"{GatePrefabName} t:Prefab"))
+            {
+                string candidate = AssetDatabase.GUIDToAssetPath(guid);
+                if (Path.GetFileNameWithoutExtension(candidate) == GatePrefabName)
+                {
+                    path = candidate;
+                    break;
+                }
+            }
+
+            if (path == null)
+            {
+                error = $"게이트 프리팹 '{GatePrefabName}'을(를) 찾을 수 없습니다.";
+                return false;
+            }
+
+            GameObject gate = PrefabUtility.LoadPrefabContents(path);
+            try
+            {
+                MapPortalController portal = gate.GetComponentInChildren<MapPortalController>(true);
+                if (portal == null)
+                {
+                    error = $"게이트 프리팹 '{GatePrefabName}'에 MapPortalController가 없습니다.";
+                    return false;
+                }
+
+                radius = GetHorizontalRadius(portal);
+                error = null;
+                return true;
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(gate);
+            }
         }
 
         private static PointJson ToPointJson(Transform transform)

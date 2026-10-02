@@ -46,6 +46,7 @@ namespace Incheol.Modules.Networking
         Game_DashRequest = 0x0225,
         Game_MonsterAttackStartBroadcast = 0x0226,
         Game_MonsterAttackDodgedBroadcast = 0x0227,
-        Game_MapChangeRejected = 0x0228
+        Game_MapChangeRejected = 0x0228,
+        Game_ActiveGateNotify = 0x0229
     }
 }

@@ -124,6 +124,12 @@ namespace Incheol.Controller.Interaction
                 audioSource.spatialBlend = 0.8f;
             }
 
+        }
+
+        // Awake가 아니라 Start에서 검사한다 - 런타임에 생성하는 포털(던전 게이트)은 Instantiate 직후 SetTargetMap으로 목적지를
+        // 채우므로, Awake에서 검사하면 곧 채워질 값을 두고 "도착 맵이 없다"는 거짓 오류를 낸다.
+        private void Start()
+        {
             ValidateSettings();
         }
 

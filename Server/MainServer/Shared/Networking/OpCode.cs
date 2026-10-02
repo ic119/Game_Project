@@ -76,6 +76,10 @@ namespace Shared.Networking
         // 맵을 교체한다 - 거부된 요청이 이미 새 맵으로 넘어간 클라이언트와 서버의 맵을 어긋나게 만들지 않도록 한다.
         Game_MapChangeRejected = 0x0228,
 
+        // 방에 입장/맵 이동한 플레이어에게 "이 방의 던전 게이트가 어느 후보 지점에 섰는지"를 알린다(방 생성 시 후보 중 한 곳이 뽑힌다).
+        // Game_ActiveChestsNotify 직후에 온다. 게이트가 없는 맵이어도 "없음"으로 항상 온다.
+        Game_ActiveGateNotify = 0x0229,
+
         // 0x03XX = Dungeon
     }
 }

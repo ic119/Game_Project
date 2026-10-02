@@ -19,14 +19,16 @@ namespace GameServer.Networking
     public partial class ClientSession
     {
         // mapId 맵에서 targetMapId로 가는 MapSwap 포탈 중 player가 범위 안에 있는 것을 찾는다(없으면 null).
-        private static MapPortal? FindMapSwapPortal(string mapId, string targetMapId, PlayerInfo player)
+        // 고정 포탈(맵 데이터의 portals)에 더해, 이 방에 뽑혀 서 있는 던전 게이트(activeGate)도 포탈로 취급한다 -
+        // 뽑히지 않은 후보 지점에는 게이트가 없으므로 그 자리에서의 이동 요청은 거부된다.
+        private static MapPortal? FindMapSwapPortal(string mapId, string targetMapId, PlayerInfo player, MapPortal? activeGate)
         {
             if (!MapDataCatalog.TryGet(mapId, out MapData mapData))
             {
                 return null;
             }
 
-            return mapData.Portals.FirstOrDefault(portal =>
+            return mapData.Portals.Concat(activeGate is null ? Array.Empty<MapPortal>() : new[] { activeGate }).FirstOrDefault(portal =>
                 portal.Type == MapPortal.MapSwapType
                 && portal.TargetMapId == targetMapId
                 && portal.IsWithinRange(player.X, player.Z));
@@ -93,7 +95,7 @@ namespace GameServer.Networking
             // 맵 데이터의 진입 지점으로 정한다 - 그렇지 않으면 아무 맵의 아무 좌표로나 순간이동할 수 있다.
             // 클라이언트는 이 응답(승인/거부)을 받은 뒤에야 맵을 교체하므로, 여기서 거부해도 클라이언트와 서버의 맵이 어긋나지 않는다.
             // 정상 클라이언트는 같은 맵 데이터로 포탈을 타므로 거부될 일이 드물다(맵 데이터를 다시 내보내지 않은 경우 제외).
-            MapPortal? portal = FindMapSwapPortal(previousMapId, request.MapId, info);
+            MapPortal? portal = FindMapSwapPortal(previousMapId, request.MapId, info, previousRoom.ActiveGatePortal);
             if (!MapDataCatalog.TryGet(request.MapId, out _))
             {
                 RejectMapChange(request.MapId, MapChangeRejectReason.UnknownMap, $"[GameServer] 맵 이동 거부 (PlayerId={playerId}) : 알 수 없는 맵, {previousMapId} -> {request.MapId}");

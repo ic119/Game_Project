@@ -63,6 +63,12 @@ namespace Incheol.Modules
         public event Action<GameActiveChestsPacket> OnActiveChestsReceived;
 
         /// <summary>
+        /// 방에 입장/맵 이동한 직후 서버가 알려주는 "던전 게이트가 선 후보 지점"(Game_ActiveGateNotify). 상자 목록 다음에 온다.
+        /// 게이트가 없는 맵이면 HasGate가 false로 온다.
+        /// </summary>
+        public event Action<GameActiveGatePacket> OnActiveGateReceived;
+
+        /// <summary>
         /// 리스폰으로 새 상자가 생겼을 때(Game_ChestSpawnBroadcast). 방에 있는 모두에게 온다.
         /// </summary>
         public event Action<GameChestInfo> OnChestSpawned;
