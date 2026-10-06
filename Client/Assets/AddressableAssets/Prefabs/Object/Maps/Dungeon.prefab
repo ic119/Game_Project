@@ -2170,7 +2170,7 @@ GameObject:
   - component: {fileID: 1029272202449744620}
   - component: {fileID: 9048820792920595390}
   m_Layer: 0
-  m_Name: Dungeon_Room8_BlackKnight
+  m_Name: Dungeon_Room8_Golem
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2204,7 +2204,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.Controller.MonsterSpawnPointMarker
   entries:
-  - monsterType: 9
+  - monsterType: 5
     weight: 1
   maxAlive: 1
   respawnSeconds: 120
@@ -16537,7 +16537,7 @@ GameObject:
   - component: {fileID: 5855640947461797207}
   - component: {fileID: 7463194022336714265}
   m_Layer: 0
-  m_Name: Dungeon_Room12_Golem
+  m_Name: Dungeon_Room12_BlackKnight
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -16552,7 +16552,7 @@ Transform:
   m_GameObject: {fileID: 5556582915347271141}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 30, y: 2.09, z: -36}
+  m_LocalPosition: {x: 29.5, y: 2.09, z: -38.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -16571,7 +16571,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.Controller.MonsterSpawnPointMarker
   entries:
-  - monsterType: 5
+  - monsterType: 9
     weight: 1
   maxAlive: 1
   respawnSeconds: 120

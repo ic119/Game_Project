@@ -42,7 +42,8 @@
         "expReward": 700,
         "detectionRange": 7.0,
         "chaseSpeed": 2.2,
-        "leashRange": 12.0
+        "leashRange": 12.0,
+        "agentRadius": 0.4
     },
     "RatAssassin": {
         "maxHp": 520,
@@ -80,6 +81,6 @@
         "detectionRange": 10.0,
         "chaseSpeed": 3.0,
         "leashRange": 14.0,
-        "agentRadius": 0.4
+        "agentRadius": 1.0
     }
 }

@@ -148,7 +148,7 @@
             }
         },
         {
-            "pointId": "Dungeon_Room8_BlackKnight",
+            "pointId": "Dungeon_Room8_Golem",
             "x": 21.0,
             "y": 2.0899999141693117,
             "z": -14.25,
@@ -157,7 +157,7 @@
             "respawnSeconds": 120.0,
             "entries": [
                 {
-                    "monsterType": "BlackKnight",
+                    "monsterType": "Golem",
                     "weight": 1
                 }
             ],
@@ -169,16 +169,16 @@
             }
         },
         {
-            "pointId": "Dungeon_Room12_Golem",
-            "x": 30.0,
+            "pointId": "Dungeon_Room12_BlackKnight",
+            "x": 29.5,
             "y": 2.0899999141693117,
-            "z": -36.0,
+            "z": -38.5,
             "rotationY": 0.0,
             "maxAlive": 1,
             "respawnSeconds": 120.0,
             "entries": [
                 {
-                    "monsterType": "Golem",
+                    "monsterType": "BlackKnight",
                     "weight": 1
                 }
             ],
