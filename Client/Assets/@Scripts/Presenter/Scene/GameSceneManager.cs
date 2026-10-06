@@ -23,6 +23,7 @@ namespace Incheol.Presenter.Scene
         private UI_DropItemPopupView dropItemPopupView;
         private UI_PlayerRespawnPopupView respawnPopupView;
         private UI_MapViewPopupView mapViewPopupView;
+        private WorldMapController worldMapController;
 
         /// <summary>
         /// 사망 후 자동 부활까지 걸리는 시간(초). 서버 CombatTuning.ReviveDelaySeconds와 같아야 한다(CombatTimings가 단일 출처, 서버 테스트가 일치를 검사한다) - 서버는 남은 시간을 보내지 않으므로
@@ -223,6 +224,12 @@ namespace Incheol.Presenter.Scene
             if (chatView != null)
             {
                 chatView.MessageSubmitted -= HandleChatMessageSubmitted;
+            }
+
+            if (mapViewPopupView != null)
+            {
+                mapViewPopupView.Opened -= HandleMapViewOpened;
+                mapViewPopupView.Closed -= HandleMapViewClosed;
             }
 
             if (localPlayerAttackController != null)
@@ -546,6 +553,7 @@ namespace Incheol.Presenter.Scene
             {
                 gameSceneView.BindPlayer(spawnedPlayerModel);
                 SetupMiniMap();
+                SetupWorldMap();
             }
         }
 
@@ -570,6 +578,37 @@ namespace Incheol.Presenter.Scene
 
             miniMapController = miniMapObject.AddComponent<MiniMapController>();
             miniMapController.Initialize(gameSceneView.MiniMapView, gameSceneView.PlayerMiniMapIcon, localPlayerInstance.transform);
+        }
+
+        /// <summary>
+        /// 맵 팝업(M키)에 현재 맵 전체를 보여주는 WorldMapController를 한 번만 생성/초기화한다.
+        /// 팝업이 열릴 때 현재 맵(currentMapInstance) 기준으로 영역을 다시 맞추고, 닫히면 렌더링을 멈춘다.
+        /// </summary>
+        private void SetupWorldMap()
+        {
+            if (worldMapController != null || localPlayerInstance == null || mapViewPopupView == null || mapViewPopupView.MapView == null)
+            {
+                return;
+            }
+
+            GameObject worldMapObject = new GameObject(nameof(WorldMapController));
+            worldMapObject.transform.SetParent(transform, false);
+
+            worldMapController = worldMapObject.AddComponent<WorldMapController>();
+            worldMapController.Initialize(mapViewPopupView.MapView, gameSceneView != null ? gameSceneView.PlayerMiniMapIcon : null, localPlayerInstance.transform);
+
+            mapViewPopupView.Opened += HandleMapViewOpened;
+            mapViewPopupView.Closed += HandleMapViewClosed;
+        }
+
+        private void HandleMapViewOpened()
+        {
+            worldMapController?.Show(currentMapInstance);
+        }
+
+        private void HandleMapViewClosed()
+        {
+            worldMapController?.Hide();
         }
 
         /// <summary>

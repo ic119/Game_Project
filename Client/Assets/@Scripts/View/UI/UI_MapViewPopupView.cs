@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -36,6 +37,21 @@ namespace Incheol.View.UI
         public bool IsOpen => container != null && container.activeSelf;
 
         /// <summary>
+        /// 현재 맵 전체를 그리는 WorldMapController(Presenter가 생성/초기화)가 참조할 RawImage.
+        /// </summary>
+        public RawImage MapView => mapView;
+
+        /// <summary>
+        /// container가 활성화된 직후(rect가 유효한 시점) 발생한다.
+        /// </summary>
+        public event Action Opened;
+
+        /// <summary>
+        /// container가 비활성화된 직후 발생한다.
+        /// </summary>
+        public event Action Closed;
+
+        /// <summary>
         /// container가 비활성화 상태일 때만 활성화한다(M키).
         /// </summary>
         public void Open()
@@ -43,6 +59,7 @@ namespace Incheol.View.UI
             if (container != null && !container.activeSelf)
             {
                 container.SetActive(true);
+                Opened?.Invoke();
             }
         }
 
@@ -54,6 +71,7 @@ namespace Incheol.View.UI
             if (container != null && container.activeSelf)
             {
                 container.SetActive(false);
+                Closed?.Invoke();
             }
         }
         #endregion
