@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using GameServer.Combat;
 using GameServer.Maps;
 using GameServer.Monsters;
+using GameServer.Navigation;
 using Shared;
 using Shared.Networking;
 using Shared.Networking.Packets;
@@ -137,13 +138,26 @@ namespace GameServer.Networking
         // 포인트 중심에서 이 반경 안의 원 안에 균등 분포로 스폰 좌표를 흩뿌린다.
         private const float SpawnJitterRadius = 1.5f;
 
+        // 지터로 뽑은 스폰 좌표가 이동 불가 칸이면 이 칸 수 안에서 가장 가까운 이동 가능 칸을 찾는다(NavGrid.TrySnapToWalkable).
+        private const int SpawnSnapRing = 4;
+
         // point.Entries 중 하나를 Weight 비율로 골라 그 타입의 정의(MonsterDefinitionCatalog)로 몬스터를 만든다.
         // 리스폰마다 다시 호출되므로 같은 포인트에서도 스폰될 때마다 다른 타입이 나올 수 있다.
         private MonsterInfo SpawnMonsterAtPoint(MonsterSpawnPointDefinition point)
         {
             MonsterSpawnEntry entry = MonsterSpawnSelector.Pick(point.Entries, Random.Shared);
             MonsterDefinition definition = MonsterDefinitionCatalog.Get(entry.MonsterType);
-            (float homeX, float homeZ) = ApplySpawnJitter(point.X, point.Z);
+            (float jitteredX, float jitteredZ) = ApplySpawnJitter(point.X, point.Z);
+
+            // 지터로 영역(방) 가장자리 밖에 스폰되지 않게 영역 안으로 끌어온다.
+            (float homeX, float homeZ) = point.ConstrainToArea(jitteredX, jitteredZ);
+
+            // 지터로 가구/기둥 안에 스폰되지 않게, 이동 격자가 있는 맵에서는 이 몬스터가 설 수 있는 가장 가까운 칸으로 옮긴다.
+            NavGrid? navGrid = NavGridCatalog.Get(_mapId, definition.AgentRadius);
+            if (navGrid != null && navGrid.TrySnapToWalkable(homeX, homeZ, SpawnSnapRing, out float snappedX, out float snappedZ))
+            {
+                (homeX, homeZ) = (snappedX, snappedZ);
+            }
 
             var info = new MonsterInfo
             {
@@ -192,6 +206,22 @@ namespace GameServer.Networking
 
             public MonsterAiState AiState { get; set; } = MonsterAiState.Idle;
             public long? TargetPlayerId { get; set; }
+
+            // 이동 격자가 있는 맵에서 장애물을 돌아가는 현재 경로(꺾이는 지점들)와 따라가는 중인 지점 번호. 직진할 수 있거나
+            // 격자가 없으면 null이다. RepathCooldown은 다음 경로 재계산까지 남은 시간 - 대상이 움직이므로 주기적으로 다시 찾는다.
+            public List<(float X, float Z)>? Path { get; set; }
+            public int PathIndex { get; set; }
+            public float RepathCooldown { get; set; }
+
+            // 대상까지 길이 없어 추적을 포기한 직후 이 시간 동안은 같은 대상을 다시 감지하지 않는다 - 포기와 재감지가
+            // 매 틱 반복되며 경로 탐색을 계속 돌리는 것을 막는다.
+            public float DetectionCooldownRemaining { get; set; }
+
+            public void ClearPath()
+            {
+                Path = null;
+                PathIndex = 0;
+            }
 
             // TickChasing이 근접 사거리 안에서 공격할 때마다 AttackIntervalSeconds로 리셋하고, 매 틱
             // deltaSeconds만큼 줄인다. 0 이하면 다음 틱에 바로 공격 가능.

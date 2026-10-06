@@ -1,4 +1,5 @@
 using GameServer.Logging;
+using GameServer.Navigation;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
@@ -58,6 +59,19 @@ namespace GameServer.Monsters
                         if (point.Entries.Count == 0)
                         {
                             throw new InvalidOperationException($"스폰 포인트 '{point.PointId}'에 몬스터 타입(Entries)이 하나도 없습니다.");
+                        }
+
+                        // 영역 밖에 있는 포인트는 스폰하자마자 영역 밖에 갇힌 몬스터를 만든다 - 좌표/영역 오타를 부팅 시점에 막는다.
+                        if (!point.AllowsPosition(point.X, point.Z))
+                        {
+                            throw new InvalidOperationException($"스폰 포인트 '{point.PointId}'의 좌표가 자신의 활동 영역(Area) 밖에 있습니다.");
+                        }
+
+                        // 이동 격자가 있는 맵에서 포인트가 가구/벽 안(이동 불가 칸)에 있으면 몬스터가 그 안에 갇혀 스폰된다.
+                        NavGrid? navGrid = NavGridCatalog.GetRaw(mapId);
+                        if (navGrid != null && !navGrid.IsWalkableAt(point.X, point.Z))
+                        {
+                            throw new InvalidOperationException($"스폰 포인트 '{point.PointId}'의 좌표({point.X}, {point.Z})가 이동 격자의 이동 불가 칸(가구/벽 안)에 있습니다.");
                         }
 
                         foreach (MonsterSpawnEntry entry in point.Entries)

@@ -13,7 +13,13 @@
                     "monsterType": "RedMushroom",
                     "weight": 1
                 }
-            ]
+            ],
+            "area": {
+                "centerX": 0.0,
+                "centerZ": 0.0,
+                "sizeX": 0.0,
+                "sizeZ": 0.0
+            }
         },
         {
             "pointId": "Floor001_StartMeadow",
@@ -28,7 +34,13 @@
                     "monsterType": "RedMushroom",
                     "weight": 1
                 }
-            ]
+            ],
+            "area": {
+                "centerX": 0.0,
+                "centerZ": 0.0,
+                "sizeX": 0.0,
+                "sizeZ": 0.0
+            }
         },
         {
             "pointId": "Floor001_SpiderHollow",
@@ -43,7 +55,13 @@
                     "monsterType": "Spider",
                     "weight": 1
                 }
-            ]
+            ],
+            "area": {
+                "centerX": 0.0,
+                "centerZ": 0.0,
+                "sizeX": 0.0,
+                "sizeZ": 0.0
+            }
         },
         {
             "pointId": "Floor001_OrcCamp",
@@ -58,7 +76,13 @@
                     "monsterType": "Orc",
                     "weight": 1
                 }
-            ]
+            ],
+            "area": {
+                "centerX": 0.0,
+                "centerZ": 0.0,
+                "sizeX": 0.0,
+                "sizeZ": 0.0
+            }
         },
         {
             "pointId": "Floor001_WerewolfDen",
@@ -73,7 +97,13 @@
                     "monsterType": "Werewolf",
                     "weight": 1
                 }
-            ]
+            ],
+            "area": {
+                "centerX": 0.0,
+                "centerZ": 0.0,
+                "sizeX": 0.0,
+                "sizeZ": 0.0
+            }
         },
         {
             "pointId": "Floor001_GolemRuins",
@@ -88,7 +118,13 @@
                     "monsterType": "Golem",
                     "weight": 1
                 }
-            ]
+            ],
+            "area": {
+                "centerX": 0.0,
+                "centerZ": 0.0,
+                "sizeX": 0.0,
+                "sizeZ": 0.0
+            }
         }
     ]
 }

@@ -20,5 +20,14 @@ namespace GameServer.Monsters
         // 정의(MonsterDefinitionCatalog)를 그대로 적용한다(GameRoom.SpawnMonsterAtPoint). 최소 1개 이상이어야 하며,
         // MonsterSpawnCatalog.EnsureLoaded()가 로드 시점에 이를 검증해 비어있으면 서버 시작을 막는다.
         public List<MonsterSpawnEntry> Entries { get; init; } = new();
+
+        // 몬스터가 활동할 수 있는 영역(예: 던전 방 하나). 없거나 크기가 0이면 제한 없음(필드). SpawnArea 주석 참고.
+        public SpawnArea? Area { get; init; }
+
+        // 영역이 없으면 어디든 허용한다. AI가 감지/추적/이동 제한에 쓴다.
+        public bool AllowsPosition(float x, float z) => Area is not { IsDefined: true } area || area.Contains(x, z);
+
+        // 영역이 있으면 영역 안으로 끌어온 좌표를, 없으면 그대로를 돌려준다.
+        public (float X, float Z) ConstrainToArea(float x, float z) => Area is { IsDefined: true } area ? area.Clamp(x, z) : (x, z);
     }
 }

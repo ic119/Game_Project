@@ -39,6 +39,7 @@ public class MonsterDefinitionCatalogTests
 
         Assert.Equal(10, result["Slime"].MaxHp);
         Assert.Equal(6f, result["Slime"].DetectionRange);
+        Assert.Equal(0.5f, result["Slime"].AgentRadius);
     }
 
     [Theory]
@@ -49,6 +50,7 @@ public class MonsterDefinitionCatalogTests
     [InlineData("""{ "X": { "detectionRange": -1 } }""")]
     [InlineData("""{ "X": { "chaseSpeed": 0 } }""")]
     [InlineData("""{ "X": { "leashRange": 0 } }""")]
+    [InlineData("""{ "X": { "agentRadius": 0 } }""")]
     public void ParseAndValidate_InvalidValue_Throws(string json)
     {
         Assert.Throws<InvalidOperationException>(() => MonsterDefinitionCatalog.ParseAndValidate(json, "test"));

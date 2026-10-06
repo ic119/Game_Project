@@ -5,6 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 using GameServer.Combat;
 using GameServer.Maps;
 using GameServer.Monsters;
+using GameServer.Navigation;
 using Shared;
 using Shared.Networking;
 using Shared.Networking.Packets;
@@ -106,11 +107,19 @@ namespace GameServer.Networking
             switch (runtime.AiState)
             {
                 case MonsterAiState.Idle:
-                    long? foundTargetId = FindNearestPlayerInRange(runtime.Info, runtime.Definition.DetectionRange);
+                    // 길이 없어 방금 추적을 포기했다면 잠시 감지를 쉰다(MonsterRuntime.DetectionCooldownRemaining 참고).
+                    if (runtime.DetectionCooldownRemaining > 0f)
+                    {
+                        runtime.DetectionCooldownRemaining -= deltaSeconds;
+                        return false;
+                    }
+
+                    long? foundTargetId = FindNearestPlayerInRange(runtime.Info, runtime.Definition.DetectionRange, runtime.Point);
                     if (foundTargetId is { } targetId)
                     {
                         runtime.AiState = MonsterAiState.Chasing;
                         runtime.TargetPlayerId = targetId;
+                        runtime.ClearPath();
                     }
                     return false;
 
@@ -140,21 +149,18 @@ namespace GameServer.Networking
                 || !_players.TryGetValue(targetId, out var targetEntry)
                 || targetEntry.Info.CurrentHp <= 0)
             {
-                runtime.TargetPlayerId = null;
-                runtime.AttackWindupRemaining = 0f;
-                runtime.AiState = MonsterAiState.Returning;
+                GiveUpChase(runtime);
                 return false;
             }
 
             MonsterInfo info = runtime.Info;
             PlayerInfo target = targetEntry.Info;
 
+            // 대상이 활동 영역(방) 밖으로 나가면 벽 너머까지 쫓지 않고 포기한다(SpawnArea 주석 참고).
             float distanceFromSpawn = Distance(info.X, info.Z, runtime.HomeX, runtime.HomeZ);
-            if (distanceFromSpawn > runtime.Definition.LeashRange)
+            if (distanceFromSpawn > runtime.Definition.LeashRange || !runtime.Point.AllowsPosition(target.X, target.Z))
             {
-                runtime.TargetPlayerId = null;
-                runtime.AttackWindupRemaining = 0f;
-                runtime.AiState = MonsterAiState.Returning;
+                GiveUpChase(runtime);
                 return false;
             }
 
@@ -193,7 +199,25 @@ namespace GameServer.Networking
                 return true;
             }
 
-            return MoveToward(info, target.X, target.Z, runtime.Definition.ChaseSpeed, deltaSeconds);
+            bool moved = MoveWithNavigation(runtime, target.X, target.Z, deltaSeconds, out bool unreachable);
+            if (unreachable)
+            {
+                // 대상에게 닿는 길이 없다(가구로 막힌 자리 등) - 벽에 부딪히며 제자리걸음하지 않고 포기한 뒤 잠시 감지를 쉰다.
+                runtime.DetectionCooldownRemaining = UnreachableDetectionCooldownSeconds;
+                GiveUpChase(runtime);
+                return false;
+            }
+
+            return moved;
+        }
+
+        // 추적을 포기하고 스폰 지점으로 돌아가기 시작한다.
+        private static void GiveUpChase(MonsterRuntime runtime)
+        {
+            runtime.TargetPlayerId = null;
+            runtime.AttackWindupRemaining = 0f;
+            runtime.ClearPath();
+            runtime.AiState = MonsterAiState.Returning;
         }
 
         private static void FaceTarget(MonsterInfo info, PlayerInfo target)
@@ -280,18 +304,82 @@ namespace GameServer.Networking
         {
             MonsterInfo info = runtime.Info;
 
-            bool moved = MoveToward(info, runtime.HomeX, runtime.HomeZ, runtime.Definition.ChaseSpeed, deltaSeconds);
+            bool moved = MoveWithNavigation(runtime, runtime.HomeX, runtime.HomeZ, deltaSeconds, out bool unreachable);
 
-            if (Distance(info.X, info.Z, runtime.HomeX, runtime.HomeZ) <= ArrivalThreshold)
+            // 집까지 길이 없으면(이동 격자 기준) 영영 못 돌아가 제자리에 갇히므로, 그냥 집으로 옮긴다.
+            if (unreachable || Distance(info.X, info.Z, runtime.HomeX, runtime.HomeZ) <= ArrivalThreshold)
             {
                 info.X = runtime.HomeX;
                 info.Z = runtime.HomeZ;
                 info.RotationY = runtime.Point.RotationY;
+                runtime.ClearPath();
                 runtime.AiState = MonsterAiState.Idle;
                 return true;
             }
 
             return moved;
+        }
+
+        // 다음 경로 재계산까지의 간격. 대상(플레이어)이 계속 움직이므로 경로를 주기적으로 다시 찾는다.
+        private const float PathRepathIntervalSeconds = 0.4f;
+
+        // 대상에게 가는 길이 없어 추적을 포기한 뒤 감지를 쉬는 시간.
+        private const float UnreachableDetectionCooldownSeconds = 2f;
+
+        // (targetX, targetZ)를 향해 ChaseSpeed로 한 틱만큼 이동한다. 이동 격자가 있는 맵(던전)에서는 가구/벽을 돌아가는 경로를
+        // 따라가고, 격자가 없는 맵(필드)에서는 기존처럼 직선으로 간다. 대상까지 길이 없으면 unreachable=true를 돌려준다.
+        private bool MoveWithNavigation(MonsterRuntime runtime, float targetX, float targetZ, float deltaSeconds, out bool unreachable)
+        {
+            unreachable = false;
+            MonsterInfo info = runtime.Info;
+            float speed = runtime.Definition.ChaseSpeed;
+
+            NavGrid? grid = NavGridCatalog.Get(_mapId, runtime.Definition.AgentRadius);
+            if (grid == null)
+            {
+                return MoveToward(info, targetX, targetZ, speed, deltaSeconds);
+            }
+
+            Func<float, float, bool> allowed = runtime.Point.AllowsPosition;
+
+            // 장애물 없이 일직선으로 갈 수 있으면 경로 탐색 없이 곧장 간다(대부분의 틱이 여기서 끝난다).
+            if (grid.HasLineOfSight(info.X, info.Z, targetX, targetZ, allowed))
+            {
+                runtime.ClearPath();
+                return MoveToward(info, targetX, targetZ, speed, deltaSeconds);
+            }
+
+            runtime.RepathCooldown -= deltaSeconds;
+            if (runtime.Path == null || runtime.RepathCooldown <= 0f)
+            {
+                if (!grid.TryFindPath(info.X, info.Z, targetX, targetZ, allowed, out List<(float X, float Z)> path))
+                {
+                    runtime.ClearPath();
+                    unreachable = true;
+                    return false;
+                }
+
+                runtime.Path = path;
+                runtime.PathIndex = 0;
+                runtime.RepathCooldown = PathRepathIntervalSeconds;
+            }
+
+            // 이미 도착한 경유점은 건너뛰고 다음 경유점으로 향한다.
+            while (runtime.PathIndex < runtime.Path.Count
+                   && Distance(info.X, info.Z, runtime.Path[runtime.PathIndex].X, runtime.Path[runtime.PathIndex].Z) <= ArrivalThreshold)
+            {
+                runtime.PathIndex++;
+            }
+
+            if (runtime.PathIndex >= runtime.Path.Count)
+            {
+                // 경로의 끝까지 왔다 - 다음 틱에 직진하거나 새 경로를 찾는다.
+                runtime.ClearPath();
+                return false;
+            }
+
+            (float waypointX, float waypointZ) = runtime.Path[runtime.PathIndex];
+            return MoveToward(info, waypointX, waypointZ, speed, deltaSeconds);
         }
 
         // targetX/targetZ 방향으로 moveSpeed(초당 이동 거리)만큼 이동시키고 그 방향을 바라보게 회전시킨다.
@@ -315,14 +403,15 @@ namespace GameServer.Networking
             return true;
         }
 
-        private long? FindNearestPlayerInRange(MonsterInfo monster, float range)
+        // 활동 영역이 있는 포인트의 몬스터는 그 영역 안의 플레이어만 감지한다.
+        private long? FindNearestPlayerInRange(MonsterInfo monster, float range, MonsterSpawnPointDefinition point)
         {
             long? nearestId = null;
             float nearestDistanceSquared = range * range;
 
             foreach (var (info, _) in _players.Values)
             {
-                if (info.CurrentHp <= 0)
+                if (info.CurrentHp <= 0 || !point.AllowsPosition(info.X, info.Z))
                 {
                     continue;
                 }

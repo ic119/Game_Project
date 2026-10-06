@@ -68,6 +68,11 @@ namespace GameServer.Monsters
                     throw new InvalidOperationException($"몬스터 정의 '{monsterType}'의 AttackPower/Defense/ExpReward는 0 이상이어야 합니다.");
                 }
 
+                if (definition.AgentRadius <= 0f)
+                {
+                    throw new InvalidOperationException($"몬스터 정의 '{monsterType}'의 AgentRadius는 0보다 커야 합니다 ({definition.AgentRadius}).");
+                }
+
                 if (definition.DetectionRange < 0f || definition.ChaseSpeed <= 0f || definition.LeashRange <= 0f)
                 {
                     throw new InvalidOperationException(

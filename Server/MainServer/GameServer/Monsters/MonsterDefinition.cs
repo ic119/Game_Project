@@ -23,5 +23,9 @@ namespace GameServer.Monsters
 
         // 스폰 지점으로부터 이 거리 이상 벗어나면 추적을 포기하고 복귀한다.
         public float LeashRange { get; init; } = 10f;
+
+        // 몸통 반경(m). 이동 격자(NavGrid)가 있는 맵에서 장애물을 이만큼 부풀려 경로를 찾아, 덩치 큰 몬스터가
+        // 기둥/가구 모서리에 끼지 않고 지나가게 한다. 격자가 없는 맵(필드)에서는 쓰이지 않는다.
+        public float AgentRadius { get; init; } = 0.5f;
     }
 }

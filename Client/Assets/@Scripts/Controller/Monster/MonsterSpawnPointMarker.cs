@@ -39,5 +39,30 @@ namespace Incheol.Controller
         [Header("개체수/리스폰")]
         [Min(1)] public int maxAlive = 1;
         [Min(0f)] public float respawnSeconds = 20f;
+
+        [Header("활동 영역 (던전 방처럼 벽으로 나뉜 곳에서만 사용)")]
+        [Tooltip("켜면 이 포인트의 몬스터는 아래 영역 안의 플레이어만 감지/추적하고 영역 밖으로 나가지 않으며, 영역 안의 " +
+            "가구/기둥/벽(콜라이더)은 돌아서 이동한다(내보낼 때 이동 격자 NavGrids/{맵}.json이 함께 만들어진다). " +
+            "이때 이 마커의 Y 높이를 방 바닥 높이로 쓰므로 마커를 바닥에 두어야 한다. 트인 필드는 끈다.")]
+        public bool confineToArea;
+
+        [Tooltip("영역 중심의 월드 XZ 좌표(마커 위치와 같은 좌표계). 마커 자신이 영역 안에 있어야 한다.")]
+        public Vector2 areaCenter;
+
+        [Tooltip("영역 전체 크기(X, Z). 둘 다 0보다 커야 한다.")]
+        public Vector2 areaSize = new Vector2(8f, 8f);
+
+        // 씬 뷰에서 활동 영역(녹색)을 사각형으로 보여준다. 선택된 상태에서만 그려서 마커가 많아져도
+        // 씬 뷰가 도형으로 뒤덮이지 않게 한다.
+        private void OnDrawGizmosSelected()
+        {
+            if (!confineToArea)
+            {
+                return;
+            }
+
+            Gizmos.color = Color.green;
+            Gizmos.DrawWireCube(new Vector3(areaCenter.x, transform.position.y, areaCenter.y), new Vector3(areaSize.x, 0.1f, areaSize.y));
+        }
     }
 }

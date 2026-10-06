@@ -37,6 +37,17 @@ namespace Incheol.Editor
             public int maxAlive;
             public float respawnSeconds;
             public List<SpawnEntryJson> entries;
+            public SpawnAreaJson area;
+        }
+
+        // JsonUtility는 null 필드를 내보낼 수 없어 영역을 쓰지 않는 마커는 크기 0으로 내보낸다 - 서버가 크기 0을 "영역 없음"으로 읽는다.
+        [System.Serializable]
+        private class SpawnAreaJson
+        {
+            public float centerX;
+            public float centerZ;
+            public float sizeX;
+            public float sizeZ;
         }
 
         [System.Serializable]
@@ -101,6 +112,24 @@ namespace Incheol.Editor
 
                 foreach (MonsterSpawnPointMarker marker in markers)
                 {
+                    if (marker.confineToArea)
+                    {
+                        // 서버 MonsterSpawnCatalog도 같은 검증을 하지만, 여기서 먼저 걸러 내보내기 전체가 반쪽짜리가 되지 않게 한다.
+                        Vector3 markerPosition = marker.transform.position;
+                        bool hasSize = marker.areaSize.x > 0f && marker.areaSize.y > 0f;
+                        bool isInside = Mathf.Abs(markerPosition.x - marker.areaCenter.x) <= marker.areaSize.x / 2f
+                            && Mathf.Abs(markerPosition.z - marker.areaCenter.y) <= marker.areaSize.y / 2f;
+                        if (!hasSize || !isInside)
+                        {
+                            string message = !hasSize
+                                ? $"'{marker.gameObject.name}'의 활동 영역 크기는 0보다 커야 합니다."
+                                : $"'{marker.gameObject.name}'의 위치가 자신의 활동 영역 밖에 있습니다.";
+                            if (showDialogs) EditorUtility.DisplayDialog("스폰 포인트 내보내기", message, "확인");
+                            Debug.LogError($"[MonsterSpawnPointExporter] {message} 내보내기를 중단합니다.");
+                            return 0;
+                        }
+                    }
+
                     if (marker.entries == null || marker.entries.Count == 0)
                     {
                         string message = $"'{marker.gameObject.name}'에 몬스터 타입(Entries)이 하나도 없습니다.";
@@ -152,7 +181,16 @@ namespace Incheol.Editor
                         rotationY = marker.transform.eulerAngles.y,
                         maxAlive = marker.maxAlive,
                         respawnSeconds = marker.respawnSeconds,
-                        entries = entries
+                        entries = entries,
+                        area = marker.confineToArea
+                            ? new SpawnAreaJson
+                            {
+                                centerX = marker.areaCenter.x,
+                                centerZ = marker.areaCenter.y,
+                                sizeX = marker.areaSize.x,
+                                sizeZ = marker.areaSize.y
+                            }
+                            : new SpawnAreaJson()
                     });
                 }
 
@@ -163,12 +201,43 @@ namespace Incheol.Editor
                 File.WriteAllText(outputPath, json);
 
                 Debug.Log($"[MonsterSpawnPointExporter] '{mapId}' 스폰 포인트 {markers.Length}개를 내보냈습니다 : {outputPath}");
+
+                ExportNavGridIfNeeded(mapId, assetPath, markers);
                 return markers.Length;
             }
             finally
             {
                 PrefabUtility.UnloadPrefabContents(root);
             }
+        }
+
+        // 활동 영역(confineToArea)이 있는 마커가 하나라도 있으면 그 영역들의 이동 격자도 함께 내보낸다 - 몬스터가 영역 안에서
+        // 가구/벽을 돌아가려면 서버가 장애물 위치를 알아야 하기 때문이다. 영역이 하나도 없는 맵(트인 필드)은 격자를 만들지 않는다.
+        private static void ExportNavGridIfNeeded(string mapId, string assetPath, MonsterSpawnPointMarker[] markers)
+        {
+            var areas = new List<MonsterNavGridExporter.AreaInput>();
+            foreach (MonsterSpawnPointMarker marker in markers)
+            {
+                if (!marker.confineToArea)
+                {
+                    continue;
+                }
+
+                // 한 방에 마커가 여러 개면 같은 영역이 반복되므로 중복은 건너뛴다(먼저 나온 마커의 높이를 쓴다).
+                bool duplicate = areas.Exists(a => a.center == marker.areaCenter && a.size == marker.areaSize);
+                if (!duplicate)
+                {
+                    areas.Add(new MonsterNavGridExporter.AreaInput(marker.gameObject.name, marker.areaCenter, marker.areaSize, marker.transform.position.y));
+                }
+            }
+
+            if (areas.Count == 0)
+            {
+                return;
+            }
+
+            GameObject prefabAsset = AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
+            MonsterNavGridExporter.Export(mapId, prefabAsset, areas);
         }
 
         [MenuItem("Tools/Monster/Export Spawn Points From Selected Prefab", true)]

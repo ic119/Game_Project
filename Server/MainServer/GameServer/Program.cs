@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using GameServer.Items;
 using GameServer.Maps;
 using GameServer.Monsters;
+using GameServer.Navigation;
 using GameServer.Networking;
 using Microsoft.Extensions.Configuration;
 
@@ -33,9 +34,11 @@ GameLog.Configure(loggerFactory);
 // 전투 튜닝 값(대쉬 무적, 몬스터 선딜 등)은 appsettings.json의 Combat 섹션으로 조정하며, 잘못된 값이면 여기서 시작을 막는다.
 CombatTuning.Configure(configuration);
 
-// 몬스터 정의 -> 스폰 포인트 순서로 로드해야 한다: 스폰 포인트 검증이 참조하는 몬스터 타입의 존재 여부를 정의와 대조하기 때문이다.
+// 몬스터 정의/이동 격자 -> 스폰 포인트 순서로 로드해야 한다: 스폰 포인트 검증이 참조하는 몬스터 타입의 존재 여부를 정의와,
+// 포인트 좌표가 가구/벽 안인지를 이동 격자와 각각 대조하기 때문이다.
 // 파일이 잘못돼 있으면 첫 플레이어가 접속하는 순간이 아니라 여기서 바로 서버 시작을 막는다.
 MonsterDefinitionCatalog.EnsureLoaded();
+NavGridCatalog.EnsureLoaded();
 MonsterSpawnCatalog.EnsureLoaded();
 
 // 아이템 정의 -> 드롭 테이블 -> 맵 데이터 순서로 로드해야 한다: 드롭 테이블 검증이 아이템 존재 여부를,
