@@ -97,6 +97,18 @@ namespace Incheol.Modules
         /// 몬스터 공격이 대쉬 회피에 막혔을 때(Game_MonsterAttackDodgedBroadcast). HP 변화는 없고 회피 이펙트 재생에 쓴다.
         /// </summary>
         public event Action<GameMonsterAttackDodgedBroadcastPacket> OnMonsterAttackDodged;
+
+        /// <summary>
+        /// 보스가 스킬을 준비하기 시작했을 때(Game_BossSkillTelegraphBroadcast, 예고). 바닥에 위험 범위를 DurationMs 동안 차오르게
+        /// 보여주고 시전 모션을 재생한다. 판정은 예고가 끝나는 순간 서버가 하며 결과는 OnMonsterAttacked/OnMonsterAttackDodged로 온다.
+        /// </summary>
+        public event Action<GameBossSkillTelegraphBroadcastPacket> OnBossSkillTelegraph;
+
+        /// <summary>
+        /// 보스 스킬의 예고가 끝났을 때(Game_BossSkillEndBroadcast). Executed가 true면 발동(위험 범위 표시를 걷고 타격 연출),
+        /// false면 취소(보스 사망 등 - 표시만 걷는다).
+        /// </summary>
+        public event Action<GameBossSkillEndBroadcastPacket> OnBossSkillEnd;
         public event Action<GameExpGainBroadcastPacket> OnExpGained;
         public event Action<GameLootBroadcastPacket> OnLootReceived;
         public event Action<GamePlayerHpBroadcastPacket> OnPlayerHpChanged;

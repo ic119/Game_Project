@@ -29,7 +29,26 @@ namespace Incheol.Models.Define
         ChestDespawn01 = 23,
         Dodge01 = 24,
         Dungeon = 25,
-        PortalGate = 26
+        PortalGate = 26,
+        BossTelegraph01 = 27
+    }
+
+    /// <summary>
+    /// 보스 스킬 종류. 값은 서버 GameServer.Monsters.BossSkillType과 같다(Game_BossSkillTelegraphBroadcast/Game_BossSkillEndBroadcast의
+    /// SkillType 바이트가 이 값이다) - 바꾸려면 서버와 함께 바꿔야 한다.
+    /// </summary>
+    public enum BossSkillType : byte
+    {
+        None = 0,
+
+        // 보스 주변 원형 범위 공격
+        AreaSlam = 1,
+
+        // 예고된 직선 방향으로 달려가는 돌진
+        Charge = 2,
+
+        // 예고된 자리에 하수인 소환
+        Summon = 3
     }
 
     /// <summary>

@@ -25,6 +25,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 379a71a8b24bc7e4189031d40e0cb680
+    m_Address: BossTelegraph01
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 497d49571e7b15f459d7c14520a037be
     m_Address: OneHandedHit01
     m_ReadOnly: 0

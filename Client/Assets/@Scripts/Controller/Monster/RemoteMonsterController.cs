@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using Incheol.Models.Define;
 using Incheol.Modules.Networking;
 using Incheol.Utils;
 using UnityEngine;
@@ -34,11 +36,22 @@ namespace Incheol.Controller
         private static readonly int AttackHash = Animator.StringToHash("Attack");
         private static readonly int AttackIndexHash = Animator.StringToHash("AttackIndex");
 
+        // 보스 소환 모션(Taunt 트리거). 보스 컨트롤러(BlackKnightStance)에만 있으므로 파라미터가 있을 때만 쓴다(HasAnimatorParameter).
+        private static readonly int TauntHash = Animator.StringToHash("Taunt");
+
+        // 보스 스킬 발동 때 재생할 공격 모션 번호(AttackIndex). 범위 공격은 가장 강한 3번(Attack03), 돌진은 2번(Attack02)이다.
+        private const int AreaSlamAttackIndex = 3;
+        private const int ChargeAttackIndex = 2;
+
         // MushroomStance 기준 공격 모션 개수(Attack001~Attack003). AttackIndex는 1부터 시작한다.
         private const int AttackVariationCount = 3;
 
         private readonly SnapshotInterpolationBuffer interpolation = new();
         private Animator animator;
+
+        // 이 몬스터의 애니메이터가 가진 파라미터 이름 해시. 컨트롤러마다 파라미터가 달라(예: Taunt는 보스만) 없는 파라미터를 건드려
+        // 경고가 나지 않게 확인하는 용도다.
+        private readonly HashSet<int> animatorParameterHashes = new();
         private float lastMovingTime = float.NegativeInfinity;
 
         /// <summary>
@@ -73,6 +86,14 @@ namespace Incheol.Controller
         {
             interpolation.Reset(transform.position, transform.eulerAngles.y);
             animator = GetComponent<Animator>();
+
+            if (animator != null && animator.runtimeAnimatorController != null)
+            {
+                foreach (AnimatorControllerParameter parameter in animator.parameters)
+                {
+                    animatorParameterHashes.Add(parameter.nameHash);
+                }
+            }
 
             // 위치는 서버가 정하고 이 컴포넌트가 매 프레임 transform에 직접 쓴다. 프리팹의 Rigidbody가 물리(중력/충돌)로 움직이는
             // 상태면 매 프레임 되돌려지는 위치와 싸우기만 하고(중력으로 떨어져도 다음 프레임에 서버 높이로 복귀), 플레이어와 부딪히면
@@ -184,13 +205,49 @@ namespace Incheol.Controller
         /// </summary>
         public void PlayAttack()
         {
+            PlayAttackMotion(UnityEngine.Random.Range(1, AttackVariationCount + 1));
+        }
+
+        private void PlayAttackMotion(int attackIndex)
+        {
             if (animator == null)
             {
                 return;
             }
 
-            animator.SetInteger(AttackIndexHash, UnityEngine.Random.Range(1, AttackVariationCount + 1));
+            animator.SetInteger(AttackIndexHash, attackIndex);
             animator.SetTrigger(AttackHash);
+        }
+
+        /// <summary>
+        /// 보스가 스킬 예고를 시작했을 때(Game_BossSkillTelegraphBroadcast) 재생한다. 소환은 팔을 들어 올리는 Taunt 모션을 쓰고,
+        /// 범위 공격/돌진은 예고 동안 제자리에서 대기하다가 발동 순간(PlayBossSkillExecute) 공격 모션이 나오는 편이 "곧 온다"가 더 잘 보인다.
+        /// 보스 컨트롤러에 Taunt 파라미터가 없으면 아무것도 하지 않는다.
+        /// </summary>
+        public void PlayBossSkillTelegraph(BossSkillType skillType)
+        {
+            if (skillType == BossSkillType.Summon && animator != null && animatorParameterHashes.Contains(TauntHash))
+            {
+                animator.SetTrigger(TauntHash);
+            }
+        }
+
+        /// <summary>
+        /// 보스 스킬이 발동했을 때(Game_BossSkillEndBroadcast, Executed=true) 재생한다. 범위 공격은 내려치는 Attack03, 돌진은 Attack02를
+        /// 쓴다(돌진 중 이동은 서버 스냅샷이 하고, 모션은 돌진을 시작하는 휘두름으로 보인다). 소환은 예고 때 이미 모션을 재생했다.
+        /// </summary>
+        public void PlayBossSkillExecute(BossSkillType skillType)
+        {
+            switch (skillType)
+            {
+                case BossSkillType.AreaSlam:
+                    PlayAttackMotion(AreaSlamAttackIndex);
+                    break;
+
+                case BossSkillType.Charge:
+                    PlayAttackMotion(ChargeAttackIndex);
+                    break;
+            }
         }
 
         /// <summary>

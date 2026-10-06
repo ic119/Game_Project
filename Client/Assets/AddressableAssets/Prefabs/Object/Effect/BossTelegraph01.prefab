@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &4213762828243786446
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2681869369510153921}
+  - component: {fileID: 1685083142483363640}
+  m_Layer: 0
+  m_Name: BossTelegraph01
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2681869369510153921
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4213762828243786446}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1685083142483363640
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4213762828243786446}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 04118318c9680a74992198db4679010a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Incheol.Controller.BossTelegraphIndicator
+  material: {fileID: 2100000, guid: 518c1ed2cba34f7408a4db0a164de573, type: 2}
+  areaColor: {r: 1, g: 0.12, b: 0.08, a: 0.25}
+  fillColor: {r: 1, g: 0.2, b: 0.1, a: 0.5}
+  edgeColor: {r: 1, g: 0.4, b: 0.25, a: 0.95}
+  flashColor: {r: 1, g: 0.95, b: 0.8, a: 0.9}
+  edgeThickness: 0.12
+  circleSegments: 48
+  groundOffset: 0.05
+  groundProbeHeight: 2
+  groundProbeDistance: 8
+  flashSeconds: 0.12
+  fadeSeconds: 0.25
+  cancelFadeSeconds: 0.15
+  staleTimeoutSeconds: 2

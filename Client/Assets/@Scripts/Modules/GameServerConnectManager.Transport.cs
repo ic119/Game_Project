@@ -256,6 +256,16 @@ namespace Incheol.Modules
                     pendingActions.Enqueue(() => OnMonsterAttackDodged?.Invoke(monsterAttackDodged));
                     break;
 
+                case GameOpCode.Game_BossSkillTelegraphBroadcast:
+                    var bossSkillTelegraph = GameBossSkillTelegraphBroadcastPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnBossSkillTelegraph?.Invoke(bossSkillTelegraph));
+                    break;
+
+                case GameOpCode.Game_BossSkillEndBroadcast:
+                    var bossSkillEnd = GameBossSkillEndBroadcastPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnBossSkillEnd?.Invoke(bossSkillEnd));
+                    break;
+
                 case GameOpCode.Game_ExpGainBroadcast:
                     var expGain = GameExpGainBroadcastPacket.Decode(body);
                     pendingActions.Enqueue(() => OnExpGained?.Invoke(expGain));
