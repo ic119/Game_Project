@@ -104,6 +104,18 @@ namespace GameServer.Networking
         // 호출측이 브로드캐스트를 보내게 한다(제자리 대기 중인 몬스터까지 매 틱 보낼 필요는 없다).
         private bool UpdateMonster(MonsterRuntime runtime, float deltaSeconds)
         {
+            // 보스는 스킬 타이머를 매 틱 흘리고, 시전 중인 스킬이 있으면 그 진행이 일반 AI보다 우선한다(시전 중에는 제자리에서
+            // 예고하거나 돌진하며, 추적/일반 공격을 하지 않는다). GameRoom.BossSkills.cs 참고.
+            if (runtime.Definition.BossPattern != null)
+            {
+                TickBossTimers(runtime, deltaSeconds);
+
+                if (runtime.ActiveSkill != null)
+                {
+                    return TickActiveBossSkill(runtime, deltaSeconds);
+                }
+            }
+
             switch (runtime.AiState)
             {
                 case MonsterAiState.Idle:
@@ -167,6 +179,12 @@ namespace GameServer.Networking
             if (runtime.AttackCooldownRemaining > 0f)
             {
                 runtime.AttackCooldownRemaining -= deltaSeconds;
+            }
+
+            // 보스는 일반 공격 선딜 중이 아닐 때 쓸 수 있는 스킬이 있으면 시전을 시작한다(범위 공격/돌진/소환).
+            if (runtime.Definition.BossPattern != null && runtime.AttackWindupRemaining <= 0f && TryStartBossSkill(runtime, target))
+            {
+                return true;
             }
 
             // 선딜 중에는 이미 공격을 시작했으므로 도중에 대상이 사거리를 벗어나도 따라가지 않고 그 자리에서 기다렸다가
@@ -274,9 +292,11 @@ namespace GameServer.Networking
 
         // 판정 결과가 명중일 때 호출된다. PvP(ApplyPlayerAttack)와 같은 TryDamagePlayer로
         // 서버가 최종 피해와 남은 체력을 계산하고, 클라이언트에는 그 결과만 보낸다(Player Health 영역 참고).
-        private void AttackPlayer(MonsterRuntime runtime, PlayerInfo target)
+        // damageMultiplier는 보스 스킬 명중용(공격력 x 배율). 일반 근접 공격은 1이다.
+        private void AttackPlayer(MonsterRuntime runtime, PlayerInfo target, float damageMultiplier = 1f)
         {
-            if (!TryDamagePlayer(target, runtime.Info.AttackPower, out int finalDamage, out int remainingHp, out bool died))
+            int rawDamage = (int)MathF.Round(runtime.Info.AttackPower * damageMultiplier);
+            if (!TryDamagePlayer(target, rawDamage, out int finalDamage, out int remainingHp, out bool died))
             {
                 return;
             }

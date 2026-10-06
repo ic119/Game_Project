@@ -80,6 +80,12 @@ namespace Shared.Networking
         // Game_ActiveChestsNotify 직후에 온다. 게이트가 없는 맵이어도 "없음"으로 항상 온다.
         Game_ActiveGateNotify = 0x0229,
 
+        // 보스 스킬. 시전을 시작하면(예고) Game_BossSkillTelegraphBroadcast로 위험 범위와 시간을 알리고, 예고가 끝나 발동하거나
+        // 취소되면 Game_BossSkillEndBroadcast를 보낸다. 판정 결과(명중/회피)는 기존 Game_MonsterAttackBroadcast/
+        // Game_MonsterAttackDodgedBroadcast를 그대로 쓴다.
+        Game_BossSkillTelegraphBroadcast = 0x022A,
+        Game_BossSkillEndBroadcast = 0x022B,
+
         // 0x03XX = Dungeon
     }
 }

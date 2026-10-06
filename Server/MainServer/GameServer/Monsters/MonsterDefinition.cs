@@ -27,5 +27,8 @@ namespace GameServer.Monsters
         // 몸통 반경(m). 이동 격자(NavGrid)가 있는 맵에서 장애물을 이만큼 부풀려 경로를 찾아, 덩치 큰 몬스터가
         // 기둥/가구 모서리에 끼지 않고 지나가게 한다. 격자가 없는 맵(필드)에서는 쓰이지 않는다.
         public float AgentRadius { get; init; } = 0.5f;
+
+        // 보스 전용 패턴(체력 구간별 범위 공격/돌진/소환). null이면 일반 몬스터라 기본 근접 공격만 한다.
+        public BossPatternDefinition? BossPattern { get; init; }
     }
 }

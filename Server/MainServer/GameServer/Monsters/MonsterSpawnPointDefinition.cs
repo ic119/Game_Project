@@ -16,6 +16,12 @@ namespace GameServer.Monsters
         public int MaxAlive { get; init; } = 1;
         public float RespawnSeconds { get; init; } = 20f;
 
+        // 스폰할 때마다 포인트 중심에서 이 반경(m) 안의 무작위 위치로 흩뿌린다(여러 마리가 한 좌표에 겹쳐 뭉치지 않게). 0이면 항상 포인트
+        // 좌표 그대로 스폰한다 - 정확한 자리가 필요한 단일 몬스터(보스 등)와 위치를 결정적으로 만들어야 하는 테스트용이다.
+        public float SpawnJitterRadius { get; init; } = DefaultSpawnJitterRadius;
+
+        public const float DefaultSpawnJitterRadius = 1.5f;
+
         // 이 포인트에서 나올 수 있는 몬스터 타입들. 스폰/리스폰마다 Weight 비율로 이 중 하나를 골라 그 타입의
         // 정의(MonsterDefinitionCatalog)를 그대로 적용한다(GameRoom.SpawnMonsterAtPoint). 최소 1개 이상이어야 하며,
         // MonsterSpawnCatalog.EnsureLoaded()가 로드 시점에 이를 검증해 비어있으면 서버 시작을 막는다.

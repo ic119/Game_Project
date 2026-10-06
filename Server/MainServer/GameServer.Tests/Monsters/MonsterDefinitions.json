@@ -7,5 +7,56 @@
         "detectionRange": 5.0,
         "chaseSpeed": 3.0,
         "leashRange": 9.0
+    },
+    "TestBossSlam": {
+        "maxHp": 100000,
+        "attackPower": 20,
+        "defense": 0,
+        "expReward": 0,
+        "detectionRange": 8.0,
+        "chaseSpeed": 3.0,
+        "leashRange": 40.0,
+        "bossPattern": {
+            "skills": {
+                "Slam": { "type": "AreaSlam", "telegraphSeconds": 0.7, "cooldownSeconds": 100.0, "recoverSeconds": 0.5, "damageMultiplier": 2.0, "radius": 4.0, "triggerRange": 6.0 }
+            },
+            "phases": [
+                { "belowHpPercent": 100, "skillIntervalSeconds": 1.0, "skills": [ "Slam" ] }
+            ]
+        }
+    },
+    "TestBossCharge": {
+        "maxHp": 100000,
+        "attackPower": 20,
+        "defense": 0,
+        "expReward": 0,
+        "detectionRange": 8.0,
+        "chaseSpeed": 3.0,
+        "leashRange": 40.0,
+        "bossPattern": {
+            "skills": {
+                "Charge": { "type": "Charge", "telegraphSeconds": 0.7, "cooldownSeconds": 100.0, "recoverSeconds": 0.5, "damageMultiplier": 2.0, "width": 2.0, "length": 8.0, "speed": 12.0, "minRange": 2.0, "maxRange": 12.0 }
+            },
+            "phases": [
+                { "belowHpPercent": 100, "skillIntervalSeconds": 1.0, "skills": [ "Charge" ] }
+            ]
+        }
+    },
+    "TestBossSummon": {
+        "maxHp": 100000,
+        "attackPower": 20,
+        "defense": 0,
+        "expReward": 0,
+        "detectionRange": 8.0,
+        "chaseSpeed": 3.0,
+        "leashRange": 40.0,
+        "bossPattern": {
+            "skills": {
+                "Summon": { "type": "Summon", "telegraphSeconds": 0.5, "cooldownSeconds": 100.0, "recoverSeconds": 0.5, "damageMultiplier": 1.0, "summonMonsterType": "TestMonster", "summonCount": 2, "maxAlive": 3, "summonRadius": 3.0 }
+            },
+            "phases": [
+                { "belowHpPercent": 100, "skillIntervalSeconds": 1.0, "skills": [ "Summon" ] }
+            ]
+        }
     }
 }

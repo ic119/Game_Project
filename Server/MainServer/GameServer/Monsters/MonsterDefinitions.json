@@ -81,6 +81,46 @@
         "detectionRange": 10.0,
         "chaseSpeed": 3.0,
         "leashRange": 14.0,
-        "agentRadius": 1.0
+        "agentRadius": 1.0,
+        "bossPattern": {
+            "skills": {
+                "Slam": {
+                    "type": "AreaSlam",
+                    "telegraphSeconds": 1.2,
+                    "cooldownSeconds": 6.0,
+                    "recoverSeconds": 0.8,
+                    "damageMultiplier": 1.6,
+                    "radius": 4.0,
+                    "triggerRange": 5.0
+                },
+                "Charge": {
+                    "type": "Charge",
+                    "telegraphSeconds": 1.0,
+                    "cooldownSeconds": 9.0,
+                    "recoverSeconds": 1.5,
+                    "damageMultiplier": 2.0,
+                    "width": 2.4,
+                    "length": 11.0,
+                    "speed": 14.0,
+                    "minRange": 3.0,
+                    "maxRange": 14.0
+                },
+                "Summon": {
+                    "type": "Summon",
+                    "telegraphSeconds": 1.5,
+                    "cooldownSeconds": 20.0,
+                    "recoverSeconds": 1.0,
+                    "summonMonsterType": "RatAssassin",
+                    "summonCount": 2,
+                    "maxAlive": 4,
+                    "summonRadius": 4.0
+                }
+            },
+            "phases": [
+                { "belowHpPercent": 100, "skillIntervalSeconds": 4.0, "skills": [ "Slam" ] },
+                { "belowHpPercent": 70, "skillIntervalSeconds": 3.0, "skills": [ "Slam", "Charge" ] },
+                { "belowHpPercent": 40, "skillIntervalSeconds": 2.2, "skills": [ "Slam", "Charge", "Summon" ] }
+            ]
+        }
     }
 }

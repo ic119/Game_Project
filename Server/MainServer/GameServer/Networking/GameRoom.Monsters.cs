@@ -69,16 +69,36 @@ namespace GameServer.Networking
 
             // 골드/아이템 드롭은 경험치 지급 성공 여부(공격자 존재, 만렙 여부)와 무관하게 처치 자체에
             // 대한 보상이므로, 아래 조기 반환 분기들과 상관없이 항상 한 번만 굴려 결과에 실어 보낸다.
-            (int gainedGold, List<(string ItemId, int Qty)> droppedItems) = DropTableCatalog.Roll(runtime.Info.MonsterType);
+            // 소환된 하수인은 보상(골드/아이템/경험치)이 없다 - 보스가 소환을 반복하는 것을 반복 파밍으로 쓸 수 없게 한다.
+            (int gainedGold, List<(string ItemId, int Qty)> droppedItems) = runtime.IsSummon
+                ? (0, new List<(string ItemId, int Qty)>())
+                : DropTableCatalog.Roll(runtime.Info.MonsterType);
 
             // 이 몬스터를 보던 사람에게만 사망을 알리고 시야 목록에서 지운다 - 다음 틱이 "시야 이탈"로 오인해
             // 사망 연출 없이 즉시 지우는 알림(MonsterLeaveView)을 보내지 않게 하기 위함이다.
             var dieBroadcast = new S2CMonsterDieBroadcast { MonsterId = monsterId, Timestamp = timestamp };
             SendToViewersOfMonster(monsterId, OpCode.Game_MonsterDieBroadcast, dieBroadcast.Encode(), alsoToPlayerId: attackerId);
+
+            // 보스가 쓰러지면 시전 중이던 스킬은 취소되고 거느리던 하수인도 함께 사라진다. 시야 목록에서 지우기 전에 해야
+            // 이 보스를 보던 사람에게 취소/사망 알림이 간다.
+            if (runtime.Definition.BossPattern != null)
+            {
+                CancelBossSkill(runtime);
+                DespawnSummonsOf(monsterId);
+            }
+
             ForgetMonsterInAllViews(monsterId);
 
-            // 리스폰은 이 공격 요청 처리와 독립적인 타이머이므로 기다리지 않고 흘려보낸다(fire-and-forget).
-            _ = RespawnAfterDelayAsync(runtime.Point);
+            // 리스폰은 이 공격 요청 처리와 독립적인 타이머이므로 기다리지 않고 흘려보낸다(fire-and-forget). 하수인은 리스폰하지 않는다.
+            if (!runtime.IsSummon)
+            {
+                _ = RespawnAfterDelayAsync(runtime.Point);
+            }
+
+            if (runtime.IsSummon)
+            {
+                return new MonsterAttackResult { MonsterDied = true };
+            }
 
             // 처치자의 살아있는 PlayerInfo를 직접 찾아 경험치/레벨을 그 자리에서 갱신한다(플레이어 세션이
             // 유일하게 이 값을 들고 있는 주체 - GameServer는 DB가 없어 여기서만 값이 존재한다).
@@ -134,10 +154,6 @@ namespace GameServer.Networking
             SpawnMonsterAtPoint(point);
         }
 
-        // 같은 포인트에서 maxAlive > 1로 여러 마리가 스폰될 때 한 좌표에 겹쳐 뭉치지 않도록,
-        // 포인트 중심에서 이 반경 안의 원 안에 균등 분포로 스폰 좌표를 흩뿌린다.
-        private const float SpawnJitterRadius = 1.5f;
-
         // 지터로 뽑은 스폰 좌표가 이동 불가 칸이면 이 칸 수 안에서 가장 가까운 이동 가능 칸을 찾는다(NavGrid.TrySnapToWalkable).
         private const int SpawnSnapRing = 4;
 
@@ -147,7 +163,7 @@ namespace GameServer.Networking
         {
             MonsterSpawnEntry entry = MonsterSpawnSelector.Pick(point.Entries, Random.Shared);
             MonsterDefinition definition = MonsterDefinitionCatalog.Get(entry.MonsterType);
-            (float jitteredX, float jitteredZ) = ApplySpawnJitter(point.X, point.Z);
+            (float jitteredX, float jitteredZ) = ApplySpawnJitter(point.X, point.Z, point.SpawnJitterRadius);
 
             // 지터로 영역(방) 가장자리 밖에 스폰되지 않게 영역 안으로 끌어온다.
             (float homeX, float homeZ) = point.ConstrainToArea(jitteredX, jitteredZ);
@@ -179,12 +195,18 @@ namespace GameServer.Networking
             return info;
         }
 
-        // 반지름에 sqrt(균등난수)를 곱해 원 "둘레"가 아니라 "넓이" 기준으로 균등 분포시킨다
-        // (sqrt 보정이 없으면 중심 근처에 점이 몰린다).
-        private static (float X, float Z) ApplySpawnJitter(float centerX, float centerZ)
+        // 같은 포인트에서 maxAlive > 1로 여러 마리가 스폰될 때 한 좌표에 겹쳐 뭉치지 않도록, 포인트 중심에서 jitterRadius 안의 원 안에
+        // 균등 분포로 스폰 좌표를 흩뿌린다(MonsterSpawnPointDefinition.SpawnJitterRadius). 반지름에 sqrt(균등난수)를 곱해 원 "둘레"가 아니라
+        // "넓이" 기준으로 균등 분포시킨다(sqrt 보정이 없으면 중심 근처에 점이 몰린다). 반지름이 0이면 포인트 좌표 그대로다.
+        private static (float X, float Z) ApplySpawnJitter(float centerX, float centerZ, float jitterRadius)
         {
+            if (jitterRadius <= 0f)
+            {
+                return (centerX, centerZ);
+            }
+
             float angle = Random.Shared.NextSingle() * MathF.PI * 2f;
-            float radius = MathF.Sqrt(Random.Shared.NextSingle()) * SpawnJitterRadius;
+            float radius = MathF.Sqrt(Random.Shared.NextSingle()) * jitterRadius;
             return (centerX + MathF.Cos(angle) * radius, centerZ + MathF.Sin(angle) * radius);
         }
 
@@ -202,7 +224,18 @@ namespace GameServer.Networking
             // 스폰 시 선택된 타입의 정의(스탯/AI 튜닝). Point.Entries 중 어느 것이 뽑혔는지는 리스폰마다 달라질 수 있어
             // Point가 아니라 이 인스턴스에 따로 저장해둔다(AI 틱과 ApplyMonsterAttack이 참조).
             public MonsterDefinition Definition { get; }
-            public int ExpReward => Definition.ExpReward;
+            public int ExpReward => IsSummon ? 0 : Definition.ExpReward;
+
+            // 보스가 소환한 하수인이면 그 보스의 monsterId. 하수인은 스폰 포인트에서 나온 몬스터가 아니라서 리스폰하지 않고, 처치 보상이 없으며,
+            // 소환한 보스가 죽으면 함께 사라진다.
+            public long? OwnerMonsterId { get; init; }
+            public bool IsSummon => OwnerMonsterId.HasValue;
+
+            // 보스 전용: 지금 시전 중인 스킬(없으면 null), 스킬별 남은 재사용 대기 시간(초), 다음 스킬을 고르기까지 남은 시간(초).
+            // 일반 몬스터는 쓰지 않는다. GameRoom.BossSkills.cs 참고.
+            public BossSkillExecution? ActiveSkill { get; set; }
+            public Dictionary<string, float> SkillCooldowns { get; } = new();
+            public float SkillIntervalRemaining { get; set; }
 
             public MonsterAiState AiState { get; set; } = MonsterAiState.Idle;
             public long? TargetPlayerId { get; set; }

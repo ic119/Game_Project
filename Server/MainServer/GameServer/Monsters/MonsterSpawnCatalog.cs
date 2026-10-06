@@ -61,6 +61,11 @@ namespace GameServer.Monsters
                             throw new InvalidOperationException($"스폰 포인트 '{point.PointId}'에 몬스터 타입(Entries)이 하나도 없습니다.");
                         }
 
+                        if (point.SpawnJitterRadius < 0f)
+                        {
+                            throw new InvalidOperationException($"스폰 포인트 '{point.PointId}'의 SpawnJitterRadius는 0 이상이어야 합니다 ({point.SpawnJitterRadius}).");
+                        }
+
                         // 영역 밖에 있는 포인트는 스폰하자마자 영역 밖에 갇힌 몬스터를 만든다 - 좌표/영역 오타를 부팅 시점에 막는다.
                         if (!point.AllowsPosition(point.X, point.Z))
                         {
