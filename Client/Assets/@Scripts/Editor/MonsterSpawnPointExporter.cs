@@ -23,10 +23,7 @@ namespace Incheol.Editor
         private class SpawnEntryJson
         {
             public string monsterType;
-            public int maxHp;
-            public int attackPower;
-            public int defense;
-            public int expReward;
+            public int weight;
         }
 
         [System.Serializable]
@@ -40,9 +37,6 @@ namespace Incheol.Editor
             public int maxAlive;
             public float respawnSeconds;
             public List<SpawnEntryJson> entries;
-            public float detectionRange;
-            public float chaseSpeed;
-            public float leashRange;
         }
 
         [System.Serializable]
@@ -124,6 +118,14 @@ namespace Incheol.Editor
                             Debug.LogError($"[MonsterSpawnPointExporter] {message} 내보내기를 중단합니다.");
                             return 0;
                         }
+
+                        if (entry.weight < 1)
+                        {
+                            string message = $"'{marker.gameObject.name}'의 '{entry.monsterType}' weight는 1 이상이어야 합니다.";
+                            if (showDialogs) EditorUtility.DisplayDialog("스폰 포인트 내보내기", message, "확인");
+                            Debug.LogError($"[MonsterSpawnPointExporter] {message} 내보내기를 중단합니다.");
+                            return 0;
+                        }
                     }
                 }
 
@@ -137,10 +139,7 @@ namespace Incheol.Editor
                         entries.Add(new SpawnEntryJson
                         {
                             monsterType = entry.monsterType.ToString(),
-                            maxHp = entry.maxHp,
-                            attackPower = entry.attackPower,
-                            defense = entry.defense,
-                            expReward = entry.expReward
+                            weight = entry.weight
                         });
                     }
 
@@ -153,10 +152,7 @@ namespace Incheol.Editor
                         rotationY = marker.transform.eulerAngles.y,
                         maxAlive = marker.maxAlive,
                         respawnSeconds = marker.respawnSeconds,
-                        entries = entries,
-                        detectionRange = marker.detectionRange,
-                        chaseSpeed = marker.chaseSpeed,
-                        leashRange = marker.leashRange
+                        entries = entries
                     });
                 }
 

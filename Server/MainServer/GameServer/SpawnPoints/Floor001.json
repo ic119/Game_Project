@@ -11,15 +11,9 @@
             "entries": [
                 {
                     "monsterType": "RedMushroom",
-                    "maxHp": 235,
-                    "attackPower": 13,
-                    "defense": 3,
-                    "expReward": 40
+                    "weight": 1
                 }
-            ],
-            "detectionRange": 6.0,
-            "chaseSpeed": 2.5,
-            "leashRange": 10.0
+            ]
         },
         {
             "pointId": "Floor001_StartMeadow",
@@ -32,15 +26,9 @@
             "entries": [
                 {
                     "monsterType": "RedMushroom",
-                    "maxHp": 235,
-                    "attackPower": 13,
-                    "defense": 3,
-                    "expReward": 40
+                    "weight": 1
                 }
-            ],
-            "detectionRange": 6.0,
-            "chaseSpeed": 2.5,
-            "leashRange": 10.0
+            ]
         },
         {
             "pointId": "Floor001_SpiderHollow",
@@ -53,15 +41,9 @@
             "entries": [
                 {
                     "monsterType": "Spider",
-                    "maxHp": 440,
-                    "attackPower": 26,
-                    "defense": 5,
-                    "expReward": 160
+                    "weight": 1
                 }
-            ],
-            "detectionRange": 6.0,
-            "chaseSpeed": 2.799999952316284,
-            "leashRange": 10.0
+            ]
         },
         {
             "pointId": "Floor001_OrcCamp",
@@ -74,15 +56,9 @@
             "entries": [
                 {
                     "monsterType": "Orc",
-                    "maxHp": 645,
-                    "attackPower": 42,
-                    "defense": 7,
-                    "expReward": 320
+                    "weight": 1
                 }
-            ],
-            "detectionRange": 7.0,
-            "chaseSpeed": 2.5,
-            "leashRange": 12.0
+            ]
         },
         {
             "pointId": "Floor001_WerewolfDen",
@@ -95,15 +71,9 @@
             "entries": [
                 {
                     "monsterType": "Werewolf",
-                    "maxHp": 880,
-                    "attackPower": 62,
-                    "defense": 10,
-                    "expReward": 515
+                    "weight": 1
                 }
-            ],
-            "detectionRange": 8.0,
-            "chaseSpeed": 3.200000047683716,
-            "leashRange": 12.0
+            ]
         },
         {
             "pointId": "Floor001_GolemRuins",
@@ -116,15 +86,9 @@
             "entries": [
                 {
                     "monsterType": "Golem",
-                    "maxHp": 1115,
-                    "attackPower": 83,
-                    "defense": 13,
-                    "expReward": 700
+                    "weight": 1
                 }
-            ],
-            "detectionRange": 7.0,
-            "chaseSpeed": 2.200000047683716,
-            "leashRange": 12.0
+            ]
         }
     ]
 }

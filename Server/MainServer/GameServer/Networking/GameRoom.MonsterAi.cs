@@ -73,7 +73,7 @@ namespace GameServer.Networking
             return movedPlayers;
         }
 
-        // 몬스터 종류에 관계없이 공통으로 동작한다 - 몬스터별 분기 없이 MonsterSpawnPointDefinition의
+        // 몬스터 종류에 관계없이 공통으로 동작한다 - 몬스터별 분기 없이 MonsterDefinition의
         // DetectionRange/ChaseSpeed/LeashRange 값만으로 감지/추적/복귀를 판단하므로, 새 몬스터 타입을
         // 추가해도 이 로직은 수정할 필요가 없다. 이번 틱에 위치/방향이 바뀐 몬스터 목록을 돌려준다(스냅샷용).
         private List<EntityTransform> TickMonsterAi(float deltaSeconds)
@@ -106,7 +106,7 @@ namespace GameServer.Networking
             switch (runtime.AiState)
             {
                 case MonsterAiState.Idle:
-                    long? foundTargetId = FindNearestPlayerInRange(runtime.Info, runtime.Point.DetectionRange);
+                    long? foundTargetId = FindNearestPlayerInRange(runtime.Info, runtime.Definition.DetectionRange);
                     if (foundTargetId is { } targetId)
                     {
                         runtime.AiState = MonsterAiState.Chasing;
@@ -150,7 +150,7 @@ namespace GameServer.Networking
             PlayerInfo target = targetEntry.Info;
 
             float distanceFromSpawn = Distance(info.X, info.Z, runtime.HomeX, runtime.HomeZ);
-            if (distanceFromSpawn > runtime.Point.LeashRange)
+            if (distanceFromSpawn > runtime.Definition.LeashRange)
             {
                 runtime.TargetPlayerId = null;
                 runtime.AttackWindupRemaining = 0f;
@@ -193,7 +193,7 @@ namespace GameServer.Networking
                 return true;
             }
 
-            return MoveToward(info, target.X, target.Z, runtime.Point.ChaseSpeed, deltaSeconds);
+            return MoveToward(info, target.X, target.Z, runtime.Definition.ChaseSpeed, deltaSeconds);
         }
 
         private static void FaceTarget(MonsterInfo info, PlayerInfo target)
@@ -280,7 +280,7 @@ namespace GameServer.Networking
         {
             MonsterInfo info = runtime.Info;
 
-            bool moved = MoveToward(info, runtime.HomeX, runtime.HomeZ, runtime.Point.ChaseSpeed, deltaSeconds);
+            bool moved = MoveToward(info, runtime.HomeX, runtime.HomeZ, runtime.Definition.ChaseSpeed, deltaSeconds);
 
             if (Distance(info.X, info.Z, runtime.HomeX, runtime.HomeZ) <= ArrivalThreshold)
             {

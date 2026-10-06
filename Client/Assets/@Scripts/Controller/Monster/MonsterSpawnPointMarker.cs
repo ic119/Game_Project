@@ -7,19 +7,18 @@ namespace Incheol.Controller
 {
     /// <summary>
     /// 스폰 포인트 하나에서 나올 수 있는 몬스터 타입 하나. 서버 GameServer.Monsters.MonsterSpawnEntry와
-    /// 형식이 동일해야 한다 - 스폰/리스폰마다 소속 포인트의 entries 중 이 항목이 무작위로 선택될 수 있다.
+    /// 형식이 동일해야 한다 - 스폰/리스폰마다 소속 포인트의 entries 중 하나가 weight 비율로 선택된다.
+    /// 스탯/AI 값은 여기에 없다 - 서버 Monsters/MonsterDefinitions.json이 몬스터 타입별로 들고 있다.
     /// </summary>
     [Serializable]
     public class MonsterSpawnEntry
     {
-        [Tooltip("인스펙터에서 몬스터 타입을 선택한다. Define.MonsterType과 1:1로 대응한다.")]
+        [Tooltip("인스펙터에서 몬스터 타입을 선택한다. Define.MonsterType과 1:1로 대응하며, " +
+            "서버 MonsterDefinitions.json에 같은 이름의 정의가 있어야 한다.")]
         public MonsterType monsterType = MonsterType.None;
 
-        [Header("스탯 (실제 전투에 쓰이는 유일한 출처 - 서버로 그대로 전달된다)")]
-        [Min(1)] public int maxHp = 30;
-        [Min(0)] public int attackPower = 5;
-        [Min(0)] public int defense = 0;
-        [Min(0)] public int expReward = 20;
+        [Tooltip("선택 가중치(상대 비율). 모두 1이면 균등 랜덤이고, 3과 1이면 75%/25%다.")]
+        [Min(1)] public int weight = 1;
     }
 
     /// <summary>
@@ -32,31 +31,13 @@ namespace Incheol.Controller
     /// </summary>
     public class MonsterSpawnPointMarker : MonoBehaviour
     {
-        [Tooltip("이 포인트에서 나올 수 있는 몬스터 타입들. 스폰/리스폰마다 이 중 하나를 무작위로 골라 " +
-            "그 타입의 스탯을 그대로 적용한다(서버 GameRoom.SpawnMonsterAtPoint). 최소 1개 이상 있어야 한다.")]
+        [Tooltip("이 포인트에서 나올 수 있는 몬스터 타입들. 스폰/리스폰마다 weight 비율로 이 중 하나를 골라 " +
+            "그 타입의 서버 정의(MonsterDefinitions.json)를 그대로 적용한다(서버 GameRoom.SpawnMonsterAtPoint). " +
+            "최소 1개 이상 있어야 한다.")]
         public List<MonsterSpawnEntry> entries = new();
 
         [Header("개체수/리스폰")]
         [Min(1)] public int maxAlive = 1;
         [Min(0f)] public float respawnSeconds = 20f;
-
-        [Header("인식/추적 AI")]
-        [Tooltip("이 거리 안에 플레이어가 들어오면 추적을 시작한다.")]
-        [Min(0f)] public float detectionRange = 6f;
-        [Tooltip("추적/복귀 중 초당 이동 거리.")]
-        [Min(0f)] public float chaseSpeed = 2.5f;
-        [Tooltip("스폰 지점으로부터 이 거리 이상 벗어나면 추적을 포기하고 복귀한다.")]
-        [Min(0f)] public float leashRange = 10f;
-
-        // 씬 뷰에서 감지 범위(노랑)/리쉬 범위(빨강)를 원으로 보여준다. 선택된 상태에서만 그려서
-        // 마커가 많아져도 씬 뷰가 원으로 뒤덮이지 않게 한다.
-        private void OnDrawGizmosSelected()
-        {
-            Gizmos.color = Color.yellow;
-            Gizmos.DrawWireSphere(transform.position, detectionRange);
-
-            Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(transform.position, leashRange);
-        }
     }
 }

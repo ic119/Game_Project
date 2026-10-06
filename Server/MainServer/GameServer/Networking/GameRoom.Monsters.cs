@@ -137,30 +137,31 @@ namespace GameServer.Networking
         // 포인트 중심에서 이 반경 안의 원 안에 균등 분포로 스폰 좌표를 흩뿌린다.
         private const float SpawnJitterRadius = 1.5f;
 
-        // point.Entries 중 하나를 무작위로 골라 그 타입/스탯으로 몬스터를 만든다. 리스폰마다 다시 호출되므로
-        // 같은 포인트에서도 스폰될 때마다 다른 타입이 나올 수 있다.
+        // point.Entries 중 하나를 Weight 비율로 골라 그 타입의 정의(MonsterDefinitionCatalog)로 몬스터를 만든다.
+        // 리스폰마다 다시 호출되므로 같은 포인트에서도 스폰될 때마다 다른 타입이 나올 수 있다.
         private MonsterInfo SpawnMonsterAtPoint(MonsterSpawnPointDefinition point)
         {
-            MonsterSpawnEntry entry = point.Entries[Random.Shared.Next(point.Entries.Count)];
+            MonsterSpawnEntry entry = MonsterSpawnSelector.Pick(point.Entries, Random.Shared);
+            MonsterDefinition definition = MonsterDefinitionCatalog.Get(entry.MonsterType);
             (float homeX, float homeZ) = ApplySpawnJitter(point.X, point.Z);
 
             var info = new MonsterInfo
             {
                 MonsterId = MonsterIdGenerator.Next(),
                 MonsterType = entry.MonsterType,
-                MaxHp = entry.MaxHp,
-                CurrentHp = entry.MaxHp,
-                AttackPower = entry.AttackPower,
-                Defense = entry.Defense,
+                MaxHp = definition.MaxHp,
+                CurrentHp = definition.MaxHp,
+                AttackPower = definition.AttackPower,
+                Defense = definition.Defense,
                 X = homeX,
                 Y = point.Y,
                 Z = homeZ,
                 RotationY = point.RotationY,
-                ExpReward = entry.ExpReward,
+                ExpReward = definition.ExpReward,
                 PointId = point.PointId
             };
 
-            _monsters[info.MonsterId] = new MonsterRuntime(info, point, entry.ExpReward, homeX, homeZ);
+            _monsters[info.MonsterId] = new MonsterRuntime(info, point, definition, homeX, homeZ);
             return info;
         }
 
@@ -184,9 +185,10 @@ namespace GameServer.Networking
             public float HomeX { get; }
             public float HomeZ { get; }
 
-            // 스폰 시 선택된 엔트리의 경험치. Point.Entries 중 어느 것이 뽑혔는지는 리스폰마다 달라질 수 있어
-            // Point가 아니라 이 인스턴스에 따로 저장해둔다(ApplyMonsterAttack이 처치 시 참조).
-            public int ExpReward { get; }
+            // 스폰 시 선택된 타입의 정의(스탯/AI 튜닝). Point.Entries 중 어느 것이 뽑혔는지는 리스폰마다 달라질 수 있어
+            // Point가 아니라 이 인스턴스에 따로 저장해둔다(AI 틱과 ApplyMonsterAttack이 참조).
+            public MonsterDefinition Definition { get; }
+            public int ExpReward => Definition.ExpReward;
 
             public MonsterAiState AiState { get; set; } = MonsterAiState.Idle;
             public long? TargetPlayerId { get; set; }
@@ -201,11 +203,11 @@ namespace GameServer.Networking
             public float AttackWindupRemaining { get; set; }
             public long AttackWindupStartedAtUtcTicks { get; set; }
 
-            public MonsterRuntime(MonsterInfo info, MonsterSpawnPointDefinition point, int expReward, float homeX, float homeZ)
+            public MonsterRuntime(MonsterInfo info, MonsterSpawnPointDefinition point, MonsterDefinition definition, float homeX, float homeZ)
             {
                 Info = info;
                 Point = point;
-                ExpReward = expReward;
+                Definition = definition;
                 HomeX = homeX;
                 HomeZ = homeZ;
             }

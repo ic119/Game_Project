@@ -1,0 +1,11 @@
+{
+    "TestMonster": {
+        "maxHp": 100,
+        "attackPower": 10,
+        "defense": 2,
+        "expReward": 50,
+        "detectionRange": 5.0,
+        "chaseSpeed": 3.0,
+        "leashRange": 9.0
+    }
+}

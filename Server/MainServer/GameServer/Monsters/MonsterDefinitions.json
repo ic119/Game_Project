@@ -1,0 +1,47 @@
+{
+    "RedMushroom": {
+        "maxHp": 235,
+        "attackPower": 13,
+        "defense": 3,
+        "expReward": 40,
+        "detectionRange": 6.0,
+        "chaseSpeed": 2.5,
+        "leashRange": 10.0
+    },
+    "Spider": {
+        "maxHp": 440,
+        "attackPower": 26,
+        "defense": 5,
+        "expReward": 160,
+        "detectionRange": 6.0,
+        "chaseSpeed": 2.8,
+        "leashRange": 10.0
+    },
+    "Orc": {
+        "maxHp": 645,
+        "attackPower": 42,
+        "defense": 7,
+        "expReward": 320,
+        "detectionRange": 7.0,
+        "chaseSpeed": 2.5,
+        "leashRange": 12.0
+    },
+    "Werewolf": {
+        "maxHp": 880,
+        "attackPower": 62,
+        "defense": 10,
+        "expReward": 515,
+        "detectionRange": 8.0,
+        "chaseSpeed": 3.2,
+        "leashRange": 12.0
+    },
+    "Golem": {
+        "maxHp": 1115,
+        "attackPower": 83,
+        "defense": 13,
+        "expReward": 700,
+        "detectionRange": 7.0,
+        "chaseSpeed": 2.2,
+        "leashRange": 12.0
+    }
+}

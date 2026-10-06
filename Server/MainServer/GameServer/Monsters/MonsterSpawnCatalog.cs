@@ -59,6 +59,20 @@ namespace GameServer.Monsters
                         {
                             throw new InvalidOperationException($"스폰 포인트 '{point.PointId}'에 몬스터 타입(Entries)이 하나도 없습니다.");
                         }
+
+                        foreach (MonsterSpawnEntry entry in point.Entries)
+                        {
+                            if (entry.Weight < 1)
+                            {
+                                throw new InvalidOperationException($"스폰 포인트 '{point.PointId}'의 '{entry.MonsterType}' Weight는 1 이상이어야 합니다 ({entry.Weight}).");
+                            }
+
+                            // 오타로 정의에 없는 타입을 참조하면 스폰 순간에 서버가 죽으므로, 부팅 시점에 바로 막는다.
+                            if (!MonsterDefinitionCatalog.Exists(entry.MonsterType))
+                            {
+                                throw new InvalidOperationException($"스폰 포인트 '{point.PointId}'의 몬스터 타입 '{entry.MonsterType}'이 MonsterDefinitions.json에 존재하지 않습니다.");
+                            }
+                        }
                     }
 
                     result[mapId] = points;
