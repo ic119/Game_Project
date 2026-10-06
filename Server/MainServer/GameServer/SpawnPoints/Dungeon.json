@@ -1,0 +1,193 @@
+{
+    "points": [
+        {
+            "pointId": "Dungeon_Room2_RatAssassin",
+            "x": -5.0,
+            "y": -1.9199999570846558,
+            "z": -24.75,
+            "rotationY": 0.0,
+            "maxAlive": 3,
+            "respawnSeconds": 120.0,
+            "entries": [
+                {
+                    "monsterType": "RatAssassin",
+                    "weight": 1
+                }
+            ],
+            "area": {
+                "centerX": -3.0,
+                "centerZ": -23.75,
+                "sizeX": 11.0,
+                "sizeZ": 6.5
+            }
+        },
+        {
+            "pointId": "Dungeon_Room3_ChestMonster",
+            "x": 6.0,
+            "y": -1.9199999570846558,
+            "z": -5.25,
+            "rotationY": 0.0,
+            "maxAlive": 2,
+            "respawnSeconds": 120.0,
+            "entries": [
+                {
+                    "monsterType": "ChestMonster",
+                    "weight": 1
+                }
+            ],
+            "area": {
+                "centerX": 7.0,
+                "centerZ": -4.0,
+                "sizeX": 7.0,
+                "sizeZ": 7.0
+            }
+        },
+        {
+            "pointId": "Dungeon_Room5_RatAssassin",
+            "x": -6.0,
+            "y": -1.9199999570846558,
+            "z": 5.0,
+            "rotationY": 0.0,
+            "maxAlive": 2,
+            "respawnSeconds": 120.0,
+            "entries": [
+                {
+                    "monsterType": "RatAssassin",
+                    "weight": 1
+                }
+            ],
+            "area": {
+                "centerX": -5.25,
+                "centerZ": 1.5,
+                "sizeX": 7.5,
+                "sizeZ": 18.0
+            }
+        },
+        {
+            "pointId": "Dungeon_Room5_Specter",
+            "x": -7.0,
+            "y": -1.9199999570846558,
+            "z": -3.0,
+            "rotationY": 0.0,
+            "maxAlive": 1,
+            "respawnSeconds": 120.0,
+            "entries": [
+                {
+                    "monsterType": "Specter",
+                    "weight": 1
+                }
+            ],
+            "area": {
+                "centerX": -5.25,
+                "centerZ": 1.5,
+                "sizeX": 7.5,
+                "sizeZ": 18.0
+            }
+        },
+        {
+            "pointId": "Dungeon_Room6_Specter",
+            "x": 23.5,
+            "y": 0.07999999821186066,
+            "z": 6.0,
+            "rotationY": 0.0,
+            "maxAlive": 2,
+            "respawnSeconds": 120.0,
+            "entries": [
+                {
+                    "monsterType": "Specter",
+                    "weight": 1
+                }
+            ],
+            "area": {
+                "centerX": 23.25,
+                "centerZ": 5.5,
+                "sizeX": 6.5,
+                "sizeZ": 4.0
+            }
+        },
+        {
+            "pointId": "Dungeon_Room7_Specter",
+            "x": 25.0,
+            "y": 2.0799999237060549,
+            "z": -2.5,
+            "rotationY": 0.0,
+            "maxAlive": 1,
+            "respawnSeconds": 120.0,
+            "entries": [
+                {
+                    "monsterType": "Specter",
+                    "weight": 1
+                }
+            ],
+            "area": {
+                "centerX": 27.0,
+                "centerZ": -4.0,
+                "sizeX": 6.0,
+                "sizeZ": 6.0
+            }
+        },
+        {
+            "pointId": "Dungeon_Room7_ChestMonster",
+            "x": 29.0,
+            "y": 2.0799999237060549,
+            "z": -5.0,
+            "rotationY": 0.0,
+            "maxAlive": 2,
+            "respawnSeconds": 120.0,
+            "entries": [
+                {
+                    "monsterType": "ChestMonster",
+                    "weight": 1
+                }
+            ],
+            "area": {
+                "centerX": 27.0,
+                "centerZ": -4.0,
+                "sizeX": 6.0,
+                "sizeZ": 6.0
+            }
+        },
+        {
+            "pointId": "Dungeon_Room8_BlackKnight",
+            "x": 21.0,
+            "y": 2.0899999141693117,
+            "z": -14.25,
+            "rotationY": 0.0,
+            "maxAlive": 1,
+            "respawnSeconds": 120.0,
+            "entries": [
+                {
+                    "monsterType": "BlackKnight",
+                    "weight": 1
+                }
+            ],
+            "area": {
+                "centerX": 23.0,
+                "centerZ": -14.0,
+                "sizeX": 15.0,
+                "sizeZ": 11.0
+            }
+        },
+        {
+            "pointId": "Dungeon_Room12_Golem",
+            "x": 30.0,
+            "y": 2.0899999141693117,
+            "z": -36.0,
+            "rotationY": 0.0,
+            "maxAlive": 1,
+            "respawnSeconds": 120.0,
+            "entries": [
+                {
+                    "monsterType": "Golem",
+                    "weight": 1
+                }
+            ],
+            "area": {
+                "centerX": 29.25,
+                "centerZ": -36.75,
+                "sizeX": 11.5,
+                "sizeZ": 15.5
+            }
+        }
+    ]
+}

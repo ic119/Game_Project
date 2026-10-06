@@ -34,6 +34,11 @@
     <None Update="Items\*.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <!-- 실제 던전 데이터(서버가 쓰는 파일 그대로)를 검증하는 DungeonDataTests용. 서버 카탈로그가 자동 로드하는 폴더(SpawnPoints/NavGrids/Monsters)와
+         섞이지 않도록 RealData 폴더로 복사한다. -->
+    <None Include="..\GameServer\SpawnPoints\Dungeon.json" Link="RealData\Dungeon.spawn.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\GameServer\NavGrids\Dungeon.json" Link="RealData\Dungeon.nav.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\GameServer\Monsters\MonsterDefinitions.json" Link="RealData\MonsterDefinitions.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="NavGrids\*.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
