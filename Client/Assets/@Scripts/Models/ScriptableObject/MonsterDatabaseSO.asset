@@ -28,3 +28,15 @@ MonoBehaviour:
   - monsterType: 5
     displayName: "\uAC15\uCCA0 \uACE8\uB818"
     grade: 3
+  - monsterType: 6
+    displayName: "\uBCF4\uBB3C\uC0C1\uC790 \uAD34\uBB3C"
+    grade: 1
+  - monsterType: 7
+    displayName: "\uB9DD\uB839"
+    grade: 2
+  - monsterType: 8
+    displayName: "\uC950 \uC554\uC0B4\uC790"
+    grade: 1
+  - monsterType: 9
+    displayName: "\uD751\uAE30\uC0AC"
+    grade: 3

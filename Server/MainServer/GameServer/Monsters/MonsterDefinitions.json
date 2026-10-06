@@ -43,5 +43,43 @@
         "detectionRange": 7.0,
         "chaseSpeed": 2.2,
         "leashRange": 12.0
+    },
+    "RatAssassin": {
+        "maxHp": 520,
+        "attackPower": 38,
+        "defense": 5,
+        "expReward": 284,
+        "detectionRange": 8.0,
+        "chaseSpeed": 3.4,
+        "leashRange": 12.0
+    },
+    "ChestMonster": {
+        "maxHp": 800,
+        "attackPower": 52,
+        "defense": 11,
+        "expReward": 424,
+        "detectionRange": 5.0,
+        "chaseSpeed": 2.3,
+        "leashRange": 10.0
+    },
+    "Specter": {
+        "maxHp": 980,
+        "attackPower": 70,
+        "defense": 8,
+        "expReward": 532,
+        "detectionRange": 8.0,
+        "chaseSpeed": 2.8,
+        "leashRange": 12.0,
+        "agentRadius": 0.6
+    },
+    "BlackKnight": {
+        "maxHp": 4200,
+        "attackPower": 110,
+        "defense": 18,
+        "expReward": 1900,
+        "detectionRange": 10.0,
+        "chaseSpeed": 3.0,
+        "leashRange": 14.0,
+        "agentRadius": 1.0
     }
 }

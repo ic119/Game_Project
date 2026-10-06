@@ -42,7 +42,11 @@ namespace Incheol.Models.Define
         Spider = 2,
         Orc = 3,
         Werewolf = 4,
-        Golem = 5
+        Golem = 5,
+        ChestMonster = 6,
+        Specter = 7,
+        RatAssassin = 8,
+        BlackKnight = 9
     }
 
     /// <summary>

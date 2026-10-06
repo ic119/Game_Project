@@ -15,13 +15,33 @@ MonoBehaviour:
   m_GroupName: Monsters
   m_GUID: 2c999b6445316ae4798fd58d0f53cacc
   m_SerializeEntries:
+  - m_GUID: 3f86c98202d9b474c9dbf032685c3296
+    m_Address: RatAssassin
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4fe6fbca59b81e64e8d74df1c5bfa192
+    m_Address: BlackKnight
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 664973d70c8a8cf48a8956cbe44f7adf
     m_Address: Orc
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 81306b30bd38d56498a51a2fe9b27c54
+    m_Address: Specter
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 838505dde10da934e8b9887fcc23e608
     m_Address: Spider
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b6868cf9564f3474b8333b3b04f0c970
+    m_Address: ChestMonster
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
