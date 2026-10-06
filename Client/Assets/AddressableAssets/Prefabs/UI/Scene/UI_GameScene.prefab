@@ -699,7 +699,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 92a9ee61187427543b61184ea0d633af, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UI_MapViewPopupView
-  container: {fileID: 0}
+  container: {fileID: 2054768105319234769}
+  closeButton: {fileID: 4728753859056281629}
+  mapView: {fileID: 5939189093061437627}
 --- !u!1 &679356952977009938
 GameObject:
   m_ObjectHideFlags: 0
@@ -2087,7 +2089,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &6508787052616386221
 RectTransform:
   m_ObjectHideFlags: 0
@@ -3961,7 +3963,7 @@ GameObject:
   - component: {fileID: 5763027465379293492}
   - component: {fileID: 4320686934204284224}
   m_Layer: 5
-  m_Name: Image
+  m_Name: BlockedImage
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4837,7 +4839,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -18.5, y: -7.399994}
+  m_AnchoredPosition: {x: -21.099976, y: -11.299988}
   m_SizeDelta: {x: 40, y: 40}
   m_Pivot: {x: 1, y: 1}
 --- !u!222 &5082842139373674445

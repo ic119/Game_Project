@@ -22,6 +22,7 @@ namespace Incheol.Presenter.Scene
         private UI_MonsterTargetView monsterTargetView;
         private UI_DropItemPopupView dropItemPopupView;
         private UI_PlayerRespawnPopupView respawnPopupView;
+        private UI_MapViewPopupView mapViewPopupView;
 
         /// <summary>
         /// 사망 후 자동 부활까지 걸리는 시간(초). 서버 CombatTuning.ReviveDelaySeconds와 같아야 한다(CombatTimings가 단일 출처, 서버 테스트가 일치를 검사한다) - 서버는 남은 시간을 보내지 않으므로
@@ -186,6 +187,21 @@ namespace Incheol.Presenter.Scene
                 ToggleInventory();
             }
 
+            if (!InputBlocker.IsBlocked && Input.GetKeyDown(KeyCode.M))
+            {
+                if (mapViewPopupView != null)
+                {
+                    if (mapViewPopupView.IsOpen)
+                    {
+                        mapViewPopupView.Close();
+                    }
+                    else
+                    {
+                        mapViewPopupView.Open();
+                    }
+                }
+            }
+
             if (monsterTargetView != null && monsterTargetView.HasTarget &&
                 Time.time - lastMonsterTargetedTime > MonsterTargetLostTimeoutSeconds)
             {
@@ -298,6 +314,7 @@ namespace Incheol.Presenter.Scene
                         instance.TryGetComponent(out monsterTargetView);
                         instance.TryGetComponent(out dropItemPopupView);
                         instance.TryGetComponent(out respawnPopupView);
+                        instance.TryGetComponent(out mapViewPopupView);
 
                         if (gameSceneView != null)
                         {
