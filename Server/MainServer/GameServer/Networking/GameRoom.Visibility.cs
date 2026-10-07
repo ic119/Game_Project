@@ -102,12 +102,18 @@ namespace GameServer.Networking
         }
 
         // playerId를 보고 있는 사람과 본인(+ alsoToPlayerId)에게 보낸다. 피격/HP/부활처럼 본인 화면에도 반영돼야 하는 알림용.
-        private void SendToViewersOfPlayer(long playerId, OpCode opCode, byte[] body, long? alsoToPlayerId = null)
+        // excludeSelf가 true이면 본인(playerId)은 제외한다 - 본인은 이미 로컬에서 처리한 연출을 다른 사람에게만 중계할 때 쓴다.
+        private void SendToViewersOfPlayer(long playerId, OpCode opCode, byte[] body, long? alsoToPlayerId = null, bool excludeSelf = false)
         {
             lock (_viewLock)
             {
                 foreach (var (viewerId, view) in _views)
                 {
+                    if (excludeSelf && viewerId == playerId)
+                    {
+                        continue;
+                    }
+
                     if ((viewerId == playerId || viewerId == alsoToPlayerId || view.Players.Contains(playerId))
                         && _players.TryGetValue(viewerId, out var viewer))
                     {

@@ -152,4 +152,22 @@ public class GameRoomTests : IDisposable
         Assert.False(room.RegisterDash(2)); // 사망
         Assert.False(room.RegisterDash(999)); // 방에 없음
     }
+
+    [Fact]
+    public void BroadcastDash_ReachesViewersButNotTheDasherOrFarPlayers()
+    {
+        var room = CreateRoom();
+        var dasher = new FakeSender();
+        var nearby = new FakeSender();
+        var far = new FakeSender();
+        room.Join(Player(1, 0, 0), dasher);
+        room.Join(Player(2, 5, 0), nearby);
+        room.Join(Player(3, 500, 0), far);
+
+        room.BroadcastDash(1, isBackward: true);
+
+        Assert.Single(nearby.OpCodes, OpCode.Game_DashBroadcast);
+        Assert.DoesNotContain(OpCode.Game_DashBroadcast, dasher.OpCodes); // 본인은 이미 로컬에서 재생했다
+        Assert.DoesNotContain(OpCode.Game_DashBroadcast, far.OpCodes); // 시야 밖
+    }
 }

@@ -38,6 +38,7 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnPlayerHpChanged += HandlePlayerHpChanged;
             GameServerConnectManager.Instance.OnPlayerRevived += HandlePlayerRevived;
             GameServerConnectManager.Instance.OnEquipmentChanged += HandleEquipmentChanged;
+            GameServerConnectManager.Instance.OnDashReceived += HandleDashReceived;
 
             // ItemDatabaseSO는 Addressables로 비동기 로드되므로 원격 캐릭터가 데이터베이스 로드 전에 스폰될 수 있다 -
             // 로드가 끝나면 그때까지 못 그린 장비를 다시 적용한다.
@@ -63,6 +64,7 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnPlayerHpChanged -= HandlePlayerHpChanged;
             GameServerConnectManager.Instance.OnPlayerRevived -= HandlePlayerRevived;
             GameServerConnectManager.Instance.OnEquipmentChanged -= HandleEquipmentChanged;
+            GameServerConnectManager.Instance.OnDashReceived -= HandleDashReceived;
 
             if (ItemDatabaseManager.Instance != null)
             {
@@ -187,6 +189,18 @@ namespace Incheol.Modules
             else
             {
                 model.UnequipItem(slot);
+            }
+        }
+
+        /// <summary>
+        /// 다른 플레이어의 대쉬 알림(Game_DashBroadcast)을 받아 해당 원격 캐릭터에 전방/후방 대쉬 모션과 이펙트를 재생시킨다.
+        /// 본인의 대쉬는 PlayerMoveController가 로컬에서 즉시 재생하므로 이 이벤트로 오지 않는다.
+        /// </summary>
+        private void HandleDashReceived(GameDashBroadcastPacket packet)
+        {
+            if (TryGetRemotePlayer(packet.PlayerId, out RemoteCharacterController controller))
+            {
+                controller.PlayDash(packet.IsBackward);
             }
         }
 

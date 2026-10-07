@@ -49,6 +49,7 @@ namespace Incheol.Modules.Networking
         Game_MapChangeRejected = 0x0228,
         Game_ActiveGateNotify = 0x0229,
         Game_BossSkillTelegraphBroadcast = 0x022A,
-        Game_BossSkillEndBroadcast = 0x022B
+        Game_BossSkillEndBroadcast = 0x022B,
+        Game_DashBroadcast = 0x022C
     }
 }

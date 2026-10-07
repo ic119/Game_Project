@@ -57,6 +57,14 @@ namespace GameServer.Networking
             }
         }
 
+        // 대쉬 모션 중계. RegisterDash가 성공한(쿨다운 검증을 통과한) 대쉬만 playerId를 보고 있는 사람에게 알린다 - 쿨다운 안의 요청을
+        // 그대로 중계하면 요청을 도배해 다른 플레이어 화면에서 대쉬 모션을 연타시킬 수 있다. 본인은 이미 로컬에서 재생했으므로 보내지 않는다.
+        public void BroadcastDash(long playerId, bool isBackward)
+        {
+            var broadcast = new S2CDashBroadcast { PlayerId = playerId, IsBackward = isBackward };
+            SendToViewersOfPlayer(playerId, OpCode.Game_DashBroadcast, broadcast.Encode(), excludeSelf: true);
+        }
+
         // 지금 무적 구간 안인지, 그리고 windupStartedAtUtcTicks 이후에 대쉬를 시작했는지(= 이번 몬스터 공격의 선딜 중 대쉬했는지).
         private void GetDashStatus(long playerId, long windupStartedAtUtcTicks, out bool isInvulnerable, out bool dashedDuringWindup)
         {

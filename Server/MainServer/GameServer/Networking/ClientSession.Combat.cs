@@ -92,7 +92,11 @@ namespace GameServer.Networking
                 return;
             }
 
-            room.RegisterDash(playerId);
+            // 쿨다운 검증을 통과한 대쉬만 다른 플레이어에게 모션을 중계한다.
+            if (room.RegisterDash(playerId))
+            {
+                room.BroadcastDash(playerId, request.IsBackward);
+            }
         }
 
         // 플레이어 공격(HandleAttackRequest)과 같은 쿨다운(_lastAttackAtUtc)을 공유한다 - 그렇지 않으면

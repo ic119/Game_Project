@@ -50,6 +50,12 @@ namespace Incheol.Modules
         public event Action<GameAttackAnimationBroadcastPacket> OnAttackAnimationReceived;
 
         /// <summary>
+        /// 다른 플레이어가 대쉬를 시작했을 때 발생한다(Game_DashBroadcast). 본인의 대쉬는 로컬에서 즉시 재생하므로
+        /// 이 이벤트로 오지 않는다 - 원격 캐릭터 전용이다.
+        /// </summary>
+        public event Action<GameDashBroadcastPacket> OnDashReceived;
+
+        /// <summary>
         /// 보물상자가 열렸을 때(Game_ChestOpenBroadcast) 발생한다. 본인이 방금 연 경우/다른 플레이어가 연 경우/
         /// 방에 새로 입장해 이미 열린 상자를 따라잡는 경우를 구분하지 않고 전부 이 이벤트로 온다 - 해당 ChestId를
         /// 가진 TreasureChestInteractionController가 알아서 자기 것인지 판단한다.

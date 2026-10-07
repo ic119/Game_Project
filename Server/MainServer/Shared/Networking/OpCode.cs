@@ -86,6 +86,10 @@ namespace Shared.Networking
         Game_BossSkillTelegraphBroadcast = 0x022A,
         Game_BossSkillEndBroadcast = 0x022B,
 
+        // 대쉬 모션 중계. Game_DashRequest가 쿨다운 검증을 통과하면 그 플레이어를 보고 있는 사람에게 알린다(본인은 이미 로컬에서
+        // 재생했으므로 받지 않는다). 위치 이동은 Game_WorldSnapshot 보간이 하므로 이 알림은 모션/이펙트 재생에만 쓰인다.
+        Game_DashBroadcast = 0x022C,
+
         // 0x03XX = Dungeon
     }
 }

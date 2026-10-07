@@ -196,6 +196,11 @@ namespace Incheol.Modules
                     pendingActions.Enqueue(() => OnAttackAnimationReceived?.Invoke(attackAnimation));
                     break;
 
+                case GameOpCode.Game_DashBroadcast:
+                    var dashBroadcast = GameDashBroadcastPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnDashReceived?.Invoke(dashBroadcast));
+                    break;
+
                 case GameOpCode.Game_ChestOpenBroadcast:
                     var chestOpened = GameChestOpenBroadcastPacket.Decode(body);
                     pendingActions.Enqueue(() => OnChestOpened?.Invoke(chestOpened));

@@ -146,16 +146,17 @@ namespace Incheol.Modules
         /// <summary>
         /// 대쉬 시작을 GameServer에 알린다(Game_DashRequest). 서버가 쿨다운을 검증한 뒤 짧은 무적 구간을 기록하고,
         /// 그 구간(또는 선딜 도중 대쉬해 사거리를 벗어난 경우)에 도착한 몬스터 공격을 회피로 판정한다.
-        /// 대쉬 이동 자체는 클라이언트가 하고, 이 알림은 무적 판정의 근거로만 쓰인다.
+        /// 대쉬 이동 자체는 클라이언트가 하고, 이 알림은 무적 판정의 근거와 다른 플레이어 화면의 대쉬 모션(Game_DashBroadcast)에 쓰인다.
+        /// isBackward는 어떤 모션(전방/후방)을 보여줄지 정하는 연출용 값이다.
         /// </summary>
-        public void SendDash()
+        public void SendDash(bool isBackward)
         {
             if (!isConnected)
             {
                 return;
             }
 
-            var request = new GameDashRequestPacket { PlayerId = localPlayerId };
+            var request = new GameDashRequestPacket { PlayerId = localPlayerId, IsBackward = isBackward };
             _ = SendAsync(GameOpCode.Game_DashRequest, request.Encode());
         }
 
