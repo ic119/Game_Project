@@ -50,16 +50,25 @@ public class GameLogTests
         using var factory = LoggerFactory.Create(builder => builder.AddProvider(provider));
         GameLog.Configure(factory);
 
-        early.LogWarning("레벨업 (PlayerId={PlayerId})", 7L);
-        early.LogError(new InvalidOperationException("boom"), "방 틱 오류 ({MapId})", "Floor001");
-
-        lock (provider.Entries)
+        // 이 테스트가 끝나면 factory가 해제되므로, 전역 로거를 되돌려 둔다 - 그렇지 않으면 뒤에 도는 테스트(카탈로그 첫 로드 등)의
+        // 로그가 해제된 팩토리를 만나 ObjectDisposedException을 낸다.
+        try
         {
-            var mine = provider.Entries.Where(e => e.Category == "GameLogTests.Early").ToList();
-            Assert.Equal(2, mine.Count);
-            Assert.Equal((LogLevel.Warning, "레벨업 (PlayerId=7)"), (mine[0].Level, mine[0].Message));
-            Assert.Equal(LogLevel.Error, mine[1].Level);
-            Assert.IsType<InvalidOperationException>(mine[1].Exception);
+            early.LogWarning("레벨업 (PlayerId={PlayerId})", 7L);
+            early.LogError(new InvalidOperationException("boom"), "방 틱 오류 ({MapId})", "Floor001");
+
+            lock (provider.Entries)
+            {
+                var mine = provider.Entries.Where(e => e.Category == "GameLogTests.Early").ToList();
+                Assert.Equal(2, mine.Count);
+                Assert.Equal((LogLevel.Warning, "레벨업 (PlayerId=7)"), (mine[0].Level, mine[0].Message));
+                Assert.Equal(LogLevel.Error, mine[1].Level);
+                Assert.IsType<InvalidOperationException>(mine[1].Exception);
+            }
+        }
+        finally
+        {
+            GameLog.Configure(Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance);
         }
     }
 }

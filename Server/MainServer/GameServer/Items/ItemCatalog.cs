@@ -1,5 +1,6 @@
 using GameServer.Logging;
 using Microsoft.Extensions.Logging;
+using Shared;
 using System.Text.Json;
 
 namespace GameServer.Items
@@ -103,6 +104,18 @@ namespace GameServer.Items
         {
             EnsureLoaded();
             return _definitionsByItemId!.TryGetValue(itemId, out definition!);
+        }
+
+        // 무기 아이템의 종류. 무기가 아니거나 모르는 아이템/알 수 없는 종류 이름이면 WeaponKind.None.
+        public static WeaponKind GetWeaponKind(string itemId)
+        {
+            if (string.IsNullOrEmpty(itemId) || !TryGet(itemId, out ItemDefinition definition)
+                || !Enum.TryParse(definition.WeaponType, ignoreCase: true, out WeaponKind kind) || !Enum.IsDefined(kind))
+            {
+                return WeaponKind.None;
+            }
+
+            return kind;
         }
 
         // grade에 해당하는 아이템이 하나라도 있는지. DropTableCatalog가 부팅 시 Grade 드롭 항목을 검증할 때 쓴다.

@@ -79,6 +79,16 @@ namespace Incheol.Editor
                     mismatchCount++;
                 }
 
+                // 무기가 아니면(또는 종류 미지정이면) 서버 JSON에 쓰지 않으므로 없음으로 본다(Generate와 같은 규칙).
+                string expectedWeaponType = isEquipment && clientItem.equipSlotType == EquipmentSlotType.Weapon && clientItem.weaponType != WeaponType.None
+                    ? clientItem.weaponType.ToString()
+                    : null;
+                if (serverEntry.WeaponType != expectedWeaponType)
+                {
+                    Debug.LogError($"[ItemDefinitionValidator] '{clientItem.itemId}' weaponType 불일치 : Client={expectedWeaponType ?? "(none)"}, Server={serverEntry.WeaponType ?? "(none)"}");
+                    mismatchCount++;
+                }
+
                 if (serverEntry.BonusAttackPower != clientItem.bonusAttackPower)
                 {
                     Debug.LogError($"[ItemDefinitionValidator] '{clientItem.itemId}' bonusAttackPower 불일치 : Client={clientItem.bonusAttackPower}, Server={serverEntry.BonusAttackPower}");
@@ -212,6 +222,12 @@ namespace Incheol.Editor
                 }
 
                 builder.Append($", \"equipSlot\": \"{item.equipSlotType}\"");
+
+                // 무기 종류. 서버가 액티브 스킬(GameRoom.TryBeginSkillCast)에서 "지금 들고 있는 무기의 스킬"을 정하는 근거다.
+                if (item.equipSlotType == EquipmentSlotType.Weapon && item.weaponType != WeaponType.None)
+                {
+                    builder.Append($", \"weaponType\": \"{item.weaponType}\"");
+                }
             }
 
             builder.Append(" }");
@@ -245,6 +261,7 @@ namespace Incheol.Editor
                     HealPercent = ExtractInt(body, "HealPercent"),
                     UseCooldownSeconds = ExtractFloat(body, "UseCooldownSeconds"),
                     EquipSlot = ExtractString(body, "EquipSlot"),
+                    WeaponType = ExtractString(body, "WeaponType"),
                     Grade = ExtractString(body, "Grade")
                 };
             }
@@ -277,6 +294,7 @@ namespace Incheol.Editor
             public int HealPercent;
             public float UseCooldownSeconds;
             public string EquipSlot;
+            public string WeaponType;
             public string Grade;
         }
     }

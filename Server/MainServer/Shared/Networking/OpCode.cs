@@ -94,6 +94,13 @@ namespace Shared.Networking
         // 다른 플레이어의 마나는 화면에 그리지 않으므로 주변에 보내지 않는다.
         Game_PlayerMpUpdate = 0x022D,
 
+        // 액티브 스킬(숫자 키 1~4). 클라이언트가 슬롯과 방향으로 요청하면(Game_SkillRequest) 서버가 해금 레벨/쿨다운/마나를 검증해
+        // 결과를 본인에게 알리고(Game_SkillResult), 승인된 시전은 주변 플레이어에게 모션/이펙트용으로 중계한다(Game_SkillCastBroadcast).
+        // 피해는 타격 시점에 기존 Game_MonsterDamageBroadcast로 나간다.
+        Game_SkillRequest = 0x022E,
+        Game_SkillResult = 0x022F,
+        Game_SkillCastBroadcast = 0x0230,
+
         // 0x03XX = Dungeon
     }
 }

@@ -51,6 +51,9 @@ namespace Incheol.Modules.Networking
         Game_BossSkillTelegraphBroadcast = 0x022A,
         Game_BossSkillEndBroadcast = 0x022B,
         Game_DashBroadcast = 0x022C,
-        Game_PlayerMpUpdate = 0x022D
+        Game_PlayerMpUpdate = 0x022D,
+        Game_SkillRequest = 0x022E,
+        Game_SkillResult = 0x022F,
+        Game_SkillCastBroadcast = 0x0230
     }
 }

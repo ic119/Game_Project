@@ -134,13 +134,19 @@ namespace GameServer.Networking
             }
 
             MonsterAttackResult result = room.ApplyMonsterAttack(request.MonsterId, playerId, attacker.AttackPower, request.Timestamp);
+            ProcessMonsterAttackResult(request.MonsterId, playerId, attacker, result);
+        }
 
+        // 몬스터 공격 한 번의 결과 후처리: 처치했다면 경험치/전리품을 처치자 본인에게 알리고 보상을 저장한다.
+        // 기본 공격(HandleMonsterAttackRequest)과 스킬 타격(HandleSkillRequest)이 같이 쓴다.
+        private void ProcessMonsterAttackResult(long monsterId, long playerId, PlayerInfo attacker, MonsterAttackResult result)
+        {
             // 방 전체가 아니라 처치자 본인에게만 보낸다 - 다른 접속자는 이 몬스터를 잡은 게 아니므로 경험치와 무관하다.
             if (result is { MonsterDied: true, GainedExp: { } gainedExp })
             {
                 var expGain = new S2CExpGainBroadcast
                 {
-                    MonsterId = request.MonsterId,
+                    MonsterId = monsterId,
                     GainedExp = gainedExp,
                     TotalExp = attacker.Exp,
                     Level = result.NewLevel,
@@ -156,7 +162,7 @@ namespace GameServer.Networking
             {
                 var loot = new S2CLootBroadcast
                 {
-                    MonsterId = request.MonsterId,
+                    MonsterId = monsterId,
                     GoldGained = result.GainedGold,
                     Items = result.DroppedItems?.ToList() ?? new List<(string, int)>()
                 };

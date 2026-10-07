@@ -26,6 +26,10 @@ namespace GameServer.Items
         // 없으면 장비가 아니다. GameServer는 쓰지 않고, MainServer가 같은 파일을 읽어 장착 요청을 검증한다(ItemEquipSlotCatalog).
         public string? EquipSlot { get; init; }
 
+        // 무기의 종류("OneHanded"/"TwoHanded"/"Wand"/"Spear", 클라이언트 ItemData.weaponType과 같은 이름). 무기가 아니면 없다.
+        // 액티브 스킬이 "지금 들고 있는 무기의 스킬"을 정하는 근거이며(GameRoom.TryBeginSkillCast), 클라이언트가 보낸 값은 믿지 않는다.
+        public string? WeaponType { get; init; }
+
         // "Common"/"Rare"/"Epic"/"Legendary" 중 하나(클라이언트 ItemData.itemGrade와 같은 이름). DropTableEntry.Grade가
         // 이 값으로 무작위 드롭 풀을 구성한다(ItemCatalog.TryGetRandomByGrade 참고).
         public string? Grade { get; init; }

@@ -26,6 +26,14 @@
     "EquipSlot": "Weapon",
     "Grade": "Common"
   },
+  "test_weapon_ohs": {
+    "Name": "회귀테스트용 한손검",
+    "MaxStack": 1,
+    "BonusAttackPower": 5,
+    "EquipSlot": "Weapon",
+    "WeaponType": "OneHanded",
+    "Grade": "Common"
+  },
   "test_potion_cooldown": {
     "Name": "회귀테스트용 물약",
     "MaxStack": 99,

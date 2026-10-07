@@ -1,0 +1,26 @@
+[
+  {
+    "id": "ohs_pierce", "name": "돌진 찌르기", "weaponType": "OneHanded", "slot": 1, "unlockLevel": 3,
+    "manaCost": 12, "cooldownSeconds": 5, "castLockSeconds": 0.6,
+    "shape": "Line", "length": 3.5, "width": 1.2,
+    "damageMultiplier": 1.8, "hitDelaySeconds": 0.25
+  },
+  {
+    "id": "ohs_whirlwind", "name": "회전 베기", "weaponType": "OneHanded", "slot": 2, "unlockLevel": 6,
+    "manaCost": 18, "cooldownSeconds": 8, "castLockSeconds": 0.7,
+    "shape": "Circle", "radius": 2.5, "forwardOffset": 0,
+    "damageMultiplier": 1.5, "hitDelaySeconds": 0.3
+  },
+  {
+    "id": "ohs_leap_slam", "name": "도약 내려찍기", "weaponType": "OneHanded", "slot": 3, "unlockLevel": 9,
+    "manaCost": 26, "cooldownSeconds": 12, "castLockSeconds": 0.95,
+    "shape": "Circle", "radius": 2.5, "forwardOffset": 3,
+    "damageMultiplier": 2.5, "hitDelaySeconds": 0.5
+  },
+  {
+    "id": "ohs_sword_wave", "name": "검기 참격", "weaponType": "OneHanded", "slot": 4, "unlockLevel": 12,
+    "manaCost": 36, "cooldownSeconds": 20, "castLockSeconds": 0.8,
+    "shape": "Line", "length": 6, "width": 1.5,
+    "damageMultiplier": 3.5, "hitDelaySeconds": 0.35
+  }
+]

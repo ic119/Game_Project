@@ -299,6 +299,9 @@ namespace GameServer.Networking
                 case OpCode.Game_DashRequest:
                     HandleDashRequest(body);
                     return Task.CompletedTask;
+                case OpCode.Game_SkillRequest:
+                    HandleSkillRequest(body);
+                    return Task.CompletedTask;
                 case OpCode.Game_StatUpdateRequest:
                     HandleStatUpdateRequest(body, ct);
                     return Task.CompletedTask;
