@@ -15631,7 +15631,7 @@ GameObject:
   - component: {fileID: 6574738023687167225}
   m_Layer: 0
   m_Name: BasicCharacter
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -15745,6 +15745,8 @@ MonoBehaviour:
   nameLabel: {fileID: 139876071836541513}
   currentWeaponType: 0
   defaultWeaponVisualName: 
+  hitReactionDuration: 0.35
+  hitReactionFadeOutSeconds: 0.1
 --- !u!114 &4702764603272719981
 MonoBehaviour:
   m_ObjectHideFlags: 0
