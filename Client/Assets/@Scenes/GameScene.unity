@@ -515,9 +515,10 @@ GameObject:
   m_Component:
   - component: {fileID: 1901411946}
   - component: {fileID: 1901411945}
-  - component: {fileID: 1901411944}
   - component: {fileID: 1901411947}
   - component: {fileID: 1901411943}
+  - component: {fileID: 1901411948}
+  - component: {fileID: 1901411949}
   m_Layer: 0
   m_Name: CM_PlayerFollowCamera
   m_TagString: Untagged
@@ -564,32 +565,6 @@ MonoBehaviour:
     NearLimit: 5
     FarLimit: 30
     MaxQualityBoost: 0.2
---- !u!114 &1901411944
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1901411942}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 625c14eee3ad46c99df7c7c891ef668a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineThirdPersonFollow
-  Damping: {x: 0.5, y: 1.5, z: 0}
-  ShoulderOffset: {x: 0, y: 1.5, z: 0}
-  VerticalArmLength: 2.4
-  CameraSide: 1
-  CameraDistance: 5
-  AvoidObstacles:
-    Enabled: 0
-    CollisionFilter:
-      serializedVersion: 2
-      m_Bits: 1
-    IgnoreTag: Player
-    CameraRadius: 0.3
-    DampingIntoCollision: 1.2
-    DampingFromCollision: 0.5
 --- !u!114 &1901411945
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -677,6 +652,41 @@ MonoBehaviour:
     Time: 0
     Smoothing: 0
     IgnoreY: 0
+--- !u!114 &1901411948
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1901411942}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b617507da6d07e749b7efdb34e1173e1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineFollow
+  TrackerSettings:
+    BindingMode: 4
+    PositionDamping: {x: 0.25, y: 0.5, z: 0.25}
+    AngularDampingMode: 0
+    RotationDamping: {x: 1, y: 1, z: 1}
+    QuaternionDamping: 1
+  FollowOffset: {x: -3.5355341, y: 3.9, z: -3.5355337}
+--- !u!114 &1901411949
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1901411942}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1988c8c7cc2889b46bb9f1ceb1b50158, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Incheol.Controller.CameraOrbitController
+  dragMouseButton: 1
+  rotateSensitivity: 4
+  invertHorizontal: 0
+  lockCursorWhileDragging: 1
 --- !u!1 &2070871136
 GameObject:
   m_ObjectHideFlags: 0

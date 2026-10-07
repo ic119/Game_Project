@@ -513,7 +513,7 @@ namespace Incheol.Presenter.Scene
                 AssignPlayerToFollowCamera(playerInstance.transform);
 
                 // RequireComponent로 Rigidbody/CapsuleCollider가 함께 추가되어, 스폰 직후 중력을 받아 지면에 착지하고
-                // 화살표 키로 이동/회전할 수 있게 된다.
+                // WASD로 카메라 기준 이동할 수 있게 된다(이동 방향으로 몸이 자동으로 돈다).
                 playerInstance.AddComponent<PlayerMoveController>();
 
                 // 일정 주기로 자신의 위치/회전을 GameServer(Game_MoveRequest)로 전송한다.
@@ -541,7 +541,8 @@ namespace Incheol.Presenter.Scene
                 return;
             }
 
-            // 이동/전투 카메라는 ThirdPersonFollow가 Follow 대상의 회전을 그대로 카메라 방향으로 쓰므로 LookAt은 필요 없다.
+            // 이동/전투 카메라는 수평 45도로 고정된 월드 기준 CinemachineFollow + RotationComposer라 캐릭터가 돌아도 화면이 돌지 않는다.
+            // CustomLookAtTarget이 꺼져 있어 LookAt은 Follow 대상을 그대로 쓰므로 따로 지정하지 않는다.
             followCamera.Follow = _playerTransform;
         }
 
