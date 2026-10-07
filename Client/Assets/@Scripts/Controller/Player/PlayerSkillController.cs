@@ -42,6 +42,9 @@ namespace Incheol.Controller
         /// <summary>시전이 시작될 때(슬롯, 스킬 정보). 스킬 이펙트/UI가 구독한다.</summary>
         public event Action<int, SkillTable.Entry> SkillCast;
 
+        /// <summary>서버가 시전을 거부했을 때(슬롯, 사유). 쿨다운/시전 취소 처리를 마친 뒤 발생하며, UI가 마나 부족 같은 안내를 띄우는 데 쓴다.</summary>
+        public event Action<int, GameSkillCastStatus> SkillRejected;
+
         /// <summary>시전 모션 중인지.</summary>
         public bool IsCasting => castingSlot != 0;
 
@@ -252,6 +255,8 @@ namespace Incheol.Controller
             {
                 EndCast();
             }
+
+            SkillRejected?.Invoke(packet.Slot, packet.Status);
         }
         #endregion
     }

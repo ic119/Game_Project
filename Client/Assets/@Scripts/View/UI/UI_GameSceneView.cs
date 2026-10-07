@@ -24,6 +24,10 @@ public class UI_GameSceneView : MonoBehaviour
     [SerializeField] private Slider expBarSlider;
     [SerializeField] private TextMeshProUGUI expBarSliderValue;
 
+    [Header("스킬 바")]
+    [Tooltip("BottomContainer/SkillContainer의 UI_SkillBarView. GameSceneManager가 로컬 플레이어의 PlayerSkillController를 연결한다. 비워 두면 스킬 바 표시를 건너뛴다.")]
+    [SerializeField] private UI_SkillBarView skillBarView;
+
     [Header("Menu Button UI")]
     [SerializeField] private GameObject mainPopup;
     [SerializeField] private Button optionButton;
@@ -182,6 +186,11 @@ public class UI_GameSceneView : MonoBehaviour
     /// MiniMapController가 플레이어 위치 아이콘을 만들 때 사용할 스프라이트.
     /// </summary>
     public Sprite PlayerMiniMapIcon => playerMiniMapIcon;
+
+    /// <summary>
+    /// 스킬 슬롯 4개를 묶은 스킬 바. 인스펙터에 연결하지 않았으면 null.
+    /// </summary>
+    public UI_SkillBarView SkillBarView => skillBarView;
 
     /// <summary>
     /// 서버가 이 접속을 강제로 끊었을 때 GameSceneManager가 띄울 팝업. 인스펙터에 연결하지 않았으면 null.

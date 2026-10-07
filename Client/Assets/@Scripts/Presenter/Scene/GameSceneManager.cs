@@ -663,6 +663,12 @@ namespace Incheol.Presenter.Scene
             if (gameSceneView != null && spawnedPlayerModel != null)
             {
                 gameSceneView.BindPlayer(spawnedPlayerModel);
+
+                if (gameSceneView.SkillBarView != null && localPlayerInstance != null)
+                {
+                    gameSceneView.SkillBarView.Bind(spawnedPlayerModel, localPlayerInstance.GetComponent<PlayerSkillController>());
+                }
+
                 SetupMiniMap();
                 SetupWorldMap();
             }
