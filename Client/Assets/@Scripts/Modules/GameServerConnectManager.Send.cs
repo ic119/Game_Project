@@ -188,6 +188,22 @@ namespace Incheol.Modules
         }
 
         /// <summary>
+        /// 액티브 스킬 사용을 GameServer에 요청한다(Game_SkillRequest). 슬롯(숫자 키 1~4)과 시전 방향(yaw, 도)만 보낸다 - 어떤 스킬인지, 해금 레벨,
+        /// 마나, 쿨다운, 범위, 피해는 모두 서버가 판정하고 결과는 OnSkillResultReceived로 돌아온다. 접속 전이면 false를 반환한다.
+        /// </summary>
+        public bool SendSkill(int slot, float rotationY)
+        {
+            if (!isConnected)
+            {
+                return false;
+            }
+
+            var request = new GameSkillRequestPacket { PlayerId = localPlayerId, Slot = slot, RotationY = rotationY };
+            _ = SendAsync(GameOpCode.Game_SkillRequest, request.Encode());
+            return true;
+        }
+
+        /// <summary>
         /// 보물상자 개봉을 GameServer에 요청한다(Game_ChestOpenRequest). chestId는 MapData/{mapId}.json의
         /// chests[].id와 정확히 일치해야 한다(TreasureChestInteractionController.chestId, MapDataExporter가 내보낸 값).
         /// 결과는 즉시 돌아오지 않고 OnChestOpened(성공 시) 또는 아무 반응 없음(실패 시 - 이미 열렸거나 사거리 밖)으로 온다.

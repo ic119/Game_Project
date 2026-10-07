@@ -51,6 +51,12 @@ namespace Incheol.Controller
         // 이 시각(Time.time)까지는 이동 방향으로 몸을 돌리지 않는다. 공격 방향 보조(FaceDirection)가 정한 방향을 이동 입력이 곧바로 덮어쓰지 않게 한다.
         private float facingLockUntil;
 
+        // 이 시각(Time.time)까지는 이동 입력을 무시한다(스킬 시전 모션 중). 대쉬는 막지 않는다 - 대쉬로 시전을 끊을 수 있어야 한다.
+        private float movementLockUntil;
+
+        // 잠금과 무관하게 이번 프레임 입력이 가리키는 방향. 시전 중 대쉬가 누르고 있는 방향키 쪽으로 나가게 한다.
+        private Vector3 inputDirection;
+
         private bool isDashing;
         private Vector3 dashDirection;
         private float dashEndTime;
@@ -110,7 +116,8 @@ namespace Incheol.Controller
                 input.x -= 1f;
             }
 
-            moveDirection = ToWorldDirection(input);
+            inputDirection = ToWorldDirection(input);
+            moveDirection = Time.time < movementLockUntil ? Vector3.zero : inputDirection;
 
             if (isDashing && Time.time >= dashEndTime)
             {
@@ -153,6 +160,26 @@ namespace Incheol.Controller
         #endregion
 
         #region Method
+        /// <summary>대쉬가 시작될 때 발생한다. 스킬 시전 중이면 PlayerSkillController가 시전을 끊는다.</summary>
+        public event System.Action Dashed;
+
+        public bool IsDashing => isDashing;
+
+        /// <summary>
+        /// seconds 동안 이동 입력을 무시한다(이미 더 긴 잠금이 있으면 유지). 스킬 시전 모션 중 제자리에 서 있게 하는 데 쓴다. 대쉬는 막지 않는다.
+        /// </summary>
+        public void LockMovement(float seconds)
+        {
+            movementLockUntil = Mathf.Max(movementLockUntil, Time.time + Mathf.Max(0f, seconds));
+            moveDirection = Vector3.zero;
+        }
+
+        /// <summary>시전이 끝나거나 끊겼을 때 이동 잠금을 즉시 푼다.</summary>
+        public void UnlockMovement()
+        {
+            movementLockUntil = 0f;
+        }
+
         /// <summary>
         /// 캐릭터를 worldDirection(수평 성분만 사용) 쪽으로 즉시 돌리고, holdSeconds 동안은 이동 입력으로 몸이 다시 돌아가지 않게 한다.
         /// 공격 방향 보조(PlayerAttackController)가 공격 순간 가까운 몬스터를 향하게 할 때 쓴다. 대쉬 중에는 대쉬 방향이 우선이라
@@ -228,7 +255,7 @@ namespace Incheol.Controller
         /// </summary>
         private void StartDash()
         {
-            Vector3 direction = moveDirection;
+            Vector3 direction = inputDirection;
             if (direction == Vector3.zero)
             {
                 direction = transform.forward;
@@ -254,6 +281,7 @@ namespace Incheol.Controller
             // 서버가 무적 구간을 정하도록 알린다. 몬스터 공격 판정은 서버 권위라 이 알림이 있어야 대쉬로 피할 수 있다.
             // 방향이 자유라 후방 대쉬는 따로 없으므로 항상 전방 대쉬 모션으로 알린다.
             GameServerConnectManager.Instance?.SendDash(false);
+            Dashed?.Invoke();
         }
 
         /// <summary>

@@ -1,0 +1,107 @@
+액티브 스킬 작업 내용 및 이어서 할 일 (작성: 2026-10-07)
+================================================================
+기획 원본: 액티브스킬_기획안.txt (키 1~4, 해금 Lv3/6/9/12, 무기별 4종, 한손검 우선, 전방 고정 조준,
+           VFX는 VFX_Klaus + Lana Studio 폴더에서 선택, 레벨 해금만, PvP/상태이상 제외)
+
+[진행 현황]
+ 1단계 서버 기반 ........ 완료, 커밋됨 (2118daa3)
+ 2단계 클라 입력/모션 .... 완료, 이 문서와 함께 커밋 (인게임 검증은 사용자가 진행)
+ 3단계 스킬 슬롯 UI ...... 미착수  <- 다음 작업
+ 4단계 VFX/밸런스 튜닝 ... 미착수
+
+
+[1단계: 서버 기반 - 구현 내용]
+ - GameServer/Skills/SkillDefinitions.json : 한손검 4종 정의 (다른 무기는 구현할 때 추가)
+     ohs_pierce(1,Lv3) 직선3.5x1.2 180% 마나12 쿨5s 잠금0.6s 타격지연0.25s
+     ohs_whirlwind(2,Lv6) 원 반경2.5(자신) 150% 마나18 쿨8s 잠금0.7s 지연0.3s
+     ohs_leap_slam(3,Lv9) 전방3m 원 반경2.5 250% 마나26 쿨12s 잠금0.95s 지연0.5s
+     ohs_sword_wave(4,Lv12) 직선6x1.5 350% 마나36 쿨20s 잠금0.8s 지연0.35s
+ - SkillCatalog : 부팅 시 로드/검증(슬롯별 해금 레벨 3/6/9/12 강제, 중복/수치/형태 검증, 오류 시 서버 시작 거부)
+ - SkillShapeTester : 직선/원/부채꼴 판정 (Unity yaw 기준 앞=(sin,cos), 대상 몸집 여유 0.5m)
+ - Shared/WeaponKind.cs + ItemDefinitions.json 의 "weaponType" : 서버가 장착 무기 종류를 직접 결정
+   (클라 ItemDefinitionValidator 가 생성/검증. 무기 35종 반영: 한손16/양손7/창5/완드7)
+ - GameRoom.Skills.cs
+     TryBeginSkillCast : 검사 순서 = 방/생존 -> 무기+슬롯 스킬 존재 -> 해금 레벨 -> 시전 잠금 -> 쿨다운 -> 마나
+                         (모두 통과해야 마나 차감 + 쿨다운/시전잠금 기록, 거부 시 아무것도 소모 안 함)
+     FindSkillTargets  : 범위 안 살아있는 몬스터, 가까운 순, MaxTargets 제한
+     CancelSkillCast / IsCastCurrent : 시전 번호(CastSerial)로 취소/대체된 타격 무효화
+     BroadcastSkillCast: 주변 플레이어에게 모션용 중계(본인 제외)
+ - GameRoom.Dash.cs : 대쉬 성공 시 CancelSkillCast 호출 (대쉬로 시전 캔슬)
+ - ClientSession.Skills.cs : 요청 처리(속도 제한 4/3 per s), 결과 전송, RunSkillHitsAsync 로 타격 예약
+     (시전자 사망/방 이동/시전 취소 시 남은 타격 중단)
+ - ClientSession.Combat.cs : 킬 보상 후처리를 ProcessMonsterAttackResult 로 분리해 기본공격/스킬 공용
+ - 패킷/OpCode : Game_SkillRequest 0x022E (C2S: PlayerId, Slot, RotationY)
+                 Game_SkillResult 0x022F (S2C 본인: Slot, Status, CooldownSeconds)
+                 Game_SkillCastBroadcast 0x0230 (S2C 주변: PlayerId, Slot, WeaponType, X,Y,Z, RotationY)
+     SkillCastStatus: Accepted0 Dead1 NoSkill2 LevelTooLow3 OnCooldown4 NotEnoughMana5 Casting6 InvalidRequest7
+     다음 빈 OpCode = 0x0231
+ - 기존 결함 수정: GameLogTests 가 해제된 전역 로거를 남기던 문제(테스트 종료 시 NullLoggerFactory 복구)
+
+
+[2단계: 클라이언트 - 구현 내용]
+ - Utils/SkillTable.cs : 서버 JSON 의 클라 복제본(해금 레벨/마나/쿨다운/시전 시간/애니메이터 SkillIndex).
+     SkillTableParityTests 가 서버 JSON 과 값이 같은지 검사 -> 서버 값을 바꾸면 이 파일도 같이 수정할 것
+ - Controller/Player/PlayerSkillController.cs (GameSceneManager 가 플레이어에 AddComponent)
+     * 키 1~4 입력, 로컬 사전 검사 후 낙관적 시전 시작, 서버 거부(Game_SkillResult) 시 취소/쿨다운 복구
+     * 시전 중 이동/기본공격/다른 스킬 잠금, 대쉬로 끊기, 사망/피격 모션 시 종료
+     * 공개 API: IsCasting, GetCooldownRemaining(slot), GetCooldownDuration(slot), event SkillCast(slot, Entry)
+ - PlayerMoveController : LockMovement/UnlockMovement, Dashed 이벤트, IsDashing (잠금 중에도 대쉬 가능)
+ - PlayerAttackController : SkillCasting(시전 중 기본공격 차단), InterruptForSkill, FaceNearestMonster
+ - RemoteCharacterController.PlaySkillAnimation + RemotePlayerManager 중계 (대쉬/피격으로 끊김)
+ - GameServerConnectManager : SendSkill(slot, rotationY), 이벤트 OnSkillResultReceived/OnSkillCastReceived
+ - 애니메이터(BasicCharacterStance, Attack Layer): SkillIndex 1=SwordPierce(기존), 4=Wheelwind(기존),
+     5=LeapSlam(Combo05, 신규), 6=SwordWaveStart->SwordWave(Attack04, 신규). 종료는 SkillIndex==0.
+     (기존 SkillIndex 2,3 상태는 미사용 상태로 남아 있음)
+
+[테스트 현황]
+ 서버 테스트 320개 통과 (기존 289 + 신규 31): SkillCatalogTests, SkillShapeTesterTests,
+ GameRoomSkillTests, SkillTableParityTests, 패킷 호환 테스트(자동). Unity 콘솔 오류 없음.
+ 서버 테스트 실행 전 GameServer 를 중지해야 함(DLL 잠금), 끝나면
+ GameServer\bin\Debug\net8.0\GameServer.exe 를 GameServer 폴더에서 다시 실행.
+
+
+[인게임 테스트 방법]
+ 1) 한손검 장착(예: weapon_ohs04_sword) + 레벨 3 이상 필요. 로컬 DB 의 tester 는 완드를 갖고 있으므로
+    한손검 지급 및 레벨 조정이 필요하다.
+ 2) MainServer/GameServer 실행 후 접속, 몬스터 근처에서 1~4 키.
+ 3) 확인: 모션 재생, 시전 중 이동/평타 잠금, Space 대쉬로 끊김, 마나 소모(Game_PlayerMpUpdate),
+    몬스터 피해 숫자(타격 지연 후), 쿨다운 중 재입력 무시, 다른 클라이언트 화면에서의 모션.
+
+
+[알려진 한계]
+ - 맵 이동/재접속 시 스킬 쿨다운 초기화(대쉬 쿨다운과 같은 구조). 필요하면 이동 시 쿨다운 이월 처리.
+ - 시전 중 기본공격은 서버가 막지 않고 클라가 막음(서버는 스킬끼리 연속 시전만 제한).
+ - 타격 지연(hitDelaySeconds)은 모션 임팩트 프레임을 측정하지 않은 임의값 -> 4단계에서 튜닝.
+ - 한손검 외 무기는 서버 JSON/SkillTable/애니메이터 블렌드 트리가 아직 없음.
+ - 시전 중 피격으로 모션이 끊겨도 서버 타격은 그대로 진행됨(대쉬 취소만 서버가 반영).
+ - 스킬 이펙트/바닥 범위 표시/마나 부족 안내가 없음.
+
+
+[3단계: 스킬 슬롯 UI - 이어서 할 작업]
+ 목표: 화면 하단에 스킬 슬롯 4개(1~4)를 표시하고 상태를 보여준다.
+ 필요한 것:
+  1) UI 구조 파악: 기존 UI 컨벤션을 먼저 확인할 것
+       - View/UI/UI_GameSceneView.cs (HP/MP/경험치 표시, 폴링 방식), UI_ControlGuideView.cs, UI_InteractionPromptView.cs
+       - UI_GameScene 프리팹에 View 컴포넌트를 붙이고 사용자가 변수 할당하는 방식으로 작업해 왔음
+         (프리팹 구성/할당은 Unity MCP 로 하거나, 코드만 만들고 사용자에게 할당 요청 - 과거 방식 확인)
+       - 같은 파일에서 TMP 폰트/Image 네임스페이스 모호성 주의: UnityEngine.UI.Image 를 명시
+  2) 새 스크립트 UI_SkillSlotView(슬롯 1개) + UI_SkillBarView(4개 묶음)
+       - 표시: 키 번호, 아이콘(임시: 스킬 이름 첫 글자 또는 색 박스), 마나 비용, 쿨다운 채움(fillAmount)+남은 초
+       - 상태: 레벨 잠금(해금 레벨 표시, 회색), 마나 부족(어둡게/파란 경고), 쿨다운 중, 사용 가능
+       - 데이터: PlayerSkillController.GetCooldownRemaining/GetCooldownDuration, SkillTable.TryGet(weapon, slot),
+                 PlayerCharacterModel.Level / CurrentWeaponType, ManaComponent.CurrentMp (OnManaChanged 이벤트 있음)
+       - 무기에 스킬이 없으면(SkillTable.HasSkills(weapon)==false) 바 전체 숨김
+       - 시전 시작 시 슬롯 하이라이트(PlayerSkillController.SkillCast 이벤트)
+       - 서버가 거부한 사유(마나 부족/쿨다운 등) 안내: GameSkillCastStatus 를 PlayerSkillController 이벤트로 노출 후 UI 에서 짧게 표시
+  3) 컨트롤 안내(H) UI 에 1~4 스킬 키 항목 추가 (UI_ControlGuideView 참고)
+  4) 로컬 플레이어 연결: GameSceneManager 가 PlayerSkillController 를 AddComponent 한 뒤 UI 에 전달
+       (localPlayerInstance 에서 GetComponent<PlayerSkillController>)
+  5) 아이콘 에셋: 스킬 아이콘 소재가 있는지 확인(없으면 임시 표시) - 사용자와 상의
+ 확인/커밋 규칙: 한 항목씩 검토 -> 커밋 요청 -> 다음 진행 여부 질문. 커밋 후 push 여부는 묻지 않는다.
+
+[4단계 미리보기]
+ - 이펙트: VFX_Klaus(Assets/@ThirdParty/VFX_Klaus/Prefabs/Hyper Casual FX) + Lana Studio 폴더에서 선택.
+   AddressableAssetKey 는 순서 변경 없이 뒤에 추가, 그룹 "Effect", PooledEffect 사용, 필요 시 Addressables 재빌드.
+ - 바닥 범위 표시(텔레그래프)는 BossTelegraphIndicator 참고. 이펙트는 시전 위치/방향을 Game_SkillCastBroadcast 로 받음.
+ - 타격 임팩트 프레임 측정 후 hitDelaySeconds 조정, 마나/쿨다운/배율 밸런스 튜닝.
+ - 이후 다른 무기(완드 -> 양손검 -> 창) 스킬 추가: SkillDefinitions.json + SkillTable + 애니메이터(무기별 블렌드 트리) + 테스트.

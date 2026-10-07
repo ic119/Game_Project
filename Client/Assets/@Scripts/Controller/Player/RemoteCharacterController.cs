@@ -36,6 +36,9 @@ namespace Incheol.Controller
         private int attackLayerIndex = -1;
         private float attackAnimationEndTime = float.NegativeInfinity;
 
+        // 스킬 모션(SkillIndex)을 켜 둔 상태인지. 모션이 끝나거나 피격/대쉬로 끊길 때 SkillIndex를 0으로 되돌려야 스킬이 다시 재생되지 않는다.
+        private bool skillAnimationActive;
+
         // 대쉬 모션 구간(Time.time 기준). 알림은 서버 시각 기준 "지금" 도착하지만 화면의 위치는 InterpolationDelayMs만큼 과거라,
         // 모션도 그만큼 늦춰 시작해야 위치 이동(대쉬 구간)과 맞는다.
         private float dashStartTime = float.PositiveInfinity;
@@ -55,6 +58,7 @@ namespace Incheol.Controller
         private static readonly int IsBackDashHash = Animator.StringToHash("IsBackDash");
         private static readonly int ComboIndexHash = Animator.StringToHash("ComboIndex");
         private static readonly int WeaponIndexHash = Animator.StringToHash("WeaponIndex");
+        private static readonly int SkillIndexHash = Animator.StringToHash("SkillIndex");
 
         private void Awake()
         {
@@ -93,12 +97,51 @@ namespace Incheol.Controller
             // 0으로 되돌리면 다른 플레이어 화면에서는 피격 모션이 보이지 않는다. 가중치는 피격 모션 쪽이 직접 내린다.
             bool hitReactionActive = playerCharacterModel != null && playerCharacterModel.IsHitReactionPlaying;
 
+            // 피격 모션이 스킬 모션을 덮으면 SkillIndex를 내려 둔다 - 피격 모션이 끝난 뒤 남은 SkillIndex로 스킬이 다시 재생되지 않게 한다.
+            if (hitReactionActive && skillAnimationActive && animator != null)
+            {
+                animator.SetInteger(SkillIndexHash, 0);
+                skillAnimationActive = false;
+            }
+
             if (attackLayerIndex >= 0 && animator != null && !hitReactionActive && animator.GetLayerWeight(attackLayerIndex) > 0f
                 && Time.time >= attackAnimationEndTime)
             {
                 animator.SetInteger(ComboIndexHash, 0);
+                animator.SetInteger(SkillIndexHash, 0);
+                skillAnimationActive = false;
                 animator.SetLayerWeight(attackLayerIndex, 0f);
             }
+        }
+
+        /// <summary>
+        /// Game_SkillCastBroadcast 수신 시(RemotePlayerManager가 중계) 호출된다. 그 무기/슬롯의 스킬 모션을 재생한다. 모션 길이는 서버의
+        /// 시전 잠금 시간(SkillTable.CastLockSeconds)과 같고, 대쉬/피격으로 먼저 끊길 수 있다. 이펙트는 스킬 이펙트 단계에서 붙인다.
+        /// </summary>
+        public void PlaySkillAnimation(int slot, WeaponType weaponType)
+        {
+            // 사망 패킷 뒤에 늦게 도착한 알림이 Die 모션을 덮지 않게 한다.
+            if (playerCharacterModel != null && playerCharacterModel.IsDead)
+            {
+                return;
+            }
+
+            if (animator == null || attackLayerIndex < 0 || !SkillTable.TryGet((int)weaponType, slot, out SkillTable.Entry skill))
+            {
+                return;
+            }
+
+            if (playerCharacterModel != null)
+            {
+                playerCharacterModel.CancelHitReaction();
+            }
+
+            animator.SetFloat(WeaponIndexHash, (float)weaponType);
+            animator.SetInteger(ComboIndexHash, 0);
+            animator.SetInteger(SkillIndexHash, skill.AnimatorSkillIndex);
+            animator.SetLayerWeight(attackLayerIndex, 1f);
+            attackAnimationEndTime = Time.time + skill.CastLockSeconds;
+            skillAnimationActive = true;
         }
 
         /// <summary>
@@ -156,6 +199,12 @@ namespace Incheol.Controller
             dashStartTime = Time.time + (float)(SnapshotInterpolationBuffer.InterpolationDelayMs / 1000.0);
             dashEndTime = dashStartTime + CombatTimings.DashDurationSeconds;
             dashEffectPlayed = false;
+
+            // 대쉬는 시전 중인 스킬 모션을 끊는다(로컬/서버와 같은 규칙) - 대쉬 구간이 시작되는 시점에 모션을 끝낸다.
+            if (skillAnimationActive)
+            {
+                attackAnimationEndTime = Mathf.Min(attackAnimationEndTime, dashStartTime);
+            }
         }
 
         // 대쉬 구간 동안만 IsDash/IsBackDash를 켠다(둘이 동시에 켜지지 않게 한쪽만). 구간이 시작되는 프레임에 이펙트를 한 번 재생한다.

@@ -149,6 +149,51 @@ public class GameRoomSkillTests : IDisposable
     }
 
     [Fact]
+    public void Dash_CancelsCastInProgress_ReleasesLockButKeepsCooldown()
+    {
+        var room = CreateRoom();
+        room.Join(Caster(1), new FakeSender());
+
+        GameRoom.SkillCastResult cast = room.TryBeginSkillCast(1, 1, 0f);
+        Assert.True(room.IsCastCurrent(1, cast.CastSerial));
+        Assert.Equal(SkillCastStatus.Casting, room.TryBeginSkillCast(1, 2, 0f).Status);
+
+        Assert.True(room.RegisterDash(1));
+
+        Assert.False(room.IsCastCurrent(1, cast.CastSerial));                                 // 남은 타격은 무효
+        Assert.Equal(SkillCastStatus.OnCooldown, room.TryBeginSkillCast(1, 1, 0f).Status);   // 쿨다운은 그대로
+        Assert.Equal(SkillCastStatus.Accepted, room.TryBeginSkillCast(1, 2, 0f).Status);     // 시전 잠금은 풀렸다
+    }
+
+    [Fact]
+    public void RejectedDash_DoesNotCancelCast()
+    {
+        var room = CreateRoom();
+        room.Join(Caster(1), new FakeSender());
+
+        Assert.True(room.RegisterDash(1));
+        GameRoom.SkillCastResult cast = room.TryBeginSkillCast(1, 1, 0f);
+
+        Assert.False(room.RegisterDash(1)); // 대쉬 쿨다운 중
+        Assert.True(room.IsCastCurrent(1, cast.CastSerial));
+    }
+
+    [Fact]
+    public void NewCast_InvalidatesThePreviousCastSerial()
+    {
+        var room = CreateRoom();
+        room.Join(Caster(1), new FakeSender());
+
+        GameRoom.SkillCastResult first = room.TryBeginSkillCast(1, 1, 0f);
+        Thread.Sleep(700);
+        GameRoom.SkillCastResult second = room.TryBeginSkillCast(1, 2, 0f);
+
+        Assert.NotEqual(first.CastSerial, second.CastSerial);
+        Assert.False(room.IsCastCurrent(1, first.CastSerial));
+        Assert.True(room.IsCastCurrent(1, second.CastSerial));
+    }
+
+    [Fact]
     public void BroadcastSkillCast_ReachesViewersButNotTheCasterOrFarPlayers()
     {
         var room = CreateRoom();

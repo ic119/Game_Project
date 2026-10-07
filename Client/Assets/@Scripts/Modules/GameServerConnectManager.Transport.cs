@@ -291,6 +291,16 @@ namespace Incheol.Modules
                     pendingActions.Enqueue(() => OnPlayerMpChanged?.Invoke(mpChanged));
                     break;
 
+                case GameOpCode.Game_SkillResult:
+                    var skillResult = GameSkillResultPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnSkillResultReceived?.Invoke(skillResult));
+                    break;
+
+                case GameOpCode.Game_SkillCastBroadcast:
+                    var skillCast = GameSkillCastBroadcastPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnSkillCastReceived?.Invoke(skillCast));
+                    break;
+
                 case GameOpCode.Game_PlayerRevived:
                     var revived = GamePlayerRevivedPacket.Decode(body);
                     pendingActions.Enqueue(() => OnPlayerRevived?.Invoke(revived));

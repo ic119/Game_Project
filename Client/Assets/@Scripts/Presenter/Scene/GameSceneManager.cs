@@ -525,6 +525,9 @@ namespace Incheol.Presenter.Scene
                 localPlayerAttackController = playerInstance.AddComponent<PlayerAttackController>();
                 localPlayerAttackController.MonsterTargeted += HandleMonsterTargeted;
 
+                // 숫자 키 1~4로 액티브 스킬을 쓴다(PlayerAttackController/PlayerMoveController를 찾아 쓰므로 둘보다 뒤에 붙인다).
+                playerInstance.AddComponent<PlayerSkillController>();
+
                 ReportInitialLoading("캐릭터 정보를 불러오는 중...");
             });
         }

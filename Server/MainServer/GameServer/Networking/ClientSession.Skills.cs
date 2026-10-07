@@ -62,7 +62,8 @@ namespace GameServer.Networking
                         await Task.Delay(TimeSpan.FromSeconds(delay));
                     }
 
-                    if (!ReferenceEquals(_room, room) || _playerId != playerId
+                    // 시전이 대쉬로 취소됐거나 새 시전으로 대체됐으면 남은 타격을 하지 않는다.
+                    if (!ReferenceEquals(_room, room) || _playerId != playerId || !room.IsCastCurrent(playerId, cast.CastSerial)
                         || !room.TryGetInfo(playerId, out var attacker) || attacker.CurrentHp <= 0)
                     {
                         return;

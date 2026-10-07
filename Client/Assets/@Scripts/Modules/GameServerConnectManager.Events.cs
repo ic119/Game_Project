@@ -124,6 +124,16 @@ namespace Incheol.Modules
         /// 서버가 본인에게만 보내므로 로컬 플레이어의 값이다.
         /// </summary>
         public event Action<GamePlayerMpUpdatePacket> OnPlayerMpChanged;
+
+        /// <summary>
+        /// 내가 보낸 스킬 사용 요청의 결과(Game_SkillResult, 본인에게만). 승인되면 쿨다운 값이, 거부되면 사유가 담겨 온다.
+        /// </summary>
+        public event Action<GameSkillResultPacket> OnSkillResultReceived;
+
+        /// <summary>
+        /// 다른 플레이어가 스킬을 시전했을 때(Game_SkillCastBroadcast). 본인의 시전은 로컬에서 즉시 재생하므로 이 이벤트로 오지 않는다.
+        /// </summary>
+        public event Action<GameSkillCastBroadcastPacket> OnSkillCastReceived;
         public event Action<GamePlayerRevivedPacket> OnPlayerRevived;
         public event Action<GameUseItemResultPacket> OnUseItemResult;
         public event Action<GamePositionCorrectionPacket> OnPositionCorrected;

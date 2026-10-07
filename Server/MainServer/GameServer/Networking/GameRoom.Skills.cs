@@ -23,7 +23,8 @@ namespace GameServer.Networking
             float X,
             float Y,
             float Z,
-            float RotationY)
+            float RotationY,
+            long CastSerial = 0)
         {
             public bool Accepted => Status == SkillCastStatus.Accepted;
         }
@@ -33,6 +34,9 @@ namespace GameServer.Networking
             // 슬롯 -> 쿨다운이 끝나는 시각(UTC ticks). 무기를 바꿔도 같은 슬롯의 쿨다운은 이어진다 - 무기를 바꿔 쿨다운을 우회할 수 없다.
             public readonly Dictionary<int, long> CooldownUntilUtcTicks = new();
             public long CastLockUntilUtcTicks;
+
+            // 시전마다 늘어난다. 대쉬로 시전이 취소되면 한 번 더 늘려, 아직 일어나지 않은 타격(ClientSession.RunSkillHitsAsync)이 자신의 시전이 아님을 알게 한다.
+            public long CastSerial;
         }
 
         // 플레이어 id -> 스킬 상태. 시전 요청(세션 스레드)이 항목 단위로 lock한다.
@@ -69,6 +73,7 @@ namespace GameServer.Networking
             }
 
             SkillState state = _skillStates.GetOrAdd(playerId, _ => new SkillState());
+            long castSerial;
             long now = DateTime.UtcNow.Ticks;
 
             lock (state)
@@ -92,9 +97,40 @@ namespace GameServer.Networking
                 state.CooldownUntilUtcTicks[slot] = now + TimeSpan.FromSeconds(skill.CooldownSeconds).Ticks;
                 double castLock = Math.Max(0.0, skill.CastLockSeconds - SkillCastLockToleranceSeconds);
                 state.CastLockUntilUtcTicks = now + TimeSpan.FromSeconds(castLock).Ticks;
+                castSerial = ++state.CastSerial;
             }
 
-            return new SkillCastResult(SkillCastStatus.Accepted, skill, skill.CooldownSeconds, weapon, info.X, info.Y, info.Z, rotationY);
+            return new SkillCastResult(SkillCastStatus.Accepted, skill, skill.CooldownSeconds, weapon, info.X, info.Y, info.Z, rotationY, castSerial);
+        }
+
+        // 진행 중인 시전을 취소한다: 시전 잠금을 풀고, 아직 일어나지 않은 타격을 무효로 만든다(이미 일어난 타격은 그대로다).
+        // 대쉬 성공 때(RegisterDash) 호출된다 - 회피 중심 전투라 시전 모션을 대쉬로 끊을 수 있어야 한다. 마나/쿨다운은 돌려주지 않는다.
+        public void CancelSkillCast(long playerId)
+        {
+            if (!_skillStates.TryGetValue(playerId, out SkillState? state))
+            {
+                return;
+            }
+
+            lock (state)
+            {
+                state.CastLockUntilUtcTicks = 0;
+                state.CastSerial++;
+            }
+        }
+
+        // serial이 이 플레이어의 가장 최근 시전이고 취소되지 않았는지. 타격 직전에 확인한다.
+        public bool IsCastCurrent(long playerId, long serial)
+        {
+            if (!_skillStates.TryGetValue(playerId, out SkillState? state))
+            {
+                return false;
+            }
+
+            lock (state)
+            {
+                return state.CastSerial == serial;
+            }
         }
 
         // 승인된 시전을 이 플레이어를 보고 있는 사람에게 알린다(본인은 이미 로컬에서 재생했으므로 제외).

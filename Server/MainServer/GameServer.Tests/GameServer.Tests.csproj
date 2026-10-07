@@ -29,6 +29,7 @@
     <Compile Include="..\..\..\Client\Assets\@Scripts\Utils\StatGrowth.cs" LinkBase="ClientUtils" />
     <Compile Include="..\..\..\Client\Assets\@Scripts\Utils\ManaFormula.cs" LinkBase="ClientUtils" />
     <Compile Include="..\..\..\Client\Assets\@Scripts\Utils\CombatTimings.cs" LinkBase="ClientUtils" />
+    <Compile Include="..\..\..\Client\Assets\@Scripts\Utils\SkillTable.cs" LinkBase="ClientUtils" />
   </ItemGroup>
 
   <ItemGroup>

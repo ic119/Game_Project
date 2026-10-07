@@ -39,6 +39,7 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnPlayerRevived += HandlePlayerRevived;
             GameServerConnectManager.Instance.OnEquipmentChanged += HandleEquipmentChanged;
             GameServerConnectManager.Instance.OnDashReceived += HandleDashReceived;
+            GameServerConnectManager.Instance.OnSkillCastReceived += HandleSkillCastReceived;
 
             // ItemDatabaseSO는 Addressables로 비동기 로드되므로 원격 캐릭터가 데이터베이스 로드 전에 스폰될 수 있다 -
             // 로드가 끝나면 그때까지 못 그린 장비를 다시 적용한다.
@@ -65,6 +66,7 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnPlayerRevived -= HandlePlayerRevived;
             GameServerConnectManager.Instance.OnEquipmentChanged -= HandleEquipmentChanged;
             GameServerConnectManager.Instance.OnDashReceived -= HandleDashReceived;
+            GameServerConnectManager.Instance.OnSkillCastReceived -= HandleSkillCastReceived;
 
             if (ItemDatabaseManager.Instance != null)
             {
@@ -201,6 +203,18 @@ namespace Incheol.Modules
             if (TryGetRemotePlayer(packet.PlayerId, out RemoteCharacterController controller))
             {
                 controller.PlayDash(packet.IsBackward);
+            }
+        }
+
+        /// <summary>
+        /// 다른 플레이어의 스킬 시전 알림(Game_SkillCastBroadcast)을 받아 해당 원격 캐릭터에 스킬 모션을 재생시킨다.
+        /// 본인의 시전은 PlayerSkillController가 로컬에서 즉시 재생하므로 이 이벤트로 오지 않는다.
+        /// </summary>
+        private void HandleSkillCastReceived(GameSkillCastBroadcastPacket packet)
+        {
+            if (TryGetRemotePlayer(packet.PlayerId, out RemoteCharacterController controller))
+            {
+                controller.PlaySkillAnimation(packet.Slot, (WeaponType)packet.WeaponType);
             }
         }
 

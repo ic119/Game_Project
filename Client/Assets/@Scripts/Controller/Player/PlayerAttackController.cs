@@ -86,6 +86,11 @@ namespace Incheol.Controller
         // 완드 1타 후딜 중에 눌린 입력(후딜이 끝나면 2타로 나간다). 콤보가 끝나거나 새로 시작하면 비운다.
         private bool wandAttackBuffered;
 
+        /// <summary>
+        /// 스킬 시전 중이면 true(PlayerSkillController가 정한다). 시전 모션 동안은 기본 공격 입력을 받지 않는다.
+        /// </summary>
+        public bool SkillCasting { get; set; }
+
         private bool IsWand => playerCharacterModel != null && playerCharacterModel.CurrentWeaponType == WeaponType.Wand;
 
         private void Awake()
@@ -130,6 +135,12 @@ namespace Incheol.Controller
             if (comboStage > 0 && Time.time >= stageStartTime + currentStageDuration)
             {
                 ResetCombo();
+            }
+
+            // 스킬 시전 중에는 기본 공격을 받지 않는다(시전 시작 때 진행 중이던 콤보는 InterruptForSkill이 끊었다).
+            if (SkillCasting)
+            {
+                return;
             }
 
             // 사망 중에는 공격 모션/판정/요청을 시작하지 않는다(컨트롤러가 꺼지기 전 같은 프레임에 들어온 입력까지 막는다).
@@ -369,6 +380,41 @@ namespace Incheol.Controller
 
             // 방향 잠금은 이번 공격 동작이 끝날 때까지 - 그동안 이동 입력이 몸을 다시 돌려놓지 않는다.
             moveController.FaceDirection(target.transform.position - transform.position, currentStageDuration);
+        }
+
+        /// <summary>
+        /// 스킬 시전을 시작할 때 진행 중이던 기본 공격 콤보를 끊는다. 공격 모션과 입력 버퍼를 비우고, 스킬 직후 곧바로 평타가 나가지 않게
+        /// 다음 공격 가능 시각도 초기화한다(시전 중에는 SkillCasting이 막는다).
+        /// </summary>
+        public void InterruptForSkill()
+        {
+            if (comboStage > 0)
+            {
+                ResetCombo();
+            }
+
+            nextAttackReadyTime = 0f;
+        }
+
+        /// <summary>
+        /// 스킬 시전 순간 가까운 몬스터가 있으면 그 쪽으로 몸을 돌리고 holdSeconds 동안 방향을 잠근다(기본 공격의 방향 보조와 같은 규칙).
+        /// 돌렸으면 true. 보조를 끄거나 대상이 없으면 현재 방향 그대로 false.
+        /// </summary>
+        public bool FaceNearestMonster(float holdSeconds)
+        {
+            if (!aimAssist || moveController == null)
+            {
+                return false;
+            }
+
+            RemoteMonsterController target = ResolveAimAssistTarget();
+            if (target == null)
+            {
+                return false;
+            }
+
+            moveController.FaceDirection(target.transform.position - transform.position, holdSeconds);
+            return true;
         }
 
         private RemoteMonsterController ResolveAimAssistTarget()

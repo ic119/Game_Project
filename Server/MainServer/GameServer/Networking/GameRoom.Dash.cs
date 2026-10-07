@@ -53,8 +53,11 @@ namespace GameServer.Networking
 
                 state.LastDashAtUtcTicks = now;
                 state.InvulnerableUntilUtcTicks = now + DashInvulnerableDuration.Ticks;
-                return true;
             }
+
+            // 대쉬는 진행 중인 스킬 시전을 끊는다(남은 타격 취소). 대쉬 상태 lock 밖에서 부른다 - 스킬 상태도 자체 lock을 쓴다.
+            CancelSkillCast(playerId);
+            return true;
         }
 
         // 대쉬 모션 중계. RegisterDash가 성공한(쿨다운 검증을 통과한) 대쉬만 playerId를 보고 있는 사람에게 알린다 - 쿨다운 안의 요청을
