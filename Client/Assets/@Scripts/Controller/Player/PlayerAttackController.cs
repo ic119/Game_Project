@@ -23,6 +23,16 @@ namespace Incheol.Controller
         [SerializeField, Min(0f)] private float attackRange = 1.5f;
         [SerializeField, Min(0f)] private float attackRadius = 1.0f;
 
+        [Header("공격 방향 보조")]
+        [Tooltip("켜면 공격을 시작할 때 주변에 몬스터가 있으면 그 쪽으로 몸을 자동으로 돌린다(이동 방향과 달라도). 콤보 도중에는 같은 대상을 유지한다.")]
+        [SerializeField] private bool aimAssist = true;
+        [Tooltip("이 반경(m) 안의 가장 가까운 몬스터를 보조 대상으로 삼는다. 공격 판정(attackRange+attackRadius)에 닿는 거리보다 크면 돌기만 하고 못 맞힌다.")]
+        [SerializeField, Min(0f)] private float aimAssistRange = 2.8f;
+
+        [Header("타격감")]
+        [Tooltip("내 공격이 명중했을 때 공격 애니메이션을 이 시간(초)만큼 멈춰 타격감을 준다. 0이면 끈다.")]
+        [SerializeField, Range(0f, 0.15f)] private float hitStopSeconds = 0.05f;
+
         [Header("이펙트")]
         [Tooltip("스윙/임팩트 이펙트를 스폰할 때 기준 위치(캐릭터 발밑 기준 transform.position)에 더할 높이(초). " +
             "캐릭터 원점이 발밑이라 0이면 이펙트가 바닥에 붙어 보이므로, 무기/상체 높이에 맞춰 올려준다.")]
@@ -42,10 +52,15 @@ namespace Incheol.Controller
         private static readonly int ComboIndexHash = Animator.StringToHash("ComboIndex");
         private static readonly int WeaponIndexHash = Animator.StringToHash("WeaponIndex");
         private static readonly Collider[] overlapBuffer = new Collider[16];
+        // 공격 방향 보조 전용 버퍼. 바로 뒤에 이어지는 RequestAttack이 overlapBuffer를 쓰므로 따로 둔다.
+        private static readonly Collider[] aimAssistBuffer = new Collider[16];
 
         private Animator animator;
         private int attackLayerIndex = -1;
         private PlayerCharacterModel playerCharacterModel;
+        private PlayerMoveController moveController;
+        private RemoteMonsterController aimAssistTarget;
+        private Coroutine hitStopRoutine;
 
         /// <summary>
         /// 공격 판정(RequestAttack)이 몬스터를 대상으로 찾을 때마다 발생한다. UI_GameSceneView가
@@ -67,6 +82,7 @@ namespace Incheol.Controller
             }
 
             playerCharacterModel = GetComponent<PlayerCharacterModel>();
+            moveController = GetComponent<PlayerMoveController>();
         }
 
         private void OnEnable()
@@ -87,6 +103,9 @@ namespace Incheol.Controller
                 GameServerConnectManager.Instance.OnMonsterDamaged -= HandleMonsterDamaged;
                 GameServerConnectManager.Instance.OnAttackAnimationReceived -= HandleAttackAnimationReceived;
             }
+
+            // 히트스톱 도중에 비활성화돼도 애니메이션이 멈춘 채 남지 않게 되돌린다.
+            EndHitStop();
         }
 
         private void Update()
@@ -148,6 +167,8 @@ namespace Incheol.Controller
                 animator.SetInteger(ComboIndexHash, comboStage);
             }
 
+            // 스윙 이펙트와 판정은 캐릭터가 바라보는 방향을 쓰므로, 그 전에 방향을 맞춘다.
+            AssistAim();
             PlaySwingEffect();
             BroadcastAttackAnimation();
             RequestAttack();
@@ -166,9 +187,71 @@ namespace Incheol.Controller
                 animator.SetInteger(ComboIndexHash, comboStage);
             }
 
+            AssistAim();
             PlaySwingEffect();
             BroadcastAttackAnimation();
             RequestAttack();
+        }
+
+        /// <summary>
+        /// 공격을 시작하는 순간 가까운 몬스터가 있으면 그 쪽으로 몸을 돌린다. 공격 판정은 캐릭터 앞쪽 구체라서, 이동 방향과 적이 있는
+        /// 방향이 달라도 헛스윙하지 않게 해 준다. 몬스터만 대상으로 한다 - 다른 플레이어 쪽으로 의도치 않게 돌지 않게 하기 위함이다.
+        /// 콤보 2타는 1타에서 정한 대상을 (아직 가깝고 살아 있으면) 그대로 유지한다.
+        /// </summary>
+        private void AssistAim()
+        {
+            if (!aimAssist || moveController == null)
+            {
+                return;
+            }
+
+            RemoteMonsterController target = ResolveAimAssistTarget();
+            if (target == null)
+            {
+                return;
+            }
+
+            // 방향 잠금은 이번 공격 동작이 끝날 때까지 - 그동안 이동 입력이 몸을 다시 돌려놓지 않는다.
+            moveController.FaceDirection(target.transform.position - transform.position, currentStageDuration);
+        }
+
+        private RemoteMonsterController ResolveAimAssistTarget()
+        {
+            // 이어지는 타수는 직전 대상을 유지한다(두 타 사이에 대상이 흔들리지 않게). 조금 멀어져도 한동안은 놓지 않는다.
+            if (aimAssistTarget != null && !aimAssistTarget.IsDead
+                && (aimAssistTarget.transform.position - transform.position).sqrMagnitude <= aimAssistRange * aimAssistRange * 1.5625f)
+            {
+                return aimAssistTarget;
+            }
+
+            aimAssistTarget = null;
+
+            int count = Physics.OverlapSphereNonAlloc(transform.position, aimAssistRange, aimAssistBuffer);
+            float bestDistanceSqr = float.MaxValue;
+
+            for (int i = 0; i < count; i++)
+            {
+                Collider hit = aimAssistBuffer[i];
+                if (hit == null)
+                {
+                    continue;
+                }
+
+                RemoteMonsterController monster = hit.GetComponentInParent<RemoteMonsterController>();
+                if (monster == null || monster.IsDead)
+                {
+                    continue;
+                }
+
+                float distanceSqr = (monster.transform.position - transform.position).sqrMagnitude;
+                if (distanceSqr < bestDistanceSqr)
+                {
+                    bestDistanceSqr = distanceSqr;
+                    aimAssistTarget = monster;
+                }
+            }
+
+            return aimAssistTarget;
         }
 
         /// <summary>
@@ -215,6 +298,7 @@ namespace Incheol.Controller
         private void ResetCombo()
         {
             comboStage = 0;
+            aimAssistTarget = null;
 
             if (animator != null && attackLayerIndex >= 0)
             {
@@ -306,6 +390,7 @@ namespace Incheol.Controller
             }
 
             WeaponVfxManager.Instance?.PlayImpactEffect(playerCharacterModel.CurrentWeaponType, ApplyEffectHeight(target.transform.position), target.transform.rotation, effectScale);
+            StartHitStop();
         }
 
         /// <summary>
@@ -331,6 +416,55 @@ namespace Incheol.Controller
             }
 
             WeaponVfxManager.Instance?.PlayImpactEffect(playerCharacterModel.CurrentWeaponType, ApplyEffectHeight(target.transform.position), target.transform.rotation, effectScale);
+            StartHitStop();
+        }
+
+        /// <summary>
+        /// 내 공격이 명중했을 때 공격 애니메이션을 hitStopSeconds만큼 멈춰 타격감을 준다(히트스톱). Time.timeScale을 건드리지 않고
+        /// 이 캐릭터의 애니메이터만 멈추므로 서버와 맞춰 돌아가는 보간/쿨다운/네트워크 시각에는 영향이 없다.
+        /// 멈춘 시간만큼 애니메이션이 로직 타이머보다 살짝 늦어지지만 0.05초 안팎이라 눈에 띄지 않는다.
+        /// </summary>
+        private void StartHitStop()
+        {
+            if (hitStopSeconds <= 0f || animator == null || hitStopRoutine != null)
+            {
+                return;
+            }
+
+            hitStopRoutine = StartCoroutine(HitStopRoutine());
+        }
+
+        private System.Collections.IEnumerator HitStopRoutine()
+        {
+            float previousSpeed = animator.speed;
+            animator.speed = 0f;
+
+            // 실제 시간으로 기다린다(타임스케일과 무관하게 같은 길이로 멈추도록).
+            yield return new WaitForSecondsRealtime(hitStopSeconds);
+
+            if (animator != null)
+            {
+                animator.speed = previousSpeed;
+            }
+
+            hitStopRoutine = null;
+        }
+
+        // 히트스톱 도중 비활성화/해제되면 멈춘 채 남지 않게 속도를 1로 되돌리고 코루틴 상태를 지운다.
+        private void EndHitStop()
+        {
+            if (hitStopRoutine == null)
+            {
+                return;
+            }
+
+            StopCoroutine(hitStopRoutine);
+            hitStopRoutine = null;
+
+            if (animator != null)
+            {
+                animator.speed = 1f;
+            }
         }
 
         /// <summary>

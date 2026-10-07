@@ -47,6 +47,7 @@ namespace Incheol.Presenter.Scene
             }
 
             ApplyLocalServerHp(packet.RemainingHp, spawnedPlayerModel.MaxHp, true);
+            ShakeCameraOnHit();
         }
 
         /// <summary>
@@ -61,6 +62,16 @@ namespace Incheol.Presenter.Scene
             }
 
             ApplyLocalServerHp(packet.RemainingHp, spawnedPlayerModel.MaxHp, true);
+            ShakeCameraOnHit();
+        }
+
+        // 내가 맞았을 때 카메라를 짧고 약하게 흔든다(피격 느낌). 내 공격이 명중한 경우에는 흔들지 않는다 - 계속 흔들리면 어지럽다.
+        private const float HitShakeAmplitude = 0.12f;
+        private const float HitShakeDuration = 0.2f;
+
+        private static void ShakeCameraOnHit()
+        {
+            CameraOrbitController.Instance?.Shake(HitShakeAmplitude, HitShakeDuration);
         }
 
         /// <summary>

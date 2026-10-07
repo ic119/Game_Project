@@ -34,6 +34,16 @@ namespace Incheol.Controller
         private Vector3 baseOffset;
         private float yawOffset;
         private bool isDragging;
+
+        // 흔들림 상태. 오프셋을 쓰는 곳이 이 컴포넌트 하나뿐이라 회전과 흔들림을 여기서 합쳐 적용한다(따로 두면 서로 덮어쓴다).
+        private bool isShaking;
+        private float shakeStartTime;
+        private float shakeDuration;
+        private float shakeAmplitude;
+        private Vector3 shakeOffset;
+
+        /// <summary>씬에 이 컴포넌트가 활성화돼 있는 동안만 값이 있다. 호출부는 ?.로 부른다.</summary>
+        public static CameraOrbitController Instance { get; private set; }
         #endregion
 
         #region LifeCycle
@@ -43,8 +53,15 @@ namespace Incheol.Controller
             baseOffset = follow.FollowOffset;
         }
 
+        private void OnEnable()
+        {
+            Instance = this;
+        }
+
         private void Update()
         {
+            UpdateShake();
+
             // 채팅 입력 중에는 마우스 입력으로 카메라가 돌지 않게 한다(다른 게임플레이 입력과 같은 InputBlocker).
             if (InputBlocker.IsBlocked)
             {
@@ -72,7 +89,7 @@ namespace Incheol.Controller
             if (mouseX != 0f)
             {
                 yawOffset += (invertHorizontal ? -mouseX : mouseX) * rotateSensitivity;
-                ApplyYaw();
+                ApplyOffset();
             }
         }
 
@@ -87,6 +104,12 @@ namespace Incheol.Controller
 
         private void OnDisable()
         {
+            if (Instance == this)
+            {
+                Instance = null;
+            }
+
+            isShaking = false;
             StopDragging();
         }
         #endregion
@@ -96,12 +119,54 @@ namespace Incheol.Controller
         public void ResetRotation()
         {
             yawOffset = 0f;
-            ApplyYaw();
+            ApplyOffset();
         }
 
-        private void ApplyYaw()
+        /// <summary>
+        /// 카메라를 짧게 흔든다(피격 연출 등). amplitude는 흔들림 크기(m), duration은 지속 시간(초)이며 끝으로 갈수록 잦아든다.
+        /// 이미 흔들리는 중이면 더 큰 쪽으로 이어받는다 - 연속 피격에 흔들림이 계속 이어진다.
+        /// </summary>
+        public void Shake(float amplitude, float duration)
         {
-            follow.FollowOffset = Quaternion.Euler(0f, yawOffset, 0f) * baseOffset;
+            if (amplitude <= 0f || duration <= 0f)
+            {
+                return;
+            }
+
+            shakeAmplitude = isShaking ? Mathf.Max(amplitude, shakeAmplitude * RemainingShakeRatio()) : amplitude;
+            shakeDuration = duration;
+            shakeStartTime = Time.time;
+            isShaking = true;
+        }
+
+        private float RemainingShakeRatio()
+        {
+            return shakeDuration > 0f ? Mathf.Clamp01(1f - (Time.time - shakeStartTime) / shakeDuration) : 0f;
+        }
+
+        private void UpdateShake()
+        {
+            if (!isShaking)
+            {
+                return;
+            }
+
+            float elapsed = Time.time - shakeStartTime;
+            if (elapsed >= shakeDuration)
+            {
+                isShaking = false;
+                shakeOffset = Vector3.zero;
+                ApplyOffset();
+                return;
+            }
+
+            shakeOffset = Random.insideUnitSphere * (shakeAmplitude * (1f - elapsed / shakeDuration));
+            ApplyOffset();
+        }
+
+        private void ApplyOffset()
+        {
+            follow.FollowOffset = Quaternion.Euler(0f, yawOffset, 0f) * baseOffset + (isShaking ? shakeOffset : Vector3.zero);
         }
 
         private void StartDragging()

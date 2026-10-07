@@ -48,6 +48,9 @@ namespace Incheol.Controller
         // 이번 프레임 입력이 가리키는 월드 방향(수평, 정규화). 입력이 없으면 zero.
         private Vector3 moveDirection;
 
+        // 이 시각(Time.time)까지는 이동 방향으로 몸을 돌리지 않는다. 공격 방향 보조(FaceDirection)가 정한 방향을 이동 입력이 곧바로 덮어쓰지 않게 한다.
+        private float facingLockUntil;
+
         private bool isDashing;
         private Vector3 dashDirection;
         private float dashEndTime;
@@ -138,13 +141,37 @@ namespace Incheol.Controller
 
             // 이동 방향으로 몸을 돌리고(최대 rotateSpeed), 입력 방향으로 곧바로 이동한다. 대각선 입력도 정규화된 방향이라
             // 속도가 같다 - 서버의 이동 거리 검증(Game_MoveRequest)이 대각선에서 더 빠르게 보지 않는다.
-            Quaternion targetRotation = Quaternion.LookRotation(moveDirection, Vector3.up);
-            rigidBody.MoveRotation(Quaternion.RotateTowards(rigidBody.rotation, targetRotation, rotateSpeed * Time.fixedDeltaTime));
+            // 공격 방향 보조가 방향을 잠근 동안(facingLockUntil)에는 몸을 돌리지 않고 이동만 한다.
+            if (Time.time >= facingLockUntil)
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(moveDirection, Vector3.up);
+                rigidBody.MoveRotation(Quaternion.RotateTowards(rigidBody.rotation, targetRotation, rotateSpeed * Time.fixedDeltaTime));
+            }
+
             rigidBody.MovePosition(rigidBody.position + moveDirection * (moveSpeed * Time.fixedDeltaTime));
         }
         #endregion
 
         #region Method
+        /// <summary>
+        /// 캐릭터를 worldDirection(수평 성분만 사용) 쪽으로 즉시 돌리고, holdSeconds 동안은 이동 입력으로 몸이 다시 돌아가지 않게 한다.
+        /// 공격 방향 보조(PlayerAttackController)가 공격 순간 가까운 몬스터를 향하게 할 때 쓴다. 대쉬 중에는 대쉬 방향이 우선이라
+        /// 호출해도 대쉬가 끝난 뒤에야 의미가 있다.
+        /// </summary>
+        public void FaceDirection(Vector3 worldDirection, float holdSeconds)
+        {
+            worldDirection.y = 0f;
+            if (worldDirection.sqrMagnitude < 0.0001f || rigidBody == null)
+            {
+                return;
+            }
+
+            Quaternion facing = Quaternion.LookRotation(worldDirection.normalized, Vector3.up);
+            transform.rotation = facing;
+            rigidBody.rotation = facing;
+            facingLockUntil = Time.time + Mathf.Max(0f, holdSeconds);
+        }
+
         /// <summary>
         /// 화면 기준 입력(x: 오른쪽, y: 위)을 월드 방향으로 바꾼다. 카메라가 바라보는 방향의 수평 성분을 "위"로 쓰므로
         /// 카메라 각도를 바꿔도 입력이 화면과 맞는다. 입력이 없으면 Vector3.zero.

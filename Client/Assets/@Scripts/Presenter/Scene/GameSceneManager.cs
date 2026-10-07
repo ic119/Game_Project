@@ -642,6 +642,7 @@ namespace Incheol.Presenter.Scene
             // (최초 접근 시 SingletonObject가 자동 생성된다).
             _ = RemotePlayerManager.Instance;
             _ = RemoteMonsterManager.Instance;
+            _ = DamageTextManager.Instance;
             _ = RemoteChestManager.Instance;
             _ = RemoteGateManager.Instance;
         }
