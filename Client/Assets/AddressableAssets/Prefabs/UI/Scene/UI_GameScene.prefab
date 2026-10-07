@@ -10165,7 +10165,8 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_text: "<color=#FFD966>W A S D</color><pos=46%>\uC774\uB3D9\n<color=#FFD966>\uC6B0\uD074\uB9AD
-    \uB4DC\uB798\uADF8</color><pos=46%>\uCE74\uBA54\uB77C \uD68C\uC804\n<color=#FFD966>C</color><pos=46%>\uACF5\uACA9\n<color=#FFD966>Space</color><pos=46%>\uB300\uC26C
+    \uB4DC\uB798\uADF8</color><pos=46%>\uCE74\uBA54\uB77C \uD68C\uC804\n<color=#FFD966>C</color><pos=46%>\uACF5\uACA9\n<color=#FFD966>1
+    2 3 4</color><pos=46%>\uC2A4\uD0AC (Lv.3/6/9/12 \uD574\uAE08)\n<color=#FFD966>Space</color><pos=46%>\uB300\uC26C
     (\uB204\uB978 \uBC29\uD5A5)\n<color=#FFD966>F</color><pos=46%>\uC0C1\uD638\uC791\uC6A9
     (\uC0C1\uC790, \uBB38, \uD3EC\uD138)\n<color=#FFD966>I</color><pos=46%>\uC778\uBCA4\uD1A0\uB9AC\n<color=#FFD966>M</color><pos=46%>\uC9C0\uB3C4\n<color=#FFD966>H</color><pos=46%>\uC870\uC791
     \uC548\uB0B4 \uC5F4\uAE30/\uB2EB\uAE30"
