@@ -1,7 +1,6 @@
 using System;
 using Incheol.Controller;
 using Incheol.Utils;
-using TMPro;
 using UnityEngine;
 
 namespace Incheol.View.UI
@@ -16,14 +15,6 @@ namespace Incheol.View.UI
     [RequireComponent(typeof(Collider))]
     public class UI_InteractionPrompt : MonoBehaviour
     {
-        [Header("표시 대상")]
-        [Tooltip("실제로 켜고 끌 시각 요소(Canvas 등)의 루트. 이 스크립트가 붙은 오브젝트 자체를 SetActive로 끄면 " +
-            "트리거 콜라이더도 같이 꺼져 재진입을 감지하지 못하므로, 트리거는 항상 켜둔 채 이 자식만 켜고 끈다.")]
-        [SerializeField] private GameObject visualRoot;
-
-        [Tooltip("키/행동 문구를 표시할 텍스트. SetActionLabel로 행동 설명만 런타임에 바꿀 수 있다.")]
-        [SerializeField] private TextMeshProUGUI promptText;
-
         [Header("상호작용")]
         [Tooltip("범위 안에 있을 때 이 키를 누르면 OnInteract가 발생한다. 표시 문구([F] 등)도 이 값을 그대로 쓴다 - " +
             "실제 입력과 화면 문구가 서로 다른 값으로 어긋나는 것을 막기 위해 별도 텍스트로 관리하지 않는다.")]
@@ -49,12 +40,14 @@ namespace Incheol.View.UI
             }
 
             actionLabel = defaultActionLabel;
-            ApplyPromptText();
+        }
 
-            if (visualRoot != null)
-            {
-                visualRoot.SetActive(false);
-            }
+        // 범위 안에서 상자가 열려 사라지거나 맵이 바뀌면 OnTriggerExit이 호출되지 않는다. 화면 UI는 오브젝트와 같이 사라지지
+        // 않으므로 여기서 직접 내리고 근접 상태도 초기화한다.
+        private void OnDisable()
+        {
+            currentPlayerObject = null;
+            Hide();
         }
 
         private void Update()
@@ -97,24 +90,20 @@ namespace Incheol.View.UI
 
         /// <summary>
         /// 프롬프트를 강제로 표시한다. 근접 감지와 별개로 외부(인터랙터블 컨트롤러)에서 필요 시 직접 호출할 수 있다.
+        /// 화면 공용 UI(UI_InteractionPromptView)에 표시를 맡기므로, 게임 씬 밖이라 UI가 없으면 아무 일도 하지 않는다.
         /// </summary>
         public void Show()
         {
-            if (visualRoot != null)
-            {
-                visualRoot.SetActive(true);
-            }
+            UI_InteractionPromptView.Instance?.Show(this, BuildPromptText());
         }
 
         /// <summary>
-        /// 프롬프트를 강제로 숨긴다(예: 상호작용 쿨다운 중이거나 대화 진행 중일 때).
+        /// 프롬프트를 강제로 숨긴다(예: 상호작용 쿨다운 중이거나 대화 진행 중일 때). 다른 인터랙터블이 이어받아
+        /// 표시 중인 프롬프트는 건드리지 않는다.
         /// </summary>
         public void Hide()
         {
-            if (visualRoot != null)
-            {
-                visualRoot.SetActive(false);
-            }
+            UI_InteractionPromptView.Instance?.Hide(this);
         }
 
         /// <summary>
@@ -123,18 +112,13 @@ namespace Incheol.View.UI
         public void SetActionLabel(string label)
         {
             actionLabel = label;
-            ApplyPromptText();
+            UI_InteractionPromptView.Instance?.SetText(this, BuildPromptText());
         }
 
-        private void ApplyPromptText()
+        private string BuildPromptText()
         {
-            if (promptText == null)
-            {
-                return;
-            }
-
             string keyLabel = interactionKey.ToString();
-            promptText.text = string.IsNullOrEmpty(actionLabel) ? keyLabel : $"[{keyLabel}] {actionLabel}";
+            return string.IsNullOrEmpty(actionLabel) ? keyLabel : $"[{keyLabel}] {actionLabel}";
         }
     }
 }

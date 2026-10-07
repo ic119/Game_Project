@@ -2,6 +2,7 @@ using Incheol.Models.Define;
 using Incheol.Modules;
 using Incheol.Presenter.Scene;
 using Incheol.Utils;
+using Incheol.View.UI;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Events;
@@ -63,6 +64,9 @@ namespace Incheol.Controller.Interaction
 
         [Tooltip("상호작용 키 (requireInteractionKey가 true일 때 사용)")]
         [SerializeField] private KeyCode interactionKey = KeyCode.F;
+
+        [Tooltip("화면 안내에 표시할 행동 설명 (requireInteractionKey가 true일 때 \"[F] 입장\"처럼 보인다)")]
+        [SerializeField] private string interactionLabel = "입장";
 
         [Header("Visual Effects")]
         [Tooltip("포털 중앙의 포인트 라이트 (부드러운 호흡/펄스 효과용)")]
@@ -187,12 +191,20 @@ namespace Incheol.Controller.Interaction
             {
                 StartTeleportSequence(currentPlayerObject);
             }
+            else
+            {
+                // 키 입력이 필요한 포털만 안내가 의미 있다(즉시 진입 포털은 안내를 볼 틈 없이 이동한다).
+                UI_InteractionPromptView.Instance?.Show(this, $"[{interactionKey}] {interactionLabel}");
+            }
         }
 
         private void OnDisable()
         {
             // 지연 중에 이 포털이 파괴/비활성화되면(코루틴이 중단돼 위의 해제 줄이 실행되지 않는다) 입력이 계속 막히므로 푼다.
             InputBlocker.SetBlocked(this, false);
+
+            // 범위 안에서 포털이 사라지면 OnTriggerExit이 호출되지 않아 화면 안내가 남는다.
+            UI_InteractionPromptView.Instance?.Hide(this);
         }
 
         private void OnTriggerExit(Collider other)
@@ -202,6 +214,7 @@ namespace Incheol.Controller.Interaction
             {
                 isPlayerInside = false;
                 currentPlayerObject = null;
+                UI_InteractionPromptView.Instance?.Hide(this);
             }
         }
         #endregion
@@ -267,6 +280,7 @@ namespace Incheol.Controller.Interaction
         private IEnumerator TeleportRoutine(GameObject player)
         {
             isTeleporting = true;
+            UI_InteractionPromptView.Instance?.Hide(this);
             onTeleportStarted?.Invoke();
 
             // 맵 이동 포털은 진입 순간부터 입력을 잠근다. 서버는 "포털 반경 + 2m 안"에 있을 때만 맵 이동을 승인하는데, 지연
