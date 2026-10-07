@@ -44,6 +44,9 @@ namespace Incheol.View.UI
         [Header("Popups")]
         [SerializeField] private UI_CharacterCreatePopup characterCreatePopup;
 
+        [Header("Loding Variable")]
+        [SerializeField] private GameObject loadingImage;
+
         private readonly List<UI_CharacterListItem> spawnedListItems = new List<UI_CharacterListItem>();
         private bool isPreviewStageDynamicallyCreated;
         private long? previewedCharacterId;
@@ -439,6 +442,17 @@ private void ClearPreview()
         private void OnClickStartButton()
         {
             OnStartRequested?.Invoke();
+        }
+
+        /// <summary>
+        /// 게임 시작 로딩이 시작되기 직전에 로딩 배경 이미지를 켠다. Presenter가 UI_LoadingBarView를 띄우기 전에 호출한다.
+        /// </summary>
+        public void ShowLoadingImage()
+        {
+            if (loadingImage != null)
+            {
+                loadingImage.SetActive(true);
+            }
         }
 
 private void OnClickCreateButton()

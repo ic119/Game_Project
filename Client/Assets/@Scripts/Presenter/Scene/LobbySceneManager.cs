@@ -155,7 +155,10 @@ namespace Incheol.Presenter.Scene
 
         /// <summary>
         /// UI_LobbySceneView의 시작(이어하기) 버튼 클릭 시 호출된다. 저장된 캐릭터가 있을 때만 버튼이 보이므로
-        /// 여기서는 별도 검증 없이 바로 GameScene으로 전환한다.
+        /// 여기서는 별도 검증 없이 바로 GameScene으로 전환한다. 로비 씬은 전환 도중 언로드되어 로딩바를 직접 숨길 수 없으므로,
+        /// 로딩바와 진행률은 SceneLoadManager에 맡긴다. 프리로드가 100%가 될 때까지는 로비 화면이 그대로 유지되고, 100%가 된
+        /// 뒤에 GameScene으로 전환한다. 로딩바를 숨기는 것은 GameScene이 맵/플레이어 생성과 서버 입장까지 마친 뒤
+        /// GameSceneManager가 맡는다(그래서 전환이 끝나도 로딩바를 유지하도록 요청한다).
         /// </summary>
         private void OnStartRequested()
         {
@@ -165,7 +168,10 @@ namespace Incheol.Presenter.Scene
                 return;
             }
 
-            SceneLoadManager.Instance.LoadSceneByTags(gameSceneTag);
+            // 로딩바(SceneLoadManager가 띄운다)가 나오기 직전에 로비의 로딩 배경 이미지를 먼저 켠다.
+            lobbySceneView?.ShowLoadingImage();
+
+            SceneLoadManager.Instance.LoadSceneByTags(gameSceneTag, true, true);
         }
 
         /// <summary>

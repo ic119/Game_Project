@@ -160,6 +160,17 @@ public async Awaitable ExecuteAsync()
         /// SceneLoadAsync가 진행 중인 동안 true. LoadSceneByTags의 중복/재진입 호출을 막는 데 사용한다.
         /// </summary>
         private bool isSceneLoading;
+
+        /// <summary>
+        /// 이번 씬 전환의 진행률을 UI_LoadingBarView에 표시하는 중인지. 로비처럼 호출한 씬이 전환 도중 언로드되는 경우,
+        /// 호출한 쪽은 로딩바를 숨길 수 없으므로 씬이 유지되는 이 매니저가 표시/진행률/숨김을 모두 맡는다.
+        /// </summary>
+        private bool reportToLoadingBar;
+
+        /// <summary>전환이 끝나도 로딩바를 숨기지 않고 다음 씬의 Presenter가 이어받아 숨기는 경우 true.</summary>
+        private bool keepLoadingBarAfterLoad;
+
+        private const string loadingBarTitle = "게임 데이터를 불러오는 중...";
         #endregion
 
         #region Method
@@ -314,7 +325,15 @@ private void LoadAddressableAssetModelSO(Action<bool> _onComplete)
             };
         }
 
-public void LoadSceneByTags(string _tagName)
+/// <summary>
+        /// _showLoadingBar가 true이면 전환이 끝날 때까지 UI_LoadingBarView에 진행률을 표시하고, 진행률이 100%가 되어
+        /// 이전 씬 정리까지 끝난 뒤에 숨긴다. 로딩바를 직접 관리하는 씬(Bootstrap/Login 등)은 기본값(false)을 쓴다.
+        /// 로딩바를 보여주는 전환은 프리로드를 먼저 모두 끝내 100%를 채운 뒤에 대상 씬을 로드한다(이전 씬이 보이는 동안 대상 씬이
+        /// 먼저 나타나지 않도록).
+        /// _keepLoadingBar가 true이면 전환이 끝나도 로딩바를 숨기지 않고 100%로 유지한다. 새 씬이 자체 초기화(맵/플레이어 생성,
+        /// 서버 입장 등)를 이어서 진행하는 경우에 쓰며, 이때는 새 씬의 Presenter가 반드시 숨겨야 한다.
+        /// </summary>
+        public void LoadSceneByTags(string _tagName, bool _showLoadingBar = false, bool _keepLoadingBar = false)
         {
             if (!IsInitialized || sceneDataModelDictionary == null || addressableAssetModelDictionary == null)
             {
@@ -347,18 +366,26 @@ public void LoadSceneByTags(string _tagName)
 
             currentSceneTag = _tagName;
             currentSceneDataModel = sceneDataModelDictionary[_tagName];
-            _ = SceneLoadAsync(previousSceneDataModel, currentSceneDataModel);
+            _ = SceneLoadAsync(previousSceneDataModel, currentSceneDataModel, _showLoadingBar, _keepLoadingBar);
         }
 
         /// <summary>
         /// 이전/대상 SceneDataModel을 비교해 필요한 씬만 로드하고, 더 이상 필요없는 씬만 언로드한다.
         /// </summary>
-private async Awaitable SceneLoadAsync(Incheol.Models.SO.SceneDataModel _previous, Incheol.Models.SO.SceneDataModel _target)
+private async Awaitable SceneLoadAsync(Incheol.Models.SO.SceneDataModel _previous, Incheol.Models.SO.SceneDataModel _target, bool _showLoadingBar, bool _keepLoadingBar)
         {
             isSceneLoading = true;
 
             try
             {
+                reportToLoadingBar = _showLoadingBar && GameManager.Instance != null;
+                keepLoadingBarAfterLoad = reportToLoadingBar && _keepLoadingBar;
+                if (reportToLoadingBar)
+                {
+                    GameManager.Instance.ShowLoadingBar();
+                    GameManager.Instance.LoadingBarView?.UpdateTitle(loadingBarTitle);
+                }
+
                 await Awaitable.WaitForSecondsAsync(0.2f);
 
                 // 이전 태그 세션에서 로드했던 Addressable 핸들 / 오브젝트 풀 정리 (최초 실행 시 keyDictionary가 비어 있어 no-op)
@@ -366,7 +393,7 @@ private async Awaitable SceneLoadAsync(Incheol.Models.SO.SceneDataModel _previou
                 AddressableAssetManager.Instance.ReleaseAllHandler(keysToPreserve);
                 //ObjectPoolController.Instance.Init();
 
-                currentLoadProgressValue = 0.0f;
+                SetLoadProgress(0.0f);
                 loadTaskQueue.Clear();
                 totalLoadTaskCount = 0;
                 completedLoadTaskCount = 0;
@@ -386,11 +413,23 @@ private async Awaitable SceneLoadAsync(Incheol.Models.SO.SceneDataModel _previou
 
                 List<string> scenesToUnload = previousSceneList.Where(sceneName => !targetSceneList.Contains(sceneName)).ToList();
 
-                EnqueueLoadTasks(_target);
+                // 로딩바를 보여주는 전환은 프리로드(Addressable)를 먼저 모두 끝내 100%를 채운 뒤에 대상 씬을 로드한다.
+                // 씬 로드를 프리로드와 동시에 시작하면 대상 씬이 로딩 도중에 먼저 활성화되어, 이전 씬(로비)이 보이는 동안
+                // 대상 씬의 월드/UI가 같이 나타난다.
+                bool loadScenesAfterPreload = reportToLoadingBar;
+
+                EnqueueLoadTasks(_target, !loadScenesAfterPreload);
                 await ProcessLoadTaskQueueAsync();
 
                 // Queue가 비워져 Progress가 100이 된 뒤에만 씬 전환
-                currentLoadProgressValue = 100.0f;
+                SetLoadProgress(100.0f);
+
+                if (loadScenesAfterPreload)
+                {
+                    // 100%가 화면에 보이도록 잠깐 두었다가 씬을 로드한다.
+                    await Awaitable.WaitForSecondsAsync(0.2f);
+                    await LoadTargetScenesAsync(_target);
+                }
 
                 // 대상 씬에서 더 이상 필요하지 않은(공유되지 않는) 이전 씬만 언로드한다.
                 for (int i = 0; i < scenesToUnload.Count; i++)
@@ -417,14 +456,42 @@ private async Awaitable SceneLoadAsync(Incheol.Models.SO.SceneDataModel _previou
             }
             finally
             {
+                if (reportToLoadingBar)
+                {
+                    reportToLoadingBar = false;
+
+                    // 다음 씬이 이어받는 경우에는 숨기지 않는다(그쪽에서 진행률을 이어 채우고 숨긴다).
+                    if (!keepLoadingBarAfterLoad)
+                    {
+                        // LoadingBarView는 풀에서 재사용되는 인스턴스라 다음 사용처에 이 문구가 남지 않게 비운다.
+                        GameManager.Instance?.LoadingBarView?.UpdateTitle(string.Empty);
+                        GameManager.Instance?.HideLoadingBar();
+                    }
+
+                    keepLoadingBarAfterLoad = false;
+                }
+
                 isSceneLoading = false;
+            }
+        }
+
+        /// <summary>
+        /// 진행률(0~100)을 저장하고, 로딩바를 표시 중이면 UI_LoadingBarView(0~1)에도 반영한다.
+        /// </summary>
+        private void SetLoadProgress(float _percent)
+        {
+            currentLoadProgressValue = _percent;
+
+            if (reportToLoadingBar)
+            {
+                GameManager.Instance?.LoadingBarView?.UpdateProgress(_percent / 100.0f);
             }
         }
 
         /// <summary>
         /// Addressable / Additive 씬 로드 업무를 Queue에 등록한다.
         /// </summary>
-        private void EnqueueLoadTasks(Incheol.Models.SO.SceneDataModel _target)
+        private void EnqueueLoadTasks(Incheol.Models.SO.SceneDataModel _target, bool _includeSceneTasks = true)
         {
             List<string> addressableKeys = CollectPreloadKeyStrings(currentSceneTag);
             for (int i = 0; i < addressableKeys.Count; i++)
@@ -432,15 +499,38 @@ private async Awaitable SceneLoadAsync(Incheol.Models.SO.SceneDataModel _previou
                 loadTaskQueue.Enqueue(new AddressableLoadTask(addressableKeys[i]));
             }
 
-            List<string> sceneTargets = _target.loadedSceneList ?? new List<string>();
-            for (int i = 0; i < sceneTargets.Count; i++)
+            if (_includeSceneTasks)
             {
-                loadTaskQueue.Enqueue(new AdditiveSceneLoadTask(sceneTargets[i], _target.activeSceneName));
+                List<string> sceneTargets = _target.loadedSceneList ?? new List<string>();
+                for (int i = 0; i < sceneTargets.Count; i++)
+                {
+                    loadTaskQueue.Enqueue(new AdditiveSceneLoadTask(sceneTargets[i], _target.activeSceneName));
+                }
             }
 
             totalLoadTaskCount = loadTaskQueue.Count;
             completedLoadTaskCount = 0;
             UpdateProgressByQueue();
+        }
+
+        /// <summary>
+        /// 프리로드가 모두 끝난 뒤에 대상 씬들을 순서대로 Additive 로드한다(진행률은 이미 100%).
+        /// 한 씬이 실패해도 나머지 정리(이전 씬 언로드, 로딩바 처리)가 이어지도록 예외는 여기서 흡수한다.
+        /// </summary>
+        private async Awaitable LoadTargetScenesAsync(Incheol.Models.SO.SceneDataModel _target)
+        {
+            List<string> sceneTargets = _target.loadedSceneList ?? new List<string>();
+            for (int i = 0; i < sceneTargets.Count; i++)
+            {
+                try
+                {
+                    await new AdditiveSceneLoadTask(sceneTargets[i], _target.activeSceneName).ExecuteAsync();
+                }
+                catch (Exception exception)
+                {
+                    DebugLogManager.GenerateErrorMessage<SceneLoadManager>($"대상 씬 로드 중 예외 발생 Scene : {sceneTargets[i]}, Exception : {exception}");
+                }
+            }
         }
 
         /// <summary>
@@ -452,7 +542,7 @@ private async Awaitable SceneLoadAsync(Incheol.Models.SO.SceneDataModel _previou
         {
             if (totalLoadTaskCount <= 0)
             {
-                currentLoadProgressValue = 100.0f;
+                SetLoadProgress(100.0f);
                 return;
             }
 
@@ -467,7 +557,7 @@ private async Awaitable SceneLoadAsync(Incheol.Models.SO.SceneDataModel _previou
                 await Awaitable.NextFrameAsync();
             }
 
-            currentLoadProgressValue = 100.0f;
+            SetLoadProgress(100.0f);
         }
 
         private async Awaitable RunLoadTaskAsync(ILoadTask _task)
@@ -494,11 +584,11 @@ private async Awaitable SceneLoadAsync(Incheol.Models.SO.SceneDataModel _previou
         {
             if (totalLoadTaskCount <= 0)
             {
-                currentLoadProgressValue = 100.0f;
+                SetLoadProgress(100.0f);
                 return;
             }
 
-            currentLoadProgressValue = ((float)completedLoadTaskCount / totalLoadTaskCount) * 100.0f;
+            SetLoadProgress(((float)completedLoadTaskCount / totalLoadTaskCount) * 100.0f);
         }
 
         /// <summary>

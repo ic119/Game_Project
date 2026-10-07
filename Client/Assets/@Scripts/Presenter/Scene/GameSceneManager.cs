@@ -95,6 +95,15 @@ namespace Incheol.Presenter.Scene
         /// logoutButton 연타로 로그아웃 요청이 중복 전송되는 것을 막는 가드.
         /// </summary>
         private bool isLoggingOut = false;
+
+        // 로비에서 시작 버튼으로 들어오면 SceneLoadManager가 프리로드를 100%까지 채운 뒤 GameScene으로 전환하고, 로딩바는 100%인 채로
+        // 넘겨준다. 맵/UI/플레이어 생성과 서버 입장은 이 씬에서 이어지므로 여기서는 제목만 바꿔 안내하고, 입장이 확인되면 숨긴다.
+
+        // 입장 응답이 오지 않는 등 예상 밖의 이유로 로딩바가 화면을 영원히 가리지 않도록 하는 안전장치.
+        private const float InitialLoadingTimeoutSeconds = 30f;
+
+        /// <summary>이 씬이 이어받은 최초 로딩바를 아직 숨기지 않았는지.</summary>
+        private bool isInitialLoadingBarActive;
         #endregion
 
         #region LifeCycle
@@ -114,6 +123,7 @@ namespace Incheol.Presenter.Scene
 
         private void Start()
         {
+            BeginInitialLoading();
             LoadAndInstantiateGameSceneAssets();
         }
 
@@ -215,6 +225,9 @@ namespace Incheol.Presenter.Scene
             // 맵 이동 도중에 이 매니저가 파괴되면(씬 전환 등) SwapMapAsync의 finally가 실행되지 않을 수 있어, 입력 잠금이 남지 않게 푼다.
             InputBlocker.SetBlocked(this, false);
 
+            // 최초 로딩 도중에 씬이 사라지면(예: 로딩 중 세션 만료로 로그인 화면 전환) 이어받은 로딩바가 남지 않게 숨긴다.
+            HideInitialLoadingBar();
+
             if (gameSceneView != null)
             {
 
@@ -253,6 +266,89 @@ namespace Incheol.Presenter.Scene
 
         #region Method
         /// <summary>
+        /// 이전 씬(로비)에서 이어받은 로딩바가 떠 있으면 이 씬이 숨길 책임을 진다. GameScene을 에디터에서 바로 실행하는 등
+        /// 로딩바가 없으면 아무 일도 하지 않는다. 입장 응답(OnEntered)이 끝내 오지 않는 경우를 대비해 타임아웃을 건다.
+        /// </summary>
+        private void BeginInitialLoading()
+        {
+            LoadingBarViewState state = GameManager.Instance != null && GameManager.Instance.LoadingBarView != null
+                ? (GameManager.Instance.LoadingBarView.gameObject.activeInHierarchy ? LoadingBarViewState.Visible : LoadingBarViewState.Hidden)
+                : LoadingBarViewState.Missing;
+
+            isInitialLoadingBarActive = state == LoadingBarViewState.Visible;
+
+            if (isInitialLoadingBarActive)
+            {
+                _ = InitialLoadingTimeoutAsync();
+            }
+        }
+
+        private enum LoadingBarViewState
+        {
+            Missing,
+            Hidden,
+            Visible
+        }
+
+        private async Awaitable InitialLoadingTimeoutAsync()
+        {
+            await Awaitable.WaitForSecondsAsync(InitialLoadingTimeoutSeconds);
+
+            if (this == null || !isInitialLoadingBarActive)
+            {
+                return;
+            }
+
+            DebugLogManager.GenerateErrorMessage<GameSceneManager>($"게임 서버 입장 확인이 {InitialLoadingTimeoutSeconds}초 안에 오지 않아 로딩바를 강제로 숨깁니다.");
+            HideInitialLoadingBar();
+        }
+
+        /// <summary>최초 로딩 중일 때만 로딩바의 제목을 바꾼다. 진행률은 SceneLoadManager가 이미 100%로 채운 상태 그대로 둔다.</summary>
+        private void ReportInitialLoading(string _title)
+        {
+            if (!isInitialLoadingBarActive)
+            {
+                return;
+            }
+
+            GameManager.Instance?.LoadingBarView?.UpdateTitle(_title);
+        }
+
+        /// <summary>서버 입장이 확인되면 100%를 잠깐 보여준 뒤 로딩바를 숨긴다.</summary>
+        private async Awaitable CompleteInitialLoadingAsync()
+        {
+            if (!isInitialLoadingBarActive)
+            {
+                return;
+            }
+
+            ReportInitialLoading("입장 완료");
+            await Awaitable.WaitForSecondsAsync(0.2f);
+
+            if (this == null)
+            {
+                return;
+            }
+
+            HideInitialLoadingBar();
+        }
+
+        /// <summary>이어받은 최초 로딩바를 숨긴다. 여러 번 불러도 한 번만 동작한다(맵 이동/재접속 로딩바와 섞이지 않는다).</summary>
+        private void HideInitialLoadingBar()
+        {
+            if (!isInitialLoadingBarActive)
+            {
+                return;
+            }
+
+            isInitialLoadingBarActive = false;
+
+            // LoadingBarView는 풀에서 재사용되는 인스턴스라 다음 사용처에 이 문구가 남지 않게 비운다.
+            GameManager.Instance?.LoadingBarView?.UpdateTitle(string.Empty);
+            GameManager.Instance?.HideLoadingBar();
+        }
+
+        /// <summary>
         /// AddressableAssetModelSO에서 tags가 "GameScene"인 항목의 preloadAddressableKeys(예: UI_GameScene)를 로드하여
         /// 이 GameSceneManager(this.transform)의 자식으로 직접 생성한다.
         /// GameScene 전용 에셋은 씬이 언로드될 때 함께 파괴되어야 하므로, ObjectPoolManager(PersistAcrossScenes) 기반인
@@ -278,6 +374,8 @@ namespace Incheol.Presenter.Scene
                 DebugLogManager.GenerateErrorMessage<GameSceneManager>("AddressableAssetManager.Instance가 null입니다.");
                 return;
             }
+
+            ReportInitialLoading("맵과 UI를 구성하는 중...");
 
             foreach (AddressableAssetKey key in keys)
             {
@@ -424,6 +522,8 @@ namespace Incheol.Presenter.Scene
                 // Space 입력으로 전방의 원격 플레이어를 공격(Game_AttackRequest)한다.
                 localPlayerAttackController = playerInstance.AddComponent<PlayerAttackController>();
                 localPlayerAttackController.MonsterTargeted += HandleMonsterTargeted;
+
+                ReportInitialLoading("캐릭터 정보를 불러오는 중...");
             });
         }
 
@@ -532,6 +632,8 @@ namespace Incheol.Presenter.Scene
                 Level = spawnedPlayerModel != null ? spawnedPlayerModel.Level : 1,
                 Exp = spawnedPlayerModel != null ? spawnedPlayerModel.CurrentExp : 0
             };
+
+            ReportInitialLoading("게임 서버에 접속하는 중...");
 
             GameServerConnectManager.Instance.ConnectAndEnter(localInfo);
 
