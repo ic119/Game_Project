@@ -47,6 +47,22 @@ namespace Incheol.Modules
             PlayEffect(weaponType, position, rotation, scale, useImpactEffect: true);
         }
 
+        /// <summary>
+        /// 무기 타입에 등록된 투사체 이펙트 키를 조회한다(원거리 무기용). 등록되지 않았거나 아직 데이터베이스가 로드되기 전이면 false.
+        /// </summary>
+        public bool TryGetProjectileKey(WeaponType weaponType, out AddressableAssetKey key)
+        {
+            key = AddressableAssetKey.None;
+
+            if (database == null || !database.TryGetEntry(weaponType, out WeaponVfxEntry entry))
+            {
+                return false;
+            }
+
+            key = entry.projectileEffectKey;
+            return key != AddressableAssetKey.None;
+        }
+
         private void LoadDatabase()
         {
             AsyncOperationHandle<WeaponVfxDatabaseSO> handle;

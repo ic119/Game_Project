@@ -107,15 +107,23 @@ namespace Incheol.Controller
         /// 무기/갑옷/투구의 "시각"(메시)은 서버가 알려주는 장착 정보(GamePlayerInfo, Game_EquipmentChangedBroadcast)를
         /// RemotePlayerManager가 반영한다.
         /// </summary>
-        public void PlayAttackAnimation(int comboStage, WeaponType weaponType)
+        public void PlayAttackAnimation(int comboStage, WeaponType weaponType, AttackTargetKind targetKind = AttackTargetKind.None, long targetId = 0)
         {
-            if (animator == null || attackLayerIndex < 0)
+            // 사망 패킷 뒤에 늦게 도착한 공격 모션 알림이 Attack Layer를 다시 올려 Die를 덮지 않게 한다.
+            if (playerCharacterModel != null && playerCharacterModel.IsDead)
             {
                 return;
             }
 
-            // 사망 패킷 뒤에 늦게 도착한 공격 모션 알림이 Attack Layer를 다시 올려 Die를 덮지 않게 한다.
-            if (playerCharacterModel != null && playerCharacterModel.IsDead)
+            // 원거리 무기(완드)는 모션과 함께 지팡이 끝에서 투사체를 날려 보낸다(근접 무기의 스윙/명중 이펙트는 공격자 본인 화면에서만 재생한다).
+            // 목표가 아직 스폰되지 않았거나 없으면 정면 허공으로 날아간다.
+            if (weaponType == WeaponType.Wand)
+            {
+                Transform target = ProjectileVfxManager.ResolveTarget(targetKind, targetId);
+                ProjectileVfxManager.Instance?.FireRanged(weaponType, transform.TransformPoint(ProjectileVfxManager.DefaultMuzzleOffset), transform.forward, target);
+            }
+
+            if (animator == null || attackLayerIndex < 0)
             {
                 return;
             }

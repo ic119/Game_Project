@@ -77,11 +77,20 @@ namespace GameServer.Networking
 
         // 공격 모션 중계 전용 - 데미지/쿨다운 판정은 하지 않는다(ClientSession.HandleAttackAnimationRequest가
         // attackerId 위조만 막고 그대로 넘긴다). attackerId 본인은 이미 로컬에서 재생했으므로 보내지 않는다.
-        // weaponType도 공격자가 보낸 값을 그대로 중계한다(서버는 해석하지 않음).
-        public void BroadcastAttackAnimation(long attackerId, int comboStage, int weaponType)
+        // weaponType과 원거리 투사체의 목표(targetType/targetId)도 공격자가 보낸 값을 그대로 중계한다(서버는 해석하지 않음).
+        // 예전에는 주석과 달리 공격자 본인에게도 보내고 있었다(클라이언트가 원격 목록에서 본인을 못 찾아 무시했을 뿐이다) -
+        // 이제 본인은 제외한다.
+        public void BroadcastAttackAnimation(long attackerId, int comboStage, int weaponType, byte targetType = 0, long targetId = 0)
         {
-            var broadcast = new S2CAttackAnimationBroadcast { AttackerId = attackerId, ComboStage = comboStage, WeaponType = weaponType };
-            SendToViewersOfPlayer(attackerId, OpCode.Game_AttackAnimationBroadcast, broadcast.Encode());
+            var broadcast = new S2CAttackAnimationBroadcast
+            {
+                AttackerId = attackerId,
+                ComboStage = comboStage,
+                WeaponType = weaponType,
+                TargetType = targetType,
+                TargetId = targetId
+            };
+            SendToViewersOfPlayer(attackerId, OpCode.Game_AttackAnimationBroadcast, broadcast.Encode(), excludeSelf: true);
         }
 
         // 회복 아이템을 써도 효과가 있는 상태인지(살아 있고 체력이 가득 차지 않음). 아이템을 차감하기 전에 확인해

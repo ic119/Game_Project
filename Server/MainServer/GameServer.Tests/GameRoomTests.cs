@@ -18,6 +18,12 @@ public class GameRoomTests : IDisposable
             get { lock (_sent) { return _sent.Select(f => f.OpCode).ToList(); } }
         }
 
+        // 특정 OpCode로 받은 프레임의 바디(받은 순서대로). 패킷 내용을 검사하는 테스트용.
+        public IReadOnlyList<byte[]> BodiesOf(OpCode opCode)
+        {
+            lock (_sent) { return _sent.Where(f => f.OpCode == opCode).Select(f => f.Body).ToList(); }
+        }
+
         public void Send(OpCode opCode, byte[] body)
         {
             lock (_sent)
@@ -169,6 +175,47 @@ public class GameRoomTests : IDisposable
         Assert.Single(nearby.OpCodes, OpCode.Game_DashBroadcast);
         Assert.DoesNotContain(OpCode.Game_DashBroadcast, dasher.OpCodes); // 본인은 이미 로컬에서 재생했다
         Assert.DoesNotContain(OpCode.Game_DashBroadcast, far.OpCodes); // 시야 밖
+    }
+
+    [Fact]
+    public void BroadcastAttackAnimation_RelaysTargetToViewers_AndSkipsAttackerAndFarPlayers()
+    {
+        var room = CreateRoom();
+        var attacker = new FakeSender();
+        var nearby = new FakeSender();
+        var far = new FakeSender();
+        room.Join(Player(1, 0, 0), attacker);
+        room.Join(Player(2, 5, 0), nearby);
+        room.Join(Player(3, 500, 0), far);
+
+        // 완드(WeaponType 4) 2타가 몬스터 77을 향해 발사됐다.
+        room.BroadcastAttackAnimation(1, comboStage: 2, weaponType: 4, targetType: 1, targetId: 77);
+
+        byte[] body = Assert.Single(nearby.BodiesOf(OpCode.Game_AttackAnimationBroadcast));
+        S2CAttackAnimationBroadcast received = S2CAttackAnimationBroadcast.Decode(body);
+        Assert.Equal(1, received.AttackerId);
+        Assert.Equal(2, received.ComboStage);
+        Assert.Equal(4, received.WeaponType);
+        Assert.Equal(1, received.TargetType);
+        Assert.Equal(77, received.TargetId);
+
+        Assert.Empty(attacker.BodiesOf(OpCode.Game_AttackAnimationBroadcast)); // 공격자 본인은 이미 로컬에서 재생했다
+        Assert.Empty(far.BodiesOf(OpCode.Game_AttackAnimationBroadcast));      // 시야 밖
+    }
+
+    [Fact]
+    public void BroadcastAttackAnimation_WithoutTarget_DefaultsToNone()
+    {
+        var room = CreateRoom();
+        var nearby = new FakeSender();
+        room.Join(Player(1, 0, 0), new FakeSender());
+        room.Join(Player(2, 5, 0), nearby);
+
+        room.BroadcastAttackAnimation(1, 1, 1); // 근접 무기: 대상 정보 없음
+
+        S2CAttackAnimationBroadcast received = S2CAttackAnimationBroadcast.Decode(Assert.Single(nearby.BodiesOf(OpCode.Game_AttackAnimationBroadcast)));
+        Assert.Equal(0, received.TargetType);
+        Assert.Equal(0, received.TargetId);
     }
 
     private static PlayerInfo ManaPlayer(long id, int maxMp, int currentMp)

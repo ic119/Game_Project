@@ -16,9 +16,16 @@ MonoBehaviour:
   - weaponType: 1
     swingEffectKey: 13
     impactEffectKey: 16
+    projectileEffectKey: 0
   - weaponType: 2
     swingEffectKey: 15
     impactEffectKey: 18
+    projectileEffectKey: 0
   - weaponType: 5
     swingEffectKey: 14
     impactEffectKey: 17
+    projectileEffectKey: 0
+  - weaponType: 4
+    swingEffectKey: 28
+    impactEffectKey: 30
+    projectileEffectKey: 29

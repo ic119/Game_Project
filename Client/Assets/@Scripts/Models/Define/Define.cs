@@ -30,7 +30,23 @@ namespace Incheol.Models.Define
         Dodge01 = 24,
         Dungeon = 25,
         PortalGate = 26,
-        BossTelegraph01 = 27
+        BossTelegraph01 = 27,
+
+        // 완드(원거리) 공격 이펙트: 시전(지팡이 끝) / 날아가는 투사체(반복 재생) / 명중.
+        WandCast01 = 28,
+        WandBolt01 = 29,
+        WandHit01 = 30
+    }
+
+    /// <summary>
+    /// 공격 모션 알림(Game_AttackAnimationRequest/Broadcast)에 실리는 투사체 목표의 종류. 값은 패킷의 TargetType 바이트다 -
+    /// 서버는 해석하지 않고 그대로 중계하므로(연출용) 바꾸면 클라이언트끼리만 맞추면 된다.
+    /// </summary>
+    public enum AttackTargetKind : byte
+    {
+        None = 0,
+        Monster = 1,
+        Player = 2
     }
 
     /// <summary>

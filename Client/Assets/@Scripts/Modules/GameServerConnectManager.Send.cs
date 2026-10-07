@@ -1,3 +1,4 @@
+using Incheol.Models.Define;
 using Incheol.Modules.Networking;
 using Incheol.Utils;
 using System;
@@ -167,7 +168,7 @@ namespace Incheol.Modules
         /// weaponType은 현재 장착 무기(WeaponType enum 값)를 그대로 담아 보낸다 - 서버는 해석하지 않고
         /// 그대로 중계하며, 받는 쪽(RemoteCharacterController)이 이 값으로 무기별 애니메이션을 고른다.
         /// </summary>
-        public void SendAttackAnimation(int comboStage, WeaponType weaponType)
+        public void SendAttackAnimation(int comboStage, WeaponType weaponType, AttackTargetKind targetKind = AttackTargetKind.None, long targetId = 0)
         {
             if (!isConnected)
             {
@@ -178,7 +179,9 @@ namespace Incheol.Modules
             {
                 AttackerId = localPlayerId,
                 ComboStage = comboStage,
-                WeaponType = (int)weaponType
+                WeaponType = (int)weaponType,
+                TargetType = (byte)targetKind,
+                TargetId = targetId
             };
 
             _ = SendAsync(GameOpCode.Game_AttackAnimationRequest, request.Encode());

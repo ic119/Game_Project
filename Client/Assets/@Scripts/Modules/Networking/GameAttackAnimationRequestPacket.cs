@@ -8,11 +8,18 @@ namespace Incheol.Modules.Networking
         public int ComboStage;
         public int WeaponType;
 
+        // 원거리 무기(완드) 투사체의 목표(연출용). 0 = 없음, 1 = 몬스터, 2 = 플레이어(Incheol.Models.Define.AttackTargetKind 값).
+        // 서버는 해석하지 않고 그대로 중계하며, 다른 플레이어 화면에서 투사체가 대상을 향해 날아가게 하는 데만 쓰인다.
+        public byte TargetType;
+        public long TargetId;
+
         public byte[] Encode() => GameBinaryPacket.Write(writer =>
         {
             writer.Write(AttackerId);
             writer.Write(ComboStage);
             writer.Write(WeaponType);
+            writer.Write(TargetType);
+            writer.Write(TargetId);
         });
     }
 }

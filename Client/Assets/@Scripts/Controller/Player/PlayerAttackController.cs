@@ -48,6 +48,16 @@ namespace Incheol.Controller
         [Tooltip("마지막 타수(2콤보) 공격이 끝난 뒤 다음 공격을 다시 받아들이기까지의 딜레이(초). 애니메이션은 이 딜레이와 무관하게 공격 종료 즉시 Idle로 돌아가고, 이 값은 공격 판정(RequestAttack)이 곧바로 겹치지 않도록 입력만 잠근다.")]
         [SerializeField, Min(0f)] private float comboFinishDelay = 0.25f;
 
+        [Header("완드 (원거리)")]
+        [Tooltip("완드 공격의 사거리(m). 정면 허용 각도 안의 가장 가까운 대상에게 투사체를 날린다. 서버 최대 공격 사거리(CombatTuning.MaxAttackRange 5m)보다 짧아야 한다.")]
+        [SerializeField, Min(0.5f)] private float wandRange = 4f;
+        [Tooltip("완드가 대상으로 삼는 정면 허용 각도(좌우 각각, 도). 공격 방향 보조가 가까운 몬스터 쪽으로 먼저 몸을 돌리므로 보통 그 대상이 이 안에 들어온다.")]
+        [SerializeField, Range(10f, 180f)] private float wandAimHalfAngle = 70f;
+        [Tooltip("완드 1타 후 다음 입력(2타)을 받기까지의 후딜(초, 1타 시작 기준). 이 시간 전에 누른 입력은 버퍼에 담았다가 후딜이 끝나는 순간 2타로 나간다. 1타 동작 길이보다 짧아야 2타를 칠 수 있다.")]
+        [SerializeField, Min(0f)] private float wandFirstHitRecovery = 0.45f;
+        [Tooltip("투사체와 시전 이펙트가 나가는 지팡이 끝 위치(캐릭터 기준 로컬 오프셋: x 오른쪽, y 위, z 앞). 다른 플레이어 화면에서도 같은 값을 쓴다(ProjectileVfxManager).")]
+        [SerializeField] private Vector3 wandMuzzleOffset = new Vector3(0.5f, 0.5f, 1.0f);
+
         private const string AttackLayerName = "Attack Layer";
         private static readonly int ComboIndexHash = Animator.StringToHash("ComboIndex");
         private static readonly int WeaponIndexHash = Animator.StringToHash("WeaponIndex");
@@ -72,6 +82,11 @@ namespace Incheol.Controller
         private float stageStartTime;
         private float currentStageDuration;
         private float nextAttackReadyTime;
+
+        // 완드 1타 후딜 중에 눌린 입력(후딜이 끝나면 2타로 나간다). 콤보가 끝나거나 새로 시작하면 비운다.
+        private bool wandAttackBuffered;
+
+        private bool IsWand => playerCharacterModel != null && playerCharacterModel.CurrentWeaponType == WeaponType.Wand;
 
         private void Awake()
         {
@@ -117,14 +132,24 @@ namespace Incheol.Controller
                 ResetCombo();
             }
 
+            // 사망 중에는 공격 모션/판정/요청을 시작하지 않는다(컨트롤러가 꺼지기 전 같은 프레임에 들어온 입력까지 막는다).
+            bool isDead = playerCharacterModel != null && playerCharacterModel.IsDead;
+
+            // 완드: 1타 후딜 중에 눌러 둔 입력이 후딜이 끝나는 순간 2타로 나간다(1타 동작이 끝나기 전일 때만 - 끝나면 콤보가 리셋되며 버퍼도 비워진다).
+            if (wandAttackBuffered && comboStage == 1 && !isDead && IsWand && Time.time >= stageStartTime + GetWandRecoverySeconds())
+            {
+                wandAttackBuffered = false;
+                AdvanceCombo();
+                return;
+            }
+
             // 채팅 입력 중처럼 게임플레이 입력이 막혀 있으면(InputBlocker) 공격 키를 읽지 않는다. 위의 콤보 종료 처리는 계속 돈다.
             if (InputBlocker.IsBlocked || !Input.GetKeyDown(attackKey))
             {
                 return;
             }
 
-            // 사망 중에는 공격 모션/판정/요청을 시작하지 않는다(컨트롤러가 꺼지기 전 같은 프레임에 들어온 입력까지 막는다).
-            if (playerCharacterModel != null && playerCharacterModel.IsDead)
+            if (isDead)
             {
                 return;
             }
@@ -139,11 +164,29 @@ namespace Incheol.Controller
 
                 StartCombo();
             }
-            else if (comboStage < maxComboStage && Time.time >= stageStartTime + comboInputGuard)
+            else if (comboStage < maxComboStage)
             {
-                AdvanceCombo();
+                // 완드의 1타는 후딜(wandFirstHitRecovery)이 지나야 다음 입력을 받는다. 그 전에 누른 입력은 버리지 않고 버퍼에 담는다.
+                bool isWandFirstHit = IsWand && comboStage == 1;
+                float guard = isWandFirstHit ? GetWandRecoverySeconds() : comboInputGuard;
+
+                if (Time.time >= stageStartTime + guard)
+                {
+                    AdvanceCombo();
+                }
+                else if (isWandFirstHit)
+                {
+                    wandAttackBuffered = true;
+                }
+                // 그 밖에 가드 시간 이전(너무 이른 연타)인 입력은 무시한다.
             }
-            // 가드 시간 이전(너무 이른 연타)이거나 이미 마지막 타수인 입력은 무시한다.
+            // 이미 마지막 타수인 입력은 무시한다.
+        }
+
+        // 완드 1타 후딜. 1타 동작 길이보다 길게 설정돼 2타가 영영 불가능해지지 않도록 동작이 끝나기 조금 전으로 제한한다.
+        private float GetWandRecoverySeconds()
+        {
+            return Mathf.Min(wandFirstHitRecovery, Mathf.Max(comboInputGuard, currentStageDuration - 0.05f));
         }
 
         private void StartCombo()
@@ -155,6 +198,7 @@ namespace Incheol.Controller
                 playerCharacterModel.CancelHitReaction();
             }
 
+            wandAttackBuffered = false;
             comboStage = 1;
             stageStartTime = Time.time;
             currentStageDuration = GetStageDuration(comboStage);
@@ -169,9 +213,7 @@ namespace Incheol.Controller
 
             // 스윙 이펙트와 판정은 캐릭터가 바라보는 방향을 쓰므로, 그 전에 방향을 맞춘다.
             AssistAim();
-            PlaySwingEffect();
-            BroadcastAttackAnimation();
-            RequestAttack();
+            ExecuteAttack();
         }
 
         private void AdvanceCombo()
@@ -188,9 +230,123 @@ namespace Incheol.Controller
             }
 
             AssistAim();
+            ExecuteAttack();
+        }
+
+        /// <summary>
+        /// 이번 타수의 연출과 공격 요청을 한 번에 수행한다. 근접 무기는 스윙 이펙트 -> 공격 모션 중계 -> 전방 구체 판정 요청 순서이고,
+        /// 완드(원거리)는 대상을 먼저 찾아 시전/투사체 연출, 공격 모션 중계(대상 포함), 공격 요청을 보낸다(PerformWandAttack).
+        /// </summary>
+        private void ExecuteAttack()
+        {
+            if (IsWand)
+            {
+                PerformWandAttack();
+                return;
+            }
+
             PlaySwingEffect();
             BroadcastAttackAnimation();
             RequestAttack();
+        }
+
+        /// <summary>
+        /// 완드 공격 한 번: 정면 허용 각도 안의 가장 가까운 대상(wandRange 이내)을 찾아 지팡이 끝에서 투사체를 날리고, 서버에 공격 모션(대상
+        /// 포함)과 공격 요청을 보낸다. 피해 판정은 서버가 요청을 받는 즉시 하므로 투사체는 순수 연출이다. 대상이 없으면 허공으로 날린다.
+        /// </summary>
+        private void PerformWandAttack()
+        {
+            FindWandTarget(out AttackTargetKind kind, out long targetId, out Transform targetTransform, out RemoteMonsterController targetMonster);
+
+            Vector3 muzzle = transform.TransformPoint(wandMuzzleOffset);
+            ProjectileVfxManager.Instance?.FireRanged(WeaponType.Wand, muzzle, transform.forward, targetTransform);
+
+            GameServerConnectManager.Instance?.SendAttackAnimation(comboStage, WeaponType.Wand, kind, targetId);
+
+            switch (kind)
+            {
+                case AttackTargetKind.Monster:
+                    GameServerConnectManager.Instance?.SendMonsterAttack(targetId);
+                    if (targetMonster != null)
+                    {
+                        MonsterTargeted?.Invoke(targetMonster);
+                    }
+                    break;
+
+                case AttackTargetKind.Player:
+                    GameServerConnectManager.Instance?.SendAttack(targetId);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// 완드가 노릴 대상을 찾는다: wandRange 안의 살아 있는 몬스터/원격 플레이어 중, 정면에서 wandAimHalfAngle 이내인 가장 가까운 하나.
+        /// 없으면 kind = None.
+        /// </summary>
+        private void FindWandTarget(out AttackTargetKind kind, out long targetId, out Transform targetTransform, out RemoteMonsterController targetMonster)
+        {
+            kind = AttackTargetKind.None;
+            targetId = 0;
+            targetTransform = null;
+            targetMonster = null;
+
+            int hitCount = Physics.OverlapSphereNonAlloc(transform.position, wandRange, overlapBuffer);
+            Vector3 forward = transform.forward;
+            forward.y = 0f;
+            float bestDistanceSqr = float.MaxValue;
+
+            for (int i = 0; i < hitCount; i++)
+            {
+                Collider hit = overlapBuffer[i];
+                if (hit == null)
+                {
+                    continue;
+                }
+
+                AttackTargetKind candidateKind;
+                long candidateId;
+                Transform candidateTransform;
+                RemoteMonsterController candidateMonster = null;
+
+                RemoteCharacterController remotePlayer = hit.GetComponentInParent<RemoteCharacterController>();
+                if (remotePlayer != null)
+                {
+                    candidateKind = AttackTargetKind.Player;
+                    candidateId = remotePlayer.PlayerId;
+                    candidateTransform = remotePlayer.transform;
+                }
+                else
+                {
+                    // 사망 연출 중인 몬스터는 대상에서 뺀다(TryFindNearestTarget과 같은 이유).
+                    RemoteMonsterController monster = hit.GetComponentInParent<RemoteMonsterController>();
+                    if (monster == null || monster.IsDead)
+                    {
+                        continue;
+                    }
+
+                    candidateKind = AttackTargetKind.Monster;
+                    candidateId = monster.MonsterId;
+                    candidateTransform = monster.transform;
+                    candidateMonster = monster;
+                }
+
+                Vector3 toTarget = candidateTransform.position - transform.position;
+                toTarget.y = 0f;
+                if (toTarget.sqrMagnitude > 0.0001f && Vector3.Angle(forward, toTarget) > wandAimHalfAngle)
+                {
+                    continue;
+                }
+
+                float distanceSqr = toTarget.sqrMagnitude;
+                if (distanceSqr < bestDistanceSqr)
+                {
+                    bestDistanceSqr = distanceSqr;
+                    kind = candidateKind;
+                    targetId = candidateId;
+                    targetTransform = candidateTransform;
+                    targetMonster = candidateMonster;
+                }
+            }
         }
 
         /// <summary>
@@ -217,16 +373,19 @@ namespace Incheol.Controller
 
         private RemoteMonsterController ResolveAimAssistTarget()
         {
+            // 완드는 사거리(wandRange)까지 대상으로 삼는다 - 근접 무기보다 멀리 있는 몬스터 쪽으로도 몸을 돌려야 쏠 수 있다.
+            float range = IsWand ? wandRange : aimAssistRange;
+
             // 이어지는 타수는 직전 대상을 유지한다(두 타 사이에 대상이 흔들리지 않게). 조금 멀어져도 한동안은 놓지 않는다.
             if (aimAssistTarget != null && !aimAssistTarget.IsDead
-                && (aimAssistTarget.transform.position - transform.position).sqrMagnitude <= aimAssistRange * aimAssistRange * 1.5625f)
+                && (aimAssistTarget.transform.position - transform.position).sqrMagnitude <= range * range * 1.5625f)
             {
                 return aimAssistTarget;
             }
 
             aimAssistTarget = null;
 
-            int count = Physics.OverlapSphereNonAlloc(transform.position, aimAssistRange, aimAssistBuffer);
+            int count = Physics.OverlapSphereNonAlloc(transform.position, range, aimAssistBuffer);
             float bestDistanceSqr = float.MaxValue;
 
             for (int i = 0; i < count; i++)
@@ -299,6 +458,7 @@ namespace Incheol.Controller
         {
             comboStage = 0;
             aimAssistTarget = null;
+            wandAttackBuffered = false;
 
             if (animator != null && attackLayerIndex >= 0)
             {
@@ -389,7 +549,12 @@ namespace Incheol.Controller
                 return;
             }
 
-            WeaponVfxManager.Instance?.PlayImpactEffect(playerCharacterModel.CurrentWeaponType, ApplyEffectHeight(target.transform.position), target.transform.rotation, effectScale);
+            // 완드의 명중 이펙트는 투사체가 대상에 도착하는 순간 ProjectileVfxManager가 재생한다(서버 판정이 더 일찍 와도 여기서 미리 터뜨리지 않는다).
+            if (!IsWand)
+            {
+                WeaponVfxManager.Instance?.PlayImpactEffect(playerCharacterModel.CurrentWeaponType, ApplyEffectHeight(target.transform.position), target.transform.rotation, effectScale);
+            }
+
             StartHitStop();
         }
 
@@ -415,7 +580,12 @@ namespace Incheol.Controller
                 return;
             }
 
-            WeaponVfxManager.Instance?.PlayImpactEffect(playerCharacterModel.CurrentWeaponType, ApplyEffectHeight(target.transform.position), target.transform.rotation, effectScale);
+            // 완드의 명중 이펙트는 투사체가 도착하는 순간 ProjectileVfxManager가 재생한다(HandleDamageReceived와 같은 이유).
+            if (!IsWand)
+            {
+                WeaponVfxManager.Instance?.PlayImpactEffect(playerCharacterModel.CurrentWeaponType, ApplyEffectHeight(target.transform.position), target.transform.rotation, effectScale);
+            }
+
             StartHitStop();
         }
 
@@ -475,7 +645,7 @@ namespace Incheol.Controller
         {
             if (RemotePlayerManager.Instance != null && RemotePlayerManager.Instance.TryGetRemotePlayer(packet.AttackerId, out RemoteCharacterController attacker))
             {
-                attacker.PlayAttackAnimation(packet.ComboStage, (WeaponType)packet.WeaponType);
+                attacker.PlayAttackAnimation(packet.ComboStage, (WeaponType)packet.WeaponType, (AttackTargetKind)packet.TargetType, packet.TargetId);
             }
         }
 

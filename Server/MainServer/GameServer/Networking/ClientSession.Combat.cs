@@ -71,7 +71,7 @@ namespace GameServer.Networking
                 return;
             }
 
-            room.BroadcastAttackAnimation(playerId, request.ComboStage, request.WeaponType);
+            room.BroadcastAttackAnimation(playerId, request.ComboStage, request.WeaponType, request.TargetType, request.TargetId);
         }
 
         // 대쉬 시작 알림. 무적 구간은 서버가 쿨다운을 검증해 정하므로(GameRoom.RegisterDash) 요청을 도배해도 얻는 것이 없지만,

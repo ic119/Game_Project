@@ -10,11 +10,18 @@ namespace Incheol.Modules.Networking
         public int ComboStage;
         public int WeaponType;
 
+        // 원거리 무기(완드) 투사체의 목표. 0 = 없음, 1 = 몬스터, 2 = 플레이어(Incheol.Models.Define.AttackTargetKind 값).
+        // RemoteCharacterController가 이 값으로 투사체가 날아갈 대상을 찾는다.
+        public byte TargetType;
+        public long TargetId;
+
         public static GameAttackAnimationBroadcastPacket Decode(byte[] body) => GameBinaryPacket.Read(body, reader => new GameAttackAnimationBroadcastPacket
         {
             AttackerId = reader.ReadInt64(),
             ComboStage = reader.ReadInt32(),
-            WeaponType = reader.ReadInt32()
+            WeaponType = reader.ReadInt32(),
+            TargetType = reader.ReadByte(),
+            TargetId = reader.ReadInt64()
         });
     }
 }
