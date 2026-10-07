@@ -35,6 +35,10 @@ namespace GameServer.Combat
         // 물약 연타로 MainServer 차감 요청이 몰리지 않게 하는 최소 사용 간격(ms).
         public double MinUseItemIntervalMs { get; init; } = 300;
 
+        // 마나 자연 회복: 초당 최대 마나의 몇 %를 회복할지. 0이면 자연 회복을 끈다(체력처럼 레벨업/부활로만 차는 방식).
+        // 2.5이면 최대 마나가 가득 차는 데 40초가 걸린다. 근거와 스킬 소모량 가이드는 Server/마나_밸런싱_공식.txt에 있다.
+        public double ManaRegenPercentPerSecond { get; init; } = 2.5;
+
         public float MaxAttackRangeSquared => MaxAttackRange * MaxAttackRange;
 
         public static CombatTuning Current { get; private set; } = new();
@@ -58,7 +62,7 @@ namespace GameServer.Combat
             {
                 nameof(DashInvulnerableSeconds), nameof(MinDashIntervalSeconds), nameof(MonsterMeleeRange),
                 nameof(MonsterAttackIntervalSeconds), nameof(MonsterAttackWindupSeconds), nameof(ReviveDelaySeconds),
-                nameof(MinAttackIntervalMs), nameof(MaxAttackRange), nameof(MinUseItemIntervalMs),
+                nameof(MinAttackIntervalMs), nameof(MaxAttackRange), nameof(MinUseItemIntervalMs), nameof(ManaRegenPercentPerSecond),
             };
 
             foreach (IConfigurationSection child in section.GetChildren())
@@ -81,6 +85,7 @@ namespace GameServer.Combat
                 MinAttackIntervalMs = Read(section, nameof(MinAttackIntervalMs), defaults.MinAttackIntervalMs),
                 MaxAttackRange = (float)Read(section, nameof(MaxAttackRange), defaults.MaxAttackRange),
                 MinUseItemIntervalMs = Read(section, nameof(MinUseItemIntervalMs), defaults.MinUseItemIntervalMs),
+                ManaRegenPercentPerSecond = Read(section, nameof(ManaRegenPercentPerSecond), defaults.ManaRegenPercentPerSecond),
             };
 
             tuning.Validate();
@@ -99,6 +104,7 @@ namespace GameServer.Combat
             Require(MinAttackIntervalMs, 0, 2000, nameof(MinAttackIntervalMs));
             Require(MaxAttackRange, 1, 50, nameof(MaxAttackRange));
             Require(MinUseItemIntervalMs, 0, 10000, nameof(MinUseItemIntervalMs));
+            Require(ManaRegenPercentPerSecond, 0, 50, nameof(ManaRegenPercentPerSecond));
 
             // 대쉬 무적이 최소 대쉬 간격보다 길면 쿨다운 없이 계속 무적이 된다.
             if (DashInvulnerableSeconds >= MinDashIntervalSeconds)

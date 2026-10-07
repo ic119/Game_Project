@@ -16,8 +16,14 @@ namespace GameServer.Combat
         int Str,
         int Agi,
         IReadOnlyList<string> EquippedItemIds,
-        IReadOnlyDictionary<string, string>? EquippedBySlot = null)
+        IReadOnlyDictionary<string, string>? EquippedBySlot = null,
+        // 지능(최대 마나 계산에 쓴다). 기존 호출부(테스트 포함)를 깨지 않도록 맨 뒤 선택 인자로 둔다. 기본값은 MainServer가 캐릭터를
+        // 만들 때 주는 값(CharacterService.DefaultStat)과 같고, 아래 DefaultIntel과 같은 값이어야 한다(기본 매개변수에는 이 레코드의
+        // 상수를 쓸 수 없어 리터럴로 적었다 - CombatStatCalculatorTests가 둘이 같은지 검사한다).
+        int Intel = 10)
     {
+        public const int DefaultIntel = 10;
+
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
             PropertyNameCaseInsensitive = true
@@ -57,7 +63,8 @@ namespace GameServer.Combat
                 body._str,
                 body._agi,
                 equippedItemIds,
-                equippedBySlot);
+                equippedBySlot,
+                body._intel);
         }
 
         // MainServer.CharacterServer.DTOs.CharacterResponse의 부분 집합. GameServer는 MainServer 프로젝트를
@@ -73,6 +80,8 @@ namespace GameServer.Combat
             public int _exp { get; set; }
             public int _str { get; set; }
             public int _agi { get; set; }
+            // 응답에 _intel이 없으면(구버전 MainServer) 기본 지능으로 계산한다 - 0이 되어 최대 마나가 비정상적으로 작아지지 않게 한다.
+            public int _intel { get; set; } = DefaultIntel;
             public List<CharacterItemResponseBody>? _items { get; set; }
         }
 

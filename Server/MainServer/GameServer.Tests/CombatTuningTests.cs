@@ -36,6 +36,15 @@ public class CombatTuningTests
         Assert.Equal(defaults.MinAttackIntervalMs, loaded.MinAttackIntervalMs);
         Assert.Equal(defaults.MaxAttackRange, loaded.MaxAttackRange);
         Assert.Equal(defaults.MinUseItemIntervalMs, loaded.MinUseItemIntervalMs);
+        Assert.Equal(defaults.ManaRegenPercentPerSecond, loaded.ManaRegenPercentPerSecond);
+    }
+
+    [Fact]
+    public void ManaRegen_ZeroDisablesRegen_AndOutOfRangeIsRejected()
+    {
+        Assert.Equal(0, LoadFrom(new() { ["Combat:ManaRegenPercentPerSecond"] = "0" }).ManaRegenPercentPerSecond);
+        Assert.Throws<InvalidOperationException>(() => LoadFrom(new() { ["Combat:ManaRegenPercentPerSecond"] = "-1" }));
+        Assert.Throws<InvalidOperationException>(() => LoadFrom(new() { ["Combat:ManaRegenPercentPerSecond"] = "51" }));
     }
 
     [Fact]

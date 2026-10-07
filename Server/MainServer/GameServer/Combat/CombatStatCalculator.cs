@@ -28,6 +28,32 @@ namespace GameServer.Combat
             return 100 + agi * 5 + Math.Max(0, level - 1) * MaxHpPerLevel;
         }
 
+        // 최대 마나 공식(체력과 같은 구조): 기본 30 + 지능 1당 3 + 레벨 1당 3(1레벨 제외). 지능에는 레벨 성장 보너스(StatGrowth)가 더해진다.
+        // 값의 근거와 레벨별 표는 Server/마나_밸런싱_공식.txt에 있다. 클라이언트(Utils/ManaFormula.cs)와 반드시 같아야 하며
+        // GameServer.Tests의 ClientFormulaParityTests가 같은 값을 내는지 검사한다.
+        public const int BaseMaxMp = 30;
+        public const int MaxMpPerIntel = 3;
+        public const int MaxMpPerLevel = 3;
+
+        // DB 스냅샷의 기본 지능과 레벨로 최대 마나를 계산한다. level을 주면 그 값으로 계산한다(CalculateMaxHp와 같은 이유).
+        public static int CalculateMaxMp(CharacterSnapshot snapshot, int? level = null)
+        {
+            return CalculateMaxMp(snapshot.Intel, level ?? snapshot.Level);
+        }
+
+        // 기본 지능(레벨 보너스 제외)과 레벨로 최대 마나를 계산한다. 세션 중 레벨업 때 서버가 들고 있는 기준값(PlayerInfo.BaseIntel)으로 쓴다.
+        public static int CalculateMaxMp(int baseIntel, int level)
+        {
+            int intel = baseIntel + StatGrowth.BonusAtLevel(level);
+            return BaseMaxMp + intel * MaxMpPerIntel + Math.Max(0, level - 1) * MaxMpPerLevel;
+        }
+
+        // 초당 마나 회복량: 최대 마나의 percentPerSecond%. 최대 마나에 비례하므로 지능/레벨이 높을수록 절대 회복량도 늘어난다.
+        public static float CalculateManaRegenPerSecond(int maxMp, double percentPerSecond)
+        {
+            return (float)(maxMp * percentPerSecond / 100.0);
+        }
+
         // 물약 회복량: 최대 체력의 healPercent%, 최소 1(Client 쪽 기존 CombatCalculator.CalculateHealAmount와 같은 공식).
         public static int CalculateHealAmount(int maxHp, int healPercent)
         {

@@ -141,6 +141,7 @@ namespace Incheol.Presenter.Scene
                 GameServerConnectManager.Instance.OnLootReceived += HandleLootReceived;
                 GameServerConnectManager.Instance.OnPlayerHpChanged += HandlePlayerHpChanged;
                 GameServerConnectManager.Instance.OnPlayerRevived += HandlePlayerRevived;
+                GameServerConnectManager.Instance.OnPlayerMpChanged += HandlePlayerMpChanged;
                 GameServerConnectManager.Instance.OnUseItemResult += HandleUseItemResult;
                 GameServerConnectManager.Instance.OnPositionCorrected += HandlePositionCorrected;
                 GameServerConnectManager.Instance.OnServerError += HandleGameServerError;
@@ -174,6 +175,7 @@ namespace Incheol.Presenter.Scene
                 GameServerConnectManager.Instance.OnLootReceived -= HandleLootReceived;
                 GameServerConnectManager.Instance.OnPlayerHpChanged -= HandlePlayerHpChanged;
                 GameServerConnectManager.Instance.OnPlayerRevived -= HandlePlayerRevived;
+                GameServerConnectManager.Instance.OnPlayerMpChanged -= HandlePlayerMpChanged;
                 GameServerConnectManager.Instance.OnUseItemResult -= HandleUseItemResult;
                 GameServerConnectManager.Instance.OnPositionCorrected -= HandlePositionCorrected;
                 GameServerConnectManager.Instance.OnServerError -= HandleGameServerError;
@@ -628,6 +630,8 @@ namespace Incheol.Presenter.Scene
                 // 체력/공격력/방어력이 채워진 뒤라 여기서 바로 읽어 보낼 수 있다.
                 MaxHp = spawnedPlayerModel != null ? spawnedPlayerModel.MaxHp : 0,
                 CurrentHp = spawnedPlayerModel != null ? spawnedPlayerModel.CurrentHp : 0,
+                MaxMp = spawnedPlayerModel != null ? spawnedPlayerModel.MaxMp : 0,
+                CurrentMp = spawnedPlayerModel != null ? spawnedPlayerModel.CurrentMp : 0,
                 AttackPower = spawnedPlayerModel != null ? spawnedPlayerModel.AttackPower : 0,
                 Defense = spawnedPlayerModel != null ? spawnedPlayerModel.Defense : 0,
                 Level = spawnedPlayerModel != null ? spawnedPlayerModel.Level : 1,

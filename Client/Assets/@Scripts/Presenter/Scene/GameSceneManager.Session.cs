@@ -71,6 +71,9 @@ namespace Incheol.Presenter.Scene
             WarpLocalPlayer(new Vector3(self.X, self.Y, self.Z), Quaternion.Euler(0f, self.RotationY, 0f));
             ApplyLocalServerHp(self.CurrentHp, self.MaxHp, false);
 
+            // 마나도 체력과 같이 서버 값으로 맞춘다(최초 입장은 가득 찬 값, 재접속/맵 이동은 이어받은 값).
+            spawnedPlayerModel.ApplyServerMp(self.CurrentMp, self.MaxMp);
+
             // 최초 입장이 확인된 시점이 로비에서 이어받은 로딩의 끝이다(맵 이동/재접속 때는 이미 숨긴 뒤라 아무 일도 하지 않는다).
             _ = CompleteInitialLoadingAsync();
         }

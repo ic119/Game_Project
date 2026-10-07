@@ -14,6 +14,13 @@ public class UI_GameSceneView : MonoBehaviour
     [SerializeField] private TextMeshProUGUI playerLevelLabel;
     [SerializeField] private Slider hpBarSlider;
     [SerializeField] private TextMeshProUGUI hpBarSliderValue;
+
+    [Header("마나 UI")]
+    [Tooltip("마나 바. 체력 바와 같은 방식으로 PlayerCharacterModel의 현재/최대 마나를 폴링해 갱신한다. 비워 두면 마나 표시를 건너뛴다.")]
+    [SerializeField] private Slider mpBarSlider;
+    [SerializeField] private TextMeshProUGUI mpBarSliderValue;
+
+    [Header("경험치 UI")]
     [SerializeField] private Slider expBarSlider;
     [SerializeField] private TextMeshProUGUI expBarSliderValue;
 
@@ -89,6 +96,17 @@ public class UI_GameSceneView : MonoBehaviour
         if (hpBarSliderValue != null)
         {
             hpBarSliderValue.text = $"{playerModel.CurrentHp}/{playerModel.MaxHp}";
+        }
+
+        if (mpBarSlider != null)
+        {
+            mpBarSlider.maxValue = Mathf.Max(1, playerModel.MaxMp);
+            mpBarSlider.value = playerModel.CurrentMp;
+        }
+
+        if (mpBarSliderValue != null)
+        {
+            mpBarSliderValue.text = $"{playerModel.CurrentMp}/{playerModel.MaxMp}";
         }
 
         if (expBarSlider != null)

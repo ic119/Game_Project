@@ -24,6 +24,56 @@ public class CombatStatCalculatorTests
         Assert.Equal(expectedMaxHp, actualMaxHp);
     }
 
+    // 최대 마나 = 30 + (지능 + 레벨 성장 보너스)*3 + (레벨-1)*3. 값의 근거와 레벨별 표는 Server/마나_밸런싱_공식.txt.
+    [Theory]
+    [InlineData(0, 1, 30)]    // 30 + 0*3
+    [InlineData(10, 1, 60)]   // 30 + 10*3 (기본 캐릭터의 1레벨)
+    [InlineData(10, 5, 78)]   // 30 + (10+2)*3 + (5-1)*3
+    [InlineData(10, 10, 99)]  // 30 + (10+4)*3 + (10-1)*3
+    [InlineData(10, 28, 180)] // 30 + (10+13)*3 + (28-1)*3
+    [InlineData(10, 30, 189)] // 30 + (10+14)*3 + (30-1)*3
+    public void CalculateMaxMp_MatchesDocumentedTable(int intel, int level, int expectedMaxMp)
+    {
+        var snapshot = new CharacterSnapshot("tester", 0, 0, 0, level, 0, 10, 10, Array.Empty<string>(), null, intel);
+
+        Assert.Equal(expectedMaxMp, CombatStatCalculator.CalculateMaxMp(snapshot));
+        Assert.Equal(expectedMaxMp, CombatStatCalculator.CalculateMaxMp(intel, level));
+    }
+
+    [Fact]
+    public void CalculateMaxMp_IntelRaisesMaxMpByThreePerPoint_AndLevelRaisesIt()
+    {
+        Assert.Equal(CombatStatCalculator.MaxMpPerIntel, CombatStatCalculator.CalculateMaxMp(11, 1) - CombatStatCalculator.CalculateMaxMp(10, 1));
+
+        int previous = CombatStatCalculator.CalculateMaxMp(10, 1);
+        for (int level = 2; level <= 100; level++)
+        {
+            int current = CombatStatCalculator.CalculateMaxMp(10, level);
+            Assert.True(current > previous, $"Lv{level}에서 최대 마나가 늘지 않았다({previous} -> {current})");
+            previous = current;
+        }
+    }
+
+    [Fact]
+    public void CalculateManaRegenPerSecond_IsPercentOfMaxMp()
+    {
+        Assert.Equal(1.5f, CombatStatCalculator.CalculateManaRegenPerSecond(60, 2.5));
+        Assert.Equal(0f, CombatStatCalculator.CalculateManaRegenPerSecond(100, 0));
+    }
+
+    [Fact]
+    public void CharacterSnapshot_ParsesIntel_AndDefaultsWhenMissing()
+    {
+        CharacterSnapshot? withIntel = CharacterSnapshot.FromCharacterResponseJson("{\"_nickname\":\"a\",\"_level\":1,\"_str\":10,\"_agi\":10,\"_intel\":17,\"_items\":[]}");
+        CharacterSnapshot? withoutIntel = CharacterSnapshot.FromCharacterResponseJson("{\"_nickname\":\"a\",\"_level\":1,\"_str\":10,\"_agi\":10,\"_items\":[]}");
+
+        // 생성자 기본값(리터럴)과 DefaultIntel 상수가 어긋나지 않는지.
+        Assert.Equal(CharacterSnapshot.DefaultIntel, new CharacterSnapshot("t", 0, 0, 0, 1, 0, 10, 10, Array.Empty<string>()).Intel);
+
+        Assert.Equal(17, withIntel!.Intel);
+        Assert.Equal(CharacterSnapshot.DefaultIntel, withoutIntel!.Intel); // 구버전 응답이어도 최대 마나가 0 근처로 떨어지지 않는다
+    }
+
     [Theory]
     [InlineData(10, 0)] // str만 있을 때 공격력 = str
     [InlineData(0, 5)]  // agi만 있을 때 방어력 = agi/2(정수 나눗셈)

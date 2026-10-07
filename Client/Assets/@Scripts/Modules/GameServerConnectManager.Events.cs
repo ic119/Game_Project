@@ -118,6 +118,12 @@ namespace Incheol.Modules
         public event Action<GameExpGainBroadcastPacket> OnExpGained;
         public event Action<GameLootBroadcastPacket> OnLootReceived;
         public event Action<GamePlayerHpBroadcastPacket> OnPlayerHpChanged;
+
+        /// <summary>
+        /// 내 마나가 바뀌었을 때(Game_PlayerMpUpdate). 자연 회복, 레벨업/부활로 가득 참, 스킬 사용 소모가 모두 이 이벤트로 온다.
+        /// 서버가 본인에게만 보내므로 로컬 플레이어의 값이다.
+        /// </summary>
+        public event Action<GamePlayerMpUpdatePacket> OnPlayerMpChanged;
         public event Action<GamePlayerRevivedPacket> OnPlayerRevived;
         public event Action<GameUseItemResultPacket> OnUseItemResult;
         public event Action<GamePositionCorrectionPacket> OnPositionCorrected;

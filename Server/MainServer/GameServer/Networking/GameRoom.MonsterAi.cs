@@ -44,6 +44,7 @@ namespace GameServer.Networking
                     {
                         List<EntityTransform> movedMonsters = TickMonsterAi(deltaSeconds);
                         UpdateViewsAndSendSnapshots(CollectMovedPlayers(), movedMonsters);
+                        RegenerateMana(deltaSeconds);
                     }
                     catch (Exception ex)
                     {

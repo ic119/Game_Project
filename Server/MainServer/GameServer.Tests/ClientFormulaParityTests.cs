@@ -41,4 +41,28 @@ public class ClientFormulaParityTests
 
         Assert.True(mismatches.Count == 0, string.Join("; ", mismatches));
     }
+
+    [Fact]
+    public void MaxMp_ClientMatchesServer_ForAllIntelAndLevels()
+    {
+        Assert.Equal(GameServer.Combat.CombatStatCalculator.BaseMaxMp, Incheol.Utils.ManaFormula.BaseMaxMp);
+        Assert.Equal(GameServer.Combat.CombatStatCalculator.MaxMpPerIntel, Incheol.Utils.ManaFormula.MaxMpPerIntel);
+        Assert.Equal(GameServer.Combat.CombatStatCalculator.MaxMpPerLevel, Incheol.Utils.ManaFormula.MaxMpPerLevel);
+
+        var mismatches = new List<string>();
+        for (int intel = 0; intel <= 60; intel++)
+        {
+            for (int level = -1; level <= 100; level++)
+            {
+                int server = GameServer.Combat.CombatStatCalculator.CalculateMaxMp(intel, level);
+                int client = Incheol.Utils.ManaFormula.CalculateMaxMp(intel, level);
+                if (server != client)
+                {
+                    mismatches.Add($"지능{intel}/Lv{level}: 서버 {server} / 클라 {client}");
+                }
+            }
+        }
+
+        Assert.True(mismatches.Count == 0, string.Join("; ", mismatches.Take(10)));
+    }
 }

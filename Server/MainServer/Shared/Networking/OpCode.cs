@@ -90,6 +90,10 @@ namespace Shared.Networking
         // 재생했으므로 받지 않는다). 위치 이동은 Game_WorldSnapshot 보간이 하므로 이 알림은 모션/이펙트 재생에만 쓰인다.
         Game_DashBroadcast = 0x022C,
 
+        // 플레이어 본인의 마나가 바뀌었음을 본인에게만 알린다(자연 회복, 레벨업/부활 충전, 이후 스킬 사용 소모). 체력(Game_PlayerHpBroadcast)과 달리
+        // 다른 플레이어의 마나는 화면에 그리지 않으므로 주변에 보내지 않는다.
+        Game_PlayerMpUpdate = 0x022D,
+
         // 0x03XX = Dungeon
     }
 }

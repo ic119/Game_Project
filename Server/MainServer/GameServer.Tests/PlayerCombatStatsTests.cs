@@ -16,7 +16,36 @@ public class PlayerCombatStatsTests
         PlayerCombatStats.ApplySnapshot(info, snapshot);
         info.MaxHp = CombatStatCalculator.CalculateMaxHp(snapshot);
         info.CurrentHp = info.MaxHp;
+        info.MaxMp = CombatStatCalculator.CalculateMaxMp(snapshot);
+        info.CurrentMp = info.MaxMp;
         return info;
+    }
+
+    [Fact]
+    public void Enter_SetsBaseIntel_AndFullMana()
+    {
+        PlayerInfo info = Enter(1);
+
+        Assert.Equal(CharacterSnapshot.DefaultIntel, info.BaseIntel);
+        Assert.Equal(60, info.MaxMp);       // 30 + 10*3
+        Assert.Equal(info.MaxMp, info.CurrentMp);
+    }
+
+    [Fact]
+    public void ApplyLevelUp_GrowsMaxMana_AndRefillsMana()
+    {
+        PlayerInfo info = Enter(2); // 2레벨: 30 + 10*3 + 1*3 = 63
+        Assert.Equal(63, info.MaxMp);
+        info.CurrentMp = 4;
+        info.ManaRegenRemainder = 0.7f;
+
+        info.Level = 3;
+        PlayerCombatStats.ApplyLevelUp(info);
+
+        (int currentMp, int maxMp) = PlayerCombatStats.ReadMana(info);
+        Assert.Equal(69, maxMp);            // 30 + (10+1)*3 + 2*3
+        Assert.Equal(69, currentMp);        // 레벨업 때 가득 찬다
+        Assert.Equal(0f, info.ManaRegenRemainder);
     }
 
     [Fact]

@@ -25,14 +25,16 @@ namespace GameServer.Combat
             {
                 info.BaseStr = snapshot.Str;
                 info.BaseAgi = snapshot.Agi;
+                info.BaseIntel = snapshot.Intel;
                 info.EquipmentAttackBonus = equipmentAttack;
                 info.EquipmentDefenseBonus = equipmentDefense;
                 Recalculate(info);
             }
         }
 
-        // 레벨업 후: info.Level이 이미 새 레벨로 바뀐 상태에서 호출한다. 공격력/방어력/최대 체력을 새 레벨 기준으로 다시 계산하고
-        // 체력을 가득 채운다(기존 레벨업 동작과 같다). 바뀐 (현재 체력, 최대 체력)을 돌려줘 호출측이 알림을 보낸다.
+        // 레벨업 후: info.Level이 이미 새 레벨로 바뀐 상태에서 호출한다. 공격력/방어력/최대 체력/최대 마나를 새 레벨 기준으로 다시 계산하고
+        // 체력과 마나를 가득 채운다(기존 레벨업 동작과 같다). 바뀐 (현재 체력, 최대 체력)을 돌려줘 호출측이 알림을 보낸다 -
+        // 마나는 ReadMana로 읽어 본인에게 따로 알린다.
         public static (int CurrentHp, int MaxHp) ApplyLevelUp(PlayerInfo info)
         {
             lock (info)
@@ -40,7 +42,19 @@ namespace GameServer.Combat
                 Recalculate(info);
                 info.MaxHp = CombatStatCalculator.CalculateMaxHp(info.BaseAgi, info.Level);
                 info.CurrentHp = info.MaxHp;
+                info.MaxMp = CombatStatCalculator.CalculateMaxMp(info.BaseIntel, info.Level);
+                info.CurrentMp = info.MaxMp;
+                info.ManaRegenRemainder = 0f;
                 return (info.CurrentHp, info.MaxHp);
+            }
+        }
+
+        // 현재 마나와 최대 마나를 한 번에(같은 시점 값으로) 읽는다. 마나는 몬스터 AI 틱/세션 스레드가 함께 만지므로 lock 안에서 읽는다.
+        public static (int CurrentMp, int MaxMp) ReadMana(PlayerInfo info)
+        {
+            lock (info)
+            {
+                return (info.CurrentMp, info.MaxMp);
             }
         }
 

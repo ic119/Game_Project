@@ -40,6 +40,7 @@ namespace GameServer.Networking
         }
     }
 
-    // 다시 입장할 때 이어받는 플레이어 상태. 체력이 0이면 사망한 채로 끊긴 것이다.
-    public sealed record PlayerStateSnapshot(string MapId, float X, float Y, float Z, float RotationY, int CurrentHp);
+    // 다시 입장할 때 이어받는 플레이어 상태. 체력이 0이면 사망한 채로 끊긴 것이다. 마나도 체력과 같은 이유로 이어받는다(끊었다 다시
+    // 들어오는 것만으로 마나가 가득 차지 않게). CurrentMp가 음수면 "마나 정보 없음"이라 가득 찬 마나로 시작한다.
+    public sealed record PlayerStateSnapshot(string MapId, float X, float Y, float Z, float RotationY, int CurrentHp, int CurrentMp = -1);
 }

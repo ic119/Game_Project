@@ -170,4 +170,100 @@ public class GameRoomTests : IDisposable
         Assert.DoesNotContain(OpCode.Game_DashBroadcast, dasher.OpCodes); // 본인은 이미 로컬에서 재생했다
         Assert.DoesNotContain(OpCode.Game_DashBroadcast, far.OpCodes); // 시야 밖
     }
+
+    private static PlayerInfo ManaPlayer(long id, int maxMp, int currentMp)
+    {
+        PlayerInfo player = Player(id);
+        player.MaxMp = maxMp;
+        player.CurrentMp = currentMp;
+        return player;
+    }
+
+    [Fact]
+    public void TrySpendMana_DeductsAndNotifiesOnlyTheOwner()
+    {
+        var room = CreateRoom();
+        var owner = new FakeSender();
+        var other = new FakeSender();
+        room.Join(ManaPlayer(1, 100, 100), owner);
+        room.Join(ManaPlayer(2, 100, 100), other);
+
+        Assert.True(room.TrySpendMana(1, 30));
+
+        room.TryGetInfo(1, out PlayerInfo? info);
+        Assert.Equal(70, info!.CurrentMp);
+        Assert.Single(owner.OpCodes, OpCode.Game_PlayerMpUpdate);
+        Assert.DoesNotContain(OpCode.Game_PlayerMpUpdate, other.OpCodes); // 마나는 본인에게만 알린다
+    }
+
+    [Fact]
+    public void TrySpendMana_RejectsInsufficientDeadOrInvalidAmounts_AndKeepsMana()
+    {
+        var room = CreateRoom();
+        room.Join(ManaPlayer(1, 100, 20), new FakeSender());
+        room.Join(ManaPlayer(2, 100, 100), new FakeSender());
+        room.TryGetInfo(2, out PlayerInfo? dead);
+        dead!.CurrentHp = 0;
+
+        Assert.False(room.TrySpendMana(1, 21));  // 모자람
+        Assert.False(room.TrySpendMana(1, 0));   // 0 이하
+        Assert.False(room.TrySpendMana(1, -5));
+        Assert.False(room.TrySpendMana(2, 10));  // 사망
+        Assert.False(room.TrySpendMana(999, 10)); // 방에 없음
+
+        room.TryGetInfo(1, out PlayerInfo? info);
+        Assert.Equal(20, info!.CurrentMp);
+        Assert.True(room.TrySpendMana(1, 20)); // 정확히 남은 만큼은 쓸 수 있다
+        Assert.Equal(0, info.CurrentMp);
+    }
+
+    [Fact]
+    public void RegenerateMana_AddsPercentOfMaxPerSecond_AndKeepsFractions()
+    {
+        var room = CreateRoom();
+        var owner = new FakeSender();
+        room.Join(ManaPlayer(1, 100, 0), owner);
+        room.TryGetInfo(1, out PlayerInfo? info);
+
+        // 기본 설정은 초당 최대 마나의 2.5%(CombatTuning.ManaRegenPercentPerSecond) = 2.5/초.
+        room.RegenerateMana(1f);
+        Assert.Equal(2, info!.CurrentMp);  // 소수점 0.5는 모아 둔다
+        room.RegenerateMana(1f);
+        Assert.Equal(5, info.CurrentMp);   // 0.5 + 2.5 = 3.0 -> 3이 더해진다
+
+        Assert.Contains(OpCode.Game_PlayerMpUpdate, owner.OpCodes);
+    }
+
+    [Fact]
+    public void RegenerateMana_StopsAtMax_ClearsRemainder_AndNotifiesWhenFull()
+    {
+        var room = CreateRoom();
+        var owner = new FakeSender();
+        room.Join(ManaPlayer(1, 100, 99), owner);
+        room.TryGetInfo(1, out PlayerInfo? info);
+
+        room.RegenerateMana(10f); // 25를 회복해야 하지만 최대 마나에서 멈춘다
+
+        Assert.Equal(100, info!.CurrentMp);
+        Assert.Equal(0f, info.ManaRegenRemainder);
+        Assert.Contains(OpCode.Game_PlayerMpUpdate, owner.OpCodes); // 가득 찬 순간은 알림 간격과 무관하게 바로 알린다
+    }
+
+    [Fact]
+    public void RegenerateMana_SkipsDeadAndFullPlayers()
+    {
+        var room = CreateRoom();
+        var dead = new FakeSender();
+        var full = new FakeSender();
+        room.Join(ManaPlayer(1, 100, 10), dead);
+        room.Join(ManaPlayer(2, 100, 100), full);
+        room.TryGetInfo(1, out PlayerInfo? deadInfo);
+        deadInfo!.CurrentHp = 0;
+
+        room.RegenerateMana(5f);
+
+        Assert.Equal(10, deadInfo.CurrentMp);                          // 죽은 동안은 회복하지 않는다
+        Assert.DoesNotContain(OpCode.Game_PlayerMpUpdate, dead.OpCodes);
+        Assert.DoesNotContain(OpCode.Game_PlayerMpUpdate, full.OpCodes); // 이미 가득 차 있으면 알릴 변화가 없다
+    }
 }

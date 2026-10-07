@@ -286,6 +286,11 @@ namespace Incheol.Modules
                     pendingActions.Enqueue(() => OnPlayerHpChanged?.Invoke(hpChanged));
                     break;
 
+                case GameOpCode.Game_PlayerMpUpdate:
+                    var mpChanged = GamePlayerMpUpdatePacket.Decode(body);
+                    pendingActions.Enqueue(() => OnPlayerMpChanged?.Invoke(mpChanged));
+                    break;
+
                 case GameOpCode.Game_PlayerRevived:
                     var revived = GamePlayerRevivedPacket.Decode(body);
                     pendingActions.Enqueue(() => OnPlayerRevived?.Invoke(revived));

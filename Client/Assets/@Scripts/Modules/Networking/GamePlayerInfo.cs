@@ -25,6 +25,11 @@ namespace Incheol.Modules.Networking
         // 데미지의 방어력 차감은 각 클라이언트가 이 값(특히 Defense)으로 로컬 계산한다.
         public int MaxHp;
         public int CurrentHp;
+
+        // 마나. 체력과 같은 규칙으로 서버가 DB 원본(지능/레벨)으로 계산해 입장 때 채워 보낸다(Game_EnterAck의 Self 등). 마나 바는 본인
+        // 화면에만 있어서 다른 접속자의 값은 쓰지 않는다. 이후의 변화는 Game_PlayerMpUpdate(본인에게만)로 온다.
+        public int MaxMp;
+        public int CurrentMp;
         public int AttackPower;
         public int Defense;
 
@@ -53,6 +58,8 @@ namespace Incheol.Modules.Networking
             writer.Write(RotationY);
             writer.Write(MaxHp);
             writer.Write(CurrentHp);
+            writer.Write(MaxMp);
+            writer.Write(CurrentMp);
             writer.Write(AttackPower);
             writer.Write(Defense);
             writer.Write(Level);
@@ -78,6 +85,8 @@ namespace Incheol.Modules.Networking
                 RotationY = reader.ReadSingle(),
                 MaxHp = reader.ReadInt32(),
                 CurrentHp = reader.ReadInt32(),
+                MaxMp = reader.ReadInt32(),
+                CurrentMp = reader.ReadInt32(),
                 AttackPower = reader.ReadInt32(),
                 Defense = reader.ReadInt32(),
                 Level = reader.ReadInt32(),

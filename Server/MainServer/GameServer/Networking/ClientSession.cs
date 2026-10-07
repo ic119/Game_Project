@@ -322,7 +322,7 @@ namespace GameServer.Networking
 
             lock (info)
             {
-                return new PlayerStateSnapshot(mapId, info.X, info.Y, info.Z, info.RotationY, info.CurrentHp);
+                return new PlayerStateSnapshot(mapId, info.X, info.Y, info.Z, info.RotationY, info.CurrentHp, info.CurrentMp);
             }
         }
 

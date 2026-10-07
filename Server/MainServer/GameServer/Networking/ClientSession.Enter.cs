@@ -82,6 +82,10 @@ namespace GameServer.Networking
             info.MaxHp = CombatStatCalculator.CalculateMaxHp(snapshot);
             info.CurrentHp = info.MaxHp;
 
+            // 마나도 체력과 같다: DB에는 저장하지 않고 DB 원본(지능/레벨)으로 최대 마나를 계산해 가득 찬 상태로 시작한다.
+            info.MaxMp = CombatStatCalculator.CalculateMaxMp(snapshot);
+            info.CurrentMp = info.MaxMp;
+
             // 입장 위치도 서버가 맵 데이터로 정한다(클라이언트도 같은 RespawnPoint에 스폰한다). 클라이언트 좌표를 그대로
             // 받으면 입장 순간에 원하는 곳으로 순간이동할 수 있다.
             info.X = respawnPoint.X;
@@ -140,6 +144,12 @@ namespace GameServer.Networking
             }
 
             info.CurrentHp = Math.Min(state.CurrentHp, info.MaxHp);
+
+            // 마나도 이어받는다(최대 마나를 넘지 않게). 정보가 없으면(음수) 가득 찬 마나 그대로다.
+            if (state.CurrentMp >= 0)
+            {
+                info.CurrentMp = Math.Min(state.CurrentMp, info.MaxMp);
+            }
 
             if (state.MapId == info.MapId)
             {

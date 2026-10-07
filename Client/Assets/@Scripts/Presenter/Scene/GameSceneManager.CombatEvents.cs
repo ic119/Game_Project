@@ -104,6 +104,20 @@ namespace Incheol.Presenter.Scene
         }
 
         /// <summary>
+        /// 서버가 알려 준 내 마나(Game_PlayerMpUpdate)를 반영한다. 자연 회복, 레벨업/부활로 가득 참, 스킬 사용 소모가 모두 이 경로로 온다.
+        /// 서버가 본인에게만 보내는 알림이지만 방어적으로 내 캐릭터인지 확인한다.
+        /// </summary>
+        private void HandlePlayerMpChanged(GamePlayerMpUpdatePacket packet)
+        {
+            if (!IsLocalPlayer(packet.PlayerId) || spawnedPlayerModel == null)
+            {
+                return;
+            }
+
+            spawnedPlayerModel.ApplyServerMp(packet.CurrentMp, packet.MaxMp);
+        }
+
+        /// <summary>
         /// 서버가 나를 자동 부활시켰을 때(Game_PlayerRevived) 서버가 정한 부활 위치로 옮긴 뒤 체력을 반영하고
         /// 조작을 다시 켠다. 서버도 이미 그 위치를 내 위치로 알고 있으므로 이후 이동 검증의 기준점과 일치한다.
         /// </summary>

@@ -127,18 +127,21 @@ namespace GameServer.Networking
             return true;
         }
 
-        // 레벨업 시 공격력/방어력/최대 체력을 새 레벨 기준으로 다시 계산하고 체력을 가득 채운다(PlayerCombatStats.ApplyLevelUp).
+        // 레벨업 시 공격력/방어력/최대 체력/최대 마나를 새 레벨 기준으로 다시 계산하고 체력과 마나를 가득 채운다(PlayerCombatStats.ApplyLevelUp).
         // player.Level은 호출 전에 이미 새 레벨로 바뀌어 있다. 공격력/방어력은 서버 메모리의 PlayerInfo 값이라 이 호출이 끝나는 순간부터
-        // 다음 몬스터 판정/피해 계산이 바로 새 값을 쓴다. 클라이언트에는 체력(Game_PlayerHpBroadcast)만 보낸다 - 공격력/방어력은
-        // 클라이언트가 레벨(Game_ExpGainBroadcast)로 같은 공식(StatGrowth)을 계산해 표시한다.
+        // 다음 몬스터 판정/피해 계산이 바로 새 값을 쓴다. 클라이언트에는 체력(Game_PlayerHpBroadcast, 주변 전체)과 마나(Game_PlayerMpUpdate, 본인만)를
+        // 보낸다 - 공격력/방어력은 클라이언트가 레벨(Game_ExpGainBroadcast)로 같은 공식(StatGrowth)을 계산해 표시한다.
         private void ApplyLevelUp(PlayerInfo player, int previousLevel)
         {
             (int currentHp, int maxHp) = PlayerCombatStats.ApplyLevelUp(player);
+            (_, int maxMp) = PlayerCombatStats.ReadMana(player);
 
-            Log.LogInformation("레벨업 (PlayerId={PlayerId}) : Lv{PreviousLevel} -> Lv{Level}, 공격력 {AttackPower}, 방어력 {Defense}, 최대 체력 {MaxHp}", player.PlayerId, previousLevel, player.Level, player.AttackPower, player.Defense, maxHp);
+            Log.LogInformation("레벨업 (PlayerId={PlayerId}) : Lv{PreviousLevel} -> Lv{Level}, 공격력 {AttackPower}, 방어력 {Defense}, 최대 체력 {MaxHp}, 최대 마나 {MaxMp}", player.PlayerId, previousLevel, player.Level, player.AttackPower, player.Defense, maxHp, maxMp);
 
             var broadcast = new S2CPlayerHpBroadcast { PlayerId = player.PlayerId, CurrentHp = currentHp, MaxHp = maxHp };
             SendToViewersOfPlayer(broadcast.PlayerId, OpCode.Game_PlayerHpBroadcast, broadcast.Encode());
+
+            SendManaUpdate(player, force: true);
         }
 
         // 사망한 플레이어를 ReviveDelay 뒤 가득 찬 체력으로 부활시킨다. 그 사이 접속이 끊겼으면(방에서 빠짐)
@@ -173,6 +176,10 @@ namespace GameServer.Networking
                 currentHp = player.CurrentHp;
                 maxHp = player.MaxHp;
 
+                // 마나도 체력처럼 가득 채워 부활한다.
+                player.CurrentMp = player.MaxMp;
+                player.ManaRegenRemainder = 0f;
+
                 // 부활 위치는 서버가 맵 데이터로 정한다(클라이언트가 옮긴 좌표를 받아주면 속도 검증을 우회하는 순간이동이 된다).
                 // 맵 데이터가 없으면 쓰러진 자리에서 부활한다. 사망 중에는 이동 요청이 거부되므로 여기서 위치를 바꿔도 경합이 없다.
                 if (MapDataCatalog.TryGet(_mapId, out MapData mapData) && mapData.RespawnPoint is { } respawnPoint)
@@ -195,6 +202,7 @@ namespace GameServer.Networking
                 RotationY = player.RotationY
             };
             SendToViewersOfPlayer(player.PlayerId, OpCode.Game_PlayerRevived, revived.Encode());
+            SendManaUpdate(player, force: true);
         }
         #endregion
     }

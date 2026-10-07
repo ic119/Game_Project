@@ -15629,6 +15629,7 @@ GameObject:
   - component: {fileID: 8976286199448848791}
   - component: {fileID: 7996449286846888370}
   - component: {fileID: 6574738023687167225}
+  - component: {fileID: 434855996250801196}
   m_Layer: 0
   m_Name: BasicCharacter
   m_TagString: Player
@@ -15818,6 +15819,18 @@ MonoBehaviour:
   - HeadArmor
   - Hat
   defaultBodyVisualName: Body01
+--- !u!114 &434855996250801196
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6430947460933050228}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7991b647642591e48911f62191aa4b6e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ManaComponent
 --- !u!1 &6438463510138794830
 GameObject:
   m_ObjectHideFlags: 0

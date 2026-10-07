@@ -2,6 +2,7 @@ using Incheol.Utils;
 using Incheol.View.UI;
 using UnityEngine;
 
+// ManaComponent는 RequireComponent 목록(최대 3개)에 넣지 못해, Awake에서 없으면 추가한다(캐릭터 프리팹에도 붙여 둔다).
 [RequireComponent(typeof(HealthComponent), typeof(CombatStatComponent), typeof(EquipmentController))]
 public class PlayerCharacterModel : MonoBehaviour
 {
@@ -64,6 +65,7 @@ public class PlayerCharacterModel : MonoBehaviour
     // 이 값에 StatGrowth 보너스를 더해 공격력/방어력을 다시 계산하고, 인벤토리 스탯 패널 표시용으로도 쓴다.
     private UserStats cachedUserStats;
     private HealthComponent healthComponent;
+    private ManaComponent manaComponent;
     private CombatStatComponent combatStatComponent;
 
     public string Nickname => nameLabel != null ? nameLabel.Nickname : string.Empty;
@@ -71,6 +73,8 @@ public class PlayerCharacterModel : MonoBehaviour
     public int Level => level;
     public int MaxHp => healthComponent.MaxHp;
     public int CurrentHp => healthComponent.CurrentHp;
+    public int MaxMp => manaComponent.MaxMp;
+    public int CurrentMp => manaComponent.CurrentMp;
     public int CurrentExp => currentExp;
     public long Gold => gold;
 
@@ -110,6 +114,13 @@ public class PlayerCharacterModel : MonoBehaviour
         healthComponent = GetComponent<HealthComponent>();
         combatStatComponent = GetComponent<CombatStatComponent>();
         equipmentController = GetComponent<EquipmentController>();
+
+        // 마나 컴포넌트는 나중에 추가됐다. 캐릭터 프리팹에 아직 붙어 있지 않아도 동작하도록 없으면 만든다.
+        manaComponent = GetComponent<ManaComponent>();
+        if (manaComponent == null)
+        {
+            manaComponent = gameObject.AddComponent<ManaComponent>();
+        }
 
         characterAnimator = GetComponent<Animator>();
         if (characterAnimator != null)
@@ -288,6 +299,7 @@ public class PlayerCharacterModel : MonoBehaviour
         SetNickname(saveData.nickname);
         ApplyLevel(saveData.level);
         healthComponent.ApplyFromUserStats(saveData.userStats, saveData.level);
+        manaComponent.ApplyFromUserStats(saveData.userStats, saveData.level);
         combatStatComponent.ApplyFromUserStats(saveData.userStats, saveData.level);
         ApplyExp(saveData.exp);
         ApplyGold(saveData.gold);
@@ -305,6 +317,14 @@ public class PlayerCharacterModel : MonoBehaviour
     }
 
     public bool IsDead => healthComponent.IsDead;
+
+    /// <summary>
+    /// GameServer가 계산한 마나(입장/레벨업/부활/자연 회복/소모 후 값)를 그대로 반영한다. 마나는 본인 화면에만 있으므로 로컬 플레이어에게만 쓴다.
+    /// </summary>
+    public void ApplyServerMp(int currentMp, int maxMp)
+    {
+        manaComponent.ApplyServerMp(currentMp, maxMp);
+    }
 
     /// <summary>
     /// GameServer가 계산한 체력을 반영한다(로컬/원격 공용). 피격 브로드캐스트(Game_DamageBroadcast/

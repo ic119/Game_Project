@@ -27,6 +27,7 @@
     <Compile Include="..\..\..\Client\Assets\@Scripts\Modules\Networking\Game*.cs" Exclude="..\..\..\Client\Assets\@Scripts\Modules\Networking\GamePacketFrame.cs" LinkBase="ClientNetworking" />
     <Compile Include="..\..\..\Client\Assets\@Scripts\Utils\ExpTable.cs" LinkBase="ClientUtils" />
     <Compile Include="..\..\..\Client\Assets\@Scripts\Utils\StatGrowth.cs" LinkBase="ClientUtils" />
+    <Compile Include="..\..\..\Client\Assets\@Scripts\Utils\ManaFormula.cs" LinkBase="ClientUtils" />
     <Compile Include="..\..\..\Client\Assets\@Scripts\Utils\CombatTimings.cs" LinkBase="ClientUtils" />
   </ItemGroup>
 

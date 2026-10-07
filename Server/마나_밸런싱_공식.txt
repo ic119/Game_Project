@@ -1,0 +1,132 @@
+마나 밸런싱 공식
+================
+
+작성일 : 2026-10-07
+대상   : 플레이어 마나(Mana, MP) - 최대 마나 공식, 지능(Intel) 보정, 자연 회복, 이후 스킬 소모량 가이드
+관련   : 몬스터_밸런싱_공식.txt (체력/공격력 기준값과 같은 전제를 쓴다)
+
+
+1. 설계 원칙
+------------
+- 마나는 체력과 "같은 구조"다.
+    * DB에 저장하지 않는다. 최대 마나는 DB 원본(지능/레벨)으로 서버가 매번 계산한다.
+    * 현재 마나는 서버 메모리(PlayerInfo.CurrentMp)에만 있다. 입장 때 가득 찬 상태로 시작하고,
+      최근 10분 안에 끊긴 상태가 있으면 그 마나를 이어받는다(DisconnectedPlayerStateStore).
+    * 레벨업과 부활 때 가득 찬다.
+    * 서버가 권위다. 클라이언트는 서버가 보낸 값(Game_EnterAck의 Self, Game_PlayerMpUpdate)을 그대로 표시한다.
+- 체력과 다른 점 두 가지.
+    1) 자연 회복이 있다. (체력은 물약/레벨업/부활로만 찬다. 마나는 스킬로 계속 쓰는 자원이라 회복 수단이 필수다.)
+    2) 본인에게만 알린다. 다른 플레이어의 마나 바는 화면에 없으므로 주변에 브로드캐스트하지 않는다.
+- 지능(Intel)은 이미 DB(characters.Intel, 기본 10)에 있고 레벨 성장(StatGrowth: 2레벨마다 모든 능력치 +1)도 받는다.
+  지금까지는 인벤토리 스탯 패널에 표시만 되었고 쓰이는 곳이 없었다. 이번에 최대 마나에 반영했다.
+
+
+2. 공식
+-------
+  지능     = 기본 지능 + StatGrowth.BonusAtLevel(레벨)        // 레벨 성장 보너스 = (레벨-1) / 2 (정수 나눗셈)
+  최대 마나 = 30 + 지능 * 3 + (레벨 - 1) * 3
+
+  초당 회복량 = 최대 마나 * 2.5%                              // CombatTuning.ManaRegenPercentPerSecond (0이면 자연 회복 끔)
+
+  비교(체력): 최대 체력 = 100 + 민첩 * 5 + (레벨 - 1) * 10
+
+상수 위치(셋은 같은 값이어야 하며, 테스트가 일치를 검사한다)
+  서버 : GameServer/Combat/CombatStatCalculator.cs   BaseMaxMp=30, MaxMpPerIntel=3, MaxMpPerLevel=3
+  클라 : Client/Assets/@Scripts/Utils/ManaFormula.cs 같은 값
+  회복 : GameServer/appsettings.json "Combat": { "ManaRegenPercentPerSecond": 2.5 } (CombatTuning에서 검증, 범위 0~50)
+
+
+3. 레벨별 값 (기본 지능 10 기준)
+-------------------------------
+
+  레벨   지능   최대 마나   최대 체력   마나/체력   초당 회복   가득 차는 데
+  ----   ----   ---------   ---------   ---------   ---------   ------------
+    1     10        60         150         0.40        1.5          40초
+    2     10        63         160         0.39        1.6          40초
+    3     11        69         175         0.39        1.7          40초
+    5     12        78         200         0.39        2.0          40초
+   10     14        99         260         0.38        2.5          40초
+   15     17       123         325         0.38        3.1          40초
+   20     19       144         385         0.37        3.6          40초
+   25     22       168         450         0.37        4.2          40초
+   30     24       189         510         0.37        4.7          40초
+   40     29       234         635         0.37        5.9          40초
+   50     34       279         760         0.37        7.0          40초
+
+- 마나/체력 비율을 0.37~0.40으로 유지한다. 마나는 체력보다 작은 풀이어야 "마나가 모자라서 못 쓰는 순간"이 생기고,
+  너무 작으면 스킬을 한두 번 쓰고 마는 게임이 된다.
+- 회복은 최대 마나에 비례하므로 레벨이 올라도 "비었을 때 40초면 찬다"는 체감이 같다. 대신 절대 회복량은 늘어난다.
+
+
+4. 지능 1당 효과
+----------------
+
+  지능 +1 -> 최대 마나 +3, 초당 회복 +0.075 (2.5% 기준)
+  비교 : 민첩 +1 -> 최대 체력 +5 (그리고 방어력 +0.5)
+
+  최대 마나에서 지능이 차지하는 비중 : 1레벨 50%(30/60) -> 50레벨 약 37%(102/279).
+  레벨 성장(레벨당 +3)이 꾸준히 올려 주고 지능은 그 위에 얹히는 구조라, 지능을 올리지 않아도 마나가 완전히 막히지는 않는다.
+  (장비/스탯 포인트로 지능이 오르는 기능이 생기면 1당 +3이 체감상 +5% 안팎인지(1레벨 기준 +5.0%, 50레벨 기준 +1.1%) 확인한다.)
+
+
+5. 스킬 소모량 가이드 (스킬 설계 때 참고)
+-----------------------------------------
+현재 마나 소비처는 없다(스킬이 아직 없다). 아래는 이후 스킬을 만들 때 쓸 기준이다.
+
+  - 짧은 쿨다운 스킬(예: 6초) : 1레벨 최대 마나의 약 20% = 12
+  - 긴 쿨다운 스킬(예: 15초)  : 1레벨 최대 마나의 약 40% = 24
+
+  1레벨(최대 60, 초당 회복 1.5) 기준 소모 속도
+    짧은 스킬만 쿨다운마다 사용 : 12 / 6초  = 2.0/초  -> 회복 1.5/초를 넘어 천천히 줄어든다(약 2분)
+    짧은 + 긴 스킬 모두 사용    : 2.0 + 1.6 = 3.6/초 -> 순감 2.1/초, 가득에서 약 29초 뒤 바닥
+
+  즉 "스킬을 번갈아 쓰면서 평타 콤보로 마나를 벌어야 하는" 템포가 된다.
+
+주의 - 소모량을 고정값으로 두면 레벨이 오를수록 마나가 남아돈다.
+  30레벨(최대 189, 회복 4.7/초)에서 같은 12/24 비용이면 소모 3.6/초 < 회복 4.7/초라 마나가 사실상 무제한이다.
+  해결 방법은 둘 중 하나다.
+    (가) 스킬 레벨/해금 레벨에 따라 비용을 키운다(레벨당 약 +4%). 지능을 올린 만큼 더 많이 쓸 수 있다는 의미가 살아 있다.
+    (나) 비용을 최대 마나의 %로 정한다(짧은 20%, 긴 40%). 어떤 레벨에서도 템포가 같지만 지능이 "더 많이 쓰기"가 아니라
+         "회복량 증가"로만 의미가 있다.
+  추천은 (가)다. 지능에 투자하는 이유가 분명해진다.
+
+
+6. 구현 위치 요약
+-----------------
+  서버
+    Shared/Networking/Packets/PlayerInfo.cs        MaxMp, CurrentMp(네트워크 전송) / BaseIntel, ManaRegenRemainder, LastManaSentAtUtcTicks(서버 전용)
+    Shared/Networking/Packets/S2CPlayerMpUpdate.cs 본인에게만 보내는 마나 갱신 패킷 (OpCode.Game_PlayerMpUpdate = 0x022D)
+    GameServer/Combat/CharacterSnapshot.cs         지능(Intel) 추가. 응답에 _intel이 없으면 기본 10
+    GameServer/Combat/CombatStatCalculator.cs      CalculateMaxMp, CalculateManaRegenPerSecond
+    GameServer/Combat/PlayerCombatStats.cs         입장 시 BaseIntel 설정, 레벨업 시 최대 마나 재계산 + 가득 채움, ReadMana
+    GameServer/Combat/CombatTuning.cs              ManaRegenPercentPerSecond
+    GameServer/Networking/GameRoom.Mana.cs         TrySpendMana(스킬 사용 때 먼저 호출), RegenerateMana(방 틱 20Hz)
+    GameServer/Networking/GameRoom.Health.cs       레벨업/부활 때 마나 충전 + 본인에게 알림
+    GameServer/Networking/ClientSession.Enter.cs   입장 때 최대 마나 계산, 재접속 시 이어받기
+    GameServer/Networking/DisconnectedPlayerStateStore.cs  PlayerStateSnapshot.CurrentMp
+  클라이언트
+    Model/Combat/ManaComponent.cs                  HealthComponent와 같은 구조
+    Utils/ManaFormula.cs                           서버와 같은 공식(Unity 의존 없음 -> 서버 테스트가 링크해 일치 검사)
+    Model/Character/PlayerCharacterModel.cs        MaxMp/CurrentMp, ApplyServerMp
+    Modules/Networking/GamePlayerInfo.cs, GamePlayerMpUpdatePacket.cs, GameOpCode.cs
+    Presenter/Scene/GameSceneManager*.cs           입장/마나 갱신 반영
+    View/UI/UI_GameSceneView.cs + UI_GameScene 프리팹 MpBar (체력 바 아래, 파란색)
+
+  회복 알림 규칙: 자연 회복 알림은 초당 1회로 줄여 보낸다. 가득 찬 순간, 소모, 레벨업, 부활은 즉시 보낸다.
+
+
+7. 값을 바꿀 때
+---------------
+  1) 서버 CombatStatCalculator 상수와 클라이언트 ManaFormula 상수를 같이 바꾼다.
+  2) GameServer.Tests의 ClientFormulaParityTests(MaxMp_ClientMatchesServer_ForAllIntelAndLevels)와
+     CombatStatCalculatorTests(CalculateMaxMp_MatchesDocumentedTable)가 두 공식과 위 표의 대표값을 검사한다. 값을 바꾸면
+     테스트의 기대값과 이 문서의 3번 표를 함께 갱신한다.
+  3) 회복 속도는 appsettings.json의 Combat:ManaRegenPercentPerSecond로 코드 수정 없이 바꾼다(재시작 필요).
+
+
+8. 아직 없는 것 (후속)
+---------------------
+  - 마나 물약: 체력 물약(HpPotion)처럼 마나를 채우는 아이템. 아이템 정의, 서버 사용 처리, 드랍 테이블이 함께 필요하다.
+  - 스킬: 마나를 실제로 쓰는 곳. 서버가 TrySpendMana로 먼저 차감해 성공한 요청만 스킬 판정을 진행하면 된다.
+  - 지능을 올리는 수단(스탯 포인트, 장비 보너스). 지금은 레벨 성장으로만 오른다.
+  - 마나 부족 알림 UI/효과.
