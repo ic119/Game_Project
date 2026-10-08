@@ -31,6 +31,35 @@ namespace Incheol.View.UI
         }
 
         /// <summary>
+        /// 상세정보 패널의 "종류" 텍스트(예: "장비 · 무기", "물약", "기타"). 장비류는 좌측 장비 슬롯 라벨과 같은 표기
+        /// (무기/갑옷/투구/장신구)를 써서 용어가 갈리지 않게 한다.
+        /// </summary>
+        public static string BuildTypeLabel(ItemData _itemData)
+        {
+            switch (_itemData.itemType)
+            {
+                case ItemType.Eqiupment:
+                    return $"장비 · {GetEquipmentSlotLabel(_itemData.equipSlotType)}";
+                case ItemType.Potion:
+                    return "물약";
+                default:
+                    return "기타";
+            }
+        }
+
+        private static string GetEquipmentSlotLabel(EquipmentSlotType _slotType)
+        {
+            switch (_slotType)
+            {
+                case EquipmentSlotType.Weapon: return "무기";
+                case EquipmentSlotType.Armor: return "갑옷";
+                case EquipmentSlotType.Helmet: return "투구";
+                case EquipmentSlotType.Accessory: return "장신구";
+                default: return "장비";
+            }
+        }
+
+        /// <summary>
         /// 능력치/효과 한 줄(또는 빈 문자열 - 표시할 효과가 없는 기타 아이템).
         /// _equippedInSameSlot은 같은 슬롯에 지금 장착 중인 다른 장비다. 주어지면(일반 칸에서 고른 장비를 비교할 때) 장착 시
         /// 바뀌는 양을 괄호로 덧붙인다. 예) "공격력 +12 (+4)   방어력 +5 (-2)".
