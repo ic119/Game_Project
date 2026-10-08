@@ -135,7 +135,7 @@ namespace Incheol.Presenter.Scene
         /// 장착/해제(TryEquipItem/TryUnequipSlot)와 로그인 복원(ApplySelectedCharacterCustomization,
         /// HandleItemDatabaseLoaded) 양쪽에서 호출된다.
         /// </summary>
-        private void RecalculateEquipmentStats()
+        private void RecalculateEquipmentStats(bool notifyServer = true)
         {
             if (spawnedPlayerModel == null || ItemDatabaseManager.Instance == null)
             {
@@ -163,6 +163,24 @@ namespace Incheol.Presenter.Scene
             }
 
             spawnedPlayerModel.SetEquipmentBonus(totalAttackBonus, totalDefenseBonus);
+
+            if (notifyServer)
+            {
+                NotifyServerEquipmentChanged();
+            }
+        }
+
+        /// <summary>
+        /// 장비가 바뀌었음을 GameServer에 알린다(Game_StatUpdateRequest). 서버는 이 요청을 받으면 MainServer에서 캐릭터를 다시 조회해
+        /// 장착 무기/방어구와 공격력·방어력을 갱신하므로, MainServer에 장착이 저장된 뒤에 보내야 한다 - 저장보다 먼저 보내면 서버가
+        /// 이전 장비를 읽어 가고, 재접속하기 전까지 무기 종류(스킬 판정)와 공격력이 이전 값으로 남는다.
+        /// </summary>
+        private void NotifyServerEquipmentChanged()
+        {
+            if (spawnedPlayerModel == null)
+            {
+                return;
+            }
 
             GameServerConnectManager.Instance?.SendStatUpdate(spawnedPlayerModel.AttackPower, spawnedPlayerModel.Defense);
         }
@@ -258,13 +276,16 @@ private void TryEquipItem(string _itemId)
             targetStack.equipSlot = slotKey;
 
             spawnedPlayerModel.EquipItem(itemData);
-            RecalculateEquipmentStats();
+
+            // 서버 통보는 저장 성공 콜백에서 한다(NotifyServerEquipmentChanged 주석 참고). 로컬 스탯은 낙관적으로 바로 반영한다.
+            RecalculateEquipmentStats(notifyServer: false);
             RefreshInventoryDisplay();
 
             SaveDataManager.Instance?.EquipItem(_itemId, itemData.equipSlotType, success =>
             {
                 if (success)
                 {
+                    NotifyServerEquipmentChanged();
                     return;
                 }
 
@@ -287,7 +308,8 @@ private void TryEquipItem(string _itemId)
                     spawnedPlayerModel.UnequipItem(itemData.equipSlotType);
                 }
 
-                RecalculateEquipmentStats();
+                // 서버에는 장착 변경을 알린 적이 없으므로(저장 실패) 롤백도 로컬만 반영한다.
+                RecalculateEquipmentStats(notifyServer: false);
                 RefreshInventoryDisplay();
                 GameManager.Instance?.ShowAlarmPopup("장비 장착 실패", "서버 저장에 실패해 장착을 되돌렸습니다.");
             });
@@ -428,13 +450,14 @@ private void TryUnequipSlot(EquipmentSlotType _slotType)
             equippedStack.equipSlot = null;
 
             spawnedPlayerModel.UnequipItem(_slotType);
-            RecalculateEquipmentStats();
+            RecalculateEquipmentStats(notifyServer: false);
             RefreshInventoryDisplay();
 
             SaveDataManager.Instance?.UnequipItem(_slotType, success =>
             {
                 if (success)
                 {
+                    NotifyServerEquipmentChanged();
                     return;
                 }
 
@@ -449,7 +472,7 @@ private void TryUnequipSlot(EquipmentSlotType _slotType)
                     spawnedPlayerModel.EquipItem(itemData);
                 }
 
-                RecalculateEquipmentStats();
+                RecalculateEquipmentStats(notifyServer: false);
                 RefreshInventoryDisplay();
                 GameManager.Instance?.ShowAlarmPopup("장비 해제 실패", "서버 저장에 실패해 해제를 되돌렸습니다.");
             });
