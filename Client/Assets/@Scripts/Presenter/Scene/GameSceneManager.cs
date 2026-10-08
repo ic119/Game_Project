@@ -22,8 +22,11 @@ namespace Incheol.Presenter.Scene
         private UI_MonsterTargetView monsterTargetView;
         private UI_DropItemPopupView dropItemPopupView;
         private UI_PlayerRespawnPopupView respawnPopupView;
-        private UI_MapViewPopupView mapViewPopupView;
-        private WorldMapController worldMapController;
+
+        // 씬 구성의 한 책임씩을 맡는 보조 객체(Awake에서 만든다).
+        private InitialLoadingTracker loadingTracker;
+        private GameSceneMapPresenter mapPresenter;
+        private LocalPlayerSpawner playerSpawner;
 
         /// <summary>
         /// 사망 후 자동 부활까지 걸리는 시간(초). 서버 CombatTuning.ReviveDelaySeconds와 같아야 한다(CombatTimings가 단일 출처, 서버 테스트가 일치를 검사한다) - 서버는 남은 시간을 보내지 않으므로
@@ -95,20 +98,15 @@ namespace Incheol.Presenter.Scene
         /// logoutButton 연타로 로그아웃 요청이 중복 전송되는 것을 막는 가드.
         /// </summary>
         private bool isLoggingOut = false;
-
-        // 로비에서 시작 버튼으로 들어오면 SceneLoadManager가 프리로드를 100%까지 채운 뒤 GameScene으로 전환하고, 로딩바는 100%인 채로
-        // 넘겨준다. 맵/UI/플레이어 생성과 서버 입장은 이 씬에서 이어지므로 여기서는 제목만 바꿔 안내하고, 입장이 확인되면 숨긴다.
-
-        // 입장 응답이 오지 않는 등 예상 밖의 이유로 로딩바가 화면을 영원히 가리지 않도록 하는 안전장치.
-        private const float InitialLoadingTimeoutSeconds = 30f;
-
-        /// <summary>이 씬이 이어받은 최초 로딩바를 아직 숨기지 않았는지.</summary>
-        private bool isInitialLoadingBarActive;
         #endregion
 
         #region LifeCycle
         private void Awake()
         {
+            loadingTracker = new InitialLoadingTracker(this);
+            mapPresenter = new GameSceneMapPresenter(transform, () => currentMapInstance);
+            playerSpawner = new LocalPlayerSpawner(this);
+
             // 맵/플레이어/몬스터가 전부 이 transform의 자식으로 생성된다. 몬스터 스폰 좌표는 에디터에서
             // 맵 프리팹만 고립시켜 내보낸 값(사실상 로컬 좌표, MonsterSpawnPointExporter 참고)이라
             // 이 오브젝트가 원점이 아니면 서버가 아는 몬스터 좌표와 플레이어의 실제 월드 좌표계가
@@ -123,7 +121,7 @@ namespace Incheol.Presenter.Scene
 
         private void Start()
         {
-            BeginInitialLoading();
+            loadingTracker.Begin();
             LoadAndInstantiateGameSceneAssets();
         }
 
@@ -202,17 +200,7 @@ namespace Incheol.Presenter.Scene
 
             if (!InputBlocker.IsBlocked && Input.GetKeyDown(KeyCode.M))
             {
-                if (mapViewPopupView != null)
-                {
-                    if (mapViewPopupView.IsOpen)
-                    {
-                        mapViewPopupView.Close();
-                    }
-                    else
-                    {
-                        mapViewPopupView.Open();
-                    }
-                }
+                mapPresenter.ToggleMapPopup();
             }
 
             if (monsterTargetView != null && monsterTargetView.HasTarget &&
@@ -228,7 +216,7 @@ namespace Incheol.Presenter.Scene
             InputBlocker.SetBlocked(this, false);
 
             // 최초 로딩 도중에 씬이 사라지면(예: 로딩 중 세션 만료로 로그인 화면 전환) 이어받은 로딩바가 남지 않게 숨긴다.
-            HideInitialLoadingBar();
+            loadingTracker.Hide();
 
             if (gameSceneView != null)
             {
@@ -241,11 +229,7 @@ namespace Incheol.Presenter.Scene
                 chatView.MessageSubmitted -= HandleChatMessageSubmitted;
             }
 
-            if (mapViewPopupView != null)
-            {
-                mapViewPopupView.Opened -= HandleMapViewOpened;
-                mapViewPopupView.Closed -= HandleMapViewClosed;
-            }
+            mapPresenter.Dispose();
 
             if (localPlayerAttackController != null)
             {
@@ -267,89 +251,6 @@ namespace Incheol.Presenter.Scene
         #endregion
 
         #region Method
-        /// <summary>
-        /// 이전 씬(로비)에서 이어받은 로딩바가 떠 있으면 이 씬이 숨길 책임을 진다. GameScene을 에디터에서 바로 실행하는 등
-        /// 로딩바가 없으면 아무 일도 하지 않는다. 입장 응답(OnEntered)이 끝내 오지 않는 경우를 대비해 타임아웃을 건다.
-        /// </summary>
-        private void BeginInitialLoading()
-        {
-            LoadingBarViewState state = GameManager.Instance != null && GameManager.Instance.LoadingBarView != null
-                ? (GameManager.Instance.LoadingBarView.gameObject.activeInHierarchy ? LoadingBarViewState.Visible : LoadingBarViewState.Hidden)
-                : LoadingBarViewState.Missing;
-
-            isInitialLoadingBarActive = state == LoadingBarViewState.Visible;
-
-            if (isInitialLoadingBarActive)
-            {
-                _ = InitialLoadingTimeoutAsync();
-            }
-        }
-
-        private enum LoadingBarViewState
-        {
-            Missing,
-            Hidden,
-            Visible
-        }
-
-        private async Awaitable InitialLoadingTimeoutAsync()
-        {
-            await Awaitable.WaitForSecondsAsync(InitialLoadingTimeoutSeconds);
-
-            if (this == null || !isInitialLoadingBarActive)
-            {
-                return;
-            }
-
-            DebugLogManager.GenerateErrorMessage<GameSceneManager>($"게임 서버 입장 확인이 {InitialLoadingTimeoutSeconds}초 안에 오지 않아 로딩바를 강제로 숨깁니다.");
-            HideInitialLoadingBar();
-        }
-
-        /// <summary>최초 로딩 중일 때만 로딩바의 제목을 바꾼다. 진행률은 SceneLoadManager가 이미 100%로 채운 상태 그대로 둔다.</summary>
-        private void ReportInitialLoading(string _title)
-        {
-            if (!isInitialLoadingBarActive)
-            {
-                return;
-            }
-
-            GameManager.Instance?.LoadingBarView?.UpdateTitle(_title);
-        }
-
-        /// <summary>서버 입장이 확인되면 100%를 잠깐 보여준 뒤 로딩바를 숨긴다.</summary>
-        private async Awaitable CompleteInitialLoadingAsync()
-        {
-            if (!isInitialLoadingBarActive)
-            {
-                return;
-            }
-
-            ReportInitialLoading("입장 완료");
-            await Awaitable.WaitForSecondsAsync(0.2f);
-
-            if (this == null)
-            {
-                return;
-            }
-
-            HideInitialLoadingBar();
-        }
-
-        /// <summary>이어받은 최초 로딩바를 숨긴다. 여러 번 불러도 한 번만 동작한다(맵 이동/재접속 로딩바와 섞이지 않는다).</summary>
-        private void HideInitialLoadingBar()
-        {
-            if (!isInitialLoadingBarActive)
-            {
-                return;
-            }
-
-            isInitialLoadingBarActive = false;
-
-            // LoadingBarView는 풀에서 재사용되는 인스턴스라 다음 사용처에 이 문구가 남지 않게 비운다.
-            GameManager.Instance?.LoadingBarView?.UpdateTitle(string.Empty);
-            GameManager.Instance?.HideLoadingBar();
-        }
-
         /// <summary>
         /// AddressableAssetModelSO에서 tags가 "GameScene"인 항목의 preloadAddressableKeys(예: UI_GameScene)를 로드하여
         /// 이 GameSceneManager(this.transform)의 자식으로 직접 생성한다.
@@ -377,7 +278,7 @@ namespace Incheol.Presenter.Scene
                 return;
             }
 
-            ReportInitialLoading("맵과 UI를 구성하는 중...");
+            loadingTracker.Report("맵과 UI를 구성하는 중...");
 
             foreach (AddressableAssetKey key in keys)
             {
@@ -421,7 +322,8 @@ namespace Incheol.Presenter.Scene
                         instance.TryGetComponent(out monsterTargetView);
                         instance.TryGetComponent(out dropItemPopupView);
                         instance.TryGetComponent(out respawnPopupView);
-                        instance.TryGetComponent(out mapViewPopupView);
+                        instance.TryGetComponent(out UI_MapViewPopupView mapViewPopupView);
+                        mapPresenter.AttachView(gameSceneView, mapViewPopupView);
 
                         if (gameSceneView != null)
                         {
@@ -457,7 +359,18 @@ namespace Incheol.Presenter.Scene
                 return;
             }
 
-            SpawnPlayerCharacter(respawnPoint);
+            playerSpawner.Spawn(respawnPoint, HandlePlayerSpawned);
+        }
+
+        private void HandlePlayerSpawned(GameObject _playerInstance, PlayerAttackController _attackController)
+        {
+            localPlayerInstance = _playerInstance;
+            localPlayerAttackController = _attackController;
+            localPlayerAttackController.MonsterTargeted += HandleMonsterTargeted;
+
+            ApplySelectedCharacterCustomization(_playerInstance);
+
+            loadingTracker.Report("캐릭터 정보를 불러오는 중...");
         }
 
         private static Transform FindChildRecursive(Transform _root, string _name)
@@ -479,77 +392,6 @@ namespace Incheol.Presenter.Scene
             return null;
         }
 
-
-        /// <summary>
-        /// BasicCharacter를 Addressable로 로드해 이 GameSceneManager(transform) 밑에 생성하고,
-        /// _respawnPoint의 위치/회전값만 가져다 배치한다(그 자식으로 만들지는 않는다 - 맵 프리팹 하위에
-        /// 있는 RespawnPoint에 종속되면 맵이 파괴/교체될 때 플레이어도 함께 파괴될 위험이 있다).
-        /// SaveDataManager에 저장된 선택 캐릭터의 외형(헤어/눈/입)을 적용한다.
-        /// </summary>
-        private void SpawnPlayerCharacter(Transform _respawnPoint)
-        {
-            if (AddressableAssetManager.Instance == null)
-            {
-                DebugLogManager.GenerateErrorMessage<GameSceneManager>("AddressableAssetManager.Instance가 null입니다.");
-                return;
-            }
-
-            AddressableAssetManager.Instance.LoadPrefabAddress<GameObject>(AddressableAssetKey.BasicCharacter.ToString(), prefab =>
-            {
-                if (this == null)
-                {
-                    return;
-                }
-
-                if (prefab == null)
-                {
-                    DebugLogManager.GenerateErrorMessage<GameSceneManager>($"플레이어 캐릭터 로드 실패 Key : {AddressableAssetKey.BasicCharacter}");
-                    return;
-                }
-
-                GameObject playerInstance = AddressableAssetManager.Instance.InstantiatePrefab(prefab, transform);
-                playerInstance.transform.SetPositionAndRotation(_respawnPoint.position, _respawnPoint.rotation);
-                localPlayerInstance = playerInstance;
-
-                ApplySelectedCharacterCustomization(playerInstance);
-                AssignPlayerToFollowCamera(playerInstance.transform);
-
-                // RequireComponent로 Rigidbody/CapsuleCollider가 함께 추가되어, 스폰 직후 중력을 받아 지면에 착지하고
-                // WASD로 카메라 기준 이동할 수 있게 된다(이동 방향으로 몸이 자동으로 돈다).
-                playerInstance.AddComponent<PlayerMoveController>();
-
-                // 일정 주기로 자신의 위치/회전을 GameServer(Game_MoveRequest)로 전송한다.
-                playerInstance.AddComponent<PlayerNetworkSender>();
-
-                // Space 입력으로 전방의 원격 플레이어를 공격(Game_AttackRequest)한다.
-                localPlayerAttackController = playerInstance.AddComponent<PlayerAttackController>();
-                localPlayerAttackController.MonsterTargeted += HandleMonsterTargeted;
-
-                // 숫자 키 1~4로 액티브 스킬을 쓴다(PlayerAttackController/PlayerMoveController를 찾아 쓰므로 둘보다 뒤에 붙인다).
-                playerInstance.AddComponent<PlayerSkillController>();
-
-                ReportInitialLoading("캐릭터 정보를 불러오는 중...");
-            });
-        }
-
-        /// <summary>
-        /// 씬의 CinemachineCamera(CM_PlayerFollowCamera)가 방금 스폰된 플레이어를 추적하도록 Follow 타깃을 연결한다.
-        /// Floor001/RespawnPoint 등 씬 구성 에셋과 달리 카메라는 GameScene.unity에 이미 배치되어 있으므로 여기서는 찾아서 연결만 한다.
-        /// </summary>
-        private void AssignPlayerToFollowCamera(Transform _playerTransform)
-        {
-            CinemachineCamera followCamera = FindAnyObjectByType<CinemachineCamera>();
-
-            if (followCamera == null)
-            {
-                DebugLogManager.GenerateErrorMessage<GameSceneManager>("씬에서 CinemachineCamera를 찾을 수 없습니다.");
-                return;
-            }
-
-            // 이동/전투 카메라는 수평 45도로 고정된 월드 기준 CinemachineFollow + RotationComposer라 캐릭터가 돌아도 화면이 돌지 않는다.
-            // CustomLookAtTarget이 꺼져 있어 LookAt은 Follow 대상을 그대로 쓰므로 따로 지정하지 않는다.
-            followCamera.Follow = _playerTransform;
-        }
 
         /// <summary>
         /// SaveDataManager.SelectedCharacterId를 서버에서 다시 조회하여(헤어/눈/입 포함),
@@ -641,7 +483,7 @@ namespace Incheol.Presenter.Scene
                 Exp = spawnedPlayerModel != null ? spawnedPlayerModel.CurrentExp : 0
             };
 
-            ReportInitialLoading("게임 서버에 접속하는 중...");
+            loadingTracker.Report("게임 서버에 접속하는 중...");
 
             GameServerConnectManager.Instance.ConnectAndEnter(localInfo);
 
@@ -669,63 +511,8 @@ namespace Incheol.Presenter.Scene
                     gameSceneView.SkillBarView.Bind(spawnedPlayerModel, localPlayerInstance.GetComponent<PlayerSkillController>());
                 }
 
-                SetupMiniMap();
-                SetupWorldMap();
+                mapPresenter.SetupForPlayer(localPlayerInstance != null ? localPlayerInstance.transform : null);
             }
-        }
-
-        /// <summary>
-        /// UI_GameScene과 로컬 플레이어가 모두 준비된 시점(TryBindPlayerInfo)에 한 번만 MiniMapController를
-        /// 생성해 초기화한다. gameSceneView.miniMapView가 인스펙터에 연결돼 있지 않으면 조용히 건너뛴다.
-        /// </summary>
-        private void SetupMiniMap()
-        {
-            if (miniMapController != null || localPlayerInstance == null)
-            {
-                return;
-            }
-
-            if (gameSceneView.MiniMapView == null)
-            {
-                return;
-            }
-
-            GameObject miniMapObject = new GameObject(nameof(MiniMapController));
-            miniMapObject.transform.SetParent(transform, false);
-
-            miniMapController = miniMapObject.AddComponent<MiniMapController>();
-            miniMapController.Initialize(gameSceneView.MiniMapView, gameSceneView.PlayerMiniMapIcon, localPlayerInstance.transform);
-        }
-
-        /// <summary>
-        /// 맵 팝업(M키)에 현재 맵 전체를 보여주는 WorldMapController를 한 번만 생성/초기화한다.
-        /// 팝업이 열릴 때 현재 맵(currentMapInstance) 기준으로 영역을 다시 맞추고, 닫히면 렌더링을 멈춘다.
-        /// </summary>
-        private void SetupWorldMap()
-        {
-            if (worldMapController != null || localPlayerInstance == null || mapViewPopupView == null || mapViewPopupView.MapView == null)
-            {
-                return;
-            }
-
-            GameObject worldMapObject = new GameObject(nameof(WorldMapController));
-            worldMapObject.transform.SetParent(transform, false);
-
-            worldMapController = worldMapObject.AddComponent<WorldMapController>();
-            worldMapController.Initialize(mapViewPopupView.MapView, gameSceneView != null ? gameSceneView.PlayerMiniMapIcon : null, localPlayerInstance.transform);
-
-            mapViewPopupView.Opened += HandleMapViewOpened;
-            mapViewPopupView.Closed += HandleMapViewClosed;
-        }
-
-        private void HandleMapViewOpened()
-        {
-            worldMapController?.Show(currentMapInstance);
-        }
-
-        private void HandleMapViewClosed()
-        {
-            worldMapController?.Hide();
         }
 
         /// <summary>

@@ -75,7 +75,7 @@ namespace Incheol.Presenter.Scene
             spawnedPlayerModel.ApplyServerMp(self.CurrentMp, self.MaxMp);
 
             // 최초 입장이 확인된 시점이 로비에서 이어받은 로딩의 끝이다(맵 이동/재접속 때는 이미 숨긴 뒤라 아무 일도 하지 않는다).
-            _ = CompleteInitialLoadingAsync();
+            _ = loadingTracker.CompleteAsync();
         }
 
         /// <summary>
@@ -132,9 +132,7 @@ namespace Incheol.Presenter.Scene
             isUseItemPending = false;
             SetLocalPlayerControlEnabled(false);
 
-            isInitialLoadingBarActive = false;
-            GameManager.Instance?.LoadingBarView?.UpdateTitle(string.Empty);
-            GameManager.Instance?.HideLoadingBar();
+            loadingTracker.Abandon();
             GameManager.Instance?.ShowAlarmPopup("연결 끊김", "게임 서버에 연결할 수 없어 로비로 돌아갑니다.");
 
             if (SceneLoadManager.Instance == null)
