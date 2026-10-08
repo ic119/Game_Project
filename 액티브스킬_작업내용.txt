@@ -123,6 +123,10 @@
      * 파이어볼/투창은 날아가는 투사체 연출이 없고 끝점 타격 이펙트만 있다(ProjectileVfxManager 는 무기 타입 기반이라 스킬용 확장이 필요).
      * 창 연속 찌르기 3연타는 시전 이펙트 1회만 재생한다.
      * 모든 무기 공통: 바닥 범위 표시(4-2)는 아직 없음.
+ - 기본 공격 막힘: 시전 중(SkillCasting)에는 원래부터 막혔고, 이펙트가 모션보다 오래 이어지는 스킬은 SkillVfxEntry.attackLockSeconds 만큼
+     시전 후에도 막는다(0 이면 시전 잠금까지). PlayerAttackController.BlockAttackUntil / ClearSkillAttackBlock.
+     대쉬로 시전을 끊거나 서버가 같은 슬롯 시전을 거부하면 함께 풀린다. 설정값: 도약 내려찍기 1.2 / 대지 가르기 1.5 / 분노의 일격 1.6 /
+     프로스트 노바 0.9 / 낙뢰 1.5 / 메테오 2.0 / 승천창 1.0 (초). 나머지 스킬은 시전 잠금만.
  - 서버 테스트 329개 통과(SkillTableParityTests 가 Area 값까지 검사).
 
 

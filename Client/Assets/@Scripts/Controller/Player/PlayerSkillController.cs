@@ -173,6 +173,10 @@ namespace Incheol.Controller
             if (attackController != null)
             {
                 attackController.SkillCasting = true;
+
+                // 이펙트가 시전 모션보다 오래 이어지는 스킬은 시전이 끝난 뒤에도 일정 시간 기본 공격을 막는다(SkillVfxEntry.attackLockSeconds).
+                float attackLockSeconds = SkillVfxManager.Instance != null ? SkillVfxManager.Instance.GetAttackLockSeconds(skill) : skill.CastLockSeconds;
+                attackController.BlockAttackUntil(Time.time + attackLockSeconds);
             }
 
             playerCharacterModel.CancelHitReaction();
@@ -221,6 +225,9 @@ namespace Incheol.Controller
             {
                 EndCast();
             }
+
+            // 대쉬로 시전을 끊으면 이펙트가 남아 있어도 기본 공격을 다시 할 수 있다.
+            attackController?.ClearSkillAttackBlock();
         }
 
         // 서버의 시전 결과. 승인이면 쿨다운을 서버 값으로 맞추고, 거부면 시전을 취소하고 사유에 맞게 쿨다운을 되돌린다.
@@ -257,6 +264,9 @@ namespace Incheol.Controller
             if (IsCasting && castingSlot == packet.Slot)
             {
                 EndCast();
+
+                // 거부된 시전이 걸어 둔 기본 공격 막힘도 푼다(다른 슬롯의 거부가 진행 중인 시전의 막힘을 풀면 안 되므로 같은 슬롯일 때만).
+                attackController?.ClearSkillAttackBlock();
             }
 
             SkillRejected?.Invoke(packet.Slot, packet.Status);

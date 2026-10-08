@@ -91,6 +91,25 @@ namespace Incheol.Controller
         /// </summary>
         public bool SkillCasting { get; set; }
 
+        // 스킬 시전이 끝난 뒤에도 이 시각(Time.time)까지는 기본 공격을 받지 않는다(이펙트가 시전 모션보다 오래 이어지는 스킬용, SkillVfxEntry.attackLockSeconds).
+        private float skillAttackBlockedUntil;
+
+        /// <summary>
+        /// untilTime(Time.time 기준)까지 기본 공격을 막는다. 더 늦은 시각으로만 늘어난다 - 이미 걸린 막힘을 짧게 줄이지는 않는다.
+        /// </summary>
+        public void BlockAttackUntil(float untilTime)
+        {
+            skillAttackBlockedUntil = Mathf.Max(skillAttackBlockedUntil, untilTime);
+        }
+
+        /// <summary>
+        /// 스킬 때문에 걸린 기본 공격 막힘을 푼다(대쉬로 시전이 끊겼거나 서버가 시전을 거부했을 때).
+        /// </summary>
+        public void ClearSkillAttackBlock()
+        {
+            skillAttackBlockedUntil = 0f;
+        }
+
         private bool IsWand => playerCharacterModel != null && playerCharacterModel.CurrentWeaponType == WeaponType.Wand;
 
         private void Awake()
@@ -138,7 +157,7 @@ namespace Incheol.Controller
             }
 
             // 스킬 시전 중에는 기본 공격을 받지 않는다(시전 시작 때 진행 중이던 콤보는 InterruptForSkill이 끊었다).
-            if (SkillCasting)
+            if (SkillCasting || Time.time < skillAttackBlockedUntil)
             {
                 return;
             }

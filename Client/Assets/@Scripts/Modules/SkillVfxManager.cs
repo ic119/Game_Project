@@ -34,6 +34,20 @@ namespace Incheol.Modules
         }
 
         /// <summary>
+        /// 이 스킬을 쓴 뒤 기본공격을 막는 시간(초). 시전 잠금과 이펙트 설정의 attackLockSeconds 중 긴 쪽이다.
+        /// 데이터베이스가 아직 없거나 등록되지 않은 스킬이면 시전 잠금만 쓴다.
+        /// </summary>
+        public float GetAttackLockSeconds(SkillTable.Entry skill)
+        {
+            if (database != null && database.TryGetEntry(skill.Id, out SkillVfxEntry entry))
+            {
+                return Mathf.Max(skill.CastLockSeconds, entry.attackLockSeconds);
+            }
+
+            return skill.CastLockSeconds;
+        }
+
+        /// <summary>
         /// 스킬 시전 이펙트를 재생한다.
         /// </summary>
         /// <param name="origin">시전자 발 위치(월드).</param>

@@ -29,6 +29,9 @@ namespace Incheol.Models.SO
     {
         public string skillId = string.Empty;
 
+        [Tooltip("시전 후 기본공격을 막는 시간(초). 시전 잠금(서버 CastLockSeconds)보다 짧거나 0이면 시전 잠금까지만 막는다. 이펙트가 시전 모션보다 오래 이어지는 스킬은 이 값을 크게 해서 이펙트가 끝날 즈음까지 기본공격이 나가지 않게 한다. 대쉬로 시전을 끊으면 함께 풀린다.")]
+        [Min(0f)] public float attackLockSeconds = 0f;
+
         [Tooltip("시전 순간 시전자 곁에서 재생한다(휘두르는 궤적, 시전 섬광 등). 기준점은 시전자 발 위치다.")]
         public SkillVfxLayer cast = new SkillVfxLayer();
 
