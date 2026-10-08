@@ -89,8 +89,7 @@ namespace Incheol.Presenter.Scene
             {
                 // 응답을 받을 수 없게 됐으므로 대기 상태를 풀어준다. 서버의 물약 대기시간은 세션마다 하나라 재접속하면
                 // 초기화되므로 이쪽 표시도 함께 비운다.
-                isUseItemPending = false;
-                potionReadyAtTime = 0f;
+                potionState.Reset();
                 inventoryView?.SetPotionCooldown(0f);
 
                 SetLocalPlayerControlEnabled(false);
@@ -129,7 +128,7 @@ namespace Incheol.Presenter.Scene
         private void HandleGameServerDisconnected()
         {
             // 응답을 받을 수 없게 됐으므로 대기 상태를 풀어준다.
-            isUseItemPending = false;
+            potionState.IsPending = false;
             SetLocalPlayerControlEnabled(false);
 
             loadingTracker.Abandon();

@@ -40,10 +40,10 @@ namespace Incheol.Presenter.Scene
         private UI_InventoryView inventoryView;
 
         /// <summary>
-        /// 로컬 플레이어가 처치 보상(Game_LootBroadcast)으로 받은 아이템의 런타임 누적 상태.
-        /// itemId별 수량과 장착 슬롯(equipSlot)을 들고 있으며, 서버(CharacterItem)와 1:1로 대응한다.
+        /// 로컬 플레이어가 보유한 아이템의 런타임 상태(처치 보상으로 쌓이고, 장착/사용/버리기로 바뀐다).
+        /// 서버(CharacterItem)와 1:1로 대응한다.
         /// </summary>
-        private readonly List<InventoryItemStack> localInventoryItems = new List<InventoryItemStack>();
+        private readonly LocalInventory localInventory = new LocalInventory();
 
         /// <summary>
         /// 현재 로드되어 있는 맵 프리팹 인스턴스와 그 Addressable 키.
@@ -59,22 +59,14 @@ namespace Incheol.Presenter.Scene
         private bool isSwappingMap;
 
         /// <summary>
-        /// 물약 사용 요청(Game_UseItemRequest)을 보내고 결과(Game_UseItemResult)를 기다리는 중이면 true.
-        /// 응답 전 연타로 같은 요청이 여러 번 나가지 않게 막는다.
+        /// 물약 사용 요청의 대기 상태와 재사용 대기시간.
         /// </summary>
-        private bool isUseItemPending;
-
-        /// <summary>
-        /// 물약 재사용 대기시간이 끝나는 시각(Time.unscaledTime 기준). 서버가 Game_UseItemResult로 알려준 남은 시간으로 갱신한다 -
-        /// 실제 판정은 서버가 하고(모든 물약이 하나의 대기시간을 공유), 이 값은 어차피 거부될 요청을 미리 거르고 남은 시간을
-        /// 보여주는 데 쓴다.
-        /// </summary>
-        private float potionReadyAtTime;
+        private readonly PotionUseState potionState = new PotionUseState();
 
         /// <summary>
         /// 다음 물약을 쓸 수 있기까지 남은 시간(초). 대기 중이 아니면 0.
         /// </summary>
-        public float PotionCooldownRemainingSeconds => Mathf.Max(0f, potionReadyAtTime - Time.unscaledTime);
+        public float PotionCooldownRemainingSeconds => potionState.RemainingSeconds;
 
         /// <summary>
         /// 로컬 플레이어 인스턴스. SpawnPlayerCharacter가 이 GameSceneManager(transform) 밑에 생성하고
@@ -430,8 +422,7 @@ namespace Incheol.Presenter.Scene
 
                 // 이전 세션에서 처치 보상으로 쌓인 아이템(서버 CharacterItems)을 복원한다. 골드는
                 // ApplyUserSaveData가 이미 spawnedPlayerModel.Gold로 반영했으므로 여기서는 아이템만 채운다.
-                localInventoryItems.Clear();
-                localInventoryItems.AddRange(userSaveData.items);
+                localInventory.Replace(userSaveData.items);
 
                 // 복원한 아이템 중 equipSlot이 설정된(이전 세션에 장착해뒀던) 것들을 캐릭터 시각에 반영하고,
                 // 장비 스탯 보너스를 계산해둔다 - 이 직후 ConnectToGameServer가 만드는 GamePlayerInfo가

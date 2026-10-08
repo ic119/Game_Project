@@ -34,7 +34,7 @@ namespace Incheol.Presenter.Scene
 
             foreach (GameLootItemEntry item in packet.Items)
             {
-                AddOrMergeInventoryItem(item.ItemId, item.Qty);
+                localInventory.AddOrMerge(item.ItemId, item.Qty);
             }
 
             RefreshInventoryDisplay();
@@ -61,21 +61,6 @@ namespace Incheol.Presenter.Scene
             dropItemPopupView.Show(goldGained, items, itemLookup);
         }
 
-
-        /// <summary>
-        /// localInventoryItems에서 같은 itemId 스택을 찾아 수량만 더하고, 없으면 새 스택을 추가한다.
-        /// </summary>
-        private void AddOrMergeInventoryItem(string itemId, int qty)
-        {
-            InventoryItemStack existing = localInventoryItems.Find(stack => stack.itemId == itemId);
-            if (existing != null)
-            {
-                existing.count += qty;
-                return;
-            }
-
-            localInventoryItems.Add(new InventoryItemStack(itemId, qty));
-        }
 
         /// <summary>
         /// ItemDatabaseManager.OnDatabaseLoaded 콜백. 인벤토리가 ItemDatabaseSO 로드 완료 전에 먼저 열려
@@ -105,7 +90,7 @@ namespace Incheol.Presenter.Scene
             }
 
             Func<string, ItemData> itemLookup = ItemDatabaseManager.Instance != null ? ItemDatabaseManager.Instance.FindById : null;
-            inventoryView.RefreshInventory(spawnedPlayerModel.Gold, localInventoryItems, itemLookup);
+            inventoryView.RefreshInventory(spawnedPlayerModel.Gold, localInventory.Items, itemLookup);
             inventoryView.SetPotionCooldown(PotionCooldownRemainingSeconds); // 다시 그려진 선택 슬롯의 사용 버튼에 남은 대기시간을 반영한다.
             inventoryView.UpdateStatsUI(spawnedPlayerModel.Stats, spawnedPlayerModel.AttackPower, spawnedPlayerModel.Defense, spawnedPlayerModel.MaxHp);
         }
@@ -127,7 +112,7 @@ namespace Incheol.Presenter.Scene
         }
 
         /// <summary>
-        /// localInventoryItems 중 장착 중인(equipSlot이 설정된) 스택들의 ItemData.bonusAttackPower/bonusDefense를
+        /// localInventory 중 장착 중인(equipSlot이 설정된) 스택들의 ItemData.bonusAttackPower/bonusDefense를
         /// 합산해 CombatStatComponent에 반영하고, GameServer 접속 중이면 갱신된 값을 알린다(Game_StatUpdateRequest).
         /// GameServer는 Game_EnterRequest 시점 스냅샷(PlayerInfo.AttackPower/Defense)을 그대로 캐싱해서 전투 판정에
         /// 쓰기 때문에(GameRoom.ApplyMonsterAttackAsync/AttackPlayerAsync), 이 알림이 없으면 인벤토리에는 스탯이
@@ -142,26 +127,7 @@ namespace Incheol.Presenter.Scene
                 return;
             }
 
-            int totalAttackBonus = 0;
-            int totalDefenseBonus = 0;
-
-            foreach (InventoryItemStack stack in localInventoryItems)
-            {
-                if (string.IsNullOrEmpty(stack.equipSlot))
-                {
-                    continue;
-                }
-
-                ItemData itemData = ItemDatabaseManager.Instance.FindById(stack.itemId);
-                if (itemData == null)
-                {
-                    continue;
-                }
-
-                totalAttackBonus += itemData.bonusAttackPower;
-                totalDefenseBonus += itemData.bonusDefense;
-            }
-
+            localInventory.SumEquipmentBonus(ItemDatabaseManager.Instance.FindById, out int totalAttackBonus, out int totalDefenseBonus);
             spawnedPlayerModel.SetEquipmentBonus(totalAttackBonus, totalDefenseBonus);
 
             if (notifyServer)
@@ -186,7 +152,7 @@ namespace Incheol.Presenter.Scene
         }
 
         /// <summary>
-        /// localInventoryItems 중 equipSlot이 설정된(장착 중인) 스택을 실제 캐릭터 장비 시각(PlayerCharacterModel.EquipItem)에
+        /// localInventory 중 equipSlot이 설정된(장착 중인) 스택을 실제 캐릭터 장비 시각(PlayerCharacterModel.EquipItem)에
         /// 반영한다. 로그인 직후(캐릭터 복원, ApplySelectedCharacterCustomization)와 ItemDatabaseSO 로드 완료 시점
         /// (HandleItemDatabaseLoaded) 양쪽에서 호출된다 - 아이템 데이터베이스가 아직 로드되지 않은 상태에서 먼저
         /// 호출되면 해당 스택은 건너뛰고, 로드가 끝난 뒤 재호출로 뒤늦게 반영된다. EquipmentController.Equip은
@@ -199,13 +165,8 @@ namespace Incheol.Presenter.Scene
                 return;
             }
 
-            foreach (InventoryItemStack stack in localInventoryItems)
+            foreach (InventoryItemStack stack in localInventory.EquippedStacks())
             {
-                if (string.IsNullOrEmpty(stack.equipSlot))
-                {
-                    continue;
-                }
-
                 ItemData itemData = ItemDatabaseManager.Instance.FindById(stack.itemId);
                 if (itemData != null)
                 {
@@ -255,25 +216,11 @@ private void TryEquipItem(string _itemId)
                 return;
             }
 
-            InventoryItemStack targetStack = localInventoryItems.Find(stack => stack.itemId == _itemId && string.IsNullOrEmpty(stack.equipSlot));
-            if (targetStack == null)
+            string slotKey = itemData.equipSlotType.ToString();
+            if (!localInventory.TryEquip(_itemId, slotKey, out InventoryItemStack targetStack, out InventoryItemStack previouslyEquipped))
             {
                 return;
             }
-
-            string slotKey = itemData.equipSlotType.ToString();
-            InventoryItemStack previouslyEquipped = localInventoryItems.Find(stack => stack.equipSlot == slotKey);
-            if (previouslyEquipped == targetStack)
-            {
-                return; // 이미 장착 중
-            }
-
-            if (previouslyEquipped != null)
-            {
-                previouslyEquipped.equipSlot = null;
-            }
-
-            targetStack.equipSlot = slotKey;
 
             spawnedPlayerModel.EquipItem(itemData);
 
@@ -292,11 +239,10 @@ private void TryEquipItem(string _itemId)
                 DebugLogManager.GenerateErrorMessage<GameSceneManager>($"장비 장착 저장 실패 : {_itemId}");
 
                 // 서버 저장이 실패했으니 로컬 상태를 장착 시도 이전으로 되돌린다(낙관적 갱신 롤백).
-                targetStack.equipSlot = null;
+                localInventory.RevertEquip(targetStack, previouslyEquipped, slotKey);
 
                 if (previouslyEquipped != null)
                 {
-                    previouslyEquipped.equipSlot = slotKey;
                     ItemData previousItemData = ItemDatabaseManager.Instance?.FindById(previouslyEquipped.itemId);
                     if (previousItemData != null)
                     {
@@ -324,12 +270,12 @@ private void TryEquipItem(string _itemId)
         /// </summary>
         private void TryUseHealthPotion(string _itemId, ItemData _itemData)
         {
-            if (isUseItemPending || spawnedPlayerModel == null)
+            if (potionState.IsPending || spawnedPlayerModel == null)
             {
                 return;
             }
 
-            InventoryItemStack targetStack = localInventoryItems.Find(stack => stack.itemId == _itemId && string.IsNullOrEmpty(stack.equipSlot));
+            InventoryItemStack targetStack = localInventory.FindUnequipped(_itemId);
             if (targetStack == null || targetStack.count <= 0)
             {
                 return;
@@ -346,7 +292,7 @@ private void TryEquipItem(string _itemId)
                 return;
             }
 
-            isUseItemPending = GameServerConnectManager.Instance != null && GameServerConnectManager.Instance.SendUseItem(_itemId);
+            potionState.IsPending = GameServerConnectManager.Instance != null && GameServerConnectManager.Instance.SendUseItem(_itemId);
         }
 
         /// <summary>
@@ -354,10 +300,10 @@ private void TryEquipItem(string _itemId)
         /// </summary>
 private void HandleUseItemResult(GameUseItemResultPacket packet)
         {
-            isUseItemPending = false;
+            potionState.IsPending = false;
 
             // 성공/실패와 무관하게 서버가 알려준 남은 대기시간으로 갱신한다(성공하면 방금 시작된 대기시간, Cooldown 거부면 남은 시간).
-            potionReadyAtTime = Time.unscaledTime + packet.CooldownRemainingMs / 1000f;
+            potionState.SetCooldownMs(packet.CooldownRemainingMs);
             inventoryView?.SetPotionCooldown(PotionCooldownRemainingSeconds);
 
             if (!packet.Success)
@@ -367,16 +313,9 @@ private void HandleUseItemResult(GameUseItemResultPacket packet)
 
             PlayHpPotionEffect();
 
-            InventoryItemStack targetStack = localInventoryItems.Find(stack => stack.itemId == packet.ItemId && string.IsNullOrEmpty(stack.equipSlot));
-            if (targetStack == null)
+            if (!localInventory.ConsumeOne(packet.ItemId))
             {
                 return;
-            }
-
-            targetStack.count--;
-            if (targetStack.count <= 0)
-            {
-                localInventoryItems.Remove(targetStack);
             }
 
             RefreshInventoryDisplay();
@@ -403,13 +342,12 @@ private void HandleUseItemResult(GameUseItemResultPacket packet)
         /// </summary>
 private void TryDropItem(string _itemId)
         {
-            InventoryItemStack targetStack = localInventoryItems.Find(stack => stack.itemId == _itemId && string.IsNullOrEmpty(stack.equipSlot));
+            InventoryItemStack targetStack = localInventory.RemoveUnequipped(_itemId);
             if (targetStack == null)
             {
                 return;
             }
 
-            localInventoryItems.Remove(targetStack);
             RefreshInventoryDisplay();
 
             SaveDataManager.Instance?.RemoveItem(_itemId, success =>
@@ -422,7 +360,7 @@ private void TryDropItem(string _itemId)
                 DebugLogManager.GenerateErrorMessage<GameSceneManager>($"아이템 버리기 저장 실패 : {_itemId}");
 
                 // 서버 저장이 실패했으니 로컬 상태를 버리기 이전으로 되돌린다(낙관적 갱신 롤백).
-                localInventoryItems.Add(targetStack);
+                localInventory.Restore(targetStack);
                 RefreshInventoryDisplay();
                 GameManager.Instance?.ShowAlarmPopup("아이템 버리기 실패", "서버 저장에 실패해 아이템을 되돌렸습니다.");
             });
@@ -441,13 +379,10 @@ private void TryUnequipSlot(EquipmentSlotType _slotType)
             }
 
             string slotKey = _slotType.ToString();
-            InventoryItemStack equippedStack = localInventoryItems.Find(stack => stack.equipSlot == slotKey);
-            if (equippedStack == null)
+            if (!localInventory.TryUnequip(slotKey, out InventoryItemStack equippedStack))
             {
                 return;
             }
-
-            equippedStack.equipSlot = null;
 
             spawnedPlayerModel.UnequipItem(_slotType);
             RecalculateEquipmentStats(notifyServer: false);
@@ -464,7 +399,7 @@ private void TryUnequipSlot(EquipmentSlotType _slotType)
                 DebugLogManager.GenerateErrorMessage<GameSceneManager>($"장비 해제 저장 실패 : {_slotType}");
 
                 // 서버 저장이 실패했으니 로컬 상태를 해제 시도 이전으로 되돌린다(낙관적 갱신 롤백).
-                equippedStack.equipSlot = slotKey;
+                localInventory.RevertUnequip(equippedStack, slotKey);
 
                 ItemData itemData = ItemDatabaseManager.Instance?.FindById(equippedStack.itemId);
                 if (itemData != null)
