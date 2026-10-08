@@ -184,6 +184,9 @@ namespace Incheol.Controller
                 animator.SetInteger(SkillIndexHash, skill.AnimatorSkillIndex);
             }
 
+            // 이펙트는 서버 응답을 기다리지 않고 모션과 함께 바로 재생한다. 서버가 거부하면 모션과 함께 끊기지만, 이미 터진 이펙트는 짧게 보이고 끝난다.
+            SkillVfxManager.Instance?.PlaySkill(skill, transform.position, transform.rotation);
+
             SkillCast?.Invoke(slot, skill);
         }
 

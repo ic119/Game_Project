@@ -1,0 +1,319 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d24ca6e2808a8e94bb1c2e94a7dcc0dc, type: 3}
+  m_Name: SkillVfxDatabaseSO
+  m_EditorClassIdentifier: Assembly-CSharp::Incheol.Models.SO.SkillVfxDatabaseSO
+  entries:
+  - skillId: ohs_pierce
+    cast:
+      key: 31
+      offset: {x: 0, y: 1, z: 1}
+      scale: 0.8
+      referenceSize: 0
+      yawOffset: -180
+    areaStart:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaHit:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+  - skillId: ohs_whirlwind
+    cast:
+      key: 32
+      offset: {x: 0, y: 0.9, z: 0}
+      scale: 1
+      referenceSize: 6.7
+      yawOffset: 0
+    areaStart:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaHit:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+  - skillId: ohs_leap_slam
+    cast:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaStart:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaHit:
+      key: 46
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 19.5
+      yawOffset: 0
+  - skillId: ohs_sword_wave
+    cast:
+      key: 33
+      offset: {x: 0, y: 1, z: 1.5}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaStart:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaHit:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+  - skillId: ths_smash
+    cast:
+      key: 34
+      offset: {x: 0, y: 1, z: 1.1}
+      scale: 0.9
+      referenceSize: 0
+      yawOffset: 0
+    areaStart:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaHit:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+  - skillId: ths_great_spin
+    cast:
+      key: 35
+      offset: {x: 0, y: 0.9, z: 0}
+      scale: 1
+      referenceSize: 6.8
+      yawOffset: 0
+    areaStart:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaHit:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+  - skillId: ths_earth_cleave
+    cast:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaStart:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaHit:
+      key: 38
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 8.8
+      yawOffset: 90
+  - skillId: ths_fury_strike
+    cast:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaStart:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaHit:
+      key: 39
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 11.1
+      yawOffset: 0
+  - skillId: wand_fireball
+    cast:
+      key: 28
+      offset: {x: 0, y: 1.3, z: 0.6}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaStart:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaHit:
+      key: 42
+      offset: {x: 0, y: 1, z: 3}
+      scale: 0.4
+      referenceSize: 0
+      yawOffset: 0
+  - skillId: wand_frost_nova
+    cast:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaStart:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaHit:
+      key: 44
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 5
+      yawOffset: 0
+  - skillId: wand_lightning
+    cast:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaStart:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaHit:
+      key: 40
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 15.6
+      yawOffset: 0
+  - skillId: wand_meteor
+    cast:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaStart:
+      key: 47
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 22.3
+      yawOffset: 0
+    areaHit:
+      key: 45
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 5.7
+      yawOffset: 0
+  - skillId: spear_flurry
+    cast:
+      key: 36
+      offset: {x: 0, y: 1, z: 1.2}
+      scale: 0.7
+      referenceSize: 0
+      yawOffset: 0
+    areaStart:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaHit:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+  - skillId: spear_charge
+    cast:
+      key: 37
+      offset: {x: 0, y: 1, z: 1.5}
+      scale: 0.6
+      referenceSize: 0
+      yawOffset: 0
+    areaStart:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaHit:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+  - skillId: spear_throw
+    cast:
+      key: 36
+      offset: {x: 0, y: 1, z: 1}
+      scale: 0.8
+      referenceSize: 0
+      yawOffset: 0
+    areaStart:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaHit:
+      key: 43
+      offset: {x: 0, y: 1, z: 4}
+      scale: 0.5
+      referenceSize: 0
+      yawOffset: 0
+  - skillId: spear_ascension
+    cast:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaStart:
+      key: 0
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 0
+      yawOffset: 0
+    areaHit:
+      key: 41
+      offset: {x: 0, y: 0, z: 0}
+      scale: 1
+      referenceSize: 9.1
+      yawOffset: 90

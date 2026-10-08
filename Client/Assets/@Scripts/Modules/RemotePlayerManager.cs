@@ -216,6 +216,12 @@ namespace Incheol.Modules
             {
                 controller.PlaySkillAnimation(packet.Slot, (WeaponType)packet.WeaponType);
             }
+
+            // 이펙트는 서버가 알려 준 시전 위치/방향에서 재생한다(원격 캐릭터는 보간 중이라 transform이 조금 뒤처질 수 있다).
+            if (SkillTable.TryGet(packet.WeaponType, packet.Slot, out SkillTable.Entry skill))
+            {
+                SkillVfxManager.Instance?.PlaySkill(skill, new Vector3(packet.X, packet.Y, packet.Z), Quaternion.Euler(0f, packet.RotationY, 0f));
+            }
         }
 
         /// <summary>

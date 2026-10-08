@@ -110,6 +110,9 @@ namespace Incheol.Presenter
                 // 공격을 하기 전까지만 로드가 끝나면 되므로 여기서 로드 완료까지 기다리지는 않는다.
                 _ = WeaponVfxManager.Instance;
 
+                // 스킬 이펙트 매니저도 같은 이유로 미리 만들어 SkillVfxDatabaseSO 로드를 시작한다.
+                _ = SkillVfxManager.Instance;
+
                 await Awaitable.NextFrameAsync(_cancellationToken);
 
                 return true;

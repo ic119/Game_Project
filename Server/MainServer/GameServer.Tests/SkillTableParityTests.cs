@@ -24,6 +24,18 @@ public class SkillTableParityTests
             Assert.Equal(server.ManaCost, client.ManaCost);
             Assert.Equal(server.CooldownSeconds, client.CooldownSeconds, 3);
             Assert.Equal(server.CastLockSeconds, client.CastLockSeconds, 3);
+
+            // 이펙트 배치용 범위/타격 시각. 서버 판정과 어긋나면 이펙트가 실제 맞는 자리와 다른 곳에 터진다.
+            SkillTable.Area area = client.Area;
+            Assert.Equal(server.ShapeKind.ToString(), area.Shape.ToString());
+            Assert.Equal(server.Length, area.Length, 3);
+            Assert.Equal(server.Width, area.Width, 3);
+            Assert.Equal(server.Radius, area.Radius, 3);
+            Assert.Equal(server.Angle, area.Angle, 3);
+            Assert.Equal(server.ForwardOffset, area.ForwardOffset, 3);
+            Assert.Equal(server.HitDelaySeconds, area.HitDelaySeconds, 3);
+            Assert.Equal(server.Hits, area.Hits);
+            Assert.Equal(server.HitIntervalSeconds, area.HitIntervalSeconds, 3);
         }
     }
 

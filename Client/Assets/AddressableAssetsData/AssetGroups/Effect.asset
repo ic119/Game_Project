@@ -15,8 +15,33 @@ MonoBehaviour:
   m_GroupName: Effect
   m_GUID: 4470c7b6cc249854c8cdf322ae2201ae
   m_SerializeEntries:
+  - m_GUID: 01425e40c864ddb4f84611876353f321
+    m_Address: SkillSlashStoneOnce
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 13293aabd503676499084fde3bb72094
     m_Address: HpPotion01
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 14937933846874d4e8b4c47174601d1d
+    m_Address: SkillExplosionEarth
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 208e8fa67d850204e911f2332801bed0
+    m_Address: SkillSlashStoneLong
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 21ce541a75b62314c888cea539707d5a
+    m_Address: SkillSlashMagicOnce
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 28da6f23f14685549bc1834c841e37e7
+    m_Address: SkillSlashMagicLong
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -40,13 +65,38 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 53d951d8d98fdd6469f1e039540a4c66
+    m_Address: SkillAreaStoneCircle
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 5b7bf217d69bf3643b31e1d38059485a
     m_Address: TwoHandedAttack01
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5f1edaa037bd77c4c9838c7b93fb8460
+    m_Address: SkillHitWind
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 63f163a37adb45b4ebc755c42d2ff63b
     m_Address: LevelUp01
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 65f41524e80d481438e22b319a108eea
+    m_Address: SkillAreaStoneLine
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6668d8ee5a267ba4b8a612966c73ff8a
+    m_Address: SkillDustFloorHit
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 66ec30e9a3fa0134aab91fe0333e8a20
+    m_Address: SkillSlashSnowLong
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -60,6 +110,21 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6d70c4977c061a64b8d19a001607ded6
+    m_Address: SkillSlashFireLong
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9b4e780019bfc1445b689ee1cbc0896b
+    m_Address: SkillAreaIceLine
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a68ee70fb5a5bbe4b81e17b8e3b0592d
+    m_Address: SkillMagicCircle
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: b6fc41b7fee65bb43980a3b66bc9a1f4
     m_Address: WandBolt01
     m_ReadOnly: 0
@@ -70,8 +135,18 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bec425017748e4b4e84aee1b2ea9e31a
+    m_Address: SkillAreaLightningCircle
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: bf1566b88f75587459ebbfaa4aa9ceda
     m_Address: ChestDespawn01
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c805eb45eb9255940a8aa5643cf69148
+    m_Address: SkillHitFire
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
@@ -82,6 +157,16 @@ MonoBehaviour:
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: cd221d5f145a2254797664c5758a2f31
     m_Address: SpearAttack01
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cea5f22b3eb94564b91d5c736c61b7c6
+    m_Address: SkillSlashSnowOnce
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d913176f400014c45b3a31ad3eaee325
+    m_Address: SkillNovaBlue
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0

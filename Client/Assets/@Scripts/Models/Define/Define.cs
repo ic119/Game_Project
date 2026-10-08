@@ -35,7 +35,26 @@ namespace Incheol.Models.Define
         // 완드(원거리) 공격 이펙트: 시전(지팡이 끝) / 날아가는 투사체(반복 재생) / 명중.
         WandCast01 = 28,
         WandBolt01 = 29,
-        WandHit01 = 30
+        WandHit01 = 30,
+
+        // 액티브 스킬 이펙트(SkillVfxDatabaseSO). 이름의 앞부분이 종류다 - Slash는 시전자 곁에서 휘두르는 궤적, Area는 범위 위치에 터지는 바닥/하늘 공격.
+        SkillSlashMagicOnce = 31,
+        SkillSlashMagicLong = 32,
+        SkillSlashFireLong = 33,
+        SkillSlashStoneOnce = 34,
+        SkillSlashStoneLong = 35,
+        SkillSlashSnowOnce = 36,
+        SkillSlashSnowLong = 37,
+        SkillAreaStoneLine = 38,
+        SkillAreaStoneCircle = 39,
+        SkillAreaLightningCircle = 40,
+        SkillAreaIceLine = 41,
+        SkillHitFire = 42,
+        SkillHitWind = 43,
+        SkillNovaBlue = 44,
+        SkillExplosionEarth = 45,
+        SkillDustFloorHit = 46,
+        SkillMagicCircle = 47
     }
 
     /// <summary>

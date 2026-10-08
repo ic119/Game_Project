@@ -30,6 +30,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cd5d2e1e2abf46843ae19ac9ee52cbed
+    m_Address: SkillVfxDatabaseSO
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: d1ec4fc6e9a719f4cbcbeb1622c28b4c
     m_Address: AddressableAssetModelSO
     m_ReadOnly: 0
