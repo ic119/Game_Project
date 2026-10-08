@@ -165,8 +165,18 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d56a6467e5089d44e906725c683cdc7d
+    m_Address: SkillCastFire
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: d913176f400014c45b3a31ad3eaee325
     m_Address: SkillNovaBlue
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e7fdc4a5bd0143b408ec4c65f3c31086
+    m_Address: SkillProjectileFire
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0

@@ -85,10 +85,40 @@ namespace Incheol.Modules
                 ShowTelegraph(area, origin, areaCenter, yaw);
             }
 
+            if (entry.projectile != null && entry.projectile.key != AddressableAssetKey.None)
+            {
+                StartCoroutine(LaunchProjectile(entry, origin, yaw, area));
+            }
+
             if (entry.areaHit != null && entry.areaHit.key != AddressableAssetKey.None)
             {
                 StartCoroutine(PlayHits(entry.areaHit, areaCenter, yaw, area));
             }
+        }
+
+        // 지팡이 끝에서 범위의 끝까지 투사체를 날린다. 첫 타격 시각에 도착하도록 출발 시각을 맞춘다(거리/속도만큼 날아가므로 그만큼 늦게 출발).
+        private IEnumerator LaunchProjectile(SkillVfxEntry entry, Vector3 origin, Quaternion yaw, SkillTable.Area area)
+        {
+            SkillVfxLayer layer = entry.projectile;
+            Vector3 start = origin + yaw * layer.offset;
+
+            // 도착 지점: 직선은 끝점, 원은 중심. 높이는 발사 지점과 같다.
+            float distance = area.Shape == SkillTable.AreaShape.Circle ? area.ForwardOffset : area.Length;
+            Vector3 end = origin + yaw * new Vector3(0f, layer.offset.y, distance);
+
+            float travel = Vector3.Distance(start, end) / Mathf.Max(1f, entry.projectileSpeed);
+            float hitTime = area.HitDelaySeconds;
+
+            // 타격 시각이 비행 시간보다 짧으면 바로 출발하고 타격 시각에 도착하도록 더 빨리 날린다. 길면 그만큼 늦게 출발한다.
+            float launchDelay = Mathf.Max(0f, hitTime - travel);
+            travel = hitTime > 0f ? Mathf.Min(travel, hitTime) : travel;
+
+            if (launchDelay > 0f)
+            {
+                yield return new WaitForSeconds(launchDelay);
+            }
+
+            ProjectileVfxManager.Instance?.FireSkillProjectile(layer.key, start, end, travel, layer.scale);
         }
 
         /// <summary>

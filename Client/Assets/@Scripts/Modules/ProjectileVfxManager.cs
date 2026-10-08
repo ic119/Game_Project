@@ -93,6 +93,50 @@ namespace Incheol.Modules
         }
 
         /// <summary>
+        /// 액티브 스킬의 투사체 하나를 start에서 end까지 travelSeconds 동안 날린다(SkillVfxManager가 부른다). 무기 타입이 아니라 이펙트 키를 직접 받고,
+        /// 도착하면 풀에 돌려주기만 한다 - 명중 이펙트는 스킬 설정의 areaHit이 같은 시각에 따로 재생한다.
+        /// </summary>
+        public void FireSkillProjectile(AddressableAssetKey key, Vector3 start, Vector3 end, float travelSeconds, float scale = 1f)
+        {
+            if (key == AddressableAssetKey.None || ObjectPoolManager.Instance == null)
+            {
+                return;
+            }
+
+            // 한꺼번에 너무 많이 날아다니면 가장 오래된 것부터 걷는다.
+            if (active.Count >= MaxActive)
+            {
+                ObjectPoolManager.Instance.Release(active[0].Instance);
+                active.RemoveAt(0);
+            }
+
+            Vector3 direction = end - start;
+            GameObject instance = ObjectPoolManager.Instance.Get(key.ToString(), start, direction.sqrMagnitude > 0.0001f ? Quaternion.LookRotation(direction) : Quaternion.identity);
+            if (instance == null)
+            {
+                return;
+            }
+
+            // 풀에서 돌려받은 인스턴스는 프리팹 원본 크기로 초기화되어 있으므로, 배율은 그 위에 곱한다.
+            if (!Mathf.Approximately(scale, 1f))
+            {
+                instance.transform.localScale *= scale;
+            }
+
+            active.Add(new Bolt
+            {
+                Instance = instance,
+                WeaponType = WeaponType.None,
+                Start = start,
+                End = end,
+                Target = null,
+                HasTarget = false,
+                StartTime = Time.time,
+                Duration = Mathf.Max(MinTravelSeconds, travelSeconds)
+            });
+        }
+
+        /// <summary>
         /// 패킷에 실린 목표(종류 + id)를 월드의 Transform으로 바꾼다. 몬스터/다른 플레이어/(다른 플레이어가 나를 노린 경우) 로컬 플레이어를 찾는다.
         /// 대상이 아직 스폰되지 않았거나 이미 사라졌으면 null - 호출측은 허공 발사로 처리한다.
         /// </summary>

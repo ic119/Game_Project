@@ -38,6 +38,12 @@ namespace Incheol.Models.SO
         [Tooltip("시전 순간 시전자 곁에서 재생한다(휘두르는 궤적, 시전 섬광 등). 기준점은 시전자 발 위치다.")]
         public SkillVfxLayer cast = new SkillVfxLayer();
 
+        [Tooltip("날아가는 투사체(파이어볼 등). key는 반복 재생(Loop) 이펙트여야 한다. offset은 시전자 기준 발사 지점(지팡이 끝)이고, 거기서 시전 방향으로 날아가 범위의 끝(직선은 길이, 원은 중심)에 도착한다. 도착 시각은 첫 타격 시각과 같게 맞춘다.")]
+        public SkillVfxLayer projectile = new SkillVfxLayer();
+
+        [Tooltip("투사체 속도(m/s). 거리 / 속도가 첫 타격 시각보다 길면 타격 시각에 맞춰 더 빨리 날아간다. 짧으면 타격 시각에 도착하도록 늦게 출발한다.")]
+        [Min(1f)] public float projectileSpeed = 25f;
+
         [Tooltip("시전 순간 범위 중심에서 재생한다(마법진 등 미리 보이는 연출). 기준점은 범위 중심이다.")]
         public SkillVfxLayer areaStart = new SkillVfxLayer();
 

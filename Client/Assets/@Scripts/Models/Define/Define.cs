@@ -54,7 +54,13 @@ namespace Incheol.Models.Define
         SkillNovaBlue = 44,
         SkillExplosionEarth = 45,
         SkillDustFloorHit = 46,
-        SkillMagicCircle = 47
+        SkillMagicCircle = 47,
+
+        // 날아가는 스킬 투사체(반복 재생 이펙트, PooledLoopEffect). 완드 파이어볼.
+        SkillProjectileFire = 48,
+
+        // 완드 파이어볼 시전 섬광(붉은색). WandCast01(파랑, 기본 공격과 공유)과 같은 Klaus Energy 계열의 붉은 버전.
+        SkillCastFire = 49
     }
 
     /// <summary>
