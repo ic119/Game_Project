@@ -49,6 +49,24 @@ namespace Incheol.Utils
             new Entry(1, 2, "ohs_whirlwind", "회전 베기", 6, 18, 8f, 0.7f, 4),
             new Entry(1, 3, "ohs_leap_slam", "도약 내려찍기", 9, 26, 12f, 0.95f, 5),
             new Entry(1, 4, "ohs_sword_wave", "검기 참격", 12, 36, 20f, 0.8f, 6),
+
+            // 양손검. 모션 상태는 한손검과 같은 SkillIndex를 쓰고, 애니메이터의 무기별 블렌드 트리(WeaponIndex)가 양손검 클립을 고른다.
+            new Entry(2, 1, "ths_smash", "내려치기", 3, 14, 6f, 0.55f, 1),
+            new Entry(2, 2, "ths_great_spin", "대회전", 6, 20, 9f, 0.55f, 4),
+            new Entry(2, 3, "ths_earth_cleave", "대지 가르기", 9, 28, 13f, 1.15f, 5),
+            new Entry(2, 4, "ths_fury_strike", "분노의 일격", 12, 38, 22f, 1.05f, 6),
+
+            // 완드. 4번(메테오)만 전용 긴 시전 상태(MeteorCast, SkillIndex 7)를 쓴다.
+            new Entry(4, 1, "wand_fireball", "파이어볼", 3, 12, 5f, 0.6f, 1),
+            new Entry(4, 2, "wand_frost_nova", "프로스트 노바", 6, 18, 8f, 0.7f, 4),
+            new Entry(4, 3, "wand_lightning", "낙뢰", 9, 26, 12f, 1.35f, 5),
+            new Entry(4, 4, "wand_meteor", "메테오", 12, 38, 22f, 1.45f, 7),
+
+            // 창.
+            new Entry(5, 1, "spear_flurry", "연속 찌르기", 3, 12, 5f, 0.6f, 1),
+            new Entry(5, 2, "spear_charge", "돌진", 6, 18, 8f, 0.7f, 4),
+            new Entry(5, 3, "spear_throw", "투창", 9, 26, 12f, 1.05f, 5),
+            new Entry(5, 4, "spear_ascension", "승천창", 12, 36, 20f, 0.8f, 6),
         };
 
         public static System.Collections.Generic.IReadOnlyList<Entry> All => Entries;

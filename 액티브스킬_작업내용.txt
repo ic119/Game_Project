@@ -71,6 +71,26 @@
      프리팹 수정 전에 편집 모드를 닫을 것.
 
 
+[3.5단계: 나머지 무기 스킬 (완드/양손검/창) - 구현 내용]  (4단계 전에 추가)
+ - SkillDefinitions.json : 완드/양손검/창 각 4종(총 16종). 수치는 액티브스킬_기획안.txt 기준.
+     시전 잠금(castLockSeconds)은 무기별 모션 클립 길이에 맞춤, 타격 지연(hitDelaySeconds)은 모션 길이의 약 40~50%(임의값, 4단계에서 튜닝).
+     선딜 스킬: 낙뢰 0.8s / 메테오 1.4s / 분노의 일격 1.0s (타격 지연 = 선딜). 마지막 타격은 항상 시전 잠금 안에 들어온다(테스트로 검증).
+     양손검 1번만 부채꼴(Cone 120도 2.5m). 창 1번 연속 찌르기는 Hits 3, 타당 배율 0.7(합계 2.1).
+ - SkillTable.cs : 16종 복제. AnimatorSkillIndex 는 슬롯 1/2/3/4 = 1/4/5/6 (한손검과 같은 상태 재사용), 완드 4번만 7(MeteorCast).
+ - BasicCharacterStance.controller (Attack Layer) :
+     SwordPierce / Wheelwind / LeapSlam / SwordWaveStart / SwordWave 상태의 모션을 한손검 단일 클립에서
+     WeaponIndex 블렌드 트리(임계값 1,2,4,5, Automatic Thresholds 꺼짐)로 교체. 상태 이름과 전이는 그대로(스크립트가 이름으로 참조하지 않음).
+       슬롯1=Combo03, 슬롯2=Combo04, 슬롯3=Combo05(InPlace), 슬롯4 시작=Attack04_Start, 슬롯4 본동작=Attack04
+     MeteorCast 상태 추가(Attack03_Start_MagicWand 1.267s, SkillIndex 7 진입 / 0 복귀)
+     트리 이름: SkillSlot1_WeaponBlend ~ SkillSlot4_WeaponBlend, SkillSlot4Start_WeaponBlend
+ - 서버 테스트 329개 통과: 모든 무기 4종 해금 레벨/마나·쿨다운 증가/스킬 수 16/연속 찌르기 합계 210%/마지막 타격이 시전 잠금 안
+ - 서버 코드(GameRoom 등)는 변경 없음 - 형태(직선/원/부채꼴)와 연타는 1단계에서 이미 지원.
+ - 구현하지 않은 것(기획의 이동/무적): 창 2번 돌진의 4m 전진과 전진 중 무적. 한손검 1번도 전진이 없는 것과 같은 상태(모션은 InPlace).
+     전진을 넣으려면 서버 이동 검증(PositionCorrection)과 맞물려야 한다.
+ - 알려진 한계: 분노의 일격(잠금 1.05s)과 메테오(1.45s)는 모션이 각각 0.73s/1.27s라 잠금이 끝나기 전 마지막 자세가 잠깐 유지됨.
+     인게임 확인 필요: 무기별 모션 선택, 타격 지연 체감, 부채꼴/원 판정 범위.
+
+
 [테스트 현황]
  서버 테스트 320개 통과 (기존 289 + 신규 31): SkillCatalogTests, SkillShapeTesterTests,
  GameRoomSkillTests, SkillTableParityTests, 패킷 호환 테스트(자동). Unity 콘솔 오류 없음.
@@ -90,7 +110,6 @@
  - 맵 이동/재접속 시 스킬 쿨다운 초기화(대쉬 쿨다운과 같은 구조). 필요하면 이동 시 쿨다운 이월 처리.
  - 시전 중 기본공격은 서버가 막지 않고 클라가 막음(서버는 스킬끼리 연속 시전만 제한).
  - 타격 지연(hitDelaySeconds)은 모션 임팩트 프레임을 측정하지 않은 임의값 -> 4단계에서 튜닝.
- - 한손검 외 무기는 서버 JSON/SkillTable/애니메이터 블렌드 트리가 아직 없음.
  - 시전 중 피격으로 모션이 끊겨도 서버 타격은 그대로 진행됨(대쉬 취소만 서버가 반영).
  - 스킬 이펙트/바닥 범위 표시가 없음. (마나 부족 안내는 3단계에서 추가됨)
  - 스킬 슬롯 UI 의 위치/크기/글자 크기는 기본값으로 만든 상태 -> 인게임에서 보고 조정 필요.

@@ -22,5 +22,80 @@
     "manaCost": 36, "cooldownSeconds": 20, "castLockSeconds": 0.8,
     "shape": "Line", "length": 6, "width": 1.5,
     "damageMultiplier": 3.5, "hitDelaySeconds": 0.35
+  },
+
+  {
+    "id": "wand_fireball", "name": "파이어볼", "weaponType": "Wand", "slot": 1, "unlockLevel": 3,
+    "manaCost": 12, "cooldownSeconds": 5, "castLockSeconds": 0.6,
+    "shape": "Line", "length": 6, "width": 1,
+    "damageMultiplier": 1.8, "hitDelaySeconds": 0.25
+  },
+  {
+    "id": "wand_frost_nova", "name": "프로스트 노바", "weaponType": "Wand", "slot": 2, "unlockLevel": 6,
+    "manaCost": 18, "cooldownSeconds": 8, "castLockSeconds": 0.7,
+    "shape": "Circle", "radius": 3, "forwardOffset": 0,
+    "damageMultiplier": 1.6, "hitDelaySeconds": 0.3
+  },
+  {
+    "id": "wand_lightning", "name": "낙뢰", "weaponType": "Wand", "slot": 3, "unlockLevel": 9,
+    "manaCost": 26, "cooldownSeconds": 12, "castLockSeconds": 1.35,
+    "shape": "Circle", "radius": 2.5, "forwardOffset": 6,
+    "damageMultiplier": 2.6, "hitDelaySeconds": 0.8
+  },
+  {
+    "id": "wand_meteor", "name": "메테오", "weaponType": "Wand", "slot": 4, "unlockLevel": 12,
+    "manaCost": 38, "cooldownSeconds": 22, "castLockSeconds": 1.45,
+    "shape": "Circle", "radius": 4, "forwardOffset": 7,
+    "damageMultiplier": 4.5, "hitDelaySeconds": 1.4
+  },
+
+  {
+    "id": "ths_smash", "name": "내려치기", "weaponType": "TwoHanded", "slot": 1, "unlockLevel": 3,
+    "manaCost": 14, "cooldownSeconds": 6, "castLockSeconds": 0.55,
+    "shape": "Cone", "length": 2.5, "angle": 120,
+    "damageMultiplier": 2.0, "hitDelaySeconds": 0.25
+  },
+  {
+    "id": "ths_great_spin", "name": "대회전", "weaponType": "TwoHanded", "slot": 2, "unlockLevel": 6,
+    "manaCost": 20, "cooldownSeconds": 9, "castLockSeconds": 0.55,
+    "shape": "Circle", "radius": 3, "forwardOffset": 0,
+    "damageMultiplier": 1.8, "hitDelaySeconds": 0.25
+  },
+  {
+    "id": "ths_earth_cleave", "name": "대지 가르기", "weaponType": "TwoHanded", "slot": 3, "unlockLevel": 9,
+    "manaCost": 28, "cooldownSeconds": 13, "castLockSeconds": 1.15,
+    "shape": "Line", "length": 5, "width": 2,
+    "damageMultiplier": 2.8, "hitDelaySeconds": 0.55
+  },
+  {
+    "id": "ths_fury_strike", "name": "분노의 일격", "weaponType": "TwoHanded", "slot": 4, "unlockLevel": 12,
+    "manaCost": 38, "cooldownSeconds": 22, "castLockSeconds": 1.05,
+    "shape": "Circle", "radius": 4, "forwardOffset": 3,
+    "damageMultiplier": 4.5, "hitDelaySeconds": 1.0
+  },
+
+  {
+    "id": "spear_flurry", "name": "연속 찌르기", "weaponType": "Spear", "slot": 1, "unlockLevel": 3,
+    "manaCost": 12, "cooldownSeconds": 5, "castLockSeconds": 0.6,
+    "shape": "Line", "length": 3.5, "width": 1,
+    "damageMultiplier": 0.7, "hits": 3, "hitIntervalSeconds": 0.15, "hitDelaySeconds": 0.2
+  },
+  {
+    "id": "spear_charge", "name": "돌진", "weaponType": "Spear", "slot": 2, "unlockLevel": 6,
+    "manaCost": 18, "cooldownSeconds": 8, "castLockSeconds": 0.7,
+    "shape": "Line", "length": 5, "width": 1.2,
+    "damageMultiplier": 2.0, "hitDelaySeconds": 0.25
+  },
+  {
+    "id": "spear_throw", "name": "투창", "weaponType": "Spear", "slot": 3, "unlockLevel": 9,
+    "manaCost": 26, "cooldownSeconds": 12, "castLockSeconds": 1.05,
+    "shape": "Line", "length": 8, "width": 1,
+    "damageMultiplier": 3.0, "hitDelaySeconds": 0.45
+  },
+  {
+    "id": "spear_ascension", "name": "승천창", "weaponType": "Spear", "slot": 4, "unlockLevel": 12,
+    "manaCost": 36, "cooldownSeconds": 20, "castLockSeconds": 0.8,
+    "shape": "Line", "length": 7, "width": 2,
+    "damageMultiplier": 4.2, "hitDelaySeconds": 0.35
   }
 ]

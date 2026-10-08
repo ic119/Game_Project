@@ -26,29 +26,65 @@ public class SkillCatalogTests
         HitDelaySeconds = 0.2f
     };
 
-    [Fact]
-    public void RealCatalog_OneHandedHasFourSkillsUnlockingAtLevels3_6_9_12()
+    [Theory]
+    [InlineData(WeaponKind.OneHanded)]
+    [InlineData(WeaponKind.TwoHanded)]
+    [InlineData(WeaponKind.Wand)]
+    [InlineData(WeaponKind.Spear)]
+    public void RealCatalog_EveryWeaponHasFourSkillsUnlockingAtLevels3_6_9_12(WeaponKind weapon)
     {
         int[] expectedLevels = { 3, 6, 9, 12 };
 
         for (int slot = 1; slot <= 4; slot++)
         {
-            Assert.True(SkillCatalog.TryGet(WeaponKind.OneHanded, slot, out SkillDefinition skill), $"한손검 슬롯 {slot} 없음");
+            Assert.True(SkillCatalog.TryGet(weapon, slot, out SkillDefinition skill), $"{weapon} 슬롯 {slot} 없음");
             Assert.Equal(expectedLevels[slot - 1], skill.UnlockLevel);
         }
     }
 
-    [Fact]
-    public void RealCatalog_ManaCostAndCooldownGrowWithSlot()
+    [Theory]
+    [InlineData(WeaponKind.OneHanded)]
+    [InlineData(WeaponKind.TwoHanded)]
+    [InlineData(WeaponKind.Wand)]
+    [InlineData(WeaponKind.Spear)]
+    public void RealCatalog_ManaCostAndCooldownGrowWithSlot(WeaponKind weapon)
     {
         var skills = Enumerable.Range(1, 4)
-            .Select(slot => { SkillCatalog.TryGet(WeaponKind.OneHanded, slot, out SkillDefinition s); return s; })
+            .Select(slot => { SkillCatalog.TryGet(weapon, slot, out SkillDefinition s); return s; })
             .ToList();
 
         for (int i = 1; i < skills.Count; i++)
         {
-            Assert.True(skills[i].ManaCost > skills[i - 1].ManaCost);
-            Assert.True(skills[i].CooldownSeconds > skills[i - 1].CooldownSeconds);
+            Assert.True(skills[i].ManaCost > skills[i - 1].ManaCost, $"{weapon} 슬롯 {i + 1} 마나");
+            Assert.True(skills[i].CooldownSeconds > skills[i - 1].CooldownSeconds, $"{weapon} 슬롯 {i + 1} 쿨다운");
+        }
+    }
+
+    [Fact]
+    public void RealCatalog_NoWeaponWithoutSkillsCanCast_AndSkillCountMatchesWeapons()
+    {
+        Assert.Equal(16, SkillCatalog.All().Count());
+        Assert.False(SkillCatalog.TryGet(WeaponKind.None, 1, out _));
+    }
+
+    [Fact]
+    public void RealCatalog_SpearFlurryIsThreeHitsTotalingAbout210Percent()
+    {
+        Assert.True(SkillCatalog.TryGet(WeaponKind.Spear, 1, out SkillDefinition flurry));
+
+        Assert.Equal(3, flurry.Hits);
+        Assert.True(flurry.HitIntervalSeconds > 0f);
+        Assert.Equal(2.1f, flurry.Hits * flurry.DamageMultiplier, 2);
+    }
+
+    [Fact]
+    public void RealCatalog_LastHitHappensWithinCastLock_ForEverySkill()
+    {
+        // 마지막 타격이 시전 잠금이 풀린 뒤에 일어나면, 그 사이 새 시전(CastSerial 증가)이 남은 타격을 무효로 만들 수 있다.
+        foreach (SkillDefinition skill in SkillCatalog.All())
+        {
+            float lastHit = skill.HitDelaySeconds + (skill.Hits - 1) * skill.HitIntervalSeconds;
+            Assert.True(lastHit <= skill.CastLockSeconds, $"{skill.Id}: 마지막 타격({lastHit}s)이 시전 잠금({skill.CastLockSeconds}s)보다 늦음");
         }
     }
 
