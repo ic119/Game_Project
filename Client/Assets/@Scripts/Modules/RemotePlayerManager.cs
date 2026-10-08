@@ -33,6 +33,7 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnPlayerLeft += HandlePlayerLeft;
             GameServerConnectManager.Instance.OnWorldSnapshot += HandleWorldSnapshot;
             GameServerConnectManager.Instance.OnDamageReceived += HandlePlayerDamaged;
+            GameServerConnectManager.Instance.OnMonsterDamaged += HandleMonsterDamagedByRemote;
             GameServerConnectManager.Instance.OnMonsterAttacked += HandleMonsterAttackedPlayer;
             GameServerConnectManager.Instance.OnMonsterAttackDodged += HandleMonsterAttackDodgedPlayer;
             GameServerConnectManager.Instance.OnPlayerHpChanged += HandlePlayerHpChanged;
@@ -60,6 +61,7 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnPlayerLeft -= HandlePlayerLeft;
             GameServerConnectManager.Instance.OnWorldSnapshot -= HandleWorldSnapshot;
             GameServerConnectManager.Instance.OnDamageReceived -= HandlePlayerDamaged;
+            GameServerConnectManager.Instance.OnMonsterDamaged -= HandleMonsterDamagedByRemote;
             GameServerConnectManager.Instance.OnMonsterAttacked -= HandleMonsterAttackedPlayer;
             GameServerConnectManager.Instance.OnMonsterAttackDodged -= HandleMonsterAttackDodgedPlayer;
             GameServerConnectManager.Instance.OnPlayerHpChanged -= HandlePlayerHpChanged;
@@ -290,6 +292,34 @@ namespace Incheol.Modules
         private void HandlePlayerDamaged(GameDamageBroadcastPacket packet)
         {
             ApplyRemoteServerHp(packet.TargetId, packet.RemainingHp, null, true);
+
+            // 다른 플레이어가 때린 경우 그 사람의 무기 임팩트 이펙트를 대상 위치에 재생한다(내가 때린 경우는 PlayerAttackController가 한다).
+            if (remotePlayers.TryGetValue(packet.AttackerId, out RemoteCharacterController attacker) && attacker != null)
+            {
+                Transform target = ProjectileVfxManager.ResolveTarget(AttackTargetKind.Player, packet.TargetId);
+                if (target != null)
+                {
+                    attacker.PlayHitImpactEffect(target.position, target.rotation);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 다른 플레이어가 몬스터를 맞혔다(Game_MonsterDamageBroadcast는 전원에게 온다). 그 플레이어의 무기에 맞는 임팩트 이펙트를 몬스터 위치에 재생한다.
+        /// 내가 맞힌 경우는 remotePlayers에 내 id가 없으므로 자연히 무시된다(PlayerAttackController가 처리).
+        /// 몬스터 HP/사망은 RemoteMonsterManager가 따로 처리하므로 여기서는 이펙트만 담당한다.
+        /// </summary>
+        private void HandleMonsterDamagedByRemote(GameMonsterDamageBroadcastPacket packet)
+        {
+            if (!remotePlayers.TryGetValue(packet.AttackerId, out RemoteCharacterController attacker) || attacker == null)
+            {
+                return;
+            }
+
+            if (RemoteMonsterManager.Instance != null && RemoteMonsterManager.Instance.TryGetRemoteMonster(packet.MonsterId, out RemoteMonsterController monster))
+            {
+                attacker.PlayHitImpactEffect(monster.transform.position, monster.transform.rotation);
+            }
         }
 
         /// <summary>

@@ -25,6 +25,14 @@ namespace Incheol.Controller
         [Tooltip("Dash01 이펙트 프리팹 크기에 곱해지는 배율. PlayerMoveController.dashEffectScale과 같은 값을 쓴다.")]
         [SerializeField, Min(0.01f)] private float dashEffectScale = 0.45f;
 
+        [Header("Attack Effect")]
+        [Tooltip("근접 무기 스윙 이펙트를 캐릭터 앞 몇 m에 띄울지. PlayerAttackController.attackRange와 같은 값을 쓴다.")]
+        [SerializeField, Min(0f)] private float swingEffectDistance = 1.5f;
+        [Tooltip("스윙/임팩트 이펙트를 올리는 높이(m). PlayerAttackController.effectHeight와 같은 값을 쓴다.")]
+        [SerializeField, Min(0f)] private float attackEffectHeight = 1f;
+        [Tooltip("스윙/임팩트 이펙트 프리팹 크기에 곱해지는 배율. PlayerAttackController.effectScale과 같은 값을 쓴다.")]
+        [SerializeField, Min(0.01f)] private float attackEffectScale = 0.65f;
+
         // Attack Layer에 Attack1/Attack2 두 단계만 있다(PlayerAttackController.maxComboStage와 같은 값이어야 한다).
         private const int MaxComboStage = 2;
         private const string AttackLayerName = "Attack Layer";
@@ -145,6 +153,21 @@ namespace Incheol.Controller
         }
 
         /// <summary>
+        /// 이 캐릭터의 공격이 대상(몬스터/플레이어)에 명중했을 때 대상 위치에 임팩트 이펙트를 재생한다. 장착 무기 종류는 장비 동기화로 이미 들어 있는
+        /// PlayerCharacterModel.CurrentWeaponType을 쓴다. 완드는 투사체가 도착하는 순간 ProjectileVfxManager가 따로 재생하므로 여기서는 건너뛴다.
+        /// 로컬(PlayerAttackController.HandleMonsterDamaged)과 같은 위치/높이/크기다.
+        /// </summary>
+        public void PlayHitImpactEffect(Vector3 targetPosition, Quaternion targetRotation)
+        {
+            if (playerCharacterModel == null || playerCharacterModel.CurrentWeaponType == WeaponType.Wand)
+            {
+                return;
+            }
+
+            WeaponVfxManager.Instance?.PlayImpactEffect(playerCharacterModel.CurrentWeaponType, targetPosition + Vector3.up * attackEffectHeight, targetRotation, attackEffectScale);
+        }
+
+        /// <summary>
         /// Game_AttackAnimationBroadcast 수신 시(PlayerAttackController.HandleAttackAnimationReceived가 중계) 호출된다.
         /// weaponType은 공격자가 실제로 장착한 무기 그대로라 콤보 모션/타이밍이 정확하다. 이 캐릭터가 실제로 들고 있는
         /// 무기/갑옷/투구의 "시각"(메시)은 서버가 알려주는 장착 정보(GamePlayerInfo, Game_EquipmentChangedBroadcast)를
@@ -164,6 +187,12 @@ namespace Incheol.Controller
             {
                 Transform target = ProjectileVfxManager.ResolveTarget(targetKind, targetId);
                 ProjectileVfxManager.Instance?.FireRanged(weaponType, transform.TransformPoint(ProjectileVfxManager.DefaultMuzzleOffset), transform.forward, target);
+            }
+            else
+            {
+                // 근접 무기: 로컬(PlayerAttackController.PlaySwingEffect)과 같은 위치/높이/크기로 휘두르는 이펙트를 재생한다. 허공에 휘둘러도 항상 나온다.
+                Vector3 swingPosition = transform.position + transform.forward * swingEffectDistance + Vector3.up * attackEffectHeight;
+                WeaponVfxManager.Instance?.PlaySwingEffect(weaponType, swingPosition, transform.rotation, attackEffectScale);
             }
 
             if (animator == null || attackLayerIndex < 0)
