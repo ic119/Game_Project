@@ -8,19 +8,9 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 namespace Incheol.Modules
 {
     /// <summary>
-    /// 풀링되는 프리팹의 컴포넌트가 구현하면, ObjectPoolController가 Get()/Release() 시점에
-    /// 자동으로 호출해주는 초기화/정리 훅. 재사용 시 컴포넌트별 상태(파티클, 속도 등)를
-    /// 초기화하고 싶을 때 이 인터페이스를 구현하면 된다.
+    /// Addressable 프리팹 오브젝트 풀. 이 클래스는 프리팹 로드(Preload/GetAsync), 대여/반환 흐름, IPoolable 훅 호출을 맡고,
+    /// 인스턴스를 어디에 보관하고 언제 파괴하는지는 ObjectPoolStorage가 맡는다.
     /// </summary>
-    public interface IPoolable
-    {
-        /// <summary>Get()으로 풀에서 대여되어 활성화된 직후 호출된다.</summary>
-        void OnGetFromPool();
-
-        /// <summary>Release()로 풀에 반환되어 비활성화되기 직전에 호출된다.</summary>
-        void OnReleaseToPool();
-    }
-
     public class ObjectPoolManager : SingletonObject<ObjectPoolManager>
     {
         /// <summary>
@@ -29,41 +19,25 @@ namespace Incheol.Modules
         protected override bool PersistAcrossScenes => true;
 
         #region Variable
-        /// <summary>
-        /// Addressable Key -> 비활성 인스턴스 큐
-        /// </summary>
-        private readonly Dictionary<string, Queue<GameObject>> poolDictionary = new Dictionary<string, Queue<GameObject>>();
+        private ObjectPoolStorage storage;
 
-        /// 반환 시 어떤 풀에서 대여됐는지 역추적하기 위한 매핑
-        private readonly Dictionary<GameObject, string> instanceKeyDictionary = new Dictionary<GameObject, string>();
-
-        /// Addressable Key -> 해당 풀의 인스턴스를 보관할 부모 트랜스폼
-        private readonly Dictionary<string, Transform> poolRootDictionary = new Dictionary<string, Transform>();
-
-        /// <summary>
-        /// Addressable Key -> 해당 풀이 보관할 수 있는 최대 비활성 인스턴스 수.
-        /// 설정되어 있지 않으면 무제한.
-        /// </summary>
-        private readonly Dictionary<string, int> poolCapacityDictionary = new Dictionary<string, int>();
-
-        private Transform poolRoot;
+        // Awake/OnDestroy 순서와 무관하게 쓸 수 있도록 처음 접근할 때 만든다(필드 초기화에서는 this를 쓸 수 없다).
+        private ObjectPoolStorage Storage => storage ??= new ObjectPoolStorage(this);
         #endregion
 
         #region LifeCycle
-        private const string PoolRootName = "@ObjectPools";
-
         protected override void Awake()
         {
             base.Awake();
 
-            // poolRoot 필드는 직렬화되지 않아 Awake 시점엔 항상 비어 있는데, 씬에 저장돼 있던(또는 에디터에서 남은) 이전
-            // "@ObjectPools" 자식이 있으면 GetOrCreatePoolRoot가 새 루트를 또 만들어 루트가 둘이 된다. 더 나쁜 점은 옛 루트
-            // 안의 인스턴스는 풀(poolDictionary)이 모르는 고아라서, 활성 상태면 화면에 그대로 남는다(텍스트 없는 알림 팝업 등).
+            // 풀 루트는 직렬화되지 않아 Awake 시점엔 항상 비어 있는데, 씬에 저장돼 있던(또는 에디터에서 남은) 이전
+            // "@ObjectPools" 자식이 있으면 GetOrCreateRoot가 새 루트를 또 만들어 루트가 둘이 된다. 더 나쁜 점은 옛 루트
+            // 안의 인스턴스는 풀이 모르는 고아라서, 활성 상태면 화면에 그대로 남는다(텍스트 없는 알림 팝업 등).
             // 풀은 이 시점에 비어 있으므로 남아 있는 옛 루트는 모두 정리한다.
             for (int i = transform.childCount - 1; i >= 0; i--)
             {
                 Transform child = transform.GetChild(i);
-                if (child.name == PoolRootName)
+                if (child.name == ObjectPoolStorage.PoolRootName)
                 {
                     Destroy(child.gameObject);
                 }
@@ -147,15 +121,7 @@ namespace Incheol.Modules
                 return null;
             }
 
-            Queue<GameObject> pool = GetOrCreatePoolQueue(_key);
-
-            GameObject go = null;
-
-            // 파괴된(null) 인스턴스가 남아 있을 수 있으므로 유효한 객체가 나올 때까지 꺼낸다.
-            while (pool.Count > 0 && go == null)
-            {
-                go = pool.Dequeue();
-            }
+            GameObject go = Storage.Dequeue(_key);
 
             if (go == null)
             {
@@ -183,7 +149,7 @@ namespace Incheol.Modules
             }
 
             go.SetActive(true);
-            instanceKeyDictionary[go] = _key;
+            Storage.Track(go, _key);
 
             // 재사용 시 커스텀 상태를 초기화할 수 있도록 IPoolable 훅을 호출한다.
             NotifyPoolable(go, poolable => poolable.OnGetFromPool());
@@ -251,13 +217,11 @@ namespace Incheol.Modules
                 return false;
             }
 
-            if (!instanceKeyDictionary.TryGetValue(_go, out string key))
+            if (!Storage.TryUntrack(_go, out string key))
             {
                 DebugLogManager.GenerateErrorMessage<ObjectPoolManager>($"'{_go.name}'은(는) 풀에서 대여된 객체가 아닙니다.");
                 return false;
             }
-
-            instanceKeyDictionary.Remove(_go);
 
             // 반환 시점에 커스텀 정리를 할 수 있도록 비활성화 전에 IPoolable 훅을 먼저 호출한다.
             NotifyPoolable(_go, poolable => poolable.OnReleaseToPool());
@@ -272,19 +236,15 @@ namespace Incheol.Modules
                 _go.transform.localScale = prefab.transform.localScale;
             }
 
-            _go.transform.SetParent(GetOrCreatePoolRoot(key), false);
-
-            Queue<GameObject> pool = GetOrCreatePoolQueue(key);
+            _go.transform.SetParent(Storage.GetOrCreateRoot(key), false);
 
             // 최대 보관 개수가 설정되어 있고 이미 가득 찼다면, 큐에 쌓아두는 대신 즉시 파괴해
             // 대여/반환이 반복될 때 큐가 무한정 커지는 것을 막는다.
-            if (poolCapacityDictionary.TryGetValue(key, out int maxSize) && pool.Count >= maxSize)
+            if (!Storage.TryEnqueueReleased(key, _go))
             {
                 Destroy(_go);
-                return true;
             }
 
-            pool.Enqueue(_go);
             return true;
         }
 
@@ -298,39 +258,7 @@ namespace Incheol.Modules
         /// </param>
         public void ReleasePool(string _key, bool _destroyActive = false, bool _releaseAddressableHandle = false)
         {
-            if (poolDictionary.TryGetValue(_key, out Queue<GameObject> pool))
-            {
-                while (pool.Count > 0)
-                {
-                    GameObject go = pool.Dequeue();
-                    if (go != null)
-                    {
-                        Destroy(go);
-                    }
-                }
-                poolDictionary.Remove(_key);
-            }
-
-            if (_destroyActive)
-            {
-                // 활성 인스턴스까지 파괴하는 경우, 추적 정보 제거는 DestroyActiveByKey가 함께 처리한다.
-                DestroyActiveByKey(_key);
-            }
-            else if (poolRootDictionary.TryGetValue(_key, out Transform activeRoot))
-            {
-                // 활성 인스턴스는 살려둬야 하므로, 곧 파괴할 pool root의 자식이라면 미리 분리해
-                // 아래 Destroy(root.gameObject)에 딸려서 함께 파괴되지 않도록 한다.
-                DetachActiveInstancesFrom(activeRoot);
-            }
-
-            if (poolRootDictionary.TryGetValue(_key, out Transform root))
-            {
-                if (root != null)
-                {
-                    Destroy(root.gameObject);
-                }
-                poolRootDictionary.Remove(_key);
-            }
+            Storage.DestroyPool(_key, _destroyActive);
 
             if (_releaseAddressableHandle && AddressableAssetManager.Instance != null)
             {
@@ -348,49 +276,7 @@ namespace Incheol.Modules
         /// </param>
         public void ReleaseAll(bool _destroyActive = false, bool _releaseAddressableHandles = false)
         {
-            // poolRootDictionary는 이 컨트롤러를 거쳐간 모든 Key를 담고 있으므로(풀 생성 시점에 항상 채워짐),
-            // 아래에서 Clear되기 전에 핸들 해제 대상 Key 목록으로 미리 캡처해둔다.
-            List<string> managedKeys = _releaseAddressableHandles ? new List<string>(poolRootDictionary.Keys) : null;
-
-            foreach (KeyValuePair<string, Queue<GameObject>> pair in poolDictionary)
-            {
-                Queue<GameObject> pool = pair.Value;
-                while (pool.Count > 0)
-                {
-                    GameObject go = pool.Dequeue();
-                    if (go != null)
-                    {
-                        Destroy(go);
-                    }
-                }
-            }
-            poolDictionary.Clear();
-
-            if (_destroyActive)
-            {
-                foreach (GameObject go in instanceKeyDictionary.Keys)
-                {
-                    if (go != null)
-                    {
-                        Destroy(go);
-                    }
-                }
-                instanceKeyDictionary.Clear();
-            }
-            else
-            {
-                // 활성 인스턴스는 살려둬야 하므로, 곧 파괴할 poolRoot의 자식이라면 미리 분리해
-                // 아래 Destroy(poolRoot.gameObject)에 딸려서 함께 파괴되지 않도록 한다.
-                // (추적 정보는 instanceKeyDictionary에 그대로 남겨 이후 Release()로 정상 반환할 수 있게 한다)
-                DetachActiveInstancesFrom(poolRoot);
-            }
-
-            if (poolRoot != null)
-            {
-                Destroy(poolRoot.gameObject);
-                poolRoot = null;
-            }
-            poolRootDictionary.Clear();
+            List<string> managedKeys = Storage.DestroyAll(_destroyActive, _releaseAddressableHandles);
 
             if (managedKeys != null && AddressableAssetManager.Instance != null)
             {
@@ -406,21 +292,16 @@ namespace Incheol.Modules
         /// </summary>
         public bool HasPool(string _key)
         {
-            return !string.IsNullOrEmpty(_key) && poolDictionary.ContainsKey(_key);
+            return Storage.HasPool(_key);
         }
 
         /// <summary>
-        /// 현재 이 풀이 추적 중인(대여 중이거든 풀에 보관 중이거든) 모든 Addressable Key.
-        /// 씨 전환 시 Addressable 핸들을 일괄 정리하는 쓵에서, 여전히 사용 중인 프리팹은 보호하기 위해 사용한다.
+        /// 현재 이 풀이 추적 중인(대여 중이거나 풀에 보관 중인) 모든 Addressable Key.
+        /// 씬 전환 시 Addressable 핸들을 일괄 정리하는 쪽에서, 여전히 사용 중인 프리팹은 보호하기 위해 사용한다.
         /// </summary>
         public HashSet<string> GetTrackedKeys()
         {
-            HashSet<string> keys = new HashSet<string>(poolDictionary.Keys);
-            foreach (string key in instanceKeyDictionary.Values)
-            {
-                keys.Add(key);
-            }
-            return keys;
+            return Storage.GetTrackedKeys();
         }
 
         /// <summary>
@@ -436,13 +317,7 @@ namespace Incheol.Modules
                 return;
             }
 
-            if (_maxSize <= 0)
-            {
-                poolCapacityDictionary.Remove(_key);
-                return;
-            }
-
-            poolCapacityDictionary[_key] = _maxSize;
+            Storage.SetCapacity(_key, _maxSize);
         }
 
         private void Prewarm(string _key, GameObject _prefab, int _count)
@@ -458,7 +333,9 @@ namespace Incheol.Modules
                 return;
             }
 
-            Queue<GameObject> pool = GetOrCreatePoolQueue(_key);
+            // 개수가 0이어도 빈 풀을 등록해 HasPool이 true가 되게 한다.
+            Storage.EnsurePool(_key);
+
             for (int i = 0; i < _count; i++)
             {
                 GameObject go = CreateInstance(_key, _prefab);
@@ -468,7 +345,7 @@ namespace Incheol.Modules
                 }
 
                 go.SetActive(false);
-                pool.Enqueue(go);
+                Storage.Enqueue(_key, go);
             }
         }
 
@@ -541,82 +418,7 @@ namespace Incheol.Modules
                 return null;
             }
 
-            return Instantiate(_prefab, GetOrCreatePoolRoot(_key));
-        }
-
-        private Queue<GameObject> GetOrCreatePoolQueue(string _key)
-        {
-            if (!poolDictionary.TryGetValue(_key, out Queue<GameObject> pool))
-            {
-                pool = new Queue<GameObject>();
-                poolDictionary.Add(_key, pool);
-            }
-            return pool;
-        }
-
-        private Transform GetOrCreatePoolRoot(string _key)
-        {
-            if (this == null)
-            {
-                return null;
-            }
-
-            if (poolRoot == null)
-            {
-                poolRoot = new GameObject(PoolRootName).transform;
-                poolRoot.SetParent(transform, false);
-            }
-
-            if (!poolRootDictionary.TryGetValue(_key, out Transform root) || root == null)
-            {
-                root = new GameObject($"Pool_{_key}").transform;
-                root.SetParent(poolRoot, false);
-                poolRootDictionary[_key] = root;
-            }
-
-            return root;
-        }
-
-        private void DestroyActiveByKey(string _key)
-        {
-            List<GameObject> removeTargets = new List<GameObject>();
-            foreach (KeyValuePair<GameObject, string> pair in instanceKeyDictionary)
-            {
-                if (pair.Value == _key)
-                {
-                    removeTargets.Add(pair.Key);
-                }
-            }
-
-            foreach (GameObject go in removeTargets)
-            {
-                if (go != null)
-                {
-                    Destroy(go);
-                }
-                instanceKeyDictionary.Remove(go);
-            }
-        }
-
-        /// <summary>
-        /// 곧 파괴될 _root(또는 그 자식)에 매달려 있는, 여전히 추적 중인(대여 중인) 인스턴스를
-        /// world position을 유지한 채 분리한다. Destroy(_root.gameObject) 호출 시 대여 중인
-        /// 인스턴스까지 함께(연쇄적으로) 파괴되는 것을 막기 위한 용도이다.
-        /// </summary>
-        private void DetachActiveInstancesFrom(Transform _root)
-        {
-            if (_root == null)
-            {
-                return;
-            }
-
-            foreach (GameObject go in instanceKeyDictionary.Keys)
-            {
-                if (go != null && go.transform.IsChildOf(_root))
-                {
-                    go.transform.SetParent(null, true);
-                }
-            }
+            return Instantiate(_prefab, Storage.GetOrCreateRoot(_key));
         }
         #endregion
     }
