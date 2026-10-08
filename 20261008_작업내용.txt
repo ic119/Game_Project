@@ -1,0 +1,163 @@
+===============================================================
+ 20261008 작업 내용 - 클라이언트 거대 클래스 분리 / 어셈블리 분리
+===============================================================
+
+[배경]
+포트폴리오 적합성 분석에서 클라이언트 약점으로 꼽힌 항목 중
+"2번: 거대 클래스"와 "1번: 클라이언트 자동 테스트/asmdef 없음"의 기반 작업을 진행했다.
+원칙: 동작은 바꾸지 않고(순수 리팩터링), 직렬화된 인스펙터 값과 공개 API는 유지한다.
+새로 만든 클래스는 가능하면 MonoBehaviour가 아닌 일반 C# 클래스로 두어 테스트하기 쉽게 했다.
+
+[검증 상태]
+- 매 단계마다 Unity 임포트 후 콘솔 컴파일 오류 0건 확인.
+- 플레이 모드 동작 확인은 사용자가 직접 진행(각 단계 보고에 확인 항목 안내).
+- 서버 테스트(dotnet test)는 이번 작업 범위가 아니며 서버 코드는 변경하지 않았다.
+
+
+---------------------------------------------------------------
+1. PlayerAttackController 분리      커밋 101634a4
+---------------------------------------------------------------
+769줄 -> 553줄. 위치: Controller/Player/Attack/
+
+- AttackTargetFinder : 근접 구체 판정, 완드 정면 부채꼴 탐색, 방향 보조 대상 선택.
+                       판정 버퍼(정적)와 방향 보조 대상 상태를 소유.
+- AttackHitStop      : 명중 시 애니메이터만 잠깐 멈추는 히트스톱(Time.timeScale 미사용).
+- AttackTarget       : out 인자 4개(종류/id/transform/몬스터)를 하나의 struct로 통합.
+
+유지한 것: [SerializeField] 필드 전부(프리팹 값 보존), 공개 API
+(MonsterTargeted, SkillCasting, BlockAttackUntil, ClearSkillAttackBlock,
+InterruptForSkill, FaceNearestMonster).
+남은 것: 콤보 상태, 입력 처리, 이펙트, 피격 이벤트는 컨트롤러에 그대로.
+
+
+---------------------------------------------------------------
+2. GameSceneManager(메인 파일) 분리   커밋 d815ab58
+---------------------------------------------------------------
+781줄 -> 568줄. 위치: Presenter/Scene/GameScene/
+
+- InitialLoadingTracker : 로비에서 이어받은 로딩바의 제목 변경, 30초 타임아웃,
+                          입장 확인 후 숨김. Abandon()은 접속 실패 시 최초 로딩 여부와
+                          무관하게 로딩바를 숨기던 기존 동작 보존용(Hide와 구분).
+- GameSceneMapPresenter : 미니맵/M키 맵 팝업 생성, 연결, 이벤트 구독 해지.
+- LocalPlayerSpawner    : 플레이어 로드/배치, 팔로우 카메라 연결, 컨트롤러 부착.
+
+참고: 컴포넌트 부착 후 localPlayerInstance 세팅/외형 적용을 시작하도록 호출 순서가
+미세하게 바뀌었으나, 외형 적용이 비동기 콜백으로 이어지므로 결과는 동일.
+
+
+---------------------------------------------------------------
+3. SceneLoadManager 분리            커밋 04bfd931
+---------------------------------------------------------------
+633줄 -> 340줄. 위치: Modules/SceneLoad/
+
+- SceneLoadTasks  : ILoadTask, AddressableLoadTask, AdditiveSceneLoadTask
+                    (매니저 안의 중첩 클래스를 꺼냄, internal).
+- SceneDataRegistry : SceneDataModelSO / AddressableAssetModelSO 로드,
+                      태그별 조회, preload 키 수집(internal).
+
+유지한 것: Init/LoadSceneByTags/IsInitialized/currentLoadProgressValue,
+직렬화 필드 currentSceneDataModel.
+남은 것: SceneLoadAsync(씬 diff, 로딩바 연동, 언로드)와 진행률 큐는 한 흐름이라 유지.
+
+
+---------------------------------------------------------------
+4. ObjectPoolManager 분리           커밋 2d389fac
+---------------------------------------------------------------
+623줄 -> 425줄(주석이 많아 줄 수 감소폭은 작음). 위치: Modules/ObjectPool/
+
+- ObjectPoolStorage : 비활성 큐, 대여 중 인스턴스 추적, 키별 루트, 풀 용량,
+                      파괴/분리 처리(internal).
+- IPoolable         : 매니저 파일에서 별도 파일로 이동(네임스페이스 동일,
+                      PooledEffect/PooledLoopEffect/BossTelegraphIndicator 수정 불필요).
+
+매니저는 Addressable 로드, 대여/반환 흐름, IPoolable 훅만 담당.
+Storage는 필드 초기화에서 this를 쓸 수 없어 지연 생성 프로퍼티로 접근.
+작업 중 발견/수정: Prewarm에서 빈 풀 등록 방식이 기존 인스턴스를 비울 수 있어
+EnsurePool() 전용 메서드로 교체.
+
+
+---------------------------------------------------------------
+5. UI_InventoryView 분리            커밋 629c20c8
+---------------------------------------------------------------
+646줄 -> 511줄. 위치: View/UI/Inventory/
+
+- InventoryTabBar         : 탭 버튼 연결/해제, 선택 탭 색상 (InventoryTabType enum 포함).
+- InventoryEquipmentPanel : 장비 슬롯 4개의 라벨 초기화, 클릭 연결, 장착 아이템 표시.
+- InventoryStackPartitioner : 스택을 미장착 목록/슬롯별 장착 스택으로 나누는 순수 함수.
+- ItemDetailTextBuilder.BuildTypeLabel : "장비 · 무기" 같은 종류 라벨을 텍스트 빌더로 이동.
+
+슬롯/버튼 등 [SerializeField]는 모두 뷰에 남기고 헬퍼가 Awake에서 참조를 받아 사용.
+
+
+---------------------------------------------------------------
+6. GameSceneManager.Inventory 분리   커밋 54085f7f
+---------------------------------------------------------------
+526줄 -> 461줄(메인 파일도 559줄로 감소). 위치: Presenter/Scene/GameScene/
+
+- LocalInventory : 보유 스택 상태와 규칙(추가/병합, 장착/해제, 버리기, 1개 소비,
+                   장비 보너스 합산, 서버 저장 실패 시 Revert*/Restore).
+                   화면/모델/네트워크를 모르는 순수 로직.
+- PotionUseState : 물약 요청 대기 상태와 재사용 대기시간.
+
+장착/사용/버리기 핸들러는 LocalInventory를 호출하도록 변경(낙관적 갱신 + 실패 롤백 흐름 동일).
+한계: 핸들러가 spawnedPlayerModel/inventoryView/SaveDataManager를 함께 다루는
+조율 코드라 파일 줄 수는 크게 줄지 않음. 대신 인벤토리 규칙을 테스트할 수 있게 됨.
+
+
+---------------------------------------------------------------
+7. asmdef 분리                      커밋 455de22b
+---------------------------------------------------------------
+- Game.Runtime (@Scripts/Game.Runtime.asmdef)
+    참조: Unity.Addressables, Unity.ResourceManager, Unity.Cinemachine,
+          Unity.InputSystem, Unity.TextMeshPro, UnityEngine.UI
+    DOTween은 코어 API(DOScale/DOMoveY/DOLocalRotate)만 써서 DOTween.dll 자동 참조로 충분.
+- Game.Editor (@Scripts/Editor/Game.Editor.asmdef)
+    includePlatforms: Editor, Game.Runtime 참조.
+    맵/아이템/네비 내보내기 스크립트 4개.
+
+사전 조사 결과: @Scripts 밖에서 Incheol 타입을 쓰는 코드 없음, 런타임이 서드파티 소스를
+참조하는 곳 없음, 런타임 코드에 UnityEditor 사용 없음.
+결과: Game.Runtime.dll 약 417KB, Assembly-CSharp.dll 약 13KB. 스크립트 GUID가 그대로라
+씬/프리팹의 스크립트 연결은 영향 없음. 에디터 로그에 error CS 없음.
+
+
+---------------------------------------------------------------
+요약 표
+---------------------------------------------------------------
+대상                              전 -> 후        커밋
+PlayerAttackController            769 -> 553     101634a4
+GameSceneManager.cs               781 -> 568     d815ab58
+SceneLoadManager                  633 -> 340     04bfd931
+ObjectPoolManager                 623 -> 425     2d389fac
+UI_InventoryView                  646 -> 511     629c20c8
+GameSceneManager.Inventory.cs     526 -> 461     54085f7f
+asmdef 분리 (Runtime/Editor)       -              455de22b
+
+
+---------------------------------------------------------------
+남은 일 / 다음 단계
+---------------------------------------------------------------
+1. Game.Tests.EditMode 어셈블리 생성 + 첫 테스트 작성
+   (UnityEngine.TestRunner/UnityEditor.TestRunner, Editor 전용, Game.Runtime 참조.
+    com.unity.test-framework 1.6.0은 이미 설치되어 있음)
+   우선 대상:
+     - LocalInventory (장착 교체/롤백/소비/보너스 합산)
+     - InventoryStackPartitioner (equipSlot 빈 값/알 수 없는 이름/None 분류)
+     - ObjectPoolStorage (용량 초과, 대여 중 인스턴스 보호)
+     - SnapshotInterpolationBuffer (보간, 정지 샘플)
+     - ExpTable / StatGrowth / SkillTable (서버 parity 보강)
+2. 플레이 모드 회귀 확인(아직 사용자 확인 대기 항목)
+   - 근접 콤보/완드 공격/방향 보조/히트스톱
+   - 게임 씬 진입 로딩바, 캐릭터 스폰/카메라, 미니맵, M키 맵 팝업
+   - 부트스트랩 -> 로그인 -> 로비 -> 게임 씬 전환, 로딩바 진행률, 씬 언로드
+   - 이펙트/데미지 텍스트/보스 텔레그래프의 풀 대여/반환, 씬 전환 후 풀 상태
+   - 인벤토리 탭 색상, 장비 슬롯 표시, 장착/해제, 아이템 버리기, 물약 쿨다운, 몬스터 드롭
+   - 서버 저장 실패 롤백(서버 연결을 끊은 채 장착)
+   - 로그인/로비/게임 씬 진입 시 Missing script 경고 및 콘솔 오류 여부
+3. 이후 후보: 시연 GIF/영상과 README 상단 배치, DB 비밀번호 분리,
+   서드파티 에셋 정책 결정(포트폴리오_저장소_정리_계획.txt 참고), CI(GitHub Actions)
+
+[참고]
+- 작업 트리에 이번 작업과 무관한 기존 수정 3개가 남아 있어 모든 커밋에서 제외했다:
+  AddressableAssetManager.cs, SequenceManager.cs, BootstrapSceneManager.cs
+- 모든 커밋 메시지는 한국어, 끝에 Co-Authored-By 줄 포함.
