@@ -1,0 +1,23 @@
+{
+    "name": "Game.Editor",
+    "rootNamespace": "Incheol",
+    "references": [
+        "Game.Runtime",
+        "Unity.Addressables",
+        "Unity.ResourceManager",
+        "Unity.Cinemachine",
+        "Unity.TextMeshPro",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
