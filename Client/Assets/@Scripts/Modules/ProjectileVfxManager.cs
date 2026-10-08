@@ -28,6 +28,9 @@ namespace Incheol.Modules
         // 같은 기본값이며, 다른 플레이어 화면에서는 이 값을 쓴다.
         public static readonly Vector3 DefaultMuzzleOffset = new Vector3(0f, 1.3f, 0.6f);
 
+        /// <summary>소유자가 없는 투사체(기본 공격)를 뜻하는 값.</summary>
+        public const long NoOwner = long.MinValue;
+
         private const float MinTravelSeconds = 0.05f;
         private const int MaxActive = 24;
 
@@ -41,6 +44,9 @@ namespace Incheol.Modules
 
             // 대상을 향해 쏜 투사체인지(도착 때 명중 이펙트를 재생할지). Target은 도중에 사라질 수 있어 따로 기억한다.
             public bool HasTarget;
+
+            // 스킬 투사체를 쏜 시전자 id(취소용). 기본 공격 투사체는 NoOwner다.
+            public long OwnerId = NoOwner;
             public float StartTime;
             public float Duration;
         }
@@ -96,7 +102,7 @@ namespace Incheol.Modules
         /// 액티브 스킬의 투사체 하나를 start에서 end까지 travelSeconds 동안 날린다(SkillVfxManager가 부른다). 무기 타입이 아니라 이펙트 키를 직접 받고,
         /// 도착하면 풀에 돌려주기만 한다 - 명중 이펙트는 스킬 설정의 areaHit이 같은 시각에 따로 재생한다.
         /// </summary>
-        public void FireSkillProjectile(AddressableAssetKey key, Vector3 start, Vector3 end, float travelSeconds, float scale = 1f)
+        public void FireSkillProjectile(AddressableAssetKey key, Vector3 start, Vector3 end, float travelSeconds, float scale = 1f, long ownerId = NoOwner)
         {
             if (key == AddressableAssetKey.None || ObjectPoolManager.Instance == null)
             {
@@ -131,9 +137,36 @@ namespace Incheol.Modules
                 End = end,
                 Target = null,
                 HasTarget = false,
+                OwnerId = ownerId,
                 StartTime = Time.time,
                 Duration = Mathf.Max(MinTravelSeconds, travelSeconds)
             });
+        }
+
+        /// <summary>
+        /// ownerId가 쏜 스킬 투사체 중 아직 날아가는 것을 걷는다(대쉬로 스킬이 끊겼을 때 - 서버가 남은 타격을 취소하므로 도착해도 아무 일도 없다).
+        /// </summary>
+        public void CancelSkillProjectiles(long ownerId)
+        {
+            if (ownerId == NoOwner)
+            {
+                return;
+            }
+
+            for (int i = active.Count - 1; i >= 0; i--)
+            {
+                if (active[i].OwnerId != ownerId)
+                {
+                    continue;
+                }
+
+                if (active[i].Instance != null)
+                {
+                    ObjectPoolManager.Instance?.Release(active[i].Instance);
+                }
+
+                active.RemoveAt(i);
+            }
         }
 
         /// <summary>

@@ -32,8 +32,16 @@ namespace Incheol.Utils
             }
         }
 
+        /// <summary>
+        /// 풀에서 대여될 때마다 하나씩 늘어나는 번호. 이펙트를 대여한 쪽이 "내가 빌린 그 이펙트인지"를 나중에 확인하는 데 쓴다 -
+        /// 스스로 풀에 반환된 인스턴스가 다른 곳에 다시 대여됐다면 번호가 달라진다(SkillVfxManager가 스킬 취소 때 남의 이펙트를 끄지 않게 한다).
+        /// </summary>
+        public int LeaseId { get; private set; }
+
         public void OnGetFromPool()
         {
+            LeaseId++;
+
             foreach (ParticleSystem particleSystem in particleSystems)
             {
                 particleSystem.Clear(true);

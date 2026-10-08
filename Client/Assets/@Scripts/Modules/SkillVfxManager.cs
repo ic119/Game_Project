@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using Incheol.Controller;
 using Incheol.Models.Define;
 using Incheol.Models.SO;
@@ -27,6 +28,24 @@ namespace Incheol.Modules
         protected override bool PersistAcrossScenes => true;
 
         private SkillVfxDatabaseSO database;
+
+        /// <summary>내 시전을 뜻하는 시전자 id(원격 플레이어 id는 모두 양수라 겹치지 않는다).</summary>
+        public const long LocalCasterId = 0;
+
+        // 진행 중인 시전 하나의 상태. 시전자마다 가장 최근 시전만 추적한다. 대쉬로 끊기면 cancelled가 켜져 아직 일어나지 않은 이펙트(명중 이펙트, 투사체 출발)가
+        // 만들어지지 않고, 이미 만들어 둔 시전/마법진 이펙트는 거둔다 - 서버가 남은 타격을 취소하는 것과 맞춘다.
+        private sealed class ActiveCast
+        {
+            public bool Cancelled;
+
+            // 이 시각(Time.time) 이후에는 남은 타격이 없다(마지막 타격은 시전 잠금 안에 끝난다). 그 뒤의 취소는 무시한다.
+            public float EndTime;
+
+            // 시전 순간에 만든 이펙트(시전자 곁/범위 중심)와 그때의 대여 번호. 번호가 달라졌다면 이미 반환돼 다른 곳에 쓰이는 인스턴스라 건드리지 않는다.
+            public readonly List<(PooledEffect Effect, int LeaseId)> Spawned = new();
+        }
+
+        private readonly Dictionary<long, ActiveCast> activeCasts = new();
 
         // 내가 쓴 스킬의 바닥 범위 표시(한 번에 하나). 번호는 취소/대체될 때마다 올려, 풀에서 비동기로 빌리는 중인 표시가 뒤늦게 나타나지 않게 한다.
         private BossTelegraphIndicator activeTelegraph;
@@ -59,7 +78,8 @@ namespace Incheol.Modules
         /// <param name="origin">시전자 발 위치(월드).</param>
         /// <param name="rotation">시전 방향(시전자가 바라보는 방향). 수평 성분(yaw)만 쓴다.</param>
         /// <param name="showTelegraph">이 스킬이 바닥 범위 표시 대상이면 그릴지. 내가 쓴 스킬만 true로 부른다.</param>
-        public void PlaySkill(SkillTable.Entry skill, Vector3 origin, Quaternion rotation, bool showTelegraph = false)
+        /// <param name="casterId">시전자 id(내 시전은 LocalCasterId). CancelSkill로 이 시전자의 진행 중인 이펙트를 거둘 때 쓴다.</param>
+        public void PlaySkill(SkillTable.Entry skill, Vector3 origin, Quaternion rotation, bool showTelegraph = false, long casterId = LocalCasterId)
         {
             // database가 아직 로드되지 않았거나 이 스킬에 등록된 이펙트가 없으면 조용히 건너뛴다 - 이펙트는 연출일 뿐이다.
             if (database == null || ObjectPoolManager.Instance == null || !database.TryGetEntry(skill.Id, out SkillVfxEntry entry))
@@ -77,8 +97,12 @@ namespace Incheol.Modules
                 CancelTelegraph();
             }
 
-            SpawnLayer(entry.cast, origin, yaw, area);
-            SpawnLayer(entry.areaStart, areaCenter, yaw, area);
+            // 이 시전자의 이전 시전은 새 시전으로 대체된다(서버도 새 시전이 남은 타격을 무효로 만든다).
+            var cast = new ActiveCast { EndTime = Time.time + skill.CastLockSeconds };
+            activeCasts[casterId] = cast;
+
+            RecordSpawn(cast, SpawnLayer(entry.cast, origin, yaw, area));
+            RecordSpawn(cast, SpawnLayer(entry.areaStart, areaCenter, yaw, area));
 
             if (showTelegraph && entry.showTelegraph)
             {
@@ -87,17 +111,52 @@ namespace Incheol.Modules
 
             if (entry.projectile != null && entry.projectile.key != AddressableAssetKey.None)
             {
-                StartCoroutine(LaunchProjectile(entry, origin, yaw, area));
+                StartCoroutine(LaunchProjectile(entry, origin, yaw, area, cast, casterId));
             }
 
             if (entry.areaHit != null && entry.areaHit.key != AddressableAssetKey.None)
             {
-                StartCoroutine(PlayHits(entry.areaHit, areaCenter, yaw, area));
+                StartCoroutine(PlayHits(entry.areaHit, areaCenter, yaw, area, cast));
+            }
+        }
+
+        /// <summary>
+        /// casterId의 진행 중인 시전 이펙트를 거둔다: 아직 일어나지 않은 명중 이펙트/투사체 출발을 막고, 날아가는 투사체와 시전 순간에 만든 이펙트를 걷는다.
+        /// 대쉬로 시전이 끊겼을 때 부른다(서버도 대쉬가 승인되면 남은 타격을 취소한다). 시전 잠금이 이미 끝난 뒤라면 남은 타격이 없으므로 아무것도 하지 않는다.
+        /// 내 바닥 범위 표시(CancelTelegraph)는 따로 거둔다.
+        /// </summary>
+        public void CancelSkill(long casterId)
+        {
+            if (!activeCasts.Remove(casterId, out ActiveCast cast) || Time.time >= cast.EndTime)
+            {
+                return;
+            }
+
+            cast.Cancelled = true;
+            ProjectileVfxManager.Instance?.CancelSkillProjectiles(casterId);
+
+            foreach ((PooledEffect effect, int leaseId) in cast.Spawned)
+            {
+                // 이미 스스로 반환됐거나 다른 곳에 다시 대여된 인스턴스(번호가 다름)는 건드리지 않는다.
+                if (effect != null && effect.gameObject.activeInHierarchy && effect.LeaseId == leaseId)
+                {
+                    ObjectPoolManager.Instance?.Release(effect.gameObject);
+                }
+            }
+
+            cast.Spawned.Clear();
+        }
+
+        private static void RecordSpawn(ActiveCast cast, GameObject instance)
+        {
+            if (instance != null && instance.TryGetComponent(out PooledEffect effect))
+            {
+                cast.Spawned.Add((effect, effect.LeaseId));
             }
         }
 
         // 지팡이 끝에서 범위의 끝까지 투사체를 날린다. 첫 타격 시각에 도착하도록 출발 시각을 맞춘다(거리/속도만큼 날아가므로 그만큼 늦게 출발).
-        private IEnumerator LaunchProjectile(SkillVfxEntry entry, Vector3 origin, Quaternion yaw, SkillTable.Area area)
+        private IEnumerator LaunchProjectile(SkillVfxEntry entry, Vector3 origin, Quaternion yaw, SkillTable.Area area, ActiveCast cast, long casterId)
         {
             SkillVfxLayer layer = entry.projectile;
             Vector3 start = origin + yaw * layer.offset;
@@ -118,7 +177,13 @@ namespace Incheol.Modules
                 yield return new WaitForSeconds(launchDelay);
             }
 
-            ProjectileVfxManager.Instance?.FireSkillProjectile(layer.key, start, end, travel, layer.scale);
+            // 출발 전에 대쉬로 시전이 끊겼다면 쏘지 않는다.
+            if (cast.Cancelled)
+            {
+                yield break;
+            }
+
+            ProjectileVfxManager.Instance?.FireSkillProjectile(layer.key, start, end, travel, layer.scale, casterId);
         }
 
         /// <summary>
@@ -202,7 +267,7 @@ namespace Incheol.Modules
         }
 
         // 타격 시각(첫 타격은 HitDelaySeconds 뒤, 이후 HitIntervalSeconds 간격)에 맞춰 범위 이펙트를 재생한다.
-        private IEnumerator PlayHits(SkillVfxLayer layer, Vector3 center, Quaternion yaw, SkillTable.Area area)
+        private IEnumerator PlayHits(SkillVfxLayer layer, Vector3 center, Quaternion yaw, SkillTable.Area area, ActiveCast cast)
         {
             for (int hit = 0; hit < area.Hits; hit++)
             {
@@ -212,15 +277,21 @@ namespace Incheol.Modules
                     yield return new WaitForSeconds(delay);
                 }
 
+                // 대쉬로 시전이 끊겼다면 남은 타격 이펙트는 만들지 않는다(서버도 남은 타격을 취소한다).
+                if (cast.Cancelled)
+                {
+                    yield break;
+                }
+
                 SpawnLayer(layer, center, yaw, area);
             }
         }
 
-        private static void SpawnLayer(SkillVfxLayer layer, Vector3 basePosition, Quaternion yaw, SkillTable.Area area)
+        private static GameObject SpawnLayer(SkillVfxLayer layer, Vector3 basePosition, Quaternion yaw, SkillTable.Area area)
         {
             if (layer == null || layer.key == AddressableAssetKey.None || ObjectPoolManager.Instance == null)
             {
-                return;
+                return null;
             }
 
             Vector3 position = basePosition + yaw * layer.offset;
@@ -229,7 +300,7 @@ namespace Incheol.Modules
             GameObject instance = ObjectPoolManager.Instance.Get(layer.key.ToString(), position, rotation);
             if (instance == null)
             {
-                return;
+                return null;
             }
 
             // 풀에서 돌려받은 인스턴스는 프리팹 원본 크기로 초기화되어 있으므로, 배율은 그 위에 곱한다.
@@ -243,6 +314,8 @@ namespace Incheol.Modules
             {
                 instance.transform.localScale *= scale;
             }
+
+            return instance;
         }
 
         private void LoadDatabase()

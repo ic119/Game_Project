@@ -206,6 +206,9 @@ namespace Incheol.Modules
             {
                 controller.PlayDash(packet.IsBackward);
             }
+
+            // 서버는 대쉬가 승인되면 그 플레이어의 남은 스킬 타격을 취소한다 - 아직 일어나지 않은 스킬 이펙트(명중/투사체)도 거둔다.
+            SkillVfxManager.Instance?.CancelSkill(packet.PlayerId);
         }
 
         /// <summary>
@@ -222,7 +225,7 @@ namespace Incheol.Modules
             // 이펙트는 서버가 알려 준 시전 위치/방향에서 재생한다(원격 캐릭터는 보간 중이라 transform이 조금 뒤처질 수 있다).
             if (SkillTable.TryGet(packet.WeaponType, packet.Slot, out SkillTable.Entry skill))
             {
-                SkillVfxManager.Instance?.PlaySkill(skill, new Vector3(packet.X, packet.Y, packet.Z), Quaternion.Euler(0f, packet.RotationY, 0f));
+                SkillVfxManager.Instance?.PlaySkill(skill, new Vector3(packet.X, packet.Y, packet.Z), Quaternion.Euler(0f, packet.RotationY, 0f), casterId: packet.PlayerId);
             }
         }
 
