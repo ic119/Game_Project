@@ -6,8 +6,8 @@
 [진행 현황]
  1단계 서버 기반 ........ 완료, 커밋됨 (2118daa3)
  2단계 클라 입력/모션 .... 완료, 이 문서와 함께 커밋 (인게임 검증은 사용자가 진행)
- 3단계 스킬 슬롯 UI ...... 미착수  <- 다음 작업
- 4단계 VFX/밸런스 튜닝 ... 미착수
+ 3단계 스킬 슬롯 UI ...... 완료, 커밋됨 (b11edb2e, 5f0a662a) (인게임 검증은 사용자가 진행)
+ 4단계 VFX/밸런스 튜닝 ... 미착수  <- 다음 작업
 
 
 [1단계: 서버 기반 - 구현 내용]
@@ -53,6 +53,24 @@
      5=LeapSlam(Combo05, 신규), 6=SwordWaveStart->SwordWave(Attack04, 신규). 종료는 SkillIndex==0.
      (기존 SkillIndex 2,3 상태는 미사용 상태로 남아 있음)
 
+[3단계: 스킬 슬롯 UI - 구현 내용]
+ - View/UI/UI_SkillSlotView.cs : 슬롯 1개 표시 전용. 쿨다운 원형 채움 오버레이 + 남은 초(1초 미만은 소수 첫째 자리),
+     마나 비용(부족하면 빨간색), 레벨 잠금(Lv.N 표시 + 어둡게), 마나 부족 시 어둡게, 시전 시 하이라이트 깜빡임. SetIcon(Sprite) 제공
+ - View/UI/UI_SkillBarView.cs : SkillContainer 에 붙는 4슬롯 관리자. 레벨/마나/무기/쿨다운을 폴링해 슬롯에 전달,
+     SkillTable.HasSkills(weapon)==false 면 슬롯 숨김, SkillCast 로 하이라이트, SkillRejected 로 거부 안내(1.5초)
+     안내 대상: 마나 부족/레벨 부족/재사용 대기/스킬 없음 (시전 중 Casting, 사망, 잘못된 요청은 안내 없음)
+     이 컴포넌트가 붙은 오브젝트 자체는 끄지 않는다(Update 중단) - 슬롯 오브젝트만 켜고 끈다
+ - PlayerSkillController : event SkillRejected(slot, GameSkillCastStatus) 추가 (쿨다운/시전 취소 처리 후 발생)
+ - UI_GameSceneView : skillBarView 필드 + SkillBarView 프로퍼티. GameSceneManager.TryBindPlayerInfo 에서
+     Bind(PlayerCharacterModel, PlayerSkillController) 호출
+ - UI_GameScene 프리팹 : UI_GameScene/BottomContainer/SkillContainer/Background/SkillSlot001~004 에
+     DimOverlay, CooldownOverlay, Highlight, CooldownText, ManaCost, LockLevel 추가, SkillContainer 에 RejectMessage 추가,
+     참조 모두 연결. 컨트롤 안내(H) 본문에 "1 2 3 4  스킬 (Lv.3/6/9/12 해금)" 줄 추가
+ - 아이콘: 에셋이 없어 비워 둠(Icon 이미지는 스프라이트가 없으면 숨김). 아이콘이 정해지면 SetIcon 으로 연결
+ - 주의: UI_GameScene 프리팹이 프리팹 편집 모드로 열려 있는 상태에서 외부 도구(MCP)로 저장하면 열린 쪽이 덮어쓴다.
+     프리팹 수정 전에 편집 모드를 닫을 것.
+
+
 [테스트 현황]
  서버 테스트 320개 통과 (기존 289 + 신규 31): SkillCatalogTests, SkillShapeTesterTests,
  GameRoomSkillTests, SkillTableParityTests, 패킷 호환 테스트(자동). Unity 콘솔 오류 없음.
@@ -74,29 +92,11 @@
  - 타격 지연(hitDelaySeconds)은 모션 임팩트 프레임을 측정하지 않은 임의값 -> 4단계에서 튜닝.
  - 한손검 외 무기는 서버 JSON/SkillTable/애니메이터 블렌드 트리가 아직 없음.
  - 시전 중 피격으로 모션이 끊겨도 서버 타격은 그대로 진행됨(대쉬 취소만 서버가 반영).
- - 스킬 이펙트/바닥 범위 표시/마나 부족 안내가 없음.
+ - 스킬 이펙트/바닥 범위 표시가 없음. (마나 부족 안내는 3단계에서 추가됨)
+ - 스킬 슬롯 UI 의 위치/크기/글자 크기는 기본값으로 만든 상태 -> 인게임에서 보고 조정 필요.
 
 
-[3단계: 스킬 슬롯 UI - 이어서 할 작업]
- 목표: 화면 하단에 스킬 슬롯 4개(1~4)를 표시하고 상태를 보여준다.
- 필요한 것:
-  1) UI 구조 파악: 기존 UI 컨벤션을 먼저 확인할 것
-       - View/UI/UI_GameSceneView.cs (HP/MP/경험치 표시, 폴링 방식), UI_ControlGuideView.cs, UI_InteractionPromptView.cs
-       - UI_GameScene 프리팹에 View 컴포넌트를 붙이고 사용자가 변수 할당하는 방식으로 작업해 왔음
-         (프리팹 구성/할당은 Unity MCP 로 하거나, 코드만 만들고 사용자에게 할당 요청 - 과거 방식 확인)
-       - 같은 파일에서 TMP 폰트/Image 네임스페이스 모호성 주의: UnityEngine.UI.Image 를 명시
-  2) 새 스크립트 UI_SkillSlotView(슬롯 1개) + UI_SkillBarView(4개 묶음)
-       - 표시: 키 번호, 아이콘(임시: 스킬 이름 첫 글자 또는 색 박스), 마나 비용, 쿨다운 채움(fillAmount)+남은 초
-       - 상태: 레벨 잠금(해금 레벨 표시, 회색), 마나 부족(어둡게/파란 경고), 쿨다운 중, 사용 가능
-       - 데이터: PlayerSkillController.GetCooldownRemaining/GetCooldownDuration, SkillTable.TryGet(weapon, slot),
-                 PlayerCharacterModel.Level / CurrentWeaponType, ManaComponent.CurrentMp (OnManaChanged 이벤트 있음)
-       - 무기에 스킬이 없으면(SkillTable.HasSkills(weapon)==false) 바 전체 숨김
-       - 시전 시작 시 슬롯 하이라이트(PlayerSkillController.SkillCast 이벤트)
-       - 서버가 거부한 사유(마나 부족/쿨다운 등) 안내: GameSkillCastStatus 를 PlayerSkillController 이벤트로 노출 후 UI 에서 짧게 표시
-  3) 컨트롤 안내(H) UI 에 1~4 스킬 키 항목 추가 (UI_ControlGuideView 참고)
-  4) 로컬 플레이어 연결: GameSceneManager 가 PlayerSkillController 를 AddComponent 한 뒤 UI 에 전달
-       (localPlayerInstance 에서 GetComponent<PlayerSkillController>)
-  5) 아이콘 에셋: 스킬 아이콘 소재가 있는지 확인(없으면 임시 표시) - 사용자와 상의
+[작업 규칙]
  확인/커밋 규칙: 한 항목씩 검토 -> 커밋 요청 -> 다음 진행 여부 질문. 커밋 후 push 여부는 묻지 않는다.
 
 [4단계 미리보기]
