@@ -61,16 +61,13 @@ namespace Incheol.Controller
         private const string AttackLayerName = "Attack Layer";
         private static readonly int ComboIndexHash = Animator.StringToHash("ComboIndex");
         private static readonly int WeaponIndexHash = Animator.StringToHash("WeaponIndex");
-        private static readonly Collider[] overlapBuffer = new Collider[16];
-        // 공격 방향 보조 전용 버퍼. 바로 뒤에 이어지는 RequestAttack이 overlapBuffer를 쓰므로 따로 둔다.
-        private static readonly Collider[] aimAssistBuffer = new Collider[16];
 
         private Animator animator;
         private int attackLayerIndex = -1;
         private PlayerCharacterModel playerCharacterModel;
         private PlayerMoveController moveController;
-        private RemoteMonsterController aimAssistTarget;
-        private Coroutine hitStopRoutine;
+        private AttackTargetFinder targetFinder;
+        private AttackHitStop hitStop;
 
         /// <summary>
         /// 공격 판정(RequestAttack)이 몬스터를 대상으로 찾을 때마다 발생한다. UI_GameSceneView가
@@ -122,6 +119,8 @@ namespace Incheol.Controller
 
             playerCharacterModel = GetComponent<PlayerCharacterModel>();
             moveController = GetComponent<PlayerMoveController>();
+            targetFinder = new AttackTargetFinder(transform);
+            hitStop = new AttackHitStop(this, animator);
         }
 
         private void OnEnable()
@@ -144,7 +143,7 @@ namespace Incheol.Controller
             }
 
             // 히트스톱 도중에 비활성화돼도 애니메이션이 멈춘 채 남지 않게 되돌린다.
-            EndHitStop();
+            hitStop.End();
         }
 
         private void Update()
@@ -286,96 +285,23 @@ namespace Incheol.Controller
         /// </summary>
         private void PerformWandAttack()
         {
-            FindWandTarget(out AttackTargetKind kind, out long targetId, out Transform targetTransform, out RemoteMonsterController targetMonster);
+            AttackTarget target = targetFinder.FindInCone(wandRange, wandAimHalfAngle);
 
             Vector3 muzzle = transform.TransformPoint(wandMuzzleOffset);
-            ProjectileVfxManager.Instance?.FireRanged(WeaponType.Wand, muzzle, transform.forward, targetTransform);
+            ProjectileVfxManager.Instance?.FireRanged(WeaponType.Wand, muzzle, transform.forward, target.Transform);
 
-            GameServerConnectManager.Instance?.SendAttackAnimation(comboStage, WeaponType.Wand, kind, targetId);
+            GameServerConnectManager.Instance?.SendAttackAnimation(comboStage, WeaponType.Wand, target.Kind, target.Id);
 
-            switch (kind)
+            switch (target.Kind)
             {
                 case AttackTargetKind.Monster:
-                    GameServerConnectManager.Instance?.SendMonsterAttack(targetId);
-                    if (targetMonster != null)
-                    {
-                        MonsterTargeted?.Invoke(targetMonster);
-                    }
+                    GameServerConnectManager.Instance?.SendMonsterAttack(target.Id);
+                    MonsterTargeted?.Invoke(target.Monster);
                     break;
 
                 case AttackTargetKind.Player:
-                    GameServerConnectManager.Instance?.SendAttack(targetId);
+                    GameServerConnectManager.Instance?.SendAttack(target.Id);
                     break;
-            }
-        }
-
-        /// <summary>
-        /// 완드가 노릴 대상을 찾는다: wandRange 안의 살아 있는 몬스터/원격 플레이어 중, 정면에서 wandAimHalfAngle 이내인 가장 가까운 하나.
-        /// 없으면 kind = None.
-        /// </summary>
-        private void FindWandTarget(out AttackTargetKind kind, out long targetId, out Transform targetTransform, out RemoteMonsterController targetMonster)
-        {
-            kind = AttackTargetKind.None;
-            targetId = 0;
-            targetTransform = null;
-            targetMonster = null;
-
-            int hitCount = Physics.OverlapSphereNonAlloc(transform.position, wandRange, overlapBuffer);
-            Vector3 forward = transform.forward;
-            forward.y = 0f;
-            float bestDistanceSqr = float.MaxValue;
-
-            for (int i = 0; i < hitCount; i++)
-            {
-                Collider hit = overlapBuffer[i];
-                if (hit == null)
-                {
-                    continue;
-                }
-
-                AttackTargetKind candidateKind;
-                long candidateId;
-                Transform candidateTransform;
-                RemoteMonsterController candidateMonster = null;
-
-                RemoteCharacterController remotePlayer = hit.GetComponentInParent<RemoteCharacterController>();
-                if (remotePlayer != null)
-                {
-                    candidateKind = AttackTargetKind.Player;
-                    candidateId = remotePlayer.PlayerId;
-                    candidateTransform = remotePlayer.transform;
-                }
-                else
-                {
-                    // 사망 연출 중인 몬스터는 대상에서 뺀다(TryFindNearestTarget과 같은 이유).
-                    RemoteMonsterController monster = hit.GetComponentInParent<RemoteMonsterController>();
-                    if (monster == null || monster.IsDead)
-                    {
-                        continue;
-                    }
-
-                    candidateKind = AttackTargetKind.Monster;
-                    candidateId = monster.MonsterId;
-                    candidateTransform = monster.transform;
-                    candidateMonster = monster;
-                }
-
-                Vector3 toTarget = candidateTransform.position - transform.position;
-                toTarget.y = 0f;
-                if (toTarget.sqrMagnitude > 0.0001f && Vector3.Angle(forward, toTarget) > wandAimHalfAngle)
-                {
-                    continue;
-                }
-
-                float distanceSqr = toTarget.sqrMagnitude;
-                if (distanceSqr < bestDistanceSqr)
-                {
-                    bestDistanceSqr = distanceSqr;
-                    kind = candidateKind;
-                    targetId = candidateId;
-                    targetTransform = candidateTransform;
-                    targetMonster = candidateMonster;
-                }
             }
         }
 
@@ -439,43 +365,7 @@ namespace Incheol.Controller
         private RemoteMonsterController ResolveAimAssistTarget()
         {
             // 완드는 사거리(wandRange)까지 대상으로 삼는다 - 근접 무기보다 멀리 있는 몬스터 쪽으로도 몸을 돌려야 쏠 수 있다.
-            float range = IsWand ? wandRange : aimAssistRange;
-
-            // 이어지는 타수는 직전 대상을 유지한다(두 타 사이에 대상이 흔들리지 않게). 조금 멀어져도 한동안은 놓지 않는다.
-            if (aimAssistTarget != null && !aimAssistTarget.IsDead
-                && (aimAssistTarget.transform.position - transform.position).sqrMagnitude <= range * range * 1.5625f)
-            {
-                return aimAssistTarget;
-            }
-
-            aimAssistTarget = null;
-
-            int count = Physics.OverlapSphereNonAlloc(transform.position, range, aimAssistBuffer);
-            float bestDistanceSqr = float.MaxValue;
-
-            for (int i = 0; i < count; i++)
-            {
-                Collider hit = aimAssistBuffer[i];
-                if (hit == null)
-                {
-                    continue;
-                }
-
-                RemoteMonsterController monster = hit.GetComponentInParent<RemoteMonsterController>();
-                if (monster == null || monster.IsDead)
-                {
-                    continue;
-                }
-
-                float distanceSqr = (monster.transform.position - transform.position).sqrMagnitude;
-                if (distanceSqr < bestDistanceSqr)
-                {
-                    bestDistanceSqr = distanceSqr;
-                    aimAssistTarget = monster;
-                }
-            }
-
-            return aimAssistTarget;
+            return targetFinder.ResolveAimAssistTarget(IsWand ? wandRange : aimAssistRange);
         }
 
         /// <summary>
@@ -522,7 +412,7 @@ namespace Incheol.Controller
         private void ResetCombo()
         {
             comboStage = 0;
-            aimAssistTarget = null;
+            targetFinder.ClearAimAssistTarget();
             wandAttackBuffered = false;
 
             if (animator != null && attackLayerIndex >= 0)
@@ -534,26 +424,19 @@ namespace Incheol.Controller
 
         private void RequestAttack()
         {
-            Vector3 origin = GetAttackOrigin();
-            int hitCount = Physics.OverlapSphereNonAlloc(origin, attackRadius, overlapBuffer);
+            // 몬스터와 플레이어는 서로 다른 OpCode(Game_MonsterAttackRequest/Game_AttackRequest)로 요청을 보내야 하므로 종류로 나눈다.
+            AttackTarget target = targetFinder.FindNearestInSphere(GetAttackOrigin(), attackRadius);
 
-            if (!TryFindNearestTarget(hitCount, out long targetId, out bool isMonster))
+            switch (target.Kind)
             {
-                return;
-            }
+                case AttackTargetKind.Monster:
+                    GameServerConnectManager.Instance?.SendMonsterAttack(target.Id);
+                    MonsterTargeted?.Invoke(target.Monster);
+                    break;
 
-            if (isMonster)
-            {
-                GameServerConnectManager.Instance?.SendMonsterAttack(targetId);
-
-                if (RemoteMonsterManager.Instance != null && RemoteMonsterManager.Instance.TryGetRemoteMonster(targetId, out RemoteMonsterController targetMonster))
-                {
-                    MonsterTargeted?.Invoke(targetMonster);
-                }
-            }
-            else
-            {
-                GameServerConnectManager.Instance?.SendAttack(targetId);
+                case AttackTargetKind.Player:
+                    GameServerConnectManager.Instance?.SendAttack(target.Id);
+                    break;
             }
         }
 
@@ -620,7 +503,7 @@ namespace Incheol.Controller
                 WeaponVfxManager.Instance?.PlayImpactEffect(playerCharacterModel.CurrentWeaponType, ApplyEffectHeight(target.transform.position), target.transform.rotation, effectScale);
             }
 
-            StartHitStop();
+            hitStop.Begin(hitStopSeconds);
         }
 
         /// <summary>
@@ -651,55 +534,7 @@ namespace Incheol.Controller
                 WeaponVfxManager.Instance?.PlayImpactEffect(playerCharacterModel.CurrentWeaponType, ApplyEffectHeight(target.transform.position), target.transform.rotation, effectScale);
             }
 
-            StartHitStop();
-        }
-
-        /// <summary>
-        /// 내 공격이 명중했을 때 공격 애니메이션을 hitStopSeconds만큼 멈춰 타격감을 준다(히트스톱). Time.timeScale을 건드리지 않고
-        /// 이 캐릭터의 애니메이터만 멈추므로 서버와 맞춰 돌아가는 보간/쿨다운/네트워크 시각에는 영향이 없다.
-        /// 멈춘 시간만큼 애니메이션이 로직 타이머보다 살짝 늦어지지만 0.05초 안팎이라 눈에 띄지 않는다.
-        /// </summary>
-        private void StartHitStop()
-        {
-            if (hitStopSeconds <= 0f || animator == null || hitStopRoutine != null)
-            {
-                return;
-            }
-
-            hitStopRoutine = StartCoroutine(HitStopRoutine());
-        }
-
-        private System.Collections.IEnumerator HitStopRoutine()
-        {
-            float previousSpeed = animator.speed;
-            animator.speed = 0f;
-
-            // 실제 시간으로 기다린다(타임스케일과 무관하게 같은 길이로 멈추도록).
-            yield return new WaitForSecondsRealtime(hitStopSeconds);
-
-            if (animator != null)
-            {
-                animator.speed = previousSpeed;
-            }
-
-            hitStopRoutine = null;
-        }
-
-        // 히트스톱 도중 비활성화/해제되면 멈춘 채 남지 않게 속도를 1로 되돌리고 코루틴 상태를 지운다.
-        private void EndHitStop()
-        {
-            if (hitStopRoutine == null)
-            {
-                return;
-            }
-
-            StopCoroutine(hitStopRoutine);
-            hitStopRoutine = null;
-
-            if (animator != null)
-            {
-                animator.speed = 1f;
-            }
+            hitStop.Begin(hitStopSeconds);
         }
 
         /// <summary>
@@ -714,56 +549,5 @@ namespace Incheol.Controller
             }
         }
 
-        /// <summary>
-        /// 판정 범위 안의 원격 플레이어/몬스터를 통틀어 가장 가까운 대상 하나를 찾는다. 두 타입은 서로 다른
-        /// OpCode(Game_AttackRequest/Game_MonsterAttackRequest)로 공격 요청을 보내야 하므로, 대상 종류(isMonster)도
-        /// 함께 반환한다.
-        /// </summary>
-        private bool TryFindNearestTarget(int hitCount, out long targetId, out bool isMonster)
-        {
-            targetId = 0;
-            isMonster = false;
-            bool found = false;
-            float bestDistanceSqr = float.MaxValue;
-
-            for (int i = 0; i < hitCount; i++)
-            {
-                Collider hit = overlapBuffer[i];
-                if (hit == null)
-                {
-                    continue;
-                }
-
-                RemoteCharacterController remotePlayer = hit.GetComponentInParent<RemoteCharacterController>();
-                if (remotePlayer != null)
-                {
-                    float distanceSqr = (remotePlayer.transform.position - transform.position).sqrMagnitude;
-                    if (distanceSqr < bestDistanceSqr)
-                    {
-                        bestDistanceSqr = distanceSqr;
-                        targetId = remotePlayer.PlayerId;
-                        isMonster = false;
-                        found = true;
-                    }
-                    continue;
-                }
-
-                // 사망 연출 중인 몬스터는 대상에서 뺀다(콜라이더는 PlayDeath에서 꺼지지만, 같은 프레임에 걸린 경우까지 막는다).
-                RemoteMonsterController remoteMonster = hit.GetComponentInParent<RemoteMonsterController>();
-                if (remoteMonster != null && !remoteMonster.IsDead)
-                {
-                    float distanceSqr = (remoteMonster.transform.position - transform.position).sqrMagnitude;
-                    if (distanceSqr < bestDistanceSqr)
-                    {
-                        bestDistanceSqr = distanceSqr;
-                        targetId = remoteMonster.MonsterId;
-                        isMonster = true;
-                        found = true;
-                    }
-                }
-            }
-
-            return found;
-        }
     }
 }
