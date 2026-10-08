@@ -13,6 +13,13 @@ namespace Incheol.Models.SO
     {
         public List<SkillVfxEntry> entries = new List<SkillVfxEntry>();
 
+        [Header("바닥 범위 표시(텔레그래프) 색")]
+        [Tooltip("보스 위험 범위(붉은색)와 구분되도록 기본은 푸른색이다.")]
+        public Color telegraphAreaColor = new Color(0.2f, 0.65f, 1f, 0.22f);
+        public Color telegraphFillColor = new Color(0.25f, 0.7f, 1f, 0.45f);
+        public Color telegraphEdgeColor = new Color(0.55f, 0.9f, 1f, 0.95f);
+        public Color telegraphFlashColor = new Color(0.9f, 1f, 1f, 0.9f);
+
         private Dictionary<string, SkillVfxEntry> entryDictionary;
 
         /// <summary>

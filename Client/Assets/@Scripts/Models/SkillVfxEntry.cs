@@ -29,6 +29,9 @@ namespace Incheol.Models.SO
     {
         public string skillId = string.Empty;
 
+        [Tooltip("선딜이 있는 스킬이 맞을 자리를 바닥에 미리 보여 준다(내가 쓴 스킬만). 첫 타격 시각까지 안쪽이 차오르다가 타격 순간 섬광으로 끝난다. 원과 직선 범위만 지원하며, 부채꼴은 표시하지 않는다.")]
+        public bool showTelegraph = false;
+
         [Tooltip("시전 후 기본공격을 막는 시간(초). 시전 잠금(서버 CastLockSeconds)보다 짧거나 0이면 시전 잠금까지만 막는다. 이펙트가 시전 모션보다 오래 이어지는 스킬은 이 값을 크게 해서 이펙트가 끝날 즈음까지 기본공격이 나가지 않게 한다. 대쉬로 시전을 끊으면 함께 풀린다.")]
         [Min(0f)] public float attackLockSeconds = 0f;
 

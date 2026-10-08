@@ -189,7 +189,7 @@ namespace Incheol.Controller
             }
 
             // 이펙트는 서버 응답을 기다리지 않고 모션과 함께 바로 재생한다. 서버가 거부하면 모션과 함께 끊기지만, 이미 터진 이펙트는 짧게 보이고 끝난다.
-            SkillVfxManager.Instance?.PlaySkill(skill, transform.position, transform.rotation);
+            SkillVfxManager.Instance?.PlaySkill(skill, transform.position, transform.rotation, showTelegraph: true);
 
             SkillCast?.Invoke(slot, skill);
         }
@@ -226,8 +226,9 @@ namespace Incheol.Controller
                 EndCast();
             }
 
-            // 대쉬로 시전을 끊으면 이펙트가 남아 있어도 기본 공격을 다시 할 수 있다.
+            // 대쉬로 시전을 끊으면 이펙트가 남아 있어도 기본 공격을 다시 할 수 있고, 서버도 남은 타격을 취소하므로 바닥 범위 표시도 거둔다.
             attackController?.ClearSkillAttackBlock();
+            SkillVfxManager.Instance?.CancelTelegraph();
         }
 
         // 서버의 시전 결과. 승인이면 쿨다운을 서버 값으로 맞추고, 거부면 시전을 취소하고 사유에 맞게 쿨다운을 되돌린다.
@@ -267,6 +268,7 @@ namespace Incheol.Controller
 
                 // 거부된 시전이 걸어 둔 기본 공격 막힘도 푼다(다른 슬롯의 거부가 진행 중인 시전의 막힘을 풀면 안 되므로 같은 슬롯일 때만).
                 attackController?.ClearSkillAttackBlock();
+                SkillVfxManager.Instance?.CancelTelegraph();
             }
 
             SkillRejected?.Invoke(packet.Slot, packet.Status);

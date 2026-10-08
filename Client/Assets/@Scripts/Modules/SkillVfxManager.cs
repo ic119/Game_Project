@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Incheol.Controller;
 using Incheol.Models.Define;
 using Incheol.Models.SO;
 using Incheol.Utils;
@@ -27,6 +28,11 @@ namespace Incheol.Modules
 
         private SkillVfxDatabaseSO database;
 
+        // 내가 쓴 스킬의 바닥 범위 표시(한 번에 하나). 번호는 취소/대체될 때마다 올려, 풀에서 비동기로 빌리는 중인 표시가 뒤늦게 나타나지 않게 한다.
+        private BossTelegraphIndicator activeTelegraph;
+        private Coroutine telegraphCompletion;
+        private int telegraphVersion;
+
         protected override void Awake()
         {
             base.Awake();
@@ -52,7 +58,8 @@ namespace Incheol.Modules
         /// </summary>
         /// <param name="origin">시전자 발 위치(월드).</param>
         /// <param name="rotation">시전 방향(시전자가 바라보는 방향). 수평 성분(yaw)만 쓴다.</param>
-        public void PlaySkill(SkillTable.Entry skill, Vector3 origin, Quaternion rotation)
+        /// <param name="showTelegraph">이 스킬이 바닥 범위 표시 대상이면 그릴지. 내가 쓴 스킬만 true로 부른다.</param>
+        public void PlaySkill(SkillTable.Entry skill, Vector3 origin, Quaternion rotation, bool showTelegraph = false)
         {
             // database가 아직 로드되지 않았거나 이 스킬에 등록된 이펙트가 없으면 조용히 건너뛴다 - 이펙트는 연출일 뿐이다.
             if (database == null || ObjectPoolManager.Instance == null || !database.TryGetEntry(skill.Id, out SkillVfxEntry entry))
@@ -64,13 +71,104 @@ namespace Incheol.Modules
             SkillTable.Area area = skill.Area;
             Vector3 areaCenter = origin + yaw * (Vector3.forward * area.CenterForwardDistance);
 
+            // 내 새 시전은 이전 시전의 범위 표시를 대체한다(다른 플레이어의 시전은 내 범위 표시를 건드리지 않는다).
+            if (showTelegraph)
+            {
+                CancelTelegraph();
+            }
+
             SpawnLayer(entry.cast, origin, yaw, area);
             SpawnLayer(entry.areaStart, areaCenter, yaw, area);
+
+            if (showTelegraph && entry.showTelegraph)
+            {
+                ShowTelegraph(area, origin, areaCenter, yaw);
+            }
 
             if (entry.areaHit != null && entry.areaHit.key != AddressableAssetKey.None)
             {
                 StartCoroutine(PlayHits(entry.areaHit, areaCenter, yaw, area));
             }
+        }
+
+        /// <summary>
+        /// 진행 중인 바닥 범위 표시를 거둔다(대쉬로 시전이 끊겼거나 서버가 시전을 거부했을 때, 또는 새 시전이 시작될 때).
+        /// </summary>
+        public void CancelTelegraph()
+        {
+            telegraphVersion++;
+
+            if (telegraphCompletion != null)
+            {
+                StopCoroutine(telegraphCompletion);
+                telegraphCompletion = null;
+            }
+
+            if (activeTelegraph != null)
+            {
+                activeTelegraph.Complete(false);
+                activeTelegraph = null;
+            }
+        }
+
+        // 첫 타격 시각까지 안쪽이 차오르는 범위 표시를 그리고, 타격 순간 섬광으로 마무리한다. 보스 위험 범위 표시(BossTelegraphIndicator)를 재사용한다.
+        private void ShowTelegraph(SkillTable.Area area, Vector3 origin, Vector3 areaCenter, Quaternion yaw)
+        {
+            if (area.Shape == SkillTable.AreaShape.Cone || area.HitDelaySeconds <= 0f)
+            {
+                return;
+            }
+
+            int version = telegraphVersion;
+            float duration = area.HitDelaySeconds;
+
+            // 표시를 풀에서 빌리는 동안(비동기) 대쉬 등으로 취소됐다면 번호가 달라지므로 바로 돌려준다.
+            ObjectPoolManager.Instance.GetAsync(AddressableAssetKey.BossTelegraph01.ToString(), spawned =>
+            {
+                if (spawned == null)
+                {
+                    return;
+                }
+
+                if (version != telegraphVersion || !spawned.TryGetComponent(out BossTelegraphIndicator indicator))
+                {
+                    ObjectPoolManager.Instance?.Release(spawned);
+                    return;
+                }
+
+                indicator.SetColors(database.telegraphAreaColor, database.telegraphFillColor, database.telegraphEdgeColor, database.telegraphFlashColor);
+
+                if (area.Shape == SkillTable.AreaShape.Circle)
+                {
+                    indicator.SetupCircle(areaCenter, area.Radius, duration);
+                }
+                else
+                {
+                    indicator.SetupLine(origin, yaw.eulerAngles.y, area.Width, area.Length, duration);
+                }
+
+                activeTelegraph = indicator;
+                telegraphCompletion = StartCoroutine(CompleteTelegraphAfter(indicator, duration, version));
+            });
+        }
+
+        private IEnumerator CompleteTelegraphAfter(BossTelegraphIndicator indicator, float seconds, int version)
+        {
+            yield return new WaitForSeconds(seconds);
+
+            if (version != telegraphVersion || indicator == null)
+            {
+                yield break;
+            }
+
+            indicator.Complete(true);
+
+            if (activeTelegraph == indicator)
+            {
+                activeTelegraph = null;
+            }
+
+            telegraphCompletion = null;
         }
 
         // 타격 시각(첫 타격은 HitDelaySeconds 뒤, 이후 HitIntervalSeconds 간격)에 맞춰 범위 이펙트를 재생한다.

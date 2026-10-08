@@ -82,6 +82,12 @@ namespace Incheol.Controller
         private readonly List<Material> instancedMaterials = new();
         private MaterialPropertyBlock propertyBlock;
 
+        // 프리팹에 지정된 기본 색(보스 위험 범위의 붉은색). SetColors로 바꾼 색은 풀에 돌아갈 때 이 값으로 되돌린다.
+        private Color defaultAreaColor;
+        private Color defaultFillColor;
+        private Color defaultEdgeColor;
+        private Color defaultFlashColor;
+
         private Stage stage = Stage.Inactive;
         private bool isLine;
         private float duration = 1f;
@@ -111,6 +117,11 @@ namespace Incheol.Controller
 
             isBuilt = true;
             propertyBlock = new MaterialPropertyBlock();
+
+            defaultAreaColor = areaColor;
+            defaultFillColor = fillColor;
+            defaultEdgeColor = edgeColor;
+            defaultFlashColor = flashColor;
 
             // 바탕 -> 차오르는 부분 -> 테두리 순으로 겹쳐 그려야 하므로 렌더 큐를 한 칸씩 다르게 둔 머티리얼 복사본을 쓴다
             // (같은 큐의 투명 메시끼리는 카메라 거리로 정렬돼 겹침 순서가 흔들린다).
@@ -176,6 +187,14 @@ namespace Incheol.Controller
         #region Pooling
         public void OnGetFromPool()
         {
+            EnsureBuilt();
+
+            // 지난 사용에서 SetColors로 바꾼 색이 남지 않게 기본 색으로 되돌린다.
+            areaColor = defaultAreaColor;
+            fillColor = defaultFillColor;
+            edgeColor = defaultEdgeColor;
+            flashColor = defaultFlashColor;
+
             // Setup*이 호출되기 전에는(콜백이 다음 프레임에 올 수 있다) 지난 모양이 잠깐 보이지 않도록 숨긴다.
             stage = Stage.Inactive;
             SetRenderersEnabled(false);
@@ -189,6 +208,18 @@ namespace Incheol.Controller
         #endregion
 
         #region Setup
+        /// <summary>
+        /// 이 표시의 색을 바꾼다(플레이어 스킬 범위 표시처럼 보스 위험 범위와 구분할 때). Setup* 전에 불러야 하며, 풀에 돌아가면 기본 색으로 되돌아간다.
+        /// </summary>
+        public void SetColors(Color area, Color fill, Color edge, Color flash)
+        {
+            EnsureBuilt();
+            areaColor = area;
+            fillColor = fill;
+            edgeColor = edge;
+            flashColor = flash;
+        }
+
         /// <summary>
         /// 원형 위험 범위(범위 공격). center를 중심으로 반지름 radius인 원이 durationSeconds 동안 차오른다.
         /// </summary>
