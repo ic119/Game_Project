@@ -68,13 +68,13 @@ public class SkillCatalogTests
     }
 
     [Fact]
-    public void RealCatalog_SpearFlurryIsThreeHitsTotalingAbout210Percent()
+    public void RealCatalog_SpearFlurryIsThreeHitsTotaling300Percent()
     {
         Assert.True(SkillCatalog.TryGet(WeaponKind.Spear, 1, out SkillDefinition flurry));
 
         Assert.Equal(3, flurry.Hits);
         Assert.True(flurry.HitIntervalSeconds > 0f);
-        Assert.Equal(2.1f, flurry.Hits * flurry.DamageMultiplier, 2);
+        Assert.Equal(3.0f, flurry.Hits * flurry.DamageMultiplier, 2);
     }
 
     [Fact]

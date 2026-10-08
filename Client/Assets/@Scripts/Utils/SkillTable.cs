@@ -110,28 +110,28 @@ namespace Incheol.Utils
         private static readonly Entry[] Entries =
         {
             // 한손검. SkillIndex 1(SwordPierce)/4(Wheelwind)는 기존 상태를 그대로 쓰고, 5/6은 도약 내려찍기/검기 참격으로 새로 추가했다.
-            new Entry(1, 1, "ohs_pierce", "돌진 찌르기", 3, 12, 5f, 0.6f, 1, Line(3.5f, 1.2f, 0.3f)),
-            new Entry(1, 2, "ohs_whirlwind", "회전 베기", 6, 18, 8f, 0.7f, 4, Circle(2.5f, 0f, 0.3f)),
-            new Entry(1, 3, "ohs_leap_slam", "도약 내려찍기", 9, 26, 12f, 0.95f, 5, Circle(2.5f, 3f, 0.5f)),
-            new Entry(1, 4, "ohs_sword_wave", "검기 참격", 12, 36, 20f, 0.8f, 6, Line(6f, 1.5f, 0.45f)),
+            new Entry(1, 1, "ohs_pierce", "돌진 찌르기", 3, 8, 5f, 0.6f, 1, Line(3.5f, 1.2f, 0.3f)),
+            new Entry(1, 2, "ohs_whirlwind", "회전 베기", 6, 13, 8f, 0.7f, 4, Circle(2.5f, 0f, 0.3f)),
+            new Entry(1, 3, "ohs_leap_slam", "도약 내려찍기", 9, 18, 12f, 0.95f, 5, Circle(2.5f, 3f, 0.5f)),
+            new Entry(1, 4, "ohs_sword_wave", "검기 참격", 12, 25, 20f, 0.8f, 6, Line(6f, 1.5f, 0.45f)),
 
             // 양손검. 모션 상태는 한손검과 같은 SkillIndex를 쓰고, 애니메이터의 무기별 블렌드 트리(WeaponIndex)가 양손검 클립을 고른다.
-            new Entry(2, 1, "ths_smash", "내려치기", 3, 14, 6f, 0.55f, 1, Cone(2.5f, 120f, 0.25f)),
-            new Entry(2, 2, "ths_great_spin", "대회전", 6, 20, 9f, 0.55f, 4, Circle(3f, 0f, 0.4f)),
-            new Entry(2, 3, "ths_earth_cleave", "대지 가르기", 9, 28, 13f, 1.15f, 5, Line(5f, 2f, 0.8f)),
-            new Entry(2, 4, "ths_fury_strike", "분노의 일격", 12, 38, 22f, 1.05f, 6, Circle(4f, 3f, 1.0f)),
+            new Entry(2, 1, "ths_smash", "내려치기", 3, 10, 6f, 0.55f, 1, Cone(2.5f, 120f, 0.25f)),
+            new Entry(2, 2, "ths_great_spin", "대회전", 6, 14, 9f, 0.55f, 4, Circle(3f, 0f, 0.4f)),
+            new Entry(2, 3, "ths_earth_cleave", "대지 가르기", 9, 20, 13f, 1.15f, 5, Line(5f, 2f, 0.8f)),
+            new Entry(2, 4, "ths_fury_strike", "분노의 일격", 12, 27, 22f, 1.05f, 6, Circle(4f, 3f, 1.0f)),
 
             // 완드. 4번(메테오)만 전용 긴 시전 상태(MeteorCast, SkillIndex 7)를 쓴다.
-            new Entry(4, 1, "wand_fireball", "파이어볼", 3, 12, 5f, 0.6f, 1, Line(6f, 1f, 0.3f)),
-            new Entry(4, 2, "wand_frost_nova", "프로스트 노바", 6, 18, 8f, 0.7f, 4, Circle(3f, 0f, 0.2f)),
-            new Entry(4, 3, "wand_lightning", "낙뢰", 9, 26, 12f, 1.35f, 5, Circle(2.5f, 6f, 1.0f)),
-            new Entry(4, 4, "wand_meteor", "메테오", 12, 38, 22f, 1.45f, 7, Circle(4f, 7f, 1.4f)),
+            new Entry(4, 1, "wand_fireball", "파이어볼", 3, 8, 5f, 0.6f, 1, Line(6f, 1f, 0.3f)),
+            new Entry(4, 2, "wand_frost_nova", "프로스트 노바", 6, 13, 8f, 0.7f, 4, Circle(3f, 0f, 0.2f)),
+            new Entry(4, 3, "wand_lightning", "낙뢰", 9, 18, 12f, 1.35f, 5, Circle(2.5f, 6f, 1.0f)),
+            new Entry(4, 4, "wand_meteor", "메테오", 12, 27, 22f, 1.45f, 7, Circle(4f, 7f, 1.4f)),
 
             // 창.
-            new Entry(5, 1, "spear_flurry", "연속 찌르기", 3, 12, 5f, 0.6f, 1, Line(3.5f, 1f, 0.25f, hits: 3, hitInterval: 0.1f)),
-            new Entry(5, 2, "spear_charge", "돌진", 6, 18, 8f, 0.7f, 4, Line(5f, 1.2f, 0.25f)),
-            new Entry(5, 3, "spear_throw", "투창", 9, 26, 12f, 1.05f, 5, Line(8f, 1f, 0.45f)),
-            new Entry(5, 4, "spear_ascension", "승천창", 12, 36, 20f, 0.8f, 6, Line(7f, 2f, 0.45f)),
+            new Entry(5, 1, "spear_flurry", "연속 찌르기", 3, 8, 5f, 0.6f, 1, Line(3.5f, 1f, 0.25f, hits: 3, hitInterval: 0.1f)),
+            new Entry(5, 2, "spear_charge", "돌진", 6, 13, 8f, 0.7f, 4, Line(5f, 1.2f, 0.25f)),
+            new Entry(5, 3, "spear_throw", "투창", 9, 18, 12f, 1.05f, 5, Line(8f, 1f, 0.45f)),
+            new Entry(5, 4, "spear_ascension", "승천창", 12, 25, 20f, 0.8f, 6, Line(7f, 2f, 0.45f)),
         };
 
         public static System.Collections.Generic.IReadOnlyList<Entry> All => Entries;
