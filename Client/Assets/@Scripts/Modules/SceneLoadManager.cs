@@ -19,127 +19,9 @@ namespace Incheol.Modules
         /// </summary>
         protected override bool PersistAcrossScenes => true;
 
-        #region Nested
-        /// <summary>
-        /// SceneLoadAsync에서 순차 처리할 단일 로드 업무
-        /// </summary>
-        private interface ILoadTask
-        {
-            Awaitable ExecuteAsync();
-        }
-
-        private class AddressableLoadTask : ILoadTask
-        {
-            private readonly string key;
-            private const float loadTimeoutSeconds = 30.0f;
-
-            public AddressableLoadTask(string _key)
-            {
-                key = _key;
-            }
-
-            public async Awaitable ExecuteAsync()
-            {
-                if (AddressableAssetManager.Instance == null || string.IsNullOrEmpty(key))
-                {
-                    return;
-                }
-
-                AddressableAssetManager controller = AddressableAssetManager.Instance;
-                controller.AddKeyHashSet(key);
-                controller.LoadPrefabAddress<GameObject>(key);
-
-                // 이미 캐시되어 있으면 즉시 완료
-                if (controller.IsLoaded(key))
-                {
-                    return;
-                }
-
-                // 핸들 폴링 + NextFrameAsync 루프는 AddressableAssetController.WaitForLoadAsync로 공통화되어 있으므로
-                // 여기서는 타임아웃 조건만 전달해 중복 구현을 피한다.
-                float startTime = Time.unscaledTime;
-                await controller.WaitForLoadAsync(key, () => Time.unscaledTime - startTime >= loadTimeoutSeconds);
-
-                if (controller.IsLoaded(key))
-                {
-                    return;
-                }
-
-                if (controller.HasLoadFailed(key))
-                {
-                    DebugLogManager.GenerateErrorMessage<SceneLoadManager>($"Addressable 프리로드 실패 Key : {key}");
-                    return;
-                }
-
-                // 위 두 경우가 아니라면 타임아웃으로 대기가 중단된 것이다.
-                DebugLogManager.GenerateErrorMessage<SceneLoadManager>($"Addressable 프리로드 타임아웃 Key : {key}, Timeout : {loadTimeoutSeconds}s");
-            }
-        }
-
-        private class AdditiveSceneLoadTask : ILoadTask
-        {
-            private readonly string sceneName;
-            private readonly string activeSceneName;
-
-            public AdditiveSceneLoadTask(string _sceneName, string _activeSceneName)
-            {
-                sceneName = _sceneName;
-                activeSceneName = _activeSceneName;
-            }
-
-public async Awaitable ExecuteAsync()
-            {
-                if (string.IsNullOrEmpty(sceneName))
-                {
-                    return;
-                }
-
-                // diff 전환 과정에서 이전 씬과 공유되는 씬은 이미 로드되어 있을 수 있으므로,
-                // 중복 로드하지 않고 활성 씬 처리만 한다.
-                Scene existingScene = SceneManager.GetSceneByName(sceneName);
-                if (existingScene.IsValid() && existingScene.isLoaded)
-                {
-                    if (activeSceneName == sceneName)
-                    {
-                        SceneManager.SetActiveScene(existingScene);
-                    }
-                    return;
-                }
-
-                AsyncOperation async = SceneManager.LoadSceneAsync(sceneName, LoadSceneMode.Additive);
-
-                if (async == null)
-                {
-                    // 빌드 세팅에 없는 씬 이름 등으로 로드 자체가 시작되지 못한 경우.
-                    // null 상태로 async.isDone에 접근하면 NullReferenceException이 발생하므로 여기서 방어한다.
-                    DebugLogManager.GenerateErrorMessage<SceneLoadManager>($"Additive Scene 로드 실패(빌드 세팅에 없는 씬일 수 있음) SceneName : {sceneName}");
-                    return;
-                }
-
-                while (!async.isDone)
-                {
-                    await Awaitable.NextFrameAsync();
-                }
-
-                if (activeSceneName == sceneName)
-                {
-                    Scene targetActiveScene = SceneManager.GetSceneByName(sceneName);
-                    if (targetActiveScene.IsValid())
-                    {
-                        SceneManager.SetActiveScene(targetActiveScene);
-                    }
-                }
-            }
-        }
-        #endregion
-
         #region Variable
         [SerializeField] Incheol.Models.SO.SceneDataModel currentSceneDataModel;
-        private Dictionary<string, Incheol.Models.SO.SceneDataModel> sceneDataModelDictionary;
-        private Dictionary<string, Incheol.Models.SO.AddressableAssetModel> addressableAssetModelDictionary;
-        private List<Incheol.Models.SO.SceneDataModel> sceneDataModelList;
-        private const string sceneDataScriptableObjectName = "SceneDataModelSO";
-        private const string addressableAssetScriptableObjectName = "AddressableAssetModelSO";
+        private readonly SceneDataRegistry sceneDataRegistry = new SceneDataRegistry();
 
         /// <summary>
         /// Init이 성공 완료되었는지 여부
@@ -181,148 +63,11 @@ public async Awaitable ExecuteAsync()
         public void Init(Action<bool> _onComplete = null)
         {
             IsInitialized = false;
-            LoadSceneDataModelSO(sceneSuccess =>
+            sceneDataRegistry.Load(success =>
             {
-                if (!sceneSuccess)
-                {
-                    _onComplete?.Invoke(false);
-                    return;
-                }
-
-                LoadAddressableAssetModelSO(addressableSuccess =>
-                {
-                    if (!addressableSuccess)
-                    {
-                        IsInitialized = false;
-                        _onComplete?.Invoke(false);
-                        return;
-                    }
-
-                    IsInitialized = true;
-                    _onComplete?.Invoke(true);
-                });
+                IsInitialized = success;
+                _onComplete?.Invoke(success);
             });
-        }
-
-private void LoadSceneDataModelSO(Action<bool> _onComplete)
-        {
-            AsyncOperationHandle<Incheol.Models.SO.SceneDataModelSO> handle;
-
-            try
-            {
-                handle = Addressables.LoadAssetAsync<Incheol.Models.SO.SceneDataModelSO>(sceneDataScriptableObjectName);
-            }
-            catch (Exception exception)
-            {
-                DebugLogManager.GenerateErrorMessage<SceneLoadManager>($"SceneDataModelSO 로드 실패(잘못된 Key) Key : {sceneDataScriptableObjectName}, Exception : {exception}");
-                _onComplete?.Invoke(false);
-                return;
-            }
-
-            handle.Completed += result =>
-            {
-                if (result.Status != AsyncOperationStatus.Succeeded || result.Result == null)
-                {
-                    sceneDataModelDictionary = null;
-                    sceneDataModelList = null;
-
-                    DebugLogManager.GenerateErrorMessage<SceneLoadManager>($"SceneDataModelSO 로드 실패(Addressables Status : {result.Status}) Key : {sceneDataScriptableObjectName}");
-                    _onComplete?.Invoke(false);
-                    return;
-                }
-
-                sceneDataModelDictionary = new Dictionary<string, Incheol.Models.SO.SceneDataModel>();
-                sceneDataModelList = result.Result.sceneDataModels;
-
-                if (sceneDataModelList == null || sceneDataModelList.Count == 0)
-                {
-                    DebugLogManager.GenerateErrorMessage<SceneLoadManager>("SceneDataModelSO의 sceneDataModels 리스트가 비어 있습니다.");
-                    _onComplete?.Invoke(false);
-                    return;
-                }
-
-                for (int i = 0; i < sceneDataModelList.Count; i++)
-                {
-                    Incheol.Models.SO.SceneDataModel model = sceneDataModelList[i];
-                    if (model == null || string.IsNullOrEmpty(model.tags))
-                    {
-                        continue;
-                    }
-
-                    if (!sceneDataModelDictionary.ContainsKey(model.tags))
-                    {
-                        sceneDataModelDictionary.Add(model.tags, model);
-                    }
-                }
-
-                if (sceneDataModelDictionary.Count == 0)
-                {
-                    DebugLogManager.GenerateErrorMessage<SceneLoadManager>("SceneDataModelSO의 모든 항목이 유효하지 않은 tags를 갖고 있습니다.");
-                    _onComplete?.Invoke(false);
-                    return;
-                }
-                _onComplete?.Invoke(true);
-            };
-        }
-
-private void LoadAddressableAssetModelSO(Action<bool> _onComplete)
-        {
-            AsyncOperationHandle<Incheol.Models.SO.AddressableAssetModelSO> handle;
-
-            try
-            {
-                handle = Addressables.LoadAssetAsync<Incheol.Models.SO.AddressableAssetModelSO>(addressableAssetScriptableObjectName);
-            }
-            catch (Exception exception)
-            {
-                DebugLogManager.GenerateErrorMessage<SceneLoadManager>($"AddressableAssetModelSO 로드 실패(잘못된 Key) Key : {addressableAssetScriptableObjectName}, Exception : {exception}");
-                _onComplete?.Invoke(false);
-                return;
-            }
-
-            handle.Completed += result =>
-            {
-                if (result.Status != AsyncOperationStatus.Succeeded || result.Result == null)
-                {
-                    addressableAssetModelDictionary = null;
-
-                    DebugLogManager.GenerateErrorMessage<SceneLoadManager>($"AddressableAssetModelSO 로드 실패(Addressables Status : {result.Status}) Key : {addressableAssetScriptableObjectName}");
-                    _onComplete?.Invoke(false);
-                    return;
-                }
-
-                addressableAssetModelDictionary = new Dictionary<string, Incheol.Models.SO.AddressableAssetModel>();
-                List<Incheol.Models.SO.AddressableAssetModel> models = result.Result.addressableAssetModels;
-
-                if (models == null || models.Count == 0)
-                {
-                    DebugLogManager.GenerateErrorMessage<SceneLoadManager>("AddressableAssetModelSO의 addressableAssetModels 리스트가 비어 있습니다.");
-                    _onComplete?.Invoke(false);
-                    return;
-                }
-
-                for (int i = 0; i < models.Count; i++)
-                {
-                    Incheol.Models.SO.AddressableAssetModel model = models[i];
-                    if (model == null || string.IsNullOrEmpty(model.tags))
-                    {
-                        continue;
-                    }
-
-                    if (!addressableAssetModelDictionary.ContainsKey(model.tags))
-                    {
-                        addressableAssetModelDictionary.Add(model.tags, model);
-                    }
-                }
-
-                if (addressableAssetModelDictionary.Count == 0)
-                {
-                    DebugLogManager.GenerateErrorMessage<SceneLoadManager>("AddressableAssetModelSO의 모든 항목이 유효하지 않은 tags를 갖고 있습니다.");
-                    _onComplete?.Invoke(false);
-                    return;
-                }
-                _onComplete?.Invoke(true);
-            };
         }
 
 /// <summary>
@@ -335,7 +80,7 @@ private void LoadAddressableAssetModelSO(Action<bool> _onComplete)
         /// </summary>
         public void LoadSceneByTags(string _tagName, bool _showLoadingBar = false, bool _keepLoadingBar = false)
         {
-            if (!IsInitialized || sceneDataModelDictionary == null || addressableAssetModelDictionary == null)
+            if (!IsInitialized || !sceneDataRegistry.IsLoaded)
             {
                 DebugLogManager.GenerateErrorMessage<SceneLoadManager>($"LoadSceneByTags 호출 전에 Init이 완료되지 않았습니다. tag : {_tagName}");
                 return;
@@ -347,9 +92,9 @@ private void LoadAddressableAssetModelSO(Action<bool> _onComplete)
                 return;
             }
 
-            if (!sceneDataModelDictionary.ContainsKey(_tagName))
+            if (!sceneDataRegistry.TryGetScene(_tagName, out Incheol.Models.SO.SceneDataModel targetSceneDataModel))
             {
-                DebugLogManager.GenerateErrorMessage<SceneLoadManager>($"존재하지 않는 Scene tag : {_tagName}. 등록된 tags : [{string.Join(", ", sceneDataModelDictionary.Keys)}]");
+                DebugLogManager.GenerateErrorMessage<SceneLoadManager>($"존재하지 않는 Scene tag : {_tagName}. 등록된 tags : [{sceneDataRegistry.DescribeSceneTags()}]");
                 return;
             }
 
@@ -365,7 +110,7 @@ private void LoadAddressableAssetModelSO(Action<bool> _onComplete)
             Incheol.Models.SO.SceneDataModel previousSceneDataModel = currentSceneDataModel;
 
             currentSceneTag = _tagName;
-            currentSceneDataModel = sceneDataModelDictionary[_tagName];
+            currentSceneDataModel = targetSceneDataModel;
             _ = SceneLoadAsync(previousSceneDataModel, currentSceneDataModel, _showLoadingBar, _keepLoadingBar);
         }
 
@@ -493,7 +238,7 @@ private async Awaitable SceneLoadAsync(Incheol.Models.SO.SceneDataModel _previou
         /// </summary>
         private void EnqueueLoadTasks(Incheol.Models.SO.SceneDataModel _target, bool _includeSceneTasks = true)
         {
-            List<string> addressableKeys = CollectPreloadKeyStrings(currentSceneTag);
+            List<string> addressableKeys = sceneDataRegistry.CollectPreloadKeyStrings(currentSceneTag);
             for (int i = 0; i < addressableKeys.Count; i++)
             {
                 loadTaskQueue.Enqueue(new AddressableLoadTask(addressableKeys[i]));
@@ -589,44 +334,6 @@ private async Awaitable SceneLoadAsync(Incheol.Models.SO.SceneDataModel _previou
             }
 
             SetLoadProgress(((float)completedLoadTaskCount / totalLoadTaskCount) * 100.0f);
-        }
-
-        /// <summary>
-        /// AddressableAssetModelSO에서 씬 태그에 매칭되는 preload Key 목록을 가져온다.
-        /// </summary>
-        private List<string> CollectPreloadKeyStrings(string _tagName)
-        {
-            List<string> keyStrings = new List<string>();
-
-            if (addressableAssetModelDictionary == null || string.IsNullOrEmpty(_tagName))
-            {
-                return keyStrings;
-            }
-
-            if (!addressableAssetModelDictionary.TryGetValue(_tagName, out Incheol.Models.SO.AddressableAssetModel model) || model == null)
-            {
-                DebugLogManager.GenerateErrorMessage<SceneLoadManager>($"AddressableAssetModelSO에 tag '{_tagName}'에 대한 preload 설정이 없습니다.");
-                return keyStrings;
-            }
-
-            List<AddressableAssetKey> preloadKeys = model.preloadAddressableKeys;
-            if (preloadKeys == null)
-            {
-                return keyStrings;
-            }
-
-            for (int i = 0; i < preloadKeys.Count; i++)
-            {
-                AddressableAssetKey key = preloadKeys[i];
-                if (key == AddressableAssetKey.None)
-                {
-                    continue;
-                }
-
-                keyStrings.Add(key.ToString());
-            }
-
-            return keyStrings;
         }
         #endregion
     }
