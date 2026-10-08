@@ -101,6 +101,9 @@ namespace Shared.Networking
         Game_SkillResult = 0x022F,
         Game_SkillCastBroadcast = 0x0230,
 
+        // 다른 플레이어의 캐릭터 연출(레벨업, 물약 사용 이펙트 등). 본인은 이미 로컬에서 재생했으므로 보고 있는 사람에게만 중계한다.
+        Game_PlayerEffectBroadcast = 0x0231,
+
         // 0x03XX = Dungeon
     }
 }

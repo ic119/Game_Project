@@ -133,7 +133,17 @@ namespace GameServer.Networking
 
             var broadcast = new S2CPlayerHpBroadcast { PlayerId = playerId, CurrentHp = currentHp, MaxHp = maxHp };
             SendToViewersOfPlayer(broadcast.PlayerId, OpCode.Game_PlayerHpBroadcast, broadcast.Encode());
+
+            // 다른 플레이어 화면에도 물약 회복 이펙트가 보이게 한다(본인은 물약 사용 결과로 이미 로컬에서 재생한다).
+            SendPlayerEffect(playerId, PlayerEffectType.HpPotion);
             return true;
+        }
+
+        // 캐릭터 연출(레벨업/물약 이펙트 등) 알림을 playerId를 보고 있는 사람에게만 보낸다. 본인은 이미 로컬에서 재생하므로 제외한다.
+        private void SendPlayerEffect(long playerId, PlayerEffectType effect)
+        {
+            var packet = new S2CPlayerEffectBroadcast { PlayerId = playerId, Effect = effect };
+            SendToViewersOfPlayer(playerId, OpCode.Game_PlayerEffectBroadcast, packet.Encode(), excludeSelf: true);
         }
 
         // 레벨업 시 공격력/방어력/최대 체력/최대 마나를 새 레벨 기준으로 다시 계산하고 체력과 마나를 가득 채운다(PlayerCombatStats.ApplyLevelUp).
@@ -149,6 +159,9 @@ namespace GameServer.Networking
 
             var broadcast = new S2CPlayerHpBroadcast { PlayerId = player.PlayerId, CurrentHp = currentHp, MaxHp = maxHp };
             SendToViewersOfPlayer(broadcast.PlayerId, OpCode.Game_PlayerHpBroadcast, broadcast.Encode());
+
+            // 다른 플레이어 화면에도 레벨업 이펙트가 보이게 한다(본인은 경험치 패킷의 DidLevelUp으로 이미 로컬에서 재생한다).
+            SendPlayerEffect(player.PlayerId, PlayerEffectType.LevelUp);
 
             SendManaUpdate(player, force: true);
         }

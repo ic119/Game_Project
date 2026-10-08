@@ -54,6 +54,7 @@ namespace Incheol.Modules.Networking
         Game_PlayerMpUpdate = 0x022D,
         Game_SkillRequest = 0x022E,
         Game_SkillResult = 0x022F,
-        Game_SkillCastBroadcast = 0x0230
+        Game_SkillCastBroadcast = 0x0230,
+        Game_PlayerEffectBroadcast = 0x0231
     }
 }

@@ -31,8 +31,7 @@
     "MaxStack": 1,
     "BonusAttackPower": 5,
     "EquipSlot": "Weapon",
-    "WeaponType": "OneHanded",
-    "Grade": "Common"
+    "WeaponType": "OneHanded"
   },
   "test_potion_cooldown": {
     "Name": "회귀테스트용 물약",

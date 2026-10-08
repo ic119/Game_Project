@@ -41,6 +41,7 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnEquipmentChanged += HandleEquipmentChanged;
             GameServerConnectManager.Instance.OnDashReceived += HandleDashReceived;
             GameServerConnectManager.Instance.OnSkillCastReceived += HandleSkillCastReceived;
+            GameServerConnectManager.Instance.OnPlayerEffectReceived += HandlePlayerEffectReceived;
 
             // ItemDatabaseSO는 Addressables로 비동기 로드되므로 원격 캐릭터가 데이터베이스 로드 전에 스폰될 수 있다 -
             // 로드가 끝나면 그때까지 못 그린 장비를 다시 적용한다.
@@ -69,6 +70,7 @@ namespace Incheol.Modules
             GameServerConnectManager.Instance.OnEquipmentChanged -= HandleEquipmentChanged;
             GameServerConnectManager.Instance.OnDashReceived -= HandleDashReceived;
             GameServerConnectManager.Instance.OnSkillCastReceived -= HandleSkillCastReceived;
+            GameServerConnectManager.Instance.OnPlayerEffectReceived -= HandlePlayerEffectReceived;
 
             if (ItemDatabaseManager.Instance != null)
             {
@@ -345,6 +347,31 @@ namespace Incheol.Modules
             }
 
             CharacterVfxManager.Instance?.PlayDodgeEffect(controller.transform.Find("EffectBone"));
+        }
+
+        /// <summary>
+        /// 다른 플레이어의 레벨업/물약 이펙트(Game_PlayerEffectBroadcast)를 그 캐릭터의 EffectBone 위치에 재생한다.
+        /// 본인의 이펙트는 로컬(GameSceneManager)에서 이미 재생했고 서버도 본인에게는 보내지 않는다.
+        /// </summary>
+        private void HandlePlayerEffectReceived(GamePlayerEffectBroadcastPacket packet)
+        {
+            if (!remotePlayers.TryGetValue(packet.PlayerId, out RemoteCharacterController controller) || controller == null)
+            {
+                return;
+            }
+
+            Transform anchor = controller.transform.Find("EffectBone");
+
+            switch (packet.Effect)
+            {
+                case GamePlayerEffectType.LevelUp:
+                    CharacterVfxManager.Instance?.PlayLevelUpEffect(anchor);
+                    break;
+
+                case GamePlayerEffectType.HpPotion:
+                    CharacterVfxManager.Instance?.PlayHpPotionEffect(anchor);
+                    break;
+            }
         }
 
         private void HandlePlayerHpChanged(GamePlayerHpBroadcastPacket packet)

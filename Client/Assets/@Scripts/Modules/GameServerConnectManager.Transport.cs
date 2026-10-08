@@ -301,6 +301,11 @@ namespace Incheol.Modules
                     pendingActions.Enqueue(() => OnSkillCastReceived?.Invoke(skillCast));
                     break;
 
+                case GameOpCode.Game_PlayerEffectBroadcast:
+                    var playerEffect = GamePlayerEffectBroadcastPacket.Decode(body);
+                    pendingActions.Enqueue(() => OnPlayerEffectReceived?.Invoke(playerEffect));
+                    break;
+
                 case GameOpCode.Game_PlayerRevived:
                     var revived = GamePlayerRevivedPacket.Decode(body);
                     pendingActions.Enqueue(() => OnPlayerRevived?.Invoke(revived));

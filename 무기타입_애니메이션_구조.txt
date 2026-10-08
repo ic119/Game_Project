@@ -241,7 +241,9 @@
 
    원격 캐릭터의 대기/이동 모션은 RemoteCharacterController 가 보간된 이동 속도로 IsMove/IsIdle 를 정하고,
    무기 타입은 (a) 로 이미 WeaponIndex 에 들어 있으므로 그 무기의 대기/이동 모션이 재생된다.
-   * 원격 플레이어의 대쉬 모션은 동기화하지 않는다.
+   * 원격 플레이어의 대쉬는 Game_DashBroadcast로 동기화한다(전방/후방 대쉬 모션 + 대쉬 이펙트, RemoteCharacterController.PlayDash).
+   * 스킬 모션/이펙트는 Game_SkillCastBroadcast, 레벨업/물약 이펙트는 Game_PlayerEffectBroadcast로 동기화한다.
+   * 근접 무기의 스윙/명중 이펙트도 원격 화면에서 재생한다(공격 모션 알림 시점 / 몬스터·플레이어 피격 패킷 시점).
 
  6-2. 로비 캐릭터 미리보기 (CharacterPreviewStage)
 

@@ -134,6 +134,12 @@ namespace Incheol.Modules
         /// 다른 플레이어가 스킬을 시전했을 때(Game_SkillCastBroadcast). 본인의 시전은 로컬에서 즉시 재생하므로 이 이벤트로 오지 않는다.
         /// </summary>
         public event Action<GameSkillCastBroadcastPacket> OnSkillCastReceived;
+
+        /// <summary>
+        /// 다른 플레이어의 캐릭터 연출(레벨업, 물약 이펙트)이 일어났을 때 발생한다(Game_PlayerEffectBroadcast). 본인의 연출은 로컬에서 즉시 재생하므로
+        /// 이 이벤트로 오지 않는다 - 원격 캐릭터 전용이다.
+        /// </summary>
+        public event Action<GamePlayerEffectBroadcastPacket> OnPlayerEffectReceived;
         public event Action<GamePlayerRevivedPacket> OnPlayerRevived;
         public event Action<GameUseItemResultPacket> OnUseItemResult;
         public event Action<GamePositionCorrectionPacket> OnPositionCorrected;

@@ -179,6 +179,27 @@
  - 서버 테스트 329개 통과(연속 찌르기 합계 기대값 210% -> 300%로 갱신).
  - 인게임 확인: 몬스터 처치 시간이 의도(같은 단계 약 14초)보다 너무 짧아지지 않는지, 마나가 너무 남아돌지 않는지, 슬롯 2/3(회전 베기/낙뢰 등)의 체감.
 
+[원격 플레이어 공유 개선 (2026-10) - 구현 내용]
+ 분석 결과(내 캐릭터의 행동/모습 중 다른 유저 화면에 공유되지 않던 것) 중 1~3번을 처리했다.
+ 1) 근접 무기 스윙/명중 이펙트 공유 (df4e376b)
+      - RemoteCharacterController.PlayAttackAnimation 이 근접 무기일 때 로컬과 같은 위치/높이/크기(앞 1.5m, 높이 1, 크기 0.65)로 스윙 이펙트 재생
+      - RemotePlayerManager 가 Game_MonsterDamageBroadcast / Game_DamageBroadcast 에서 다른 유저의 명중 이펙트를 그 유저의 장착 무기 기준으로 재생
+      - 완드는 기존처럼 투사체가 도착할 때 명중 이펙트를 재생한다. 히트스톱은 공격자 본인 연출이라 공유하지 않는다.
+ 2) 대쉬로 끊긴 스킬의 예약 이펙트 취소 (a6526928)
+      - SkillVfxManager.PlaySkill 이 시전자 id 별로 진행 중인 시전(ActiveCast)을 추적, CancelSkill(casterId)로 아직 일어나지 않은 명중 이펙트/투사체 출발을 막고
+        날아가는 투사체(ProjectileVfxManager.CancelSkillProjectiles)와 시전 순간에 만든 이펙트를 거둔다. 시전 잠금이 끝난 뒤의 취소는 무시.
+      - PooledEffect.LeaseId : 이미 반환돼 다른 곳에 재대여된 인스턴스는 건드리지 않기 위한 대여 번호.
+      - 호출: 내 대쉬 / 서버의 같은 슬롯 시전 거부 / 다른 유저의 Game_DashBroadcast
+ 3) 레벨업/물약 이펙트 공유
+      - 새 패킷 Game_PlayerEffectBroadcast(0x0231) : S2CPlayerEffectBroadcast { PlayerId, Effect(LevelUp=1, HpPotion=2) }. 서버가 레벨업(ApplyLevelUp)과
+        물약 회복(TryHealPlayer) 확정 시 그 플레이어를 보고 있는 사람에게만(본인 제외) 보낸다. 새 연출을 추가할 때는 번호를 뒤에 붙인다.
+      - 클라: GamePlayerEffectBroadcastPacket / GameServerConnectManager.OnPlayerEffectReceived / RemotePlayerManager.HandlePlayerEffectReceived 가
+        원격 캐릭터의 EffectBone 위치에 CharacterVfxManager.PlayLevelUpEffect / PlayHpPotionEffect 재생.
+      - 서버 테스트: GameRoomPlayerEffectTests 4개(물약/레벨업이 근처 유저에게만 가고 본인/먼 유저/효과 없는 경우는 안 가는지). 총 333개 통과.
+      - 테스트 픽스처 수정: Items/ItemDefinitions.json 의 test_weapon_ohs 에서 Grade 를 뺐다 - Common 이 2개가 되어 ItemCatalogTests
+        (등급당 1개 가정)가 무작위로 실패하던 문제를 해결(스킬 작업 때 생긴 간헐적 실패).
+ * 아직 공유하지 않는 것: 머리 위 레벨/HP 표시, 채팅 말풍선, 상호작용(상자/문/포탈) 모션, 스킬 바닥 범위 표시(의도).
+
 [테스트 현황]
  서버 테스트 320개 통과 (기존 289 + 신규 31): SkillCatalogTests, SkillShapeTesterTests,
  GameRoomSkillTests, SkillTableParityTests, 패킷 호환 테스트(자동). Unity 콘솔 오류 없음.
