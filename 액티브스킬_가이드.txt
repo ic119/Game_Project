@@ -1,0 +1,353 @@
+================================================================================
+ 액티브 스킬 가이드 (구조 / 수치 / 이펙트 조절 방법)
+ 작성 기준: 2026-10 시점 코드. 수치와 설정값은 파일(JSON, SkillVfxDatabaseSO)이 원본이다.
+ 진행 이력과 구현 배경은 액티브스킬_작업내용.txt, 최초 기획은 액티브스킬_기획안.txt 참고.
+================================================================================
+
+
+--------------------------------------------------------------------------------
+ 1. 한눈에 보기
+--------------------------------------------------------------------------------
+
+ * 숫자 키 1~4로 쓴다. 해금 레벨은 슬롯마다 3 / 6 / 9 / 12.
+ * 무기 종류(한손검, 양손검, 완드, 창)마다 슬롯 4개씩, 총 16종. 무기를 바꾸면 같은 키가 다른 스킬이 된다.
+ * 판정(맞았는지, 피해량)은 모두 서버가 한다. 클라이언트는 입력 / 모션 / 이펙트 / UI만 맡는다.
+ * 레벨 해금만 있고 스킬 레벨 성장은 없다. PvP와 상태이상(기절 등)은 범위 밖이다.
+ * 마나는 요청이 승인될 때 서버가 차감한다. 거부되면 마나/쿨다운은 소모되지 않는다.
+
+ 두 종류의 데이터를 구분하면 편하다.
+
+   [게임 수치]  마나 / 쿨다운 / 배율 / 범위 / 타격 지연  -> 서버 JSON (+ 클라이언트 복제본 SkillTable)
+   [연출]       이펙트 종류 / 크기 / 위치 / 방향 / 범위 표시 / 기본공격 차단 시간 -> SkillVfxDatabaseSO
+
+ 이 문서의 5장이 SkillVfxDatabaseSO 사용법이다. 이펙트 크기/방향/위치만 바꾸는 거라면 5장만 보면 된다.
+
+
+--------------------------------------------------------------------------------
+ 2. 파일 구조
+--------------------------------------------------------------------------------
+
+ [서버]  Server/MainServer/GameServer/
+   Skills/SkillDefinitions.json        스킬 16종 정의 (게임 수치의 원본)
+   Skills/SkillCatalog.cs              부팅 시 로드/검증. 슬롯별 해금 레벨 3/6/9/12 강제, 중복/수치 검증, 오류가 있으면 서버 시작 거부
+   Skills/SkillShapeTester.cs          직선/원/부채꼴 판정 (대상 몸집 여유 0.5m)
+   Networking/GameRoom.Skills.cs       시전 승인(해금 -> 시전 잠금 -> 쿨다운 -> 마나), 범위 안 대상 찾기
+   Networking/ClientSession.Skills.cs  요청 처리, 타격 시각 예약(RunSkillHitsAsync)
+   Items/ItemDefinitions.json          무기 아이템마다 weaponType (OneHanded / TwoHanded / Wand / Spear)
+
+ [클라이언트]  Client/Assets/@Scripts/
+   Utils/SkillTable.cs                           서버 JSON의 복제본 (해금/마나/쿨다운/시전 시간/모션 번호/범위/타격 지연)
+   Controller/Player/PlayerSkillController.cs    키 입력, 낙관적 시전, 서버 거부 처리, 이동/공격 잠금
+   Controller/Player/PlayerAttackController.cs   스킬 중 기본공격 차단
+   Modules/SkillVfxManager.cs                    스킬 이펙트 재생
+   Modules/ProjectileVfxManager.cs               날아가는 투사체 (기본공격 투사체와 공용)
+   Models/SkillVfxEntry.cs                       SkillVfxDatabaseSO의 항목 구조 (SkillVfxEntry, SkillVfxLayer)
+   Models/ScriptableObject/SkillVfxDatabaseSO.cs / .asset    스킬별 이펙트 설정 데이터 (연출의 원본)
+   View/UI/UI_SkillBarView.cs, UI_SkillSlotView.cs           하단 스킬 슬롯 UI
+   Controller/Monster/BossTelegraphIndicator.cs  바닥 범위 표시 (보스 위험 범위와 공용)
+   Models/Define/Define.cs                       AddressableAssetKey (이펙트 프리팹 키)
+
+ [에셋]
+   Assets/AddressableAssets/Prefabs/Object/SkillEffect/    스킬 이펙트 프리팹 (Lana Studio / VFX_Klaus 원본의 변형)
+   Assets/@Graphics/Animator/PlayerCharacter/BasicCharacterStance.controller   Attack Layer의 스킬 상태 (무기별 블렌드 트리)
+
+
+--------------------------------------------------------------------------------
+ 3. 스킬 목록 (현재 값)
+--------------------------------------------------------------------------------
+
+ 범위 표기: 직선 = 길이 x 폭(m), 원 = 반경 / 전방 오프셋(m), 부채꼴 = 길이 / 각도.
+ 배율은 플레이어 공격력에 곱해진다. 피해 = max(1, 공격력 x 배율 - 몬스터 방어력). 연타는 타격마다 적용.
+ 시전 잠금 = 시전 모션 동안 이동/기본공격/다른 스킬이 잠기는 시간. 대쉬로만 끊을 수 있다.
+
+ [한손검 OneHanded]
+   1 Lv3  돌진 찌르기    직선 3.5 x 1.2        180%   마나12  쿨5s   잠금0.60  타격0.30
+   2 Lv6  회전 베기      원 2.5 (자신)         150%   마나18  쿨8s   잠금0.70  타격0.30
+   3 Lv9  도약 내려찍기  원 2.5 / 전방3m       250%   마나26  쿨12s  잠금0.95  타격0.50
+   4 Lv12 검기 참격      직선 6 x 1.5          350%   마나36  쿨20s  잠금0.80  타격0.45
+
+ [양손검 TwoHanded]
+   1 Lv3  내려치기       부채꼴 2.5 / 120도    200%   마나14  쿨6s   잠금0.55  타격0.25
+   2 Lv6  대회전         원 3 (자신)           180%   마나20  쿨9s   잠금0.55  타격0.40
+   3 Lv9  대지 가르기    직선 5 x 2            280%   마나28  쿨13s  잠금1.15  타격0.80
+   4 Lv12 분노의 일격    원 4 / 전방3m         450%   마나38  쿨22s  잠금1.05  타격1.00 (선딜)
+
+ [완드 Wand]
+   1 Lv3  파이어볼       직선 6 x 1            180%   마나12  쿨5s   잠금0.60  타격0.30
+   2 Lv6  프로스트 노바  원 3 (자신)           160%   마나18  쿨8s   잠금0.70  타격0.20
+   3 Lv9  낙뢰           원 2.5 / 전방6m       260%   마나26  쿨12s  잠금1.35  타격1.00 (선딜)
+   4 Lv12 메테오         원 4 / 전방7m         450%   마나38  쿨22s  잠금1.45  타격1.40 (선딜)
+
+ [창 Spear]
+   1 Lv3  연속 찌르기    직선 3.5 x 1, 3연타   70% x 3 = 210%  마나12  쿨5s   잠금0.60  타격0.25 / 0.35 / 0.45
+   2 Lv6  돌진           직선 5 x 1.2          200%   마나18  쿨8s   잠금0.70  타격0.25
+   3 Lv9  투창           직선 8 x 1            300%   마나26  쿨12s  잠금1.05  타격0.45
+   4 Lv12 승천창         직선 7 x 2            420%   마나36  쿨20s  잠금0.80  타격0.45
+
+ * 타격 시각(타격 지연)은 모션 클립의 무기 손 속도 정점을 측정해 맞췄다. 선딜이 설계 요소인 스킬은 설계값을 유지했다.
+ * 창 돌진의 4m 전진과 전진 중 무적은 구현하지 않았다. 판정만 있다 (한손검 돌진 찌르기도 전진 없음).
+
+
+--------------------------------------------------------------------------------
+ 4. 한 번의 시전이 흘러가는 순서
+--------------------------------------------------------------------------------
+
+   키 1~4 입력 (PlayerSkillController)
+     1) 로컬 사전 검사: 무기에 스킬이 있는지 / 레벨 / 쿨다운 / 마나 / 대쉬 중 아님 / 피격 모션 아님
+     2) 가까운 몬스터 쪽으로 몸을 돌리고, 그 방향(RotationY)을 서버에 전송 (Game_SkillRequest)
+     3) 서버 응답을 기다리지 않고 바로 시전 시작 (낙관적 시작)
+          - 이동/기본공격 잠금, 모션 재생, 쿨다운 표시 시작
+          - SkillVfxManager가 이펙트 재생, 선딜 스킬이면 바닥 범위 표시, 기본공격 차단 시간 걸기
+     4) 서버: 승인 -> 마나 차감 + 타격 예약 / 거부 -> Game_SkillResult로 사유 전송
+          - 거부되면 클라이언트가 시전을 취소하고 쿨다운을 서버 값으로 맞추며, 범위 표시/기본공격 차단도 푼다
+          - 거부 사유(마나 부족 등)는 슬롯 위 안내 문구로 잠깐 표시된다
+     5) 타격 시각마다 서버가 그 시점의 몬스터 위치로 범위를 다시 판정하고 피해를 준다
+     6) 다른 플레이어 화면: 서버가 주변에 Game_SkillCastBroadcast(위치/방향/무기/슬롯)를 중계 -> 모션 + 이펙트 재생
+        (범위 표시와 기본공격 차단은 내 화면에서 내가 쓴 스킬에만 적용된다)
+
+ 대쉬로 시전을 끊으면: 모션 종료, 서버가 남은 타격 취소, 클라이언트는 범위 표시와 기본공격 차단을 푼다.
+ 시전 중 피격으로 모션이 끊겨도 서버의 타격은 그대로 진행된다.
+
+
+--------------------------------------------------------------------------------
+ 5. SkillVfxDatabaseSO 사용법  (이펙트 크기 / 방향 / 위치 조절)
+--------------------------------------------------------------------------------
+
+ 5-1. 파일 위치와 여는 법
+
+   Assets/@Scripts/Models/ScriptableObject/SkillVfxDatabaseSO.asset
+   Project 창에서 선택하면 Inspector에 Entries 목록이 나온다. 스킬 id를 펼쳐서 수정한다.
+   (코드를 건드릴 필요가 없다. 어드레서블 이름은 "SkillVfxDatabaseSO"이고 Bootstrap 때 한 번 로드된다.)
+
+   !! 수정 후에는 Play 모드를 다시 시작해야 반영된다. Play 중에 값을 바꾸는 것은 권장하지 않는다.
+
+ 5-2. 스킬 id
+
+   한손검  ohs_pierce  ohs_whirlwind  ohs_leap_slam  ohs_sword_wave
+   양손검  ths_smash   ths_great_spin ths_earth_cleave ths_fury_strike
+   완드    wand_fireball  wand_frost_nova  wand_lightning  wand_meteor
+   창      spear_flurry   spear_charge     spear_throw     spear_ascension
+   (SkillDefinitions.json의 id와 같다. 없는 id나 중복 id는 에디터에서 오류 로그가 뜬다.)
+
+ 5-3. 스킬 항목(SkillVfxEntry)의 구성
+
+   skillId                스킬 id
+   showTelegraph          선딜 스킬의 바닥 범위 표시를 켤지 (내가 쓴 스킬만 보임)
+   attackLockSeconds      시전 후 기본공격을 막는 시간(초). 0이면 시전 잠금까지만 막는다
+   cast                   [레이어] 시전 순간, 시전자 발 위치 기준에서 재생 (휘두르는 궤적, 시전 섬광 등)
+   projectile             [레이어] 날아가는 투사체. key는 반복 재생(Loop) 이펙트여야 한다
+   projectileSpeed        투사체 속도(m/s)
+   areaStart              [레이어] 시전 순간, 범위 중심에서 재생 (마법진 등)
+   areaHit                [레이어] 타격 시각마다, 범위 중심에서 재생 (폭발, 낙뢰 등). 연타 스킬은 타격마다 재생
+
+   * 범위 중심: 직선/부채꼴은 시전자 앞 (길이/2) 지점, 원은 시전자 앞 ForwardOffset 지점(0이면 자신)이다.
+   * 레이어에서 key를 None으로 두면 그 레이어는 재생하지 않는다.
+
+ 5-4. 레이어(SkillVfxLayer)의 필드
+
+   key            재생할 이펙트(AddressableAssetKey). 이펙트를 바꾸려면 이 값을 다른 키로 바꾼다
+   offset         기준점에서의 이동. x 오른쪽, y 위, z 앞 (시전 방향에 맞춰 회전한다)
+   scale          크기에 곱하는 배율. referenceSize를 쓰는 레이어라면 자동 크기 결과에 곱해진다
+   referenceSize  범위 이펙트의 "프리팹 원래 크기(m)". 0보다 크면 스킬 범위에 맞춰 자동으로 크기를 정한다
+                    - 직선/부채꼴은 길이, 원은 지름 기준
+                    - 실제 배율 = (범위 크기 / referenceSize) x scale
+                    - 0이면 자동 크기 맞춤을 하지 않고 scale만 적용된다 (주로 Slash 계열)
+   yawOffset      프리팹이 향하는 방향이 시전 방향과 다를 때 더하는 회전(도)
+
+ 5-5. 상황별 조정 방법
+
+   [이펙트가 너무 크다 / 작다]
+     - referenceSize가 있는 레이어: referenceSize를 키우면 이펙트가 작아지고, 줄이면 커진다 (또는 scale을 조정)
+     - referenceSize가 0인 레이어: scale을 조정한다
+     - referenceSize는 에디터에서 파티클 bounds로 잰 추정값이라 실제 보이는 크기와 다를 수 있다. 인게임에서 보며 맞춘다
+
+   [방향이 어긋난다 / 옆으로 누워 있다]
+     - 해당 레이어의 yawOffset을 0 / 90 / -90 / 180 중에서 바꿔 본다
+     - 직선 이펙트(대지 가르기, 승천창)는 90으로 설정되어 있다
+     - 휘두르는 호가 반대 방향이면 180 (돌진 찌르기의 cast는 -180으로 설정되어 있다)
+
+   [위치가 몸에서 너무 앞/뒤, 좌/우, 위/아래]
+     - offset의 z(앞뒤), x(좌우), y(높이)를 조정한다
+     - 바닥에 묻히거나 떠 있으면 y를 조정한다
+
+   [이펙트를 다른 것으로 교체]
+     - key에서 다른 AddressableAssetKey를 고른다. 새 이펙트 프리팹이 필요하면 6장 참고
+     - 단, 시전/범위/명중 레이어(cast, areaStart, areaHit)에는 반복 재생(Loop) 이펙트를 쓸 수 없다 (PooledEffect가 끝을 기다림)
+     - 투사체(projectile)는 반대로 반복 재생 이펙트여야 한다 (PooledLoopEffect)
+
+   [선딜 스킬 바닥 범위 표시 켜기/끄기]
+     - showTelegraph 체크. 현재 켜진 스킬: 도약 내려찍기 / 분노의 일격 / 낙뢰 / 메테오 (모두 원형)
+     - 직선은 지원, 부채꼴은 표시하지 않는다
+     - 표시 시간 = 첫 타격 지연. 색은 SkillVfxDatabaseSO 상단 Telegraph Area/Fill/Edge/Flash Color에서 바꾼다 (기본 푸른색)
+
+   [스킬 사용 후 기본공격이 너무 일찍/늦게 나간다]
+     - attackLockSeconds 조정. 시전 잠금(서버 값)보다 클 때만 의미가 있다 (더 긴 쪽이 적용됨)
+     - 대쉬로 시전을 끊으면 이 차단도 풀린다
+
+   [파이어볼 투사체]
+     - projectile.offset: 발사 지점 (지팡이 끝). 기본 공격 완드 총구와 같은 (0, 1.3, 0.6)
+     - projectileSpeed: 속도. 도착 시각은 항상 첫 타격 시각에 맞춰진다
+         (비행 시간 < 타격 지연이면 그만큼 늦게 출발, 길면 바로 출발해 더 빨리 날아간다)
+     - 도착 지점: 직선은 길이 끝, 원은 범위 중심
+
+ 5-6. 현재 설정값 (참고)
+
+   형식: 레이어 [키, offset, scale, referenceSize, yawOffset]
+
+   ohs_pierce        cast [SkillSlashMagicOnce (0,1,1) 0.8 / 0 / -180]
+   ohs_whirlwind     cast [SkillSlashMagicLong (0,0.9,0) 1 / 6.7 / 0]
+   ohs_leap_slam     areaHit [SkillDustFloorHit (0,0,0) 1 / 19.5 / 0]                       telegraph ON, attackLock 1.2
+   ohs_sword_wave    cast [SkillSlashFireLong (0,1,1.5) 1 / 0 / 0]
+   ths_smash         cast [SkillSlashStoneOnce (0,1,1.1) 0.9 / 0 / 0]
+   ths_great_spin    cast [SkillSlashStoneLong (0,0.9,0) 1 / 6.8 / 0]
+   ths_earth_cleave  areaHit [SkillAreaStoneLine (0,0,0) 1 / 8.8 / 90]                      attackLock 1.5
+   ths_fury_strike   areaHit [SkillAreaStoneCircle (0,0,0) 1 / 11.1 / 0]                    telegraph ON, attackLock 1.6
+   wand_fireball     cast [SkillCastFire (0,1.3,0.6) 1 / 0 / 0]
+                     projectile [SkillProjectileFire (0,1.3,0.6) 0.25 / 0 / 0], speed 25
+                     areaHit [SkillHitFire (0,1,3) 0.4 / 0 / 0]
+   wand_frost_nova   areaHit [SkillNovaBlue (0,0,0) 1 / 5 / 0]                              attackLock 0.9
+   wand_lightning    areaHit [SkillAreaLightningCircle (0,0,0) 1 / 15.6 / 0]                telegraph ON, attackLock 1.5
+   wand_meteor       areaStart [SkillMagicCircle (0,0,0) 1 / 22.3 / 0]
+                     areaHit [SkillExplosionEarth (0,0,0) 1 / 5.7 / 0]                      telegraph ON, attackLock 2.0
+   spear_flurry      cast [SkillSlashSnowOnce (0,1,1.2) 0.7 / 0 / 0]
+   spear_charge      cast [SkillSlashSnowLong (0,1,1.5) 0.6 / 0 / 0]
+   spear_throw       cast [SkillSlashSnowOnce (0,1,1) 0.8 / 0 / 0]
+                     areaHit [SkillHitWind (0,1,4) 0.5 / 0 / 0]
+   spear_ascension   areaHit [SkillAreaIceLine (0,0,0) 1 / 9.1 / 90]                        attackLock 1.0
+
+   (이펙트 이름은 AddressableAssetKey 이름이다. 실제 프리팹은 6-2 참고.)
+
+
+--------------------------------------------------------------------------------
+ 6. 이펙트 프리팹 추가 / 교체 방법
+--------------------------------------------------------------------------------
+
+ 6-1. 이미 있는 이펙트를 다른 스킬에 쓰기
+   SkillVfxDatabaseSO에서 key만 바꾸면 된다. 프리팹이 GameScene 로딩 때 미리 불러와지도록 등록되어 있으므로 추가 작업이 없다.
+
+ 6-2. 현재 등록된 스킬 이펙트 (AddressableAssetKey -> 원본)
+
+   SkillSlashMagicOnce    Lana Slash/Slash_magic_once          SkillSlashFireLong     Lana Slash/Slash_fire_long
+   SkillSlashMagicLong    Lana Slash/Slash_magic_long          SkillSlashStoneOnce    Lana Slash/Slash_stone_once
+   SkillSlashStoneLong    Lana Slash/Slash_stone_long          SkillSlashSnowOnce     Lana Slash/Slash_snow_once
+   SkillSlashSnowLong     Lana Slash/Slash_snow_long           SkillAreaStoneLine     Lana Top_down_attack/top_down_stone_line
+   SkillAreaStoneCircle   Lana Top_down_attack/top_down_stone_circle
+   SkillAreaLightningCircle  Lana Top_down_attack/top_down_lightning_circle_blue
+   SkillAreaIceLine       Lana Top_down_attack/top_down_ice_line
+   SkillHitFire           Lana Range_attack/Hit_fire           SkillHitWind           Lana Range_attack/Hit_wind
+   SkillNovaBlue          Lana Area_generic/Area_generic_blue_outbreak
+   SkillExplosionEarth    Lana Fire/Fire_explosion_earth       SkillDustFloorHit      Klaus HCFX_Dust_FloorHit_02
+   SkillMagicCircle       Klaus HCFX_MagicCircle_02            SkillProjectileFire    Lana Range_attack/Projectiles_fire (반복 재생)
+   SkillCastFire          Klaus HCFX_Energy_02 (붉은 시전 섬광, 크기 0.13 x 0.05 x 0.13)
+   (WandCast01 / WandBolt01 / WandHit01은 완드 기본 공격용이다. WandCast01의 원본은 Klaus HCFX_Energy_03.)
+
+   프리팹 위치: Assets/AddressableAssets/Prefabs/Object/SkillEffect/  (원본의 프리팹 변형 + PooledEffect 또는 PooledLoopEffect)
+   원본 팩: Assets/Lana Studio/Casual RPG VFX/Prefabs/  ,  Assets/@ThirdParty/VFX_Klaus/Prefabs/Hyper Casual FX/
+
+ 6-3. 새 이펙트를 등록하는 순서
+
+   1) 원본 프리팹을 골라 Loop 여부를 확인한다 (파티클 Main 모듈의 Looping)
+        - 시전/범위/명중 레이어용: Loop 꺼진 이펙트 -> 프리팹에 PooledEffect 컴포넌트 추가
+        - 투사체용: Loop 켜진 이펙트 -> 프리팹에 PooledLoopEffect 컴포넌트 추가 (끝나는 시점은 ProjectileVfxManager가 정함)
+   2) SkillEffect 폴더에 원본의 프리팹 변형으로 저장한다 (원본은 수정하지 않는다)
+        - 크기를 줄이고 싶으면 변형의 루트 Scale을 바꾼다 (SO의 scale보다 먼저 적용되는 기본 크기)
+   3) Addressables Groups 창에서 Effect 그룹에 넣고 Address를 enum 이름과 같게 한다 (예: SkillCastFire)
+   4) Define.cs의 AddressableAssetKey에 새 키를 "맨 뒤"에 추가한다
+        - 기존 번호는 절대 바꾸거나 재사용하지 않는다 (직렬화된 데이터와 어긋난다). 현재 마지막 번호는 SkillCastFire = 49
+   5) AddressableAssetModelSO.asset의 GameScene 항목 preloadAddressableKeys에 새 키를 추가한다
+        - 빠뜨리면 첫 사용 때 프리팹이 로드되지 않아 이펙트가 나오지 않을 수 있다
+   6) SkillVfxDatabaseSO에서 원하는 스킬 레이어의 key를 새 키로 지정한다
+   7) 크기가 안 맞으면 referenceSize / scale, 방향이 안 맞으면 yawOffset으로 맞춘다 (5-5)
+
+ 6-4. 이펙트가 안 나올 때 확인할 것
+
+   - 레이어의 key가 None이 아닌지
+   - Play 모드를 다시 시작했는지 (SO는 Bootstrap에서 한 번 로드)
+   - 프리팹이 Effect 그룹에 있고 Address가 enum 이름과 같은지
+   - GameScene preload 목록에 키가 있는지
+   - 시전/범위/명중 레이어에 Loop 이펙트를 넣지 않았는지 (PooledEffect가 끝나지 않거나 이상 동작)
+   - 콘솔에 "SkillVfxDatabaseSO 로드 실패" 또는 "SkillTable에 없는 skillId" 오류가 없는지
+   - 이펙트는 순수 연출이다. 서버가 시전을 거부하면 모션은 취소되지만 이미 터진 이펙트는 짧게 보이고 끝난다
+
+
+--------------------------------------------------------------------------------
+ 7. 게임 수치(마나 / 쿨다운 / 배율 / 범위 / 타격 지연) 바꾸기
+--------------------------------------------------------------------------------
+
+ !! 서버 JSON과 클라이언트 SkillTable.cs를 항상 같이 고쳐야 한다. 어긋나면 서버가 거부할 요청을 보내거나
+    이펙트가 실제로 맞는 자리와 다른 곳에 터진다. GameServer.Tests의 SkillTableParityTests가 두 값이 같은지 검사한다.
+
+ 순서
+   1) Server/MainServer/GameServer/Skills/SkillDefinitions.json에서 해당 스킬 수치 수정
+        - 필드: manaCost, cooldownSeconds, castLockSeconds, shape(Line/Circle/Cone), length, width, radius, angle, forwardOffset,
+                damageMultiplier, hits, hitIntervalSeconds, hitDelaySeconds, maxTargets(기본 8)
+        - unlockLevel은 슬롯별 3/6/9/12에서 바꿀 수 없다 (로드 때 검증)
+   2) Client/Assets/@Scripts/Utils/SkillTable.cs의 같은 스킬 줄을 같은 값으로 수정
+        - Entry(무기, 슬롯, id, 이름, 해금 레벨, 마나, 쿨다운, 시전 잠금, 모션 번호, Area(범위/타격 지연))
+   3) 서버 테스트: Server/MainServer/GameServer.Tests 에서 dotnet test
+        - 먼저 실행 중인 GameServer를 종료해야 한다 (DLL 잠금). 끝나면 GameServer를 다시 실행한다
+   4) GameServer 재시작 (JSON은 부팅 시 한 번만 읽는다)
+
+ 타격 지연을 조정할 때
+   - 마지막 타격 시각(= 첫 지연 + (타수-1) x 간격)은 castLockSeconds 이하여야 한다. 넘으면 그 사이 새 시전이 남은 타격을 무효로 만들 수 있다
+     (테스트가 이 조건을 검사한다)
+   - 타격 지연은 이펙트(areaHit, 투사체 도착)와 바닥 범위 표시 시간에도 그대로 쓰인다
+
+ 시전 잠금을 조정할 때
+   - 서버 CastLockSeconds와 클라이언트의 시전 모션 길이는 같은 값으로 맞춘다 (SkillTable에 복제됨)
+   - 모션(클립) 길이보다 짧으면 모션이 잘리고, 길면 마지막 자세가 잠깐 유지된다
+
+ 밸런스 참고
+   - 단일 대상 효율(배율 / 쿨다운)은 모든 무기에서 슬롯 1이 가장 높고 슬롯 4가 가장 낮다 (예: 한손검 36%/s -> 17.5%/s).
+     4번은 범위/사거리/선딜을 보상으로 둔 값이다. 인게임에서 약하게 느껴지면 배율 또는 쿨다운을 조정한다
+   - 최대 마나는 Lv3 약 66, Lv12 약 108. 4번 코스트는 최대 마나의 약 35%
+
+
+--------------------------------------------------------------------------------
+ 8. 새 무기 / 새 스킬을 추가하는 체크리스트
+--------------------------------------------------------------------------------
+
+   [1] 서버  SkillDefinitions.json에 4개 슬롯(해금 3/6/9/12) 추가. weaponType은 WeaponKind 이름
+   [2] 서버  무기 아이템이 ItemDefinitions.json에서 해당 weaponType을 갖는지 확인
+   [3] 클라  SkillTable.cs에 같은 값으로 Entry 4개 추가 (모션 번호 AnimatorSkillIndex 포함)
+   [4] 클라  애니메이터(BasicCharacterStance.controller)의 Attack Layer
+        - 스킬 상태 5개(SwordPierce / Wheelwind / LeapSlam / SwordWaveStart / SwordWave)는 WeaponIndex 블렌드 트리다 (임계값 1,2,4,5)
+            슬롯1 = Combo03, 슬롯2 = Combo04, 슬롯3 = Combo05(InPlace), 슬롯4 = Attack04_Start -> Attack04
+        - 새 무기 타입이면 각 블렌드 트리에 그 무기의 클립을 같은 임계값(WeaponType 값)으로 추가한다
+        - Simple1D의 "Automatic Thresholds"는 꺼 둔다 (켜면 이웃 클립이 섞여 재생된다)
+        - 전용 긴 시전 모션이 필요하면 완드 메테오처럼 별도 상태(MeteorCast, SkillIndex 7)를 추가한다
+   [5] 클라  SkillVfxDatabaseSO에 스킬 id별 항목 추가 (5장)
+   [6] 테스트 SkillTableParityTests / SkillCatalogTests 통과 확인 (스킬 수 등 기대값이 하드코딩되어 있으면 갱신)
+   [7] 서버 재시작, 인게임에서 모션 / 이펙트 / 타격 시점 확인
+
+
+--------------------------------------------------------------------------------
+ 9. 알려진 한계
+--------------------------------------------------------------------------------
+
+   - 이펙트 크기(referenceSize)와 yawOffset은 추정값이다. 인게임에서 보고 조정해야 한다
+   - 창 돌진의 4m 전진 / 무적 미구현. 전진을 넣으려면 서버 이동 검증(PositionCorrection)과 함께 설계해야 한다
+   - 파이어볼만 날아가는 투사체가 있다. 투창 등 다른 스킬의 투사체는 같은 projectile 레이어로 추가할 수 있다
+   - top_down_* 이펙트(대지 가르기, 분노의 일격, 낙뢰, 승천창)는 재생 시간이 6~10초로 길고 하늘에서 떨어지는 부분 때문에 높이도 크다
+   - 분노의 일격(잠금 1.05초)과 메테오(1.45초)는 모션(0.73초 / 1.27초)보다 선딜이 길어 마지막 자세가 잠깐 유지된다
+   - 맵 이동 / 재접속 시 스킬 쿨다운이 초기화된다 (대쉬 쿨다운과 같은 구조)
+   - 시전 중 기본공격은 서버가 막지 않고 클라이언트가 막는다 (서버는 스킬끼리 연속 시전만 제한)
+   - 아이콘 에셋이 없어 슬롯 아이콘은 비어 있다. 스프라이트가 정해지면 UI_SkillSlotView.SetIcon으로 연결한다
+   - 스킬 이펙트의 색은 프리팹 원본 색이다. 일부 Klaus 이펙트는 전용 셰이더(HCFX_Particle2ndColor)라 시작 색만 바꿔서는
+     색이 보장되지 않는다. 색이 맞지 않으면 색 계열이 맞는 다른 원본으로 교체하는 편이 안전하다
+
+
+--------------------------------------------------------------------------------
+ 10. 자주 쓰는 명령 / 참고
+--------------------------------------------------------------------------------
+
+   서버 테스트   cd Server/MainServer/GameServer.Tests  &&  dotnet test       (GameServer 종료 후)
+   GameServer   cd Server/MainServer/GameServer  &&  ./bin/Debug/net8.0/GameServer.exe   (TCP 9000)
+   MainServer   cd Server/MainServer/MainServer  &&  dotnet run                          (HTTPS 58208 / HTTP 58209)
+
+   관련 문서
+     액티브스킬_기획안.txt      최초 기획 (스킬 설계 의도, 공통 규칙)
+     액티브스킬_작업내용.txt    단계별 구현 내용과 이력
+     무기타입_애니메이션_구조.txt   WeaponType / WeaponIndex / 블렌드 트리 구조
+
+================================================================================
