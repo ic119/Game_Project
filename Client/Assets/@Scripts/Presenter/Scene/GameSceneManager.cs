@@ -95,7 +95,7 @@ namespace Incheol.Presenter.Scene
         #region LifeCycle
         private void Awake()
         {
-            loadingTracker = new InitialLoadingTracker(this);
+            loadingTracker = new InitialLoadingTracker(this, AbortInitialLoad);
             mapPresenter = new GameSceneMapPresenter(transform, () => currentMapInstance);
             playerSpawner = new LocalPlayerSpawner(this);
 
@@ -259,14 +259,20 @@ namespace Incheol.Presenter.Scene
 
             List<AddressableAssetKey> keys = await GameManager.Instance.LoadAddressableKeysByTagAsync(gameSceneTag);
 
-            if (keys == null || this == null)
+            if (this == null)
             {
+                return;
+            }
+
+            if (keys == null)
+            {
+                AbortInitialLoad($"GameScene 리소스 목록({gameSceneTag})을 불러오지 못했습니다.");
                 return;
             }
 
             if (AddressableAssetManager.Instance == null)
             {
-                DebugLogManager.GenerateErrorMessage<GameSceneManager>("AddressableAssetManager.Instance가 null입니다.");
+                AbortInitialLoad("AddressableAssetManager.Instance가 null입니다.");
                 return;
             }
 
@@ -347,7 +353,7 @@ namespace Incheol.Presenter.Scene
 
             if (respawnPoint == null)
             {
-                DebugLogManager.GenerateErrorMessage<GameSceneManager>("Floor001 맵에서 RespawnPoint를 찾을 수 없습니다.");
+                AbortInitialLoad("Floor001 맵에서 RespawnPoint를 찾을 수 없습니다.");
                 return;
             }
 
@@ -393,48 +399,70 @@ namespace Incheol.Presenter.Scene
         {
             if (SaveDataManager.Instance == null || !SaveDataManager.Instance.SelectedCharacterId.HasValue)
             {
-                DebugLogManager.GenerateErrorMessage<GameSceneManager>("선택된 캐릭터가 없어 외형을 적용할 수 없습니다.");
+                AbortInitialLoad("선택된 캐릭터가 없어 외형을 적용할 수 없습니다.");
                 return;
             }
 
             if (!_playerInstance.TryGetComponent(out CharacterCustomModel customModel))
             {
+                AbortInitialLoad("플레이어 프리팹에 CharacterCustomModel이 없습니다.");
                 return;
             }
 
             SaveDataManager.Instance.FetchCharacterDetailAsync(SaveDataManager.Instance.SelectedCharacterId.Value, userSaveData =>
             {
-                if (_playerInstance == null || userSaveData == null)
+                if (this == null || _playerInstance == null)
                 {
                     return;
                 }
 
-                customModel.ApplyCustomization(userSaveData.hairIndex, userSaveData.eyeIndex, userSaveData.mouthIndex);
-
-                if (_playerInstance.TryGetComponent(out PlayerCharacterModel playerModel))
+                if (userSaveData == null)
                 {
-                    // 닉네임/레벨/체력/공격력·방어력을 세이브 데이터로 초기화한다(경험치는 서버 미지원으로 0에서 시작).
-                    playerModel.ApplyUserSaveData(userSaveData);
-
-                    spawnedPlayerModel = playerModel;
-                    TryBindPlayerInfo();
+                    AbortInitialLoad("캐릭터 정보를 서버에서 불러오지 못했습니다.");
+                    return;
                 }
 
-                // 이전 세션에서 처치 보상으로 쌓인 아이템(서버 CharacterItems)을 복원한다. 골드는
-                // ApplyUserSaveData가 이미 spawnedPlayerModel.Gold로 반영했으므로 여기서는 아이템만 채운다.
-                localInventory.Replace(userSaveData.items);
-
-                // 복원한 아이템 중 equipSlot이 설정된(이전 세션에 장착해뒀던) 것들을 캐릭터 시각에 반영하고,
-                // 장비 스탯 보너스를 계산해둔다 - 이 직후 ConnectToGameServer가 만드는 GamePlayerInfo가
-                // spawnedPlayerModel.AttackPower/Defense를 그대로 읽으므로, Enter 시점부터 이미 보너스가 실려 간다.
-                ApplyEquippedVisuals();
-                RecalculateEquipmentStats();
-
-                // 캐릭터 생성(외형/스탯 적용)이 성공적으로 끝난 시점에 인벤토리 UI를 비활성 상태로 미리 만들어둔다.
-                SpawnInventoryUI();
-
-                ConnectToGameServer(_playerInstance, userSaveData);
+                // 이 콜백은 await 없이 던져진 Awaitable(SaveDataManager.FetchCharacterDetailAsync) 안에서 실행돼, 여기서 예외가 나면
+                // 아무도 관찰하지 못해 로그도 없이 사라지고 GameServer 접속까지 이어지지 않는다(로딩바는 타임아웃까지 남는다).
+                // 그래서 직접 잡아 예외 위치를 로그에 남기고 최초 로딩을 중단한다.
+                try
+                {
+                    ApplyFetchedCharacter(_playerInstance, customModel, userSaveData);
+                }
+                catch (System.Exception exception)
+                {
+                    AbortInitialLoad($"캐릭터 정보를 적용하는 중 예외가 발생했습니다 : {exception.GetType().Name} - {exception.Message}\n{exception.StackTrace}");
+                }
             });
+        }
+
+        private void ApplyFetchedCharacter(GameObject _playerInstance, CharacterCustomModel customModel, UserSaveData userSaveData)
+        {
+            customModel.ApplyCustomization(userSaveData.hairIndex, userSaveData.eyeIndex, userSaveData.mouthIndex);
+
+            if (_playerInstance.TryGetComponent(out PlayerCharacterModel playerModel))
+            {
+                // 닉네임/레벨/체력/공격력·방어력을 세이브 데이터로 초기화한다(경험치는 서버 미지원으로 0에서 시작).
+                playerModel.ApplyUserSaveData(userSaveData);
+
+                spawnedPlayerModel = playerModel;
+                TryBindPlayerInfo();
+            }
+
+            // 이전 세션에서 처치 보상으로 쌓인 아이템(서버 CharacterItems)을 복원한다. 골드는
+            // ApplyUserSaveData가 이미 spawnedPlayerModel.Gold로 반영했으므로 여기서는 아이템만 채운다.
+            localInventory.Replace(userSaveData.items);
+
+            // 복원한 아이템 중 equipSlot이 설정된(이전 세션에 장착해뒀던) 것들을 캐릭터 시각에 반영하고,
+            // 장비 스탯 보너스를 계산해둔다 - 이 직후 ConnectToGameServer가 만드는 GamePlayerInfo가
+            // spawnedPlayerModel.AttackPower/Defense를 그대로 읽으므로, Enter 시점부터 이미 보너스가 실려 간다.
+            ApplyEquippedVisuals();
+            RecalculateEquipmentStats();
+
+            // 캐릭터 생성(외형/스탯 적용)이 성공적으로 끝난 시점에 인벤토리 UI를 비활성 상태로 미리 만들어둔다.
+            SpawnInventoryUI();
+
+            ConnectToGameServer(_playerInstance, userSaveData);
         }
 
         /// <summary>
@@ -532,6 +560,11 @@ namespace Incheol.Presenter.Scene
                 }
 
                 inventoryInstance = AddressableAssetManager.Instance.InstantiatePrefab(prefab, transform);
+
+                // UI_Inventory 프리팹 루트가 비활성으로 저장돼 있으면 Instantiate만으로는 Awake가 실행되지 않아, UI_InventoryView의
+                // 내부 구성(장비 패널/탭/슬롯)이 만들어지기 전에 아래 RefreshInventoryDisplay가 불려 NullReferenceException이 난다.
+                // 그 예외가 GameServer 접속까지 막으므로, 프리팹의 활성 상태와 무관하게 한 번 켜서 Awake를 보장한 뒤 끈다.
+                inventoryInstance.SetActive(true);
                 inventoryInstance.SetActive(false);
                 isInventoryActive = false;
 

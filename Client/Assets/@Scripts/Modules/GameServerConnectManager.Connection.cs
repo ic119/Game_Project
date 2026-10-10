@@ -24,10 +24,27 @@ namespace Incheol.Modules
         /// </summary>
         public void ConnectAndEnter(GamePlayerInfo localInfo)
         {
+            // 이전 게임에서 끊기지 않고 남은 연결이 있으면 먼저 정리한다 - 그대로 두면 아래 접속이 "이미 접속되어 있습니다"로
+            // 조용히 거절돼 입장 요청이 나가지 않고, 입장 확인이 영원히 오지 않는다.
+            if (isConnected)
+            {
+                Disconnect();
+            }
+
             lastEnterInfo = localInfo;
             reconnectAttempt = 0;
             hasEntered = false;
-            _ = ConnectAndEnterAsync(localInfo, ++connectionGeneration);
+            _ = ConnectAndEnterRoutineAsync(localInfo, ++connectionGeneration);
+        }
+
+        // 최초 접속 시도. 토큰 발급이나 TCP/TLS 접속이 실패하면 수신 루프가 만들어지지 않아 끊김 알림이 올 수 없으므로 여기서 실패를
+        // 알린다 - 입장한 적이 없으면 ScheduleReconnect가 곧바로 OnDisconnected로 알려, 로딩바가 타임아웃까지 남지 않고 로비로 돌아간다.
+        private async Awaitable ConnectAndEnterRoutineAsync(GamePlayerInfo localInfo, int generation)
+        {
+            if (!await ConnectAndEnterAsync(localInfo, generation) && generation == connectionGeneration)
+            {
+                ScheduleReconnect();
+            }
         }
 
         // 접속과 입장 요청 전송까지 성공하면 true. 입장이 받아들여졌는지는 Game_EnterAck(OnEntered)로 안다.

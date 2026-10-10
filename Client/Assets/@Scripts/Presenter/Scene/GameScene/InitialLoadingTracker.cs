@@ -16,11 +16,21 @@ namespace Incheol.Presenter.Scene
         private const float TimeoutSeconds = 30f;
 
         private readonly MonoBehaviour owner;
+        private readonly System.Action<string> onFailed;
         private bool isActive;
 
-        public InitialLoadingTracker(MonoBehaviour owner)
+        // 타임아웃이 났을 때 어느 단계에서 멈췄는지 알려 주기 위해 마지막으로 보고된 단계를 기억한다.
+        private string lastStage = "최초 로딩 시작";
+
+        /// <summary>최초 로딩 중이라 이 트래커가 로딩바를 숨길 책임을 지고 있으면 true.</summary>
+        public bool IsActive => isActive;
+
+        /// <param name="onFailed">타임아웃 등으로 최초 로딩이 끝내 끝나지 않았을 때 사유와 함께 호출된다. 호출 시점에는 아직 IsActive가 true이며,
+        /// 받는 쪽이 Abandon()으로 로딩바를 정리해야 한다. null이면 로딩바만 숨긴다.</param>
+        public InitialLoadingTracker(MonoBehaviour owner, System.Action<string> onFailed = null)
         {
             this.owner = owner;
+            this.onFailed = onFailed;
         }
 
         private enum LoadingBarViewState
@@ -55,6 +65,7 @@ namespace Incheol.Presenter.Scene
                 return;
             }
 
+            lastStage = title;
             GameManager.Instance?.LoadingBarView?.UpdateTitle(title);
         }
 
@@ -108,7 +119,16 @@ namespace Incheol.Presenter.Scene
                 return;
             }
 
-            DebugLogManager.GenerateErrorMessage<InitialLoadingTracker>($"게임 서버 입장 확인이 {TimeoutSeconds}초 안에 오지 않아 로딩바를 강제로 숨깁니다.");
+            string reason = $"게임 입장이 {TimeoutSeconds:0}초 안에 끝나지 않았습니다. (마지막 단계 : {lastStage})";
+            DebugLogManager.GenerateErrorMessage<InitialLoadingTracker>(reason);
+
+            // 로딩바만 숨기면 서버에 입장하지 못한 채 맵에 덩그러니 남는다 - 실패로 알리고 정리는 받는 쪽에 맡긴다.
+            if (onFailed != null)
+            {
+                onFailed(reason);
+                return;
+            }
+
             Hide();
         }
 

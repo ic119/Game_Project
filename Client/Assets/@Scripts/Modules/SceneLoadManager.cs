@@ -43,6 +43,9 @@ namespace Incheol.Modules
         /// </summary>
         private bool isSceneLoading;
 
+        /// <summary>씬 전환이 진행 중이면 true. 이 동안 들어온 LoadSceneByTags 요청은 무시되므로, 전환을 요청하려는 쪽이 끝나기를 기다릴 때 쓴다.</summary>
+        public bool IsSceneLoading => isSceneLoading;
+
         /// <summary>
         /// 이번 씬 전환의 진행률을 UI_LoadingBarView에 표시하는 중인지. 로비처럼 호출한 씬이 전환 도중 언로드되는 경우,
         /// 호출한 쪽은 로딩바를 숨길 수 없으므로 씬이 유지되는 이 매니저가 표시/진행률/숨김을 모두 맡는다.

@@ -63,19 +63,70 @@ namespace Incheol.Presenter.Scene
         /// </summary>
         private void HandleGameServerEntered(GamePlayerInfo self)
         {
-            if (spawnedPlayerModel == null || !IsLocalPlayer(self.PlayerId))
+            if (spawnedPlayerModel != null && IsLocalPlayer(self.PlayerId))
+            {
+                WarpLocalPlayer(new Vector3(self.X, self.Y, self.Z), Quaternion.Euler(0f, self.RotationY, 0f));
+                ApplyLocalServerHp(self.CurrentHp, self.MaxHp, false);
+
+                // 마나도 체력과 같이 서버 값으로 맞춘다(최초 입장은 가득 찬 값, 재접속/맵 이동은 이어받은 값).
+                spawnedPlayerModel.ApplyServerMp(self.CurrentMp, self.MaxMp);
+            }
+            else
+            {
+                DebugLogManager.GenerateErrorMessage<GameSceneManager>($"입장 확인을 받았지만 로컬 플레이어와 맞지 않아 위치/체력 반영을 건너뜁니다. (PlayerId : {self.PlayerId})");
+            }
+
+            // 최초 입장이 확인된 시점이 로비에서 이어받은 로딩의 끝이다(맵 이동/재접속 때는 이미 숨긴 뒤라 아무 일도 하지 않는다).
+            // 위 반영과 상관없이 입장 자체는 끝났으므로 반드시 닫는다 - 반영 조건 때문에 건너뛰면 로딩바가 타임아웃까지 남는다.
+            _ = loadingTracker.CompleteAsync();
+        }
+
+        /// <summary>
+        /// 최초 로딩(맵/플레이어 생성, 캐릭터 조회, 서버 입장) 도중 이어갈 수 없는 실패가 생겼을 때 호출된다. 예전에는 이런 실패가
+        /// 로그만 남기고 조용히 멈춰 로딩바가 30초 타임아웃까지 화면을 가렸고, 그 뒤에도 서버에 입장하지 못한 채 맵에 남았다.
+        /// 이제는 진행 중이던 접속을 끊고 사유를 알린 뒤 로비로 돌아간다. 최초 로딩 중이 아니면(에디터에서 GameScene을 바로 실행하는 등)
+        /// 씬을 떠나지 않고 로그만 남긴다.
+        /// </summary>
+        private void AbortInitialLoad(string reason)
+        {
+            DebugLogManager.GenerateErrorMessage<GameSceneManager>($"최초 로딩을 중단합니다 : {reason}");
+
+            if (this == null || !loadingTracker.IsActive)
             {
                 return;
             }
 
-            WarpLocalPlayer(new Vector3(self.X, self.Y, self.Z), Quaternion.Euler(0f, self.RotationY, 0f));
-            ApplyLocalServerHp(self.CurrentHp, self.MaxHp, false);
+            // 접속을 시도하던 중이었다면 뒤늦게 연결이 성사돼 로비에서 유령 접속이 남지 않게 끊는다.
+            GameServerConnectManager.Instance?.Disconnect();
+            SetLocalPlayerControlEnabled(false);
 
-            // 마나도 체력과 같이 서버 값으로 맞춘다(최초 입장은 가득 찬 값, 재접속/맵 이동은 이어받은 값).
-            spawnedPlayerModel.ApplyServerMp(self.CurrentMp, self.MaxMp);
+            ReturnToLobbyWithAlarm("입장 실패", $"게임에 입장하지 못해 로비로 돌아갑니다.\n({reason})");
+        }
 
-            // 최초 입장이 확인된 시점이 로비에서 이어받은 로딩의 끝이다(맵 이동/재접속 때는 이미 숨긴 뒤라 아무 일도 하지 않는다).
-            _ = loadingTracker.CompleteAsync();
+        private void ReturnToLobbyWithAlarm(string title, string message)
+        {
+            loadingTracker.Abandon();
+            GameManager.Instance?.ShowAlarmPopup(title, message);
+
+            _ = LoadLobbyWhenSceneIdleAsync();
+        }
+
+        // GameScene으로 들어오는 전환이 아직 끝나지 않은 시점(입장 직후의 빠른 실패)에 LoadSceneByTags를 부르면 요청이 무시돼
+        // 플레이어가 서버 없이 GameScene에 남는다. 전환이 끝날 때까지 기다린 뒤 로비로 돌아간다.
+        private async Awaitable LoadLobbyWhenSceneIdleAsync()
+        {
+            if (SceneLoadManager.Instance == null)
+            {
+                DebugLogManager.GenerateErrorMessage<GameSceneManager>("SceneLoadManager.Instance가 null입니다.");
+                return;
+            }
+
+            while (SceneLoadManager.Instance != null && SceneLoadManager.Instance.IsSceneLoading)
+            {
+                await Awaitable.NextFrameAsync();
+            }
+
+            SceneLoadManager.Instance?.LoadSceneByTags("LobbyScene");
         }
 
         /// <summary>
@@ -131,16 +182,7 @@ namespace Incheol.Presenter.Scene
             potionState.IsPending = false;
             SetLocalPlayerControlEnabled(false);
 
-            loadingTracker.Abandon();
-            GameManager.Instance?.ShowAlarmPopup("연결 끊김", "게임 서버에 연결할 수 없어 로비로 돌아갑니다.");
-
-            if (SceneLoadManager.Instance == null)
-            {
-                DebugLogManager.GenerateErrorMessage<GameSceneManager>("SceneLoadManager.Instance가 null입니다.");
-                return;
-            }
-
-            SceneLoadManager.Instance.LoadSceneByTags("LobbyScene");
+            ReturnToLobbyWithAlarm("연결 끊김", "게임 서버에 연결할 수 없어 로비로 돌아갑니다.");
         }
 
         /// <summary>
