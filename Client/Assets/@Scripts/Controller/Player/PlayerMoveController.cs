@@ -25,7 +25,7 @@ namespace Incheol.Controller
         [Tooltip("이동 방향으로 몸을 돌리는 속도(도/초). 너무 낮으면 방향을 바꿀 때 옆으로 미끄러지는 것처럼 보인다.")]
         [SerializeField, Min(0f)] private float rotateSpeed = 720f;
         [Tooltip("씬에 메인 카메라를 찾을 수 없을 때 입력 기준으로 쓸 카메라의 수평 회전(도). 고정 쿼터뷰 카메라의 각도와 같아야 한다.")]
-        [SerializeField] private float fallbackCameraYaw = 45f;
+        [SerializeField] private float fallbackCameraYaw = 0f;
 
         [Header("Dash")]
         [SerializeField] private KeyCode dashKey = KeyCode.Space;

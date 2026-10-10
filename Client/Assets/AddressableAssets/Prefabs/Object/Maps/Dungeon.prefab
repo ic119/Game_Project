@@ -13527,7 +13527,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &8541554776574884214
 Transform:
   m_ObjectHideFlags: 0
@@ -14757,6 +14757,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 247012469598503898}
+  - component: {fileID: 1240604122948027235}
   m_Layer: 0
   m_Name: Dungeon
   m_TagString: Untagged
@@ -14799,6 +14800,20 @@ Transform:
   - {fileID: 4207051616836428879}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1240604122948027235
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4698293593653839319}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 954450b2d3cd718418a74481450baa8c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Game.Runtime::Incheol.Controller.MapCameraProfile
+  followOffset: {x: 0, y: 12, z: -5.6}
+  allowRotation: 0
 --- !u!1 &4815136785099559711
 GameObject:
   m_ObjectHideFlags: 0
@@ -30559,8 +30574,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cd2b42c986a8bb46982f8ec07a17668, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.View.UI.UI_InteractionPrompt
-  visualRoot: {fileID: 8330301689273372327}
-  promptText: {fileID: 793514267836406811}
   interactionKey: 102
   defaultActionLabel: "\uC5F4\uAE30"
 --- !u!114 &3373878689690048333
@@ -30606,8 +30619,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cd2b42c986a8bb46982f8ec07a17668, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.View.UI.UI_InteractionPrompt
-  visualRoot: {fileID: 0}
-  promptText: {fileID: 0}
   interactionKey: 102
   defaultActionLabel: "\uC0C1\uD638\uC791\uC6A9"
 --- !u!4 &2743279226113959450 stripped
@@ -37176,8 +37187,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cd2b42c986a8bb46982f8ec07a17668, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.View.UI.UI_InteractionPrompt
-  visualRoot: {fileID: 0}
-  promptText: {fileID: 0}
   interactionKey: 102
   defaultActionLabel: "\uC0C1\uD638\uC791\uC6A9"
 --- !u!1001 &809146195219605478
@@ -42061,8 +42070,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cd2b42c986a8bb46982f8ec07a17668, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.View.UI.UI_InteractionPrompt
-  visualRoot: {fileID: 0}
-  promptText: {fileID: 0}
   interactionKey: 102
   defaultActionLabel: "\uC0C1\uD638\uC791\uC6A9"
 --- !u!4 &7754511103093980998 stripped
@@ -43724,8 +43731,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cd2b42c986a8bb46982f8ec07a17668, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.View.UI.UI_InteractionPrompt
-  visualRoot: {fileID: 0}
-  promptText: {fileID: 0}
   interactionKey: 102
   defaultActionLabel: "\uC0C1\uD638\uC791\uC6A9"
 --- !u!1001 &1310581202166374054
@@ -54595,8 +54600,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cd2b42c986a8bb46982f8ec07a17668, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.View.UI.UI_InteractionPrompt
-  visualRoot: {fileID: 0}
-  promptText: {fileID: 0}
   interactionKey: 102
   defaultActionLabel: "\uC0C1\uD638\uC791\uC6A9"
 --- !u!4 &7411082466996417503 stripped
@@ -55639,8 +55642,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cd2b42c986a8bb46982f8ec07a17668, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.View.UI.UI_InteractionPrompt
-  visualRoot: {fileID: 0}
-  promptText: {fileID: 0}
   interactionKey: 102
   defaultActionLabel: "\uC0C1\uD638\uC791\uC6A9"
 --- !u!4 &6473868894642659716 stripped
@@ -58731,8 +58732,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cd2b42c986a8bb46982f8ec07a17668, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.View.UI.UI_InteractionPrompt
-  visualRoot: {fileID: 0}
-  promptText: {fileID: 0}
   interactionKey: 102
   defaultActionLabel: "\uC0C1\uD638\uC791\uC6A9"
 --- !u!4 &6723852360013184429 stripped
@@ -59705,8 +59704,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cd2b42c986a8bb46982f8ec07a17668, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.View.UI.UI_InteractionPrompt
-  visualRoot: {fileID: 0}
-  promptText: {fileID: 0}
   interactionKey: 102
   defaultActionLabel: "\uC0C1\uD638\uC791\uC6A9"
 --- !u!4 &6844521624828189099 stripped
@@ -63005,8 +63002,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cd2b42c986a8bb46982f8ec07a17668, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.View.UI.UI_InteractionPrompt
-  visualRoot: {fileID: 0}
-  promptText: {fileID: 0}
   interactionKey: 102
   defaultActionLabel: "\uC0C1\uD638\uC791\uC6A9"
 --- !u!1 &5923406067264275008 stripped
@@ -63026,8 +63021,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cd2b42c986a8bb46982f8ec07a17668, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.View.UI.UI_InteractionPrompt
-  visualRoot: {fileID: 0}
-  promptText: {fileID: 0}
   interactionKey: 102
   defaultActionLabel: "\uC0C1\uD638\uC791\uC6A9"
 --- !u!1001 &3048579202276557281
@@ -77765,8 +77758,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cd2b42c986a8bb46982f8ec07a17668, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.View.UI.UI_InteractionPrompt
-  visualRoot: {fileID: 0}
-  promptText: {fileID: 0}
   interactionKey: 102
   defaultActionLabel: "\uC0C1\uD638\uC791\uC6A9"
 --- !u!4 &4681141949562843951 stripped
@@ -81383,8 +81374,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cd2b42c986a8bb46982f8ec07a17668, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.View.UI.UI_InteractionPrompt
-  visualRoot: {fileID: 0}
-  promptText: {fileID: 0}
   interactionKey: 102
   defaultActionLabel: "\uC0C1\uD638\uC791\uC6A9"
 --- !u!4 &2559215114516444831 stripped
@@ -87888,8 +87877,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cd2b42c986a8bb46982f8ec07a17668, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.View.UI.UI_InteractionPrompt
-  visualRoot: {fileID: 0}
-  promptText: {fileID: 0}
   interactionKey: 102
   defaultActionLabel: "\uC0C1\uD638\uC791\uC6A9"
 --- !u!1001 &5185161101732655942
@@ -96863,8 +96850,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cd2b42c986a8bb46982f8ec07a17668, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.View.UI.UI_InteractionPrompt
-  visualRoot: {fileID: 0}
-  promptText: {fileID: 0}
   interactionKey: 102
   defaultActionLabel: "\uC0C1\uD638\uC791\uC6A9"
 --- !u!1001 &6005925469696369457
@@ -109758,8 +109743,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cd2b42c986a8bb46982f8ec07a17668, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.View.UI.UI_InteractionPrompt
-  visualRoot: {fileID: 0}
-  promptText: {fileID: 0}
   interactionKey: 102
   defaultActionLabel: "\uC0C1\uD638\uC791\uC6A9"
 --- !u!4 &6987437107997407567 stripped
@@ -115921,8 +115904,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cd2b42c986a8bb46982f8ec07a17668, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.View.UI.UI_InteractionPrompt
-  visualRoot: {fileID: 0}
-  promptText: {fileID: 0}
   interactionKey: 102
   defaultActionLabel: "\uC0C1\uD638\uC791\uC6A9"
 --- !u!4 &8890584852148923813 stripped
@@ -118188,8 +118169,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cd2b42c986a8bb46982f8ec07a17668, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.View.UI.UI_InteractionPrompt
-  visualRoot: {fileID: 0}
-  promptText: {fileID: 0}
   interactionKey: 102
   defaultActionLabel: "\uC0C1\uD638\uC791\uC6A9"
 --- !u!1001 &7676602821483051132
@@ -125744,8 +125723,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cd2b42c986a8bb46982f8ec07a17668, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.View.UI.UI_InteractionPrompt
-  visualRoot: {fileID: 0}
-  promptText: {fileID: 0}
   interactionKey: 102
   defaultActionLabel: "\uC0C1\uD638\uC791\uC6A9"
 --- !u!1001 &8286673410848312040
@@ -135274,8 +135251,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4cd2b42c986a8bb46982f8ec07a17668, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Incheol.View.UI.UI_InteractionPrompt
-  visualRoot: {fileID: 0}
-  promptText: {fileID: 0}
   interactionKey: 102
   defaultActionLabel: "\uC0C1\uD638\uC791\uC6A9"
 --- !u!1001 &9135682503720791074

@@ -16,6 +16,9 @@ namespace Incheol.Controller
     {
         #region Variable
         [Header("Input")]
+        [Tooltip("끄면 마우스 드래그로 카메라가 돌지 않는다(탑다운 고정 시점). 피격 흔들림은 이 값과 상관없이 동작한다. 맵 프리팹의 MapCameraProfile이 맵마다 덮어쓴다.")]
+        [SerializeField] private bool enableRotation = true;
+
         [Tooltip("드래그로 카메라를 돌리는 마우스 버튼(0 = 좌클릭, 1 = 우클릭, 2 = 휠 클릭).")]
         [SerializeField, Range(0, 2)] private int dragMouseButton = 1;
 
@@ -63,7 +66,7 @@ namespace Incheol.Controller
             UpdateShake();
 
             // 채팅 입력 중에는 마우스 입력으로 카메라가 돌지 않게 한다(다른 게임플레이 입력과 같은 InputBlocker).
-            if (InputBlocker.IsBlocked)
+            if (!enableRotation || InputBlocker.IsBlocked)
             {
                 StopDragging();
                 return;
@@ -115,6 +118,24 @@ namespace Incheol.Controller
         #endregion
 
         #region Method
+        /// <summary>
+        /// 맵이 바뀔 때(MapCameraProfile) 호출된다. 기준 오프셋을 새 값으로 바꾸고 회전을 초기화하며, 회전 허용 여부를 맞춘다.
+        /// 오프셋이 바뀌면 CinemachineFollow의 PositionDamping에 따라 카메라가 새 시점으로 부드럽게 이동한다.
+        /// </summary>
+        public void ApplyProfile(Vector3 offset, bool allowRotation)
+        {
+            baseOffset = offset;
+            yawOffset = 0f;
+            enableRotation = allowRotation;
+
+            if (!enableRotation)
+            {
+                StopDragging();
+            }
+
+            ApplyOffset();
+        }
+
         /// <summary>회전을 기본 시점(씬에 설정된 수평 각도)으로 되돌린다.</summary>
         public void ResetRotation()
         {
