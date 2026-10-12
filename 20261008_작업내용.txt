@@ -137,7 +137,7 @@ asmdef 분리 (Runtime/Editor)       -              455de22b
 ---------------------------------------------------------------
 남은 일 / 다음 단계
 ---------------------------------------------------------------
-1. Game.Tests.EditMode 어셈블리 생성 + 첫 테스트 작성
+1. (완료, 아래 "진행 결과" 참고) Game.Tests.EditMode 어셈블리 생성 + 첫 테스트 작성
    (UnityEngine.TestRunner/UnityEditor.TestRunner, Editor 전용, Game.Runtime 참조.
     com.unity.test-framework 1.6.0은 이미 설치되어 있음)
    우선 대상:
@@ -158,7 +158,31 @@ asmdef 분리 (Runtime/Editor)       -              455de22b
    서드파티 에셋 정책 결정(포트폴리오_저장소_정리_계획.txt 참고), CI(GitHub Actions)
 
 ---------------------------------------------------------------
-다음 진행 작업 상세 계획: 클라이언트 EditMode 테스트
+진행 결과: 클라이언트 EditMode 테스트 (2026-10-12, 129개 전부 통과)
+---------------------------------------------------------------
+단계 1  Game.Tests.EditMode 어셈블리 + StatGrowth(11)/InputBlocker(6)   8f8036ed
+단계 2  LocalInventory 26개                                              55bbfa60
+단계 3  InventoryStackPartitioner 14 / PotionUseState 5 /                5e97380c
+        ExpTable 11 / SkillTable 17
+단계 4  SnapshotInterpolationBuffer 10 / ObjectPoolStorage 29            d057b635
+        (@Scripts/AssemblyInfo.cs에 InternalsVisibleTo("Game.Tests.EditMode") 추가)
+단계 5  README와 이 문서에 테스트 개수/실행 방법 반영
+
+특이사항
+- 테스트 작성 중 프로덕션 코드 버그는 발견되지 않아 수정 커밋은 없다.
+- ExpTable/StatGrowth/SkillTable의 서버 값 일치는 서버의 ClientFormulaParityTests,
+  SkillTableParityTests가 이미 검증하므로 클라이언트 쪽은 대표 값과 구조 규칙만 고정했다.
+- EditMode에서 Object.Destroy는 실제 파괴 없이 오류 로그만 남긴다. ObjectPoolStorage의
+  DestroyPool/DestroyAll 테스트는 파괴 직전 동작(부모 분리, 추적 정보 유지)까지만 검증한다.
+  실제 파괴 확인은 PlayMode 테스트가 필요하다.
+- InventoryStackPartitioner는 Enum.TryParse를 쓰므로 equipSlot이 "3", "99" 같은 숫자 문자열이면
+  슬롯으로 인식한다. 서버가 이름만 보내므로 실제 영향은 낮아 수정하지 않았다(필요 시 별도 항목).
+- 테스트 실행: Unity Test Runner(EditMode) 또는 Unity.exe -batchmode -runTests
+  -testPlatform EditMode -projectPath Client -testResults results.xml (에디터를 닫은 상태).
+  명령줄 실행은 아직 직접 돌려보지 않았고, 이번 검증은 에디터의 TestRunnerApi로 했다.
+
+---------------------------------------------------------------
+(참고) 다음 진행 작업 상세 계획: 클라이언트 EditMode 테스트 - 위 단계 1~5로 완료
 ---------------------------------------------------------------
 목표: "서버 테스트 약 193개 / 클라이언트 0개" 불균형 해소. 이번에 분리한 순수 클래스를
 Unity 실행 없이 검증하고, 이후 CI(GitHub Actions)에 붙일 수 있는 기반을 만든다.

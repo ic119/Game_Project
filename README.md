@@ -55,6 +55,7 @@ Game_Project/
 │     ├─ Presenter/Scene/           GameSceneManager, LobbySceneManager 등 씬 흐름
 │     ├─ Modules/                   싱글턴 매니저(REST/TCP 접속, DB 로딩, 원격 개체 관리)
 │     └─ Editor/                    맵 데이터 내보내기, 아이템 정의 생성 도구
+│  └─ Assets/Tests/EditMode/        클라이언트 EditMode 테스트(Game.Tests.EditMode, 129개)
 └─ Server/
    ├─ MainServer/
    │  ├─ MainServer/                ASP.NET (AuthServer, CharacterServer)
@@ -189,12 +190,21 @@ dotnet run
 cd Server/MainServer/GameServer
 dotnet run
 
-# 테스트
+# 서버 테스트
 cd Server/MainServer/GameServer.Tests
 dotnet test
 ```
 
+클라이언트 EditMode 테스트(129개)는 Unity 에디터에서 `Window > General > Test Runner > EditMode`로 실행하거나, 에디터를 닫은 상태에서 명령줄로 실행합니다.
+
+```
+# <Unity경로>는 이 프로젝트의 Unity 버전 Editor 실행 파일(Unity.exe)입니다.
+"<Unity경로>/Unity.exe" -batchmode -runTests -testPlatform EditMode -projectPath Client -testResults results.xml
+```
+
 - 서버 실행 중에는 빌드 산출물이 잠겨 테스트가 실패할 수 있으므로, 테스트 전에 서버를 종료하세요.
+- Unity 명령줄 테스트는 같은 프로젝트를 연 에디터가 있으면 실행되지 않습니다. 에디터를 먼저 닫으세요.
+- EditMode에서는 `Object.Destroy`가 실제로 파괴하지 않고 오류 로그만 남기므로, `ObjectPoolStorageTests`는 파괴 직전 동작까지만 검증합니다(실제 파괴는 PlayMode 테스트 필요).
 - `ItemDefinitions.json`, `DropTables.json`은 부팅 시 1회만 로드되므로 수정 후 GameServer를 재시작해야 합니다.
 - 클라이언트는 `Client/`를 Unity로 열어 Bootstrap 씬부터 실행합니다.
 
