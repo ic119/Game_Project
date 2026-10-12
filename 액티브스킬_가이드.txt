@@ -39,9 +39,9 @@
    Utils/SkillTable.cs                           서버 JSON의 복제본 (해금/마나/쿨다운/시전 시간/모션 번호/범위/타격 지연)
    Controller/Player/PlayerSkillController.cs    키 입력, 낙관적 시전, 서버 거부 처리, 이동/공격 잠금
    Controller/Player/PlayerAttackController.cs   스킬 중 기본공격 차단
-   Modules/SkillVfxManager.cs                    스킬 이펙트 재생
-   Modules/ProjectileVfxManager.cs               날아가는 투사체 (기본공격 투사체와 공용)
-   Models/SkillVfxEntry.cs                       SkillVfxDatabaseSO의 항목 구조 (SkillVfxEntry, SkillVfxLayer)
+   Modules/Vfx/SkillVfxManager.cs                    스킬 이펙트 재생
+   Modules/Vfx/ProjectileVfxManager.cs               날아가는 투사체 (기본공격 투사체와 공용)
+   Models/ScriptableObject/SkillVfxEntry.cs                       SkillVfxDatabaseSO의 항목 구조 (SkillVfxEntry, SkillVfxLayer)
    Models/ScriptableObject/SkillVfxDatabaseSO.cs / .asset    스킬별 이펙트 설정 데이터 (연출의 원본)
    View/UI/UI_SkillBarView.cs, UI_SkillSlotView.cs           하단 스킬 슬롯 UI
    Controller/Monster/BossTelegraphIndicator.cs  바닥 범위 표시 (보스 위험 범위와 공용)

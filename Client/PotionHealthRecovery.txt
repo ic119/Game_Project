@@ -23,13 +23,13 @@ healPercent 값만 채우면 되며, 코드 변경은 필요 없다.
 2. 관련 스크립트 구성
 ----------------------
 
-[1] Assets/@Scripts/Model/Combat/CombatCalculator.cs
+[1] Assets/@Scripts/Models/Components/Combat/CombatCalculator.cs
     - 전투/회복 수치 계산을 모아두는 순수함수(static) 유틸리티.
     - public static int CalculateHealAmount(int maxHp, int healPercent)
         위 공식을 그대로 구현. 상태를 갖지 않는 순수 계산 함수.
     - 기존 ApplyDefense(int rawDamage, int defense)와 같은 위치/성격의 메서드.
 
-[2] Assets/@Scripts/Model/Combat/HealthComponent.cs
+[2] Assets/@Scripts/Models/Components/Combat/HealthComponent.cs
     - 체력/피격/사망/회복을 전담하는 공용 컴포넌트(MonoBehaviour, IDamageable 구현).
     - PlayerCharacterModel뿐 아니라 향후 Enemy 등에도 재사용 가능.
     - public bool Heal(int amount)
@@ -44,14 +44,14 @@ healPercent 값만 채우면 되며, 코드 변경은 필요 없다.
     - 기존 TakeDamage(DamageInfo)와 대칭 구조:
         TakeDamage -> OnDamaged 이벤트 / Heal -> OnHealed 이벤트
 
-[3] Assets/@Scripts/Models/ItemData.cs
+[3] Assets/@Scripts/Models/Data/ItemData.cs
     - 아이템 하나의 정적 정의(디자인 데이터, ScriptableObject에 리스트로 등록됨).
     - public int healPercent (Range 0~100)
         itemType이 Potion일 때만 의미가 있는 필드.
         장비 아이템의 bonusAttackPower/bonusDefense와 같은 위치/성격의 "타입별 전용 필드".
         인스펙터에서 물약 아이템마다 원하는 값을 직접 지정(현재 potion_hp_small = 10).
 
-[4] Assets/@Scripts/Model/Character/PlayerCharacterModel.cs
+[4] Assets/@Scripts/Models/Components/Character/PlayerCharacterModel.cs
     - 캐릭터의 체력/전투/장비 상태를 총괄하는 퍼사드(HealthComponent, CombatStatComponent, EquipmentController를 들고 있음).
     - public bool UseHealthPotion(ItemData itemData)
         itemData가 null이거나 itemType != Potion이거나 healPercent <= 0이면 무시하고 false 반환.

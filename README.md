@@ -49,11 +49,10 @@ Game_Project/
 ├─ Client/                          Unity 프로젝트
 │  └─ Assets/@Scripts/
 │     ├─ Controller/                입력, 이동, 공격, 상호작용, 카메라
-│     ├─ Model/                     PlayerCharacterModel, EquipmentController, Health/CombatStat
-│     ├─ Models/                    ItemData, UserSaveData, Define(enum), ScriptableObject
+│     ├─ Models/                    Data(ItemData 등), Define(enum), ScriptableObject(DB), Components(PlayerCharacterModel, Health/CombatStat)
 │     ├─ View/UI/                   인벤토리, 로비, 캐릭터 프리뷰 등 화면
 │     ├─ Presenter/Scene/           GameSceneManager, LobbySceneManager 등 씬 흐름
-│     ├─ Modules/                   싱글턴 매니저(REST/TCP 접속, DB 로딩, 원격 개체 관리)
+│     ├─ Modules/                   싱글턴 매니저: Network(+Packets), Remote, Vfx, ObjectPool, SceneLoad 등
 │     └─ Editor/                    맵 데이터 내보내기, 아이템 정의 생성 도구
 │  └─ Assets/Tests/EditMode/        클라이언트 EditMode 테스트(Game.Tests.EditMode, 129개)
 └─ Server/
@@ -153,10 +152,10 @@ Game_UseItemRequest → 서버: 쿨다운 예약 → MainServer에서 1개 소�
 
 | 계층 | 위치 | 역할 |
 |---|---|---|
-| Model | `Model/Character`, `Model/Combat` | `PlayerCharacterModel`, `EquipmentController`, `HealthComponent`, `CombatStatComponent` |
+| Model | `Models/Components/Character`, `Models/Components/Combat` | `PlayerCharacterModel`, `EquipmentController`, `HealthComponent`, `CombatStatComponent` |
 | View | `View/UI` | `UI_InventoryView`, `UI_LobbySceneView`, `CharacterPreviewStage` 등 표시 전용 |
 | Presenter | `Presenter/Scene` | `GameSceneManager`, `LobbySceneManager` 등 씬 흐름과 서버 결과 연결 |
-| Modules | `Modules` | `SaveDataManager`(REST), `GameServerConnectManager`(TCP), `ServerConnectManager`(HTTP 토큰), `ItemDatabaseManager`, `Remote*Manager` |
+| Modules | `Modules`, `Modules/Network`, `Modules/Remote`, `Modules/Vfx` | `SaveDataManager`(REST), `GameServerConnectManager`(TCP), `ServerConnectManager`(HTTP 토큰), `ItemDatabaseManager`, `Remote*Manager` |
 | Controller | `Controller` | 입력, 이동, 공격, 상호작용, 카메라 |
 
 공통 기반은 `SingletonObject<T>`, Addressables(프리팹/DB 로딩), 오브젝트 풀입니다.

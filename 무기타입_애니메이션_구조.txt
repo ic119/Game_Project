@@ -70,7 +70,7 @@
 
  3-1. 데이터
 
-   ItemData (Client/Assets/@Scripts/Models/ItemData.cs)
+   ItemData (Client/Assets/@Scripts/Models/Data/ItemData.cs)
      equipSlotType     장비 슬롯 (Weapon / Armor / Helmet)
      weaponType        슬롯이 Weapon 일 때만 의미 있음 (한손/두손/완드/창)
      equipVisualName   화면에 보일 무기 메시 오브젝트 이름 (예: OHS03_Sword, Wand01)
@@ -330,14 +330,14 @@
 
    [스크립트]
    Client/Assets/@Scripts/Models/Define/Define.cs                          (WeaponType)
-   Client/Assets/@Scripts/Models/ItemData.cs                               (weaponType, equipVisualName)
-   Client/Assets/@Scripts/Model/Character/PlayerCharacterModel.cs          (EquipItem/EquipWeapon/SyncWeaponAnimation)
-   Client/Assets/@Scripts/Model/Character/EquipmentController.cs           (무기 메시 전환)
+   Client/Assets/@Scripts/Models/Data/ItemData.cs                               (weaponType, equipVisualName)
+   Client/Assets/@Scripts/Models/Components/Character/PlayerCharacterModel.cs          (EquipItem/EquipWeapon/SyncWeaponAnimation)
+   Client/Assets/@Scripts/Models/Components/Character/EquipmentController.cs           (무기 메시 전환)
    Client/Assets/@Scripts/Controller/Player/PlayerAttackController.cs      (콤보, SyncWeaponIndex, 타이밍 표)
    Client/Assets/@Scripts/Controller/Player/RemoteCharacterController.cs   (원격 공격 모션, 타이밍 표)
    Client/Assets/@Scripts/Controller/Player/PlayerMoveController.cs        (IsMove/IsDash/IsBackDash)
-   Client/Assets/@Scripts/Modules/RemotePlayerManager.cs                   (원격 장비 반영)
-   Client/Assets/@Scripts/Modules/WeaponVfxManager.cs                      (무기별 스윙/임팩트 이펙트)
+   Client/Assets/@Scripts/Modules/Remote/RemotePlayerManager.cs                   (원격 장비 반영)
+   Client/Assets/@Scripts/Modules/Vfx/WeaponVfxManager.cs                      (무기별 스윙/임팩트 이펙트)
    Client/Assets/@Scripts/View/UI/CharacterPreviewStage.cs                 (로비 미리보기)
 
    [모션 팩]

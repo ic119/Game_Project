@@ -105,10 +105,10 @@
     GameServer/Networking/ClientSession.Enter.cs   입장 때 최대 마나 계산, 재접속 시 이어받기
     GameServer/Networking/DisconnectedPlayerStateStore.cs  PlayerStateSnapshot.CurrentMp
   클라이언트
-    Model/Combat/ManaComponent.cs                  HealthComponent와 같은 구조
+    Models/Components/Combat/ManaComponent.cs                  HealthComponent와 같은 구조
     Utils/ManaFormula.cs                           서버와 같은 공식(Unity 의존 없음 -> 서버 테스트가 링크해 일치 검사)
-    Model/Character/PlayerCharacterModel.cs        MaxMp/CurrentMp, ApplyServerMp
-    Modules/Networking/GamePlayerInfo.cs, GamePlayerMpUpdatePacket.cs, GameOpCode.cs
+    Models/Components/Character/PlayerCharacterModel.cs        MaxMp/CurrentMp, ApplyServerMp
+    Modules/Network/Packets/GamePlayerInfo.cs, GamePlayerMpUpdatePacket.cs, GameOpCode.cs
     Presenter/Scene/GameSceneManager*.cs           입장/마나 갱신 반영
     View/UI/UI_GameSceneView.cs + UI_GameScene 프리팹 MpBar (체력 바 아래, 파란색)
 

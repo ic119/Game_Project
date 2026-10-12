@@ -477,17 +477,17 @@
    Client/Assets/@Scripts/Controller/Player/PlayerAttackController.cs
    Client/Assets/@Scripts/Controller/Player/PlayerNetworkSender.cs
    Client/Assets/@Scripts/Controller/Player/RemoteCharacterController.cs
-   Client/Assets/@Scripts/Model/Character/PlayerCharacterModel.cs
-   Client/Assets/@Scripts/Model/Combat/HealthComponent.cs
+   Client/Assets/@Scripts/Models/Components/Character/PlayerCharacterModel.cs
+   Client/Assets/@Scripts/Models/Components/Combat/HealthComponent.cs
    Client/Assets/@Scripts/Presenter/Scene/GameSceneManager.cs
-   Client/Assets/@Scripts/Modules/GameServerConnectManager.cs
-   Client/Assets/@Scripts/Modules/RemotePlayerManager.cs
-   Client/Assets/@Scripts/Modules/RemoteMonsterManager.cs
+   Client/Assets/@Scripts/Modules/Network/GameServerConnectManager.cs
+   Client/Assets/@Scripts/Modules/Remote/RemotePlayerManager.cs
+   Client/Assets/@Scripts/Modules/Remote/RemoteMonsterManager.cs
    Client/Assets/@Scripts/Modules/ObjectPoolManager.cs
-   Client/Assets/@Scripts/Modules/CharacterVfxManager.cs
+   Client/Assets/@Scripts/Modules/Vfx/CharacterVfxManager.cs
    Client/Assets/@Scripts/Utils/SnapshotInterpolationBuffer.cs
-   Client/Assets/@Scripts/Utils/PooledEffect.cs
-   Client/Assets/@Scripts/Modules/Networking/ServerClock.cs  (및 Game*Packet.cs)
+   Client/Assets/@Scripts/Modules/ObjectPool/PooledEffect.cs
+   Client/Assets/@Scripts/Modules/Network/Packets/ServerClock.cs  (및 Game*Packet.cs)
    Client/Assets/@Graphics/Animator/PlayerCharacter/BasicCharacterStance.controller
    Client/Assets/@Scripts/Models/ScriptableObject/AddressableAssetModelSO.asset  (씬별 preload 목록)
 
