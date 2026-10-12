@@ -24,7 +24,7 @@
 
   <!-- 클라이언트의 패킷 코드(Unity 의존이 없는 Game*.cs)를 그대로 컴파일해, 서버 Shared 패킷과 바이트 단위로 맞는지 검증한다(PacketParityTests). -->
   <ItemGroup>
-    <Compile Include="..\..\..\Client\Assets\@Scripts\Modules\Networking\Game*.cs" Exclude="..\..\..\Client\Assets\@Scripts\Modules\Networking\GamePacketFrame.cs" LinkBase="ClientNetworking" />
+    <Compile Include="..\..\..\Client\Assets\@Scripts\Modules\Network\Packets\Game*.cs" Exclude="..\..\..\Client\Assets\@Scripts\Modules\Network\Packets\GamePacketFrame.cs" LinkBase="ClientNetworking" />
     <Compile Include="..\..\..\Client\Assets\@Scripts\Utils\ExpTable.cs" LinkBase="ClientUtils" />
     <Compile Include="..\..\..\Client\Assets\@Scripts\Utils\StatGrowth.cs" LinkBase="ClientUtils" />
     <Compile Include="..\..\..\Client\Assets\@Scripts\Utils\ManaFormula.cs" LinkBase="ClientUtils" />
