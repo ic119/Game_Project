@@ -32,6 +32,7 @@ namespace Incheol.Controller
         [SerializeField] private bool lockCursorWhileDragging = true;
 
         private CinemachineFollow follow;
+        private CinemachineDeoccluder deoccluder;
 
         // 씬에 설정된 기본 오프셋(수평 45도 시점). 이 값을 yawOffset만큼 돌려 쓴다.
         private Vector3 baseOffset;
@@ -53,6 +54,7 @@ namespace Incheol.Controller
         private void Awake()
         {
             follow = GetComponent<CinemachineFollow>();
+            deoccluder = GetComponent<CinemachineDeoccluder>();
             baseOffset = follow.FollowOffset;
         }
 
@@ -122,11 +124,16 @@ namespace Incheol.Controller
         /// 맵이 바뀔 때(MapCameraProfile) 호출된다. 기준 오프셋을 새 값으로 바꾸고 회전을 초기화하며, 회전 허용 여부를 맞춘다.
         /// 오프셋이 바뀌면 CinemachineFollow의 PositionDamping에 따라 카메라가 새 시점으로 부드럽게 이동한다.
         /// </summary>
-        public void ApplyProfile(Vector3 offset, bool allowRotation)
+        public void ApplyProfile(Vector3 offset, bool allowRotation, bool avoidObstacles = true)
         {
             baseOffset = offset;
             yawOffset = 0f;
             enableRotation = allowRotation;
+
+            if (deoccluder != null)
+            {
+                deoccluder.enabled = avoidObstacles;
+            }
 
             if (!enableRotation)
             {

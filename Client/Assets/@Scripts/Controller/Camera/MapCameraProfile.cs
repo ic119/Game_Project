@@ -15,6 +15,9 @@ namespace Incheol.Controller
 
         [Tooltip("켜면 마우스 우클릭 드래그로 카메라를 수평 회전할 수 있다. 탑다운 고정 시점이면 끈다.")]
         [SerializeField] private bool allowRotation = true;
+
+        [Tooltip("켜면 벽 등에 가릴 때 카메라가 캐릭터 쪽으로 당겨진다(CinemachineDeoccluder). 탑뷰 맵은 갑작스러운 줌이 되므로 끈다.")]
+        [SerializeField] private bool avoidObstacles = true;
         #endregion
 
         #region LifeCycle
@@ -26,7 +29,7 @@ namespace Incheol.Controller
                 return;
             }
 
-            CameraOrbitController.Instance.ApplyProfile(followOffset, allowRotation);
+            CameraOrbitController.Instance.ApplyProfile(followOffset, allowRotation, avoidObstacles);
         }
         #endregion
     }
