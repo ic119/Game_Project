@@ -33,6 +33,7 @@ public class CombatTuningTests
         Assert.Equal(defaults.MonsterAttackIntervalSeconds, loaded.MonsterAttackIntervalSeconds);
         Assert.Equal(defaults.MonsterAttackWindupSeconds, loaded.MonsterAttackWindupSeconds);
         Assert.Equal(defaults.ReviveDelaySeconds, loaded.ReviveDelaySeconds);
+        Assert.Equal(defaults.DeathExpPenaltyPercent, loaded.DeathExpPenaltyPercent);
         Assert.Equal(defaults.MinAttackIntervalMs, loaded.MinAttackIntervalMs);
         Assert.Equal(defaults.MaxAttackRange, loaded.MaxAttackRange);
         Assert.Equal(defaults.MinUseItemIntervalMs, loaded.MinUseItemIntervalMs);
@@ -45,6 +46,15 @@ public class CombatTuningTests
         Assert.Equal(0, LoadFrom(new() { ["Combat:ManaRegenPercentPerSecond"] = "0" }).ManaRegenPercentPerSecond);
         Assert.Throws<InvalidOperationException>(() => LoadFrom(new() { ["Combat:ManaRegenPercentPerSecond"] = "-1" }));
         Assert.Throws<InvalidOperationException>(() => LoadFrom(new() { ["Combat:ManaRegenPercentPerSecond"] = "51" }));
+    }
+
+    [Fact]
+    public void DeathExpPenalty_ZeroDisablesPenalty_AndOutOfRangeIsRejected()
+    {
+        Assert.Equal(10, new CombatTuning().DeathExpPenaltyPercent);
+        Assert.Equal(0, LoadFrom(new() { ["Combat:DeathExpPenaltyPercent"] = "0" }).DeathExpPenaltyPercent);
+        Assert.Throws<InvalidOperationException>(() => LoadFrom(new() { ["Combat:DeathExpPenaltyPercent"] = "-1" }));
+        Assert.Throws<InvalidOperationException>(() => LoadFrom(new() { ["Combat:DeathExpPenaltyPercent"] = "101" }));
     }
 
     [Fact]

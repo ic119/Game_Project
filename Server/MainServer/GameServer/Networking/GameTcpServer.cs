@@ -36,7 +36,7 @@ namespace GameServer.Networking
         {
             // 몬스터 리스폰 타이머(GameRoom)가 개별 요청이 아니라 서버 전체 수명에 묶이도록,
             // 여기서 받은 ct를 MapRoomRegistry에 넘겨 앞으로 생성될 모든 GameRoom이 공유하게 한다.
-            var mapRooms = new MapRoomRegistry(ct);
+            var mapRooms = new MapRoomRegistry(ct, _killRewardSaver);
 
             _listener.Start();
             Log.LogInformation("TCP 리스너 시작 (Port: {Port})", ((IPEndPoint)_listener.LocalEndpoint).Port);

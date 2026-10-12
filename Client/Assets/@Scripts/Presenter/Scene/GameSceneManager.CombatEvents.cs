@@ -256,6 +256,12 @@ namespace Incheol.Presenter.Scene
 
             spawnedPlayerModel.ApplyExpGain(packet.TotalExp, packet.Level, packet.ExpToNextLevel);
 
+            // 음수 GainedExp는 처치 보상이 아니라 사망 패널티다(서버 GameRoom.ApplyDeathExpPenalty). 총량은 위에서 이미 덮어썼다.
+            if (packet.GainedExp < 0)
+            {
+                chatView?.AddChatMessage("시스템", $"경험치 {-packet.GainedExp}을(를) 잃었습니다.");
+            }
+
             if (packet.DidLevelUp)
             {
                 PlayLevelUpEffect();

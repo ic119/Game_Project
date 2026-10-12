@@ -28,6 +28,9 @@ namespace GameServer.Combat
         // 사망 후 자동 부활까지의 시간(초). 클라이언트 부활 팝업 카운트다운(CombatTimings.ReviveDelaySeconds)과 같아야 한다.
         public double ReviveDelaySeconds { get; init; } = 5;
 
+        // 사망 시 잃는 경험치 비율(%). 현재 레벨에서 쌓인 경험치(PlayerInfo.Exp)에 곱한다 - 레벨은 내려가지 않는다. 0이면 패널티를 끈다.
+        public double DeathExpPenaltyPercent { get; init; } = 10;
+
         // 공격 요청 최소 간격(ms)과 최대 사거리(m). 클라이언트 콤보 입력 가드(0.15초)보다 짧아야 정상 콤보 2타가 드롭되지 않는다.
         public double MinAttackIntervalMs { get; init; } = 100;
         public float MaxAttackRange { get; init; } = 5f;
@@ -62,7 +65,7 @@ namespace GameServer.Combat
             {
                 nameof(DashInvulnerableSeconds), nameof(MinDashIntervalSeconds), nameof(MonsterMeleeRange),
                 nameof(MonsterAttackIntervalSeconds), nameof(MonsterAttackWindupSeconds), nameof(ReviveDelaySeconds),
-                nameof(MinAttackIntervalMs), nameof(MaxAttackRange), nameof(MinUseItemIntervalMs), nameof(ManaRegenPercentPerSecond),
+                nameof(DeathExpPenaltyPercent), nameof(MinAttackIntervalMs), nameof(MaxAttackRange), nameof(MinUseItemIntervalMs), nameof(ManaRegenPercentPerSecond),
             };
 
             foreach (IConfigurationSection child in section.GetChildren())
@@ -82,6 +85,7 @@ namespace GameServer.Combat
                 MonsterAttackIntervalSeconds = (float)Read(section, nameof(MonsterAttackIntervalSeconds), defaults.MonsterAttackIntervalSeconds),
                 MonsterAttackWindupSeconds = (float)Read(section, nameof(MonsterAttackWindupSeconds), defaults.MonsterAttackWindupSeconds),
                 ReviveDelaySeconds = Read(section, nameof(ReviveDelaySeconds), defaults.ReviveDelaySeconds),
+                DeathExpPenaltyPercent = Read(section, nameof(DeathExpPenaltyPercent), defaults.DeathExpPenaltyPercent),
                 MinAttackIntervalMs = Read(section, nameof(MinAttackIntervalMs), defaults.MinAttackIntervalMs),
                 MaxAttackRange = (float)Read(section, nameof(MaxAttackRange), defaults.MaxAttackRange),
                 MinUseItemIntervalMs = Read(section, nameof(MinUseItemIntervalMs), defaults.MinUseItemIntervalMs),
@@ -101,6 +105,7 @@ namespace GameServer.Combat
             Require(MonsterAttackIntervalSeconds, 0.2, 30, nameof(MonsterAttackIntervalSeconds));
             Require(MonsterAttackWindupSeconds, 0.05, 5, nameof(MonsterAttackWindupSeconds));
             Require(ReviveDelaySeconds, 0, 60, nameof(ReviveDelaySeconds));
+            Require(DeathExpPenaltyPercent, 0, 100, nameof(DeathExpPenaltyPercent));
             Require(MinAttackIntervalMs, 0, 2000, nameof(MinAttackIntervalMs));
             Require(MaxAttackRange, 1, 50, nameof(MaxAttackRange));
             Require(MinUseItemIntervalMs, 0, 10000, nameof(MinUseItemIntervalMs));

@@ -22,15 +22,19 @@ namespace GameServer.Networking
 
         // 몬스터 리스폰 타이머(GameRoom 내부)가 개별 요청 ct가 아니라 서버 전체 수명에 묶이도록,
         // 서버 시작 시 한 번 받은 취소 토큰을 새로 만드는 모든 GameRoom에 그대로 물려준다.
-        public MapRoomRegistry(CancellationToken serverLifetimeCt)
+        // 방이 사망 경험치 패널티를 저장할 때 쓰는 저장소. 처치 보상 저장과 같은 인스턴스를 넘겨야 캐릭터별 저장 순서가 지켜진다.
+        private readonly KillRewardSaver? _rewardSaver;
+
+        public MapRoomRegistry(CancellationToken serverLifetimeCt, KillRewardSaver? rewardSaver = null)
         {
             _serverLifetimeCt = serverLifetimeCt;
+            _rewardSaver = rewardSaver;
         }
 
         public GameRoom GetOrCreate(string mapId)
         {
             return _rooms.GetOrAdd(mapId, id => new Lazy<GameRoom>(
-                () => new GameRoom(id, MonsterSpawnCatalog.GetPointsForMap(id), _serverLifetimeCt),
+                () => new GameRoom(id, MonsterSpawnCatalog.GetPointsForMap(id), _serverLifetimeCt, _rewardSaver),
                 LazyThreadSafetyMode.ExecutionAndPublication)).Value;
         }
     }

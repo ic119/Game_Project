@@ -71,6 +71,7 @@ namespace GameServer.Networking
 
             if (died)
             {
+                ApplyDeathExpPenalty(targetEntry.Info);
                 _ = ReviveAfterDelayAsync(targetEntry.Info);
             }
         }
@@ -164,6 +165,53 @@ namespace GameServer.Networking
             SendPlayerEffect(player.PlayerId, PlayerEffectType.LevelUp);
 
             SendManaUpdate(player, force: true);
+        }
+
+        // 사망 패널티: 현재 레벨에서 쌓인 경험치의 DeathExpPenaltyPercent%를 잃는다(소수점은 버림, 레벨은 내려가지 않음).
+        // 사망이 확정되는 순간(TryDamagePlayer의 died) 한 번만 호출된다 - 부활 시점에 적용하면 부활 전에 접속을 끊어 패널티를
+        // 피할 수 있다. 저장은 처치 보상과 같은 KillRewardSaver 경로(level/exp 최종값, 골드 0, 아이템 없음)를 써서 캐릭터별 저장 순서와
+        // 중복 방지/재시도를 그대로 따른다. 클라이언트에는 Game_ExpGainBroadcast를 재사용한다(GainedExp가 음수, 총량은 덮어쓰기).
+        private void ApplyDeathExpPenalty(PlayerInfo player)
+        {
+            double percent = CombatTuning.Current.DeathExpPenaltyPercent;
+            if (percent <= 0)
+            {
+                return;
+            }
+
+            int lostExp;
+            int totalExp;
+            int level;
+            lock (player)
+            {
+                lostExp = (int)(player.Exp * percent / 100.0);
+                if (lostExp <= 0)
+                {
+                    return;
+                }
+
+                player.Exp -= lostExp;
+                totalExp = player.Exp;
+                level = player.Level;
+            }
+
+            Log.LogInformation("사망 경험치 패널티 (PlayerId={PlayerId}) : Lv{Level}, 경험치 -{LostExp} -> {TotalExp}", player.PlayerId, level, lostExp, totalExp);
+
+            _rewardSaver?.Enqueue(player.PlayerId, level, totalExp, 0, Array.Empty<(string ItemId, int Qty)>());
+
+            if (_players.TryGetValue(player.PlayerId, out var entry) && ReferenceEquals(entry.Info, player))
+            {
+                var expUpdate = new S2CExpGainBroadcast
+                {
+                    MonsterId = 0,
+                    GainedExp = -lostExp,
+                    TotalExp = totalExp,
+                    Level = level,
+                    DidLevelUp = false,
+                    ExpToNextLevel = ExpTable.GetRequiredExp(level)
+                };
+                entry.Session.Send(OpCode.Game_ExpGainBroadcast, expUpdate.Encode());
+            }
         }
 
         // 사망한 플레이어를 ReviveDelay 뒤 가득 찬 체력으로 부활시킨다. 그 사이 접속이 끊겼으면(방에서 빠짐)

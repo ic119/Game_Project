@@ -48,10 +48,15 @@ namespace GameServer.Networking
         // 이 방의 맵 id. 부활 위치 등 맵 좌표 데이터(MapDataCatalog)를 찾는 키다.
         private readonly string _mapId;
 
-        public GameRoom(string mapId, List<MonsterSpawnPointDefinition> spawnPoints, CancellationToken serverLifetimeCt)
+        // 사망 경험치 패널티를 DB에 저장할 때 쓴다(GameRoom.Health.cs). 처치 보상 저장과 같은 인스턴스를 공유해야 캐릭터별 저장 순서가
+        // 지켜진다. 테스트처럼 저장이 필요 없는 곳에서는 null이면 패널티는 메모리에서만 적용된다.
+        private readonly KillRewardSaver? _rewardSaver;
+
+        public GameRoom(string mapId, List<MonsterSpawnPointDefinition> spawnPoints, CancellationToken serverLifetimeCt, KillRewardSaver? rewardSaver = null)
         {
             _mapId = mapId;
             _serverLifetimeCt = serverLifetimeCt;
+            _rewardSaver = rewardSaver;
 
             // 방이 만들어지는 시점(첫 플레이어 입장)에 각 포인트를 최대 개체수까지 즉시 채운다.
             // 아직 아무도 접속하지 않은 시점이라 브로드캐스트가 필요 없다 - 입장자는 S2CEnterAck의
