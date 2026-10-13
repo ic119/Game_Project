@@ -91,7 +91,6 @@ namespace Incheol.Modules
                 return;
             }
 
-            // 프리팹 로딩 중에 오는 장비 변경 알림이 더 최신이므로, 이미 기록된 값이 있으면 덮어쓰지 않는다.
             if (!latestEquipment.ContainsKey(info.PlayerId))
             {
                 latestEquipment[info.PlayerId] = (info.WeaponItemId, info.ArmorItemId, info.HelmetItemId);

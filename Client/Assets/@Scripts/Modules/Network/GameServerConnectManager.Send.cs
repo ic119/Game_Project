@@ -1,25 +1,17 @@
 using Incheol.Models.Define;
 using Incheol.Modules.Networking;
-using Incheol.Utils;
 using System;
-using System.Collections.Concurrent;
-using System.IO;
-using System.Net.Security;
-using System.Net.Sockets;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using UnityEngine;
 
 namespace Incheol.Modules
 {
-    // 서버로 보내는 요청 API(이동, 채팅, 공격, 대쉬, 아이템 등)와 맵 이동 확인.
+    /// <summary>
+    /// 서버로 보내는 요청 API(이동, 채팅, 공격, 대쉬, 아이템 등) 관리 & 맵 이동 확인 처리 담당
+    /// </summary>
     public partial class GameServerConnectManager
     {
         #region Method
         /// <summary>
-        /// 자신의 현재 위치/회전을 GameServer에 보낸다(Game_MoveRequest). 접속 전이면 아무 것도 하지 않는다.
+        /// 자신 캐릭터의 현재 위치 & 회전 정보를 GameServer에 전송(Game_MoveRequest)
         /// </summary>
         public void SendMove(float x, float y, float z, float rotationY)
         {
@@ -42,8 +34,7 @@ namespace Incheol.Modules
         }
 
         /// <summary>
-        /// 채팅 메시지를 GameServer에 보낸다(Game_ChatRequest). 닉네임은 서버가 룸 등록 정보로 채우므로 보내지 않는다.
-        /// 접속 전이거나 빈 문자열이면 아무 것도 하지 않는다.
+        /// 채팅 메시지 데이터 GameServer에 전송(Game_ChatRequest). 닉네임은 서버가 룸 등록 정보로 채우므로 미포함
         /// </summary>
         public void SendChat(string message)
         {
@@ -66,7 +57,7 @@ namespace Incheol.Modules
         public bool IsConnected => isConnected;
 
         /// <summary>
-        /// 다른 맵으로 이동해도 되는지 GameServer에 요청한다(Game_MapChangeRequest). 서버가 승인하면 이전 맵 방에서 빼고 새 맵 방에
+        /// 다른 맵으로 이동해도 되는지 GameServer에 요청(Game_MapChangeRequest). 서버가 승인하면 이전 맵 방에서 빼고 새 맵 방에
         /// 등록한 뒤 Game_MapChangeAck(OnMapChangeAcked)를, 거부하면 Game_MapChangeRejected(OnMapChangeRejected)를 돌려준다.
         /// 클라이언트는 이 응답을 받은 뒤에 맵을 교체한다(GameSceneManager.SwapMapAsync) - 요청을 보내는 시점에는 새 맵을
         /// 이미 로드해 두되 교체는 하지 않은 상태다. 서버는 좌표를 참고하지 않고 맵 데이터의 진입 지점으로 도착 위치를 정한다.
@@ -93,9 +84,7 @@ namespace Incheol.Modules
         }
 
         /// <summary>
-        /// 서버가 맵 이동을 승인해 클라이언트가 맵을 교체했을 때 호출한다. 재접속하면 지금 있는 맵으로 다시 입장해야 하므로
-        /// 마지막 입장 정보의 맵을 바꾼다. 요청을 보낸 시점이 아니라 승인된 뒤에 바꿔야, 거부되거나 응답이 오지 않았을 때
-        /// 재접속이 서버에 없는 맵으로 입장하려 하지 않는다.
+        /// 서버의 맵 이동 승인 결과를 참고하여 클라이언트가 맵을 교체했을 시 호출 
         /// </summary>
         public void ConfirmMapChange(string mapId)
         {
@@ -123,7 +112,7 @@ namespace Incheol.Modules
         }
 
         /// <summary>
-        /// 공격 의사를 GameServer에 보낸다(Game_AttackRequest). 데미지 수치는 보내지 않는다 - 서버가
+        /// 공격 의사 정보를 GameServer에 전송(Game_AttackRequest). 데미지 수치는 보내지 않는다 - 서버가
         /// Game_EnterRequest 때 등록된 자신의 AttackPower를 사용해 그대로 중계하고, 방어력 차감은
         /// 각 클라이언트가 target의 로컬 Defense로 직접 계산한다.
         /// </summary>

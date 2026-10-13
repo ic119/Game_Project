@@ -1,11 +1,8 @@
 using Incheol.Modules.Networking;
 using Incheol.Utils;
 using System;
-using System.Collections.Concurrent;
 using System.IO;
-using System.Net.Security;
 using System.Net.Sockets;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,10 +10,18 @@ using UnityEngine;
 
 namespace Incheol.Modules
 {
-    // 저수준 송신(SendAsync), 수신 루프, 프레임 분배(HandleFrame).
+    /// <summary>
+    /// 저수준 레벨의 송신 & 수신 루프 & 프레임 분배 담당 처리
+    /// </summary>
     public partial class GameServerConnectManager
     {
         #region Method
+        /// <summary>
+        /// 저수준 레벨의 송신 담당 메서드
+        /// </summary>
+        /// <param name="opCode"></param>
+        /// <param name="body"></param>
+        /// <returns></returns>
         private async Task SendAsync(GameOpCode opCode, byte[] body)
         {
             if (stream == null)
@@ -55,8 +60,15 @@ namespace Incheol.Modules
             }
         }
 
-        // 연결 하나의 수신 루프. 그 연결의 스트림/소켓과 번호(generation)를 직접 받는다 - 필드(stream/tcpClient)는 재접속하면
-        // 새 연결로 바뀌므로, 늦게 끝난 이전 루프가 필드를 닫으면 새 연결이 끊긴다.
+        /// <summary>
+        /// 수신 루프 담당 처리 메서드
+        /// </summary>
+        /// <param name="connectionStream"></param>
+        /// <param name="connectionClient"></param>
+        /// <param name="generation"></param>
+        /// <param name="ct"></param>
+        /// <returns></returns>
+        // 연결 하나의 수신 루프. 해당 연결의 스트림/소켓과 번호(generation)를 직접 수신
         private async Task ReadLoopAsync(Stream connectionStream, TcpClient connectionClient, int generation, CancellationToken ct)
         {
             // 마지막으로 해석하던 프레임의 OpCode(오류 로그용).
@@ -113,6 +125,11 @@ namespace Incheol.Modules
             }
         }
 
+        /// <summary>
+        /// 프레임 분배 담당 처리 메서드
+        /// </summary>
+        /// <param name="opCode"></param>
+        /// <param name="body"></param>
         private void HandleFrame(ushort opCode, byte[] body)
         {
             switch ((GameOpCode)opCode)

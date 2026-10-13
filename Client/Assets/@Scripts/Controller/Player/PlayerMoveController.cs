@@ -135,7 +135,6 @@ namespace Incheol.Controller
         {
             if (isDashing)
             {
-                // 대쉬 중에는 방향키 입력을 무시하고, 대쉬를 시작할 때 정한 방향으로만 이동한다.
                 Vector3 dashDelta = dashDirection * (currentDashSpeed * Time.fixedDeltaTime);
                 rigidBody.MovePosition(rigidBody.position + dashDelta);
                 return;

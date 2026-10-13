@@ -1,19 +1,11 @@
 using Incheol.Modules.Networking;
-using Incheol.Utils;
 using System;
-using System.Collections.Concurrent;
-using System.IO;
-using System.Net.Security;
-using System.Net.Sockets;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using UnityEngine;
 
 namespace Incheol.Modules
 {
-    // 서버 알림을 게임 쪽에 전달하는 이벤트 선언(메인 스레드에서 호출된다).
+    /// <summary>
+    /// 서버 알림을 클라이언트에 전달 이벤트 선언 담당 & 메인스레드에서 호출
+    /// </summary>
     public partial class GameServerConnectManager
     {
         /// <summary>

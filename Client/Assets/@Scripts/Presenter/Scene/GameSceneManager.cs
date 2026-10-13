@@ -99,11 +99,6 @@ namespace Incheol.Presenter.Scene
             mapPresenter = new GameSceneMapPresenter(transform, () => currentMapInstance);
             playerSpawner = new LocalPlayerSpawner(this);
 
-            // 맵/플레이어/몬스터가 전부 이 transform의 자식으로 생성된다. 몬스터 스폰 좌표는 에디터에서
-            // 맵 프리팹만 고립시켜 내보낸 값(사실상 로컬 좌표, MonsterSpawnPointExporter 참고)이라
-            // 이 오브젝트가 원점이 아니면 서버가 아는 몬스터 좌표와 플레이어의 실제 월드 좌표계가
-            // 어긋나 버린다(스폰 위치는 물론 인식/추적 AI 판정도 깨진다). Scene 뷰에서 실수로 옮겨질
-            // 수 있으니 부팅 시점에 바로 경고한다.
             if (transform.position != Vector3.zero)
             {
                 DebugLogManager.GenerateErrorMessage<GameSceneManager>(
@@ -204,10 +199,8 @@ namespace Incheol.Presenter.Scene
 
         private void OnDestroy()
         {
-            // 맵 이동 도중에 이 매니저가 파괴되면(씬 전환 등) SwapMapAsync의 finally가 실행되지 않을 수 있어, 입력 잠금이 남지 않게 푼다.
             InputBlocker.SetBlocked(this, false);
 
-            // 최초 로딩 도중에 씬이 사라지면(예: 로딩 중 세션 만료로 로그인 화면 전환) 이어받은 로딩바가 남지 않게 숨긴다.
             loadingTracker.Hide();
 
             if (gameSceneView != null)
@@ -235,8 +228,6 @@ namespace Incheol.Presenter.Scene
 
             }
 
-            // GameScene을 벗어나면(씬 전환) GameServer 접속을 종료한다 - PersistAcrossScenes로 유지되는
-            // GameServerConnectManager는 씬 전환만으로는 파괴되지 않으므로 명시적으로 끊어줘야 한다.
             GameServerConnectManager.Instance?.Disconnect();
         }
 
@@ -311,8 +302,6 @@ namespace Incheol.Presenter.Scene
                         SpawnPlayerAtRespawnPoint(instance);
                     }
 
-                    // UI_GameScene과 플레이어(Floor001 하위에서 비동기로 스폰됨)는 로드 완료 순서가 보장되지 않으므로,
-                    // 둘 다 준비된 시점에 TryBindPlayerInfo가 캐릭터 정보를 UI에 반영한다.
                     if (key == AddressableAssetKey.UI_GameScene)
                     {
                         instance.TryGetComponent(out gameSceneView);
@@ -340,7 +329,7 @@ namespace Incheol.Presenter.Scene
         }
 
         /// <summary>
-        /// Floor001 맵 인스턴스 하위에서 "RespawnPoint" 이름의 Transform을 찾아 그 위치에 플레이어 캐릭터를 스폰한다.
+        /// 맵 인스턴스 하위에서 "RespawnPoint" 이름의 Transform을 탐색 후 그 위치에 플레이어 캐릭터 스폰
         /// </summary>
         private void SpawnPlayerAtRespawnPoint(GameObject _mapInstance)
         {
@@ -353,13 +342,18 @@ namespace Incheol.Presenter.Scene
 
             if (respawnPoint == null)
             {
-                AbortInitialLoad("Floor001 맵에서 RespawnPoint를 찾을 수 없습니다.");
+                AbortInitialLoad("맵에서 RespawnPoint를 찾을 수 없습니다.");
                 return;
             }
 
             playerSpawner.Spawn(respawnPoint, HandlePlayerSpawned);
         }
 
+        /// <summary>
+        /// 캐릭터 스폰 핸들러
+        /// </summary>
+        /// <param name="_playerInstance"></param>
+        /// <param name="_attackController"></param>
         private void HandlePlayerSpawned(GameObject _playerInstance, PlayerAttackController _attackController)
         {
             localPlayerInstance = _playerInstance;
@@ -436,6 +430,12 @@ namespace Incheol.Presenter.Scene
             });
         }
 
+        /// <summary>
+        /// 유저 캐릭터 정보 SaveData에 따라 능력치, 아이템, 골드 등 최신화 업데이트 처리 담당
+        /// </summary>
+        /// <param name="_playerInstance"></param>
+        /// <param name="customModel"></param>
+        /// <param name="userSaveData"></param>
         private void ApplyFetchedCharacter(GameObject _playerInstance, CharacterCustomModel customModel, UserSaveData userSaveData)
         {
             customModel.ApplyCustomization(userSaveData.hairIndex, userSaveData.eyeIndex, userSaveData.mouthIndex);
@@ -449,8 +449,7 @@ namespace Incheol.Presenter.Scene
                 TryBindPlayerInfo();
             }
 
-            // 이전 세션에서 처치 보상으로 쌓인 아이템(서버 CharacterItems)을 복원한다. 골드는
-            // ApplyUserSaveData가 이미 spawnedPlayerModel.Gold로 반영했으므로 여기서는 아이템만 채운다.
+            // 이전 세션에서 처치 보상으로 쌓인 아이템(서버 CharacterItems) 복원
             localInventory.Replace(userSaveData.items);
 
             // 복원한 아이템 중 equipSlot이 설정된(이전 세션에 장착해뒀던) 것들을 캐릭터 시각에 반영하고,
@@ -507,7 +506,6 @@ namespace Incheol.Presenter.Scene
             GameServerConnectManager.Instance.ConnectAndEnter(localInfo);
 
             // 다른 접속자의 입장/퇴장/이동, 몬스터 스폰/피격/사망 이벤트 구독을 시작한다
-            // (최초 접근 시 SingletonObject가 자동 생성된다).
             _ = RemotePlayerManager.Instance;
             _ = RemoteMonsterManager.Instance;
             _ = DamageTextManager.Instance;
@@ -516,8 +514,8 @@ namespace Incheol.Presenter.Scene
         }
 
         /// <summary>
-        /// UI_GameScene 인스턴스화와 플레이어 스폰(둘 다 비동기)이 모두 끝난 시점에만
-        /// UI_GameSceneView.BindPlayer를 호출해 캐릭터 정보를 화면에 반영한다.
+        /// UI_GameScene 인스턴스화 & 플레이어 스폰(둘 다 비동기)이 모두 끝난 시점에만
+        /// UI_GameSceneView.BindPlayer를 호출하여 캐릭터 정보를 화면에 반영 처리
         /// </summary>
         private void TryBindPlayerInfo()
         {
@@ -535,8 +533,7 @@ namespace Incheol.Presenter.Scene
         }
 
         /// <summary>
-        /// UI_Inventory를 Addressable로 로드해 이 GameSceneManager(this.transform)의 자식으로 생성하되,
-        /// 처음에는 비활성 상태로 만들어둔다. 이후 I키 입력(Update → ToggleInventory)으로 켜고 끈다.
+        /// UI_Inventory를 Addressable로 로드 후 GameSceneManager(this.transform)의 자식 위치로 생성 처리
         /// </summary>
         private void SpawnInventoryUI()
         {
@@ -581,12 +578,6 @@ namespace Incheol.Presenter.Scene
                 RefreshInventoryDisplay();
             });
         }
-
-
-
-
-
-
         #endregion
     }
 }

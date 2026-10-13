@@ -21,7 +21,9 @@ namespace Incheol.Presenter.Scene
             items.AddRange(newItems);
         }
 
-        /// <summary>같은 itemId 스택이 있으면 수량만 더하고, 없으면 새 스택을 추가한다.</summary>
+        /// <summary>
+        /// 동일한 itemId 스택 있을 경우 수량 증가, 없을 경우 새 스택 추가
+        /// </summary>
         public void AddOrMerge(string itemId, int qty)
         {
             InventoryItemStack existing = items.Find(stack => stack.itemId == itemId);
@@ -34,13 +36,17 @@ namespace Incheol.Presenter.Scene
             items.Add(new InventoryItemStack(itemId, qty));
         }
 
-        /// <summary>itemId의 미장착 스택. 없으면 null.</summary>
+        /// <summary>
+        /// itemId의 미장착 스택. 없으면 null
+        /// </summary>
         public InventoryItemStack FindUnequipped(string itemId)
         {
             return items.Find(stack => stack.itemId == itemId && string.IsNullOrEmpty(stack.equipSlot));
         }
 
-        /// <summary>장착 중인(equipSlot이 설정된) 스택들.</summary>
+        /// <summary>
+        /// 장착 중인 장비아이템 스택
+        /// </summary>
         public IEnumerable<InventoryItemStack> EquippedStacks()
         {
             foreach (InventoryItemStack stack in items)
@@ -53,7 +59,8 @@ namespace Incheol.Presenter.Scene
         }
 
         /// <summary>
-        /// 장착 중인 스택들의 공격력/방어력 보너스를 합산한다. 아이템 정보를 찾을 수 없는 스택(데이터베이스 미로드/미등록)은 건너뛴다.
+        /// 장착 중인 스택들의 공격력/방어력 보너스를 합산 처리
+        /// 아이템 정보를 찾을 수 없는 스택(데이터베이스 미로드/미등록) 경우 Skip 처리
         /// </summary>
         public void SumEquipmentBonus(Func<string, ItemData> itemLookup, out int attackBonus, out int defenseBonus)
         {

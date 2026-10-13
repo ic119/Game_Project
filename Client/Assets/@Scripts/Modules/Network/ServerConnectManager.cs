@@ -7,6 +7,9 @@ using UnityEngine.Networking;
 
 namespace Incheol.Modules
 {
+    /// <summary>
+    /// HTTP 연결 관리 담당 (로그인 & 토큰 관리)
+    /// </summary>
     public class ServerConnectManager : SingletonObject<ServerConnectManager>
     {
         #region Variable

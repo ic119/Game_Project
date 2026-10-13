@@ -13,19 +13,18 @@ using UnityEngine;
 
 namespace Incheol.Modules
 {
-    // 접속/입장/재접속 흐름과 연결 종료.
+    /// <summary>
+    /// 접속/입장/재접속 흐름과 연결 종료 처리 담당
+    /// </summary>
     public partial class GameServerConnectManager
     {
         #region Method
         /// <summary>
-        /// GameServer에 접속하고 자신의 캐릭터 정보를 Game_EnterRequest로 전송한다.
-        /// 접속 실패 시 DebugLogManager로 에러를 남기고 조용히 리턴한다(멀티 입장은 부가 기능이므로
-        /// 로그인/게임 진행 자체를 막지 않는다).
+        /// GameServer에 접속 후 유저의 캐릭터 정보를 Game_EnterRequest로 전송 처리
         /// </summary>
         public void ConnectAndEnter(GamePlayerInfo localInfo)
         {
-            // 이전 게임에서 끊기지 않고 남은 연결이 있으면 먼저 정리한다 - 그대로 두면 아래 접속이 "이미 접속되어 있습니다"로
-            // 조용히 거절돼 입장 요청이 나가지 않고, 입장 확인이 영원히 오지 않는다.
+            // 이전 게임에서 끊기지 않고 남은 연결이 있으면 선 정리 처리
             if (isConnected)
             {
                 Disconnect();
@@ -134,7 +133,7 @@ namespace Incheol.Modules
         {
             await Awaitable.WaitForSecondsAsync(delaySeconds);
 
-            // 기다리는 사이 Disconnect()(씬 전환/로그아웃)가 호출됐으면 재접속하지 않는다.
+            // 대기시간 동안 Disconnect()(씬 전환/로그아웃 시) 호출되면 재접속 실행 X
             if (this == null || generation != connectionGeneration)
             {
                 return;

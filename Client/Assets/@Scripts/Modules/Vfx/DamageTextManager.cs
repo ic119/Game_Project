@@ -41,6 +41,9 @@ namespace Incheol.Modules
         private const float DefaultHeadHeight = 2f;
         private const float HeadMargin = 0.3f;
 
+        /// <summary>
+        /// 데미지 텍스트 관련 클래스
+        /// </summary>
         private sealed class FloatingText
         {
             public TextMeshPro Text;
@@ -133,15 +136,15 @@ namespace Incheol.Modules
 
                 float t = elapsed / Duration;
 
-                // 위로 올라가되 끝으로 갈수록 느려진다(ease-out).
+                // 위로 올라가되 끝으로 갈수록 속도 느리게 처리(ease-out).
                 float rise = RiseHeight * (1f - (1f - t) * (1f - t));
                 entry.Text.transform.position = entry.StartPosition + Vector3.up * rise;
 
-                // 처음 짧게 커졌다가 원래 크기로 돌아온다(pop).
+                // 처음 짧게 커졌다가 원래 크기로 변경(pop).
                 float pop = elapsed < PopDuration ? Mathf.Lerp(PopScale, 1f, elapsed / PopDuration) : 1f;
                 entry.Text.transform.localScale = Vector3.one * (entry.Scale * pop);
 
-                // 마지막 40%에서 서서히 사라진다.
+                // 마지막 40%에서 서서히 사라짐
                 float alpha = t < 0.6f ? 1f : 1f - (t - 0.6f) / 0.4f;
                 Color color = entry.Color;
                 color.a = alpha;
@@ -156,7 +159,9 @@ namespace Incheol.Modules
         #endregion
 
         #region Method
-        /// <summary>몬스터가 맞았다(누가 때렸든 시야 안이면 온다). 내가 때린 건 크게, 남이 때린 건 작게.</summary>
+        /// <summary>
+        /// 몬스터가 맞았다(누가 때렸든 시야 안이면 온다). 내가 때린 건 크게, 남이 때린 건 작게
+        /// </summary>
         private void HandleMonsterDamaged(GameMonsterDamageBroadcastPacket packet)
         {
             if (RemoteMonsterManager.Instance == null || !RemoteMonsterManager.Instance.TryGetRemoteMonster(packet.MonsterId, out RemoteMonsterController monster))
@@ -168,19 +173,25 @@ namespace Incheol.Modules
             Spawn(packet.Damage.ToString(), GetMonsterHeadPosition(monster), isMine ? MyHitColor : OtherHitColor, isMine ? MyHitScale : OtherHitScale);
         }
 
-        /// <summary>플레이어가 몬스터에게 맞았다. 내가 맞은 건 크게 빨갛게, 다른 플레이어는 작게.</summary>
+        /// <summary>
+        /// 플레이어가 몬스터에게 맞았다. 내가 맞은 건 크게 빨갛게, 다른 플레이어는 작게
+        /// </summary>
         private void HandleMonsterAttacked(GameMonsterAttackBroadcastPacket packet)
         {
             SpawnPlayerTaken(packet.TargetPlayerId, packet.Damage.ToString());
         }
 
-        /// <summary>PvP로 플레이어가 맞았다.</summary>
+        /// <summary>
+        /// PvP로 플레이어가 맞았다
+        /// </summary>
         private void HandlePlayerDamaged(GameDamageBroadcastPacket packet)
         {
             SpawnPlayerTaken(packet.TargetId, packet.Damage.ToString());
         }
 
-        /// <summary>몬스터 공격이 대쉬 회피에 막혔다(HP는 변하지 않는다).</summary>
+        /// <summary>
+        /// 몬스터 공격이 대쉬 회피에 막혔다
+        /// </summary>
         private void HandleMonsterAttackDodged(GameMonsterAttackDodgedBroadcastPacket packet)
         {
             if (TryGetPlayerHeadPosition(packet.TargetPlayerId, out Vector3 position))
@@ -207,7 +218,6 @@ namespace Incheol.Modules
                 return;
             }
 
-            // 한꺼번에 너무 많이 쌓이면(광역 전투) 가장 오래된 것부터 걷는다.
             if (active.Count >= MaxActive)
             {
                 Release(active[0]);
@@ -219,7 +229,6 @@ namespace Incheol.Modules
             entry.Color = color;
             entry.Scale = scale;
 
-            // 같은 대상에게 연속으로 뜨는 숫자가 겹치지 않도록 좌우로 조금 흩뿌린다.
             Vector3 jitter = new Vector3(Random.Range(-HorizontalJitter, HorizontalJitter), 0f, Random.Range(-HorizontalJitter, HorizontalJitter));
             entry.StartPosition = headPosition + jitter;
 
@@ -245,7 +254,7 @@ namespace Incheol.Modules
             text.textWrappingMode = TextWrappingModes.NoWrap;
             text.raycastTarget = false;
 
-            // 벽/캐릭터 뒤에 가려지지 않도록 깊이 검사를 끈 재질을 모든 텍스트가 공유한다(숫자는 항상 보여야 한다).
+            // 벽/캐릭터 뒤에 가려지지 않도록 깊이 검사를 끈 재질을 모든 텍스트 공유
             if (overlayMaterial == null)
             {
                 overlayMaterial = new Material(font.material);
@@ -285,6 +294,7 @@ namespace Incheol.Modules
             position = default;
 
             Transform target = null;
+
             if (IsLocalPlayer(playerId))
             {
                 if (localPlayer == null)
@@ -311,6 +321,7 @@ namespace Incheol.Modules
         private static Vector3 GetMonsterHeadPosition(RemoteMonsterController monster)
         {
             Collider collider = monster.GetComponentInChildren<Collider>();
+
             if (collider != null && collider.enabled)
             {
                 Vector3 position = monster.transform.position;
