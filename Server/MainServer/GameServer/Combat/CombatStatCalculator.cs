@@ -54,13 +54,13 @@ namespace GameServer.Combat
             return (float)(maxMp * percentPerSecond / 100.0);
         }
 
-        // 물약 회복량: 최대 체력의 healPercent%, 최소 1(Client 쪽 기존 CombatCalculator.CalculateHealAmount와 같은 공식).
+        // 물약 회복량: 최대 체력의 healPercent%, 최소 1(클라이언트 ItemDetailTextBuilder의 표시 공식과 같다).
         public static int CalculateHealAmount(int maxHp, int healPercent)
         {
             return Math.Max(1, (int)Math.Round(maxHp * healPercent / 100f));
         }
 
-        // 방어력을 적용한 최종 피해량. 방어력이 아무리 높아도 최소 1은 들어간다(Client CombatCalculator.ApplyDefense와 동일).
+        // 방어력을 적용한 최종 피해량. 방어력이 아무리 높아도 최소 1은 들어간다(클라이언트 표시 공식과 동일).
         public static int ApplyDefense(int rawDamage, int defense)
         {
             return Math.Max(1, rawDamage - defense);

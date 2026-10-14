@@ -217,7 +217,7 @@ namespace GameServer.Maps
         public List<MapChest> Chests { get; init; } = new();
 
         // 상자가 설 수 있는 후보 지점(Unity TreasureChestSpawnPointMarker). 형식이 MapChest와 같다 - 방이 만들어질 때
-        // ChestSpawnSelector가 ChestSpawnCounts만큼 뽑아 Chests와 똑같이 취급한다(GameRoom.ActiveChests).
+        // ChestSpawnSelector가 ChestSpawnCounts만큼 뽑아 Chests와 똑같이 취급한다(RoomChestState).
         public List<MapChest> ChestCandidates { get; init; } = new();
 
         // 등급(LootTableKey)별로 후보 중 몇 개를 뽑을지(Unity TreasureChestSpawnPlan).

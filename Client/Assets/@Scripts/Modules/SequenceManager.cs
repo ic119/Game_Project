@@ -143,7 +143,7 @@ namespace Incheol.Modules
             catch (Exception e)
             {
                 // ExecuteWithTimeout이 각 단계의 예외를 이미 처리하므로, 여기 도달하는 예외는
-                // StartExecute 자체 로직(예: DebugLogController 호출 등)에서 발생한 예상 밖의 예외다.
+                // StartExecute 자체 로직(예: DebugLogManager 호출 등)에서 발생한 예상 밖의 예외다.
                 // 잡지 않으면 IsRunning=false가 실행되지 못해 이후 Enqueue/DoSequenceAction이 영구히 막히므로 반드시 처리한다.
                 HasError = true;
                 sequenceQueue.Clear();

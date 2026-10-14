@@ -21,8 +21,8 @@ namespace Incheol.Modules.Networking
 
         // 전투 관련 값. Game_EnterRequest 시점에 자신의 PlayerCharacterModel 기준으로 채워 보내지만, 서버는 이 값을
         // 쓰지 않고 DB 원본으로 다시 계산해 덮어쓴다(닉네임/외형/레벨/경험치도 동일 - 서버가 쓰는 건 위치/맵뿐이다).
-        // 다른 접속자 정보(Game_EnterAck/Game_PlayerJoined)로 받은 값은 서버가 계산한 값이며,
-        // 데미지의 방어력 차감은 각 클라이언트가 이 값(특히 Defense)으로 로컬 계산한다.
+        // 다른 접속자 정보(Game_EnterAck/Game_PlayerJoined)로 받은 값은 서버가 계산한 값이다. 피해 계산(방어력 차감)은 서버가 하고
+        // 클라이언트는 결과(남은 체력)만 받으므로, 다른 접속자의 AttackPower/Defense는 화면 표시 용도 외에는 쓰이지 않는다.
         public int MaxHp;
         public int CurrentHp;
 

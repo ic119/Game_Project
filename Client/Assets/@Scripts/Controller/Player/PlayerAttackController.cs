@@ -13,8 +13,8 @@ namespace Incheol.Controller
     /// AttackLayerIdle(ComboIndex=0) -[ComboIndex=1]-> Attack1 -[ComboIndex=2]-> Attack2 -[ComboIndex=0]-> AttackLayerIdle.
     /// Attack Layer는 기본 weight가 0이라(그래야 평소 Base Layer의 이동/대기 애니메이션을 가리지 않음),
     /// 콤보가 진행되는 동안만 1로 올렸다가 콤보가 끝나면 다시 0으로 내린다.
-    /// 각 타수마다 전방 구체 판정(OverlapSphere)으로 가장 가까운 원격 플레이어를 찾아 공격 요청을 보낸다.
-    /// 데미지 적용은 하지 않는다 - 서버가 중계한 Game_DamageBroadcast를 받는 쪽에서 처리한다.
+    /// 각 타수마다 AttackTargetFinder로 가장 가까운 원격 플레이어/몬스터(완드는 전방 부채꼴)를 찾아 공격 요청을 보낸다.
+    /// 데미지 적용은 하지 않는다 - 서버가 계산해 보낸 결과(Game_DamageBroadcast/Game_MonsterDamageBroadcast)를 받는 쪽에서 처리한다.
     /// </summary>
     public class PlayerAttackController : MonoBehaviour
     {

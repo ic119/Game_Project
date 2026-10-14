@@ -1,7 +1,7 @@
 using Incheol.Utils;
 using UnityEngine;
 
-// 공격력/방어력을 들고 있는 컴포넌트. 공격 주체(PlayerController 등)는 AttackPower를,
+// 공격력/방어력을 들고 있는 컴포넌트. 공격 주체(PlayerAttackController 등)는 AttackPower를,
 // HealthComponent는 Defense를 같은 GameObject에서 GetComponent로 참조해 공용으로 사용한다.
 // PlayerCharacterModel뿐 아니라 향후 Enemy 쪽에도 그대로 붙여 재사용할 수 있도록
 // 특정 캐릭터 종류에 의존하지 않는다.
@@ -21,7 +21,7 @@ public class CombatStatComponent : MonoBehaviour
 
     // UserStats(str/agi/intel)와 레벨로부터 공격력/방어력을 계산해 반영한다.
     // str 1당 공격력 1, agi 2당 방어력 1로 잡은 임시 공식이며, 실제 밸런스 기획이 정해지면
-    // 이 메서드 하나만 바꾸면 된다(PlaceholderMaxExp와 같은 성격의 임시값).
+    // 이 메서드 하나만 바꾸면 된다.
     // str/agi에는 레벨 성장 보너스(StatGrowth)가 더해진다 - 서버(CombatStatCalculator)와 같은 공식이다.
     // 레벨이 바뀔 때마다(PlayerCharacterModel.ApplyLevel) 다시 호출해야 한다. 장비 보너스는 따로 더해지는 레이어라 영향받지 않는다.
     public void ApplyFromUserStats(UserStats userStats, int level)

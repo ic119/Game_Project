@@ -378,7 +378,7 @@ namespace Incheol.Modules
 
         /// <summary>
         /// 보스 스킬의 예고가 끝났다(Game_BossSkillEndBroadcast). 발동이면 표시가 섬광을 내고 사라지며 보스가 타격/돌진 모션을 재생하고,
-        /// 취소(보스 사망 등)면 표시만 걷는다. 피해/회피 결과는 이 알림과 별개로 Game_MonsterAttackBroadcast/AttackDodgedBroadcast로 온다.
+        /// 취소(보스 사망 등)면 표시만 걷는다. 피해/회피 결과는 이 알림과 별개로 Game_MonsterAttackBroadcast/Game_MonsterAttackDodgedBroadcast로 온다.
         /// </summary>
         private void HandleBossSkillEnd(GameBossSkillEndBroadcastPacket packet)
         {

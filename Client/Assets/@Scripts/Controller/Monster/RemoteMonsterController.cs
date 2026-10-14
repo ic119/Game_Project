@@ -36,7 +36,7 @@ namespace Incheol.Controller
         private static readonly int AttackHash = Animator.StringToHash("Attack");
         private static readonly int AttackIndexHash = Animator.StringToHash("AttackIndex");
 
-        // 보스 소환 모션(Taunt 트리거). 보스 컨트롤러(BlackKnightStance)에만 있으므로 파라미터가 있을 때만 쓴다(HasAnimatorParameter).
+        // 보스 소환 모션(Taunt 트리거). 보스 컨트롤러(BlackKnightStance)에만 있으므로 파라미터가 있을 때만 쓴다(animatorParameterHashes).
         private static readonly int TauntHash = Animator.StringToHash("Taunt");
 
         // 보스 스킬 발동 때 재생할 공격 모션 번호(AttackIndex). 범위 공격은 가장 강한 3번(Attack03), 돌진은 2번(Attack02)이다.
@@ -263,14 +263,14 @@ namespace Incheol.Controller
 
         /// <summary>
         /// Game_MonsterDieBroadcast 수신 시 재생한다. 실제 오브젝트 제거는 RemoteMonsterManager가
-        /// 애니메이션이 보일 시간을 준 뒤(DieAnimationDuration) 처리한다.
+        /// 애니메이션이 보일 시간을 준 뒤(dieAnimationDuration) 처리한다.
         /// </summary>
         public void PlayDeath()
         {
             IsDead = true;
 
             // 사망 연출 동안(RemoteMonsterManager.dieAnimationDuration) 오브젝트는 남지만 이미 죽은 몬스터다. 콜라이더를 그대로 두면
-            // 공격 판정(PlayerAttackController.TryFindNearestTarget)이 이 시체를 가장 가까운 대상으로 골라, 바로 뒤의 살아 있는
+            // 공격 판정(AttackTargetFinder)이 이 시체를 가장 가까운 대상으로 골라, 바로 뒤의 살아 있는
             // 몬스터 대신 죽은 몬스터에 공격 요청을 보내고(서버는 무시) 타겟 HUD도 켜지지 않았다. 판정에서 빠지도록 끈다.
             foreach (Collider bodyCollider in GetComponentsInChildren<Collider>())
             {

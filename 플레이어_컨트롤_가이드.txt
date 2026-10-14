@@ -209,7 +209,7 @@
    Wand        16/30초  16/30초
    Spear       16/30초  20/30초
    (표에 없는 무기는 16/30초 기본값)
-   * RemoteCharacterController 에도 같은 표가 복제되어 있다. 한쪽을 고치면 다른 쪽도 같이 고칠 것.
+   * 표는 CombatTimings.TryGetAttackDuration 한 곳에 있고 PlayerAttackController 와 RemoteCharacterController 가 함께 쓴다.
 
  5-4. 타격 대상 탐색
 
@@ -293,7 +293,7 @@
    원격 캐릭터의 이동 애니메이션
      - 보간된 이동 속도가 0.2 m/s 를 넘으면 IsMove, 멈춘 뒤 0.15초가 지나야 IsIdle 로 바꾼다
        (스냅샷 사이의 짧은 정지로 애니메이션이 깜빡이지 않게 하는 히스테리시스).
-   * 원격 플레이어의 대쉬 모션은 동기화하지 않는다 (위치만 보간되어 보인다).
+   * 원격 플레이어의 대쉬는 Game_DashBroadcast 로 전방/후방 대쉬 모션과 이펙트를 재생한다 (위치 이동은 스냅샷 보간).
 
  6-5. 서버 이벤트의 메인 스레드 전달
 
@@ -323,8 +323,8 @@
         (Die 상태는 들어오고 나가는 전이가 없으므로 파라미터가 아니라 상태를 직접 재생한다.)
    4) GameSceneManager.SetLocalPlayerControlEnabled(false):
         PlayerMoveController / PlayerAttackController 를 끄고 Rigidbody 속도를 0으로 만든다.
-   5) 부활 대기 팝업 표시 (서버가 5초 뒤 자동 부활).
-   - 부활 시 Idle 을 직접 재생하고 컨트롤러를 다시 켠다. 위치는 서버가 정한다 (Game_PlayerRevived).
+   5) 부활 방식 선택 팝업 표시 (마을/제자리 선택 -> Game_ReviveRequest -> 서버가 5초 뒤 부활, 30초 안에 고르지 않으면 마을 부활).
+   - 부활 시 Idle 을 직접 재생하고 컨트롤러를 다시 켠다. 위치(마을=RespawnPoint, 제자리=사망 위치)는 서버가 정한다 (Game_PlayerRevived).
    - 원격 플레이어도 같은 ApplyServerHp 경로를 타므로 동일하게 정리된다.
      사망한 원격 캐릭터에는 늦게 도착한 공격 모션 알림(PlayAttackAnimation)을 무시한다.
 
@@ -438,16 +438,16 @@
    [서버]
    방 틱 50ms (20Hz) ............................. GameRoom.TickInterval
    이동 예산 충전 9 m/s / 최대 5m ................. ClientSession.MoveBudgetRefillPerSecond / MoveBudgetCapacity
-   공격 최소 간격 100ms / 최대 사거리 5m ........... ClientSession.MinAttackIntervalMs / MaxAttackRangeSquared
-   몬스터 근접 사거리 1.5m / 공격 주기 1.5초 ....... GameRoom.MeleeAttackRange / AttackIntervalSeconds
-   몬스터 공격 선딜 0.4초 ......................... GameRoom.MonsterAttackWindupSeconds
+   공격 최소 간격 100ms / 최대 사거리 5m ........... CombatTuning.MinAttackIntervalMs / MaxAttackRange
+   몬스터 근접 사거리 1.5m / 공격 주기 1.5초 ....... CombatTuning.MonsterMeleeRange / MonsterAttackIntervalSeconds
+   몬스터 공격 선딜 0.4초 ......................... CombatTuning.MonsterAttackWindupSeconds
    판정 사거리 여유 0.25m ......................... MonsterAttackJudge.HitRangeTolerance
-   대쉬 무적 0.35초 / 최소 대쉬 간격 1.0초 ......... GameRoom.DashInvulnerableDuration / MinDashInterval
-   사망 후 부활 선택 제한 30초(초과 시 마을 부활) ... GameRoom.ReviveTimeout (클라이언트 GameSceneManager.ReviveTimeoutSeconds 와 같아야 함)
+   대쉬 무적 0.35초 / 최소 대쉬 간격 1.0초 ......... CombatTuning.DashInvulnerableSeconds / MinDashIntervalSeconds
+   사망 후 부활 선택 제한 30초(초과 시 마을 부활) ... CombatTuning.ReviveTimeoutSeconds (클라이언트 CombatTimings.ReviveTimeoutSeconds 와 같아야 함)
 
  * 서로 맞춰야 하는 값
    - 클라이언트 대쉬 값(0.25초 / 1초 / 3m)을 바꾸면 서버의 대쉬 무적 시간, 최소 대쉬 간격, 이동 거리 예산도 함께 조정한다.
-   - 무기별 공격 타이밍 표는 PlayerAttackController 와 RemoteCharacterController 두 곳에 있다.
+   - 무기별 공격 타이밍 표는 CombatTimings 한 곳에 있다 (서버 CombatTuning 값과의 관계는 CombatTuningTests 가 검사한다).
    - 서버 방 틱 간격을 바꾸면 클라이언트 SnapshotInterpolationBuffer 의 ServerTickMs / InterpolationDelayMs 도 함께 확인한다.
    - 서버와 클라이언트는 프로토콜(OpCode, 패킷 형식)이 같아야 한다. 한쪽만 배포하면 동작이 어긋난다.
 
@@ -459,7 +459,6 @@
    - 위치 보고가 0.1초 간격이라 서버가 아는 위치는 최대 0.1초 + 네트워크 지연만큼 늦다.
      그래서 몬스터 판정 사거리에 0.25m 여유를 두었다.
    - 서버는 높이(Y)를 검증하지 않는다 (지형 정보가 없음).
-   - 원격 플레이어의 대쉬 모션은 동기화하지 않아, 다른 사람 화면에서는 위치만 빠르게 이동해 보인다.
    - 사망 중에는 PlayerAttackController 가 꺼지면서 이벤트 구독이 해제되어, 그동안 다른 플레이어의 공격 모션 알림이
      로컬 클라이언트에서 재생되지 않는다 (알려진 동작).
    - 몬스터 공격 선딜(0.4초)은 모든 몬스터 종류에 공통으로 적용된다. 몬스터별로 다르게 하려면 스폰 포인트 정의

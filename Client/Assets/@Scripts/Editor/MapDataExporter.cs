@@ -10,7 +10,7 @@ namespace Incheol.Editor
     /// <summary>
     /// 맵 프리팹에서 서버가 알아야 하는 좌표 데이터(RespawnPoint, 포탈)를 서버가 읽는 MapData/{mapId}.json
     /// 형식으로 내보낸다. GameServer는 이 값으로 입장/부활 위치를 직접 정하고, 맵 이동/좌표 이동 포탈을 검증한다 -
-    /// 클라이언트가 보낸 좌표로 순간이동을 허용하면 이동 속도 검증(ClientSession.HandleMoveRequestAsync)을 우회할 수 있기 때문이다.
+    /// 클라이언트가 보낸 좌표로 순간이동을 허용하면 이동 속도 검증(ClientSession.HandleMoveRequest)을 우회할 수 있기 때문이다.
     /// mapId와 출력 폴더 규칙은 MonsterSpawnPointExporter와 동일하다(프리팹 파일명 = mapId = AddressableAssetKey 이름).
     /// 포탈의 목적지는 인스펙터에 설정된 값만 내보낸다 - 실행 중 SetTargetMap/SetTargetDestination으로 바꾼 목적지는
     /// 서버가 알 수 없어 거부된다.

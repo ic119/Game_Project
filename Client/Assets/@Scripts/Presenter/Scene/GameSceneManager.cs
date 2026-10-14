@@ -68,7 +68,7 @@ namespace Incheol.Presenter.Scene
         public float PotionCooldownRemainingSeconds => potionState.RemainingSeconds;
 
         /// <summary>
-        /// 로컬 플레이어 인스턴스. SpawnPlayerCharacter가 이 GameSceneManager(transform) 밑에 생성하고
+        /// 로컬 플레이어 인스턴스. LocalPlayerSpawner가 이 GameSceneManager(transform) 밑에 생성하고
         /// RespawnPoint의 위치/회전값만 가져다 쓰므로, 맵 프리팹(및 그 안의 RespawnPoint)이 파괴돼도
         /// 함께 파괴되지 않는다.
         /// </summary>

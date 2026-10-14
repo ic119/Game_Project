@@ -1,7 +1,7 @@
 namespace Shared.Networking.Packets
 {
-    // 인벤토리에서 장비를 장착/해제해 공격력/방어력이 바뀌었을 때 GameServer에 알린다. Game_EnterRequest 때와
-    // 동일한 신뢰 수준(Nickname과 같은 수준 - 서버가 별도로 검증하지 않고 그대로 캐싱)으로 클라이언트 값을 반영한다.
+    // 인벤토리에서 장비를 장착/해제했을 때 GameServer에 알린다. 서버는 AttackPower/Defense(클라이언트 자기 계산값)를 믿지 않고
+    // 재계산 트리거로만 쓴다 - MainServer에서 캐릭터를 다시 조회해 공격력/방어력과 외형 장비(Game_EquipmentChangedBroadcast)를 갱신한다.
     public class C2SStatUpdateRequest
     {
         public long PlayerId { get; set; }

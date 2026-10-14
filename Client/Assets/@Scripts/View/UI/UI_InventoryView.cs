@@ -238,7 +238,7 @@ namespace Incheol.View.UI
         /// 따로 저장하지 않는 스택형 인벤토리라(GameSceneManager.localInventoryItems 참고), equipSlot이 비어있는
         /// (미장착) 스택만 순서대로 앞 슬롯부터 채우고 나머지는 비운다 - 드래그로 슬롯 순서를 바꾸는 기능은 아직
         /// 없어 순서가 흔들릴 일이 없다. equipSlot이 있는(장착 중인) 스택은 일반 그리드에는 표시하지 않고
-        /// RefreshEquipmentSlots가 좌측 해당 장비 슬롯에 표시한다.
+        /// InventoryEquipmentPanel.Refresh가 좌측 해당 장비 슬롯에 표시한다.
         /// _itemLookup(보통 ItemDatabaseManager.Instance.FindById)이 null을 반환하면(디자이너가 아직 아이콘/설명을
         /// 채우기 전) 아이콘 없이 itemId 텍스트와 수량만으로 최소 표시한다. ItemDatabaseSO를 직접 참조하지 않고
         /// 조회 함수만 받는 이유는 ItemDatabaseManager가 유일한 로드 지점이라는 규칙을 UI 쪽에서도 지키기 위함이다.
