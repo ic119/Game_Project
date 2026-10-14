@@ -120,9 +120,9 @@ namespace Incheol.View.UI
             RegisterEvents();
             equipmentPanel.Init(HandleSlotClicked);
             InitTabs();
-            // 실제 값은 GameSceneManager.RefreshInventoryDisplay가 스폰 직후 곧바로 덮어쓴다 - 여기서는
-            // 인벤토리 열기 전까지 잠깐 보일 자리 표시자일 뿐이다.
+
             UpdateStatsUI(UserStats.CreateDefault(), 0, 0, 0);
+            
             SetCurrency(1250000, 350);
             SetCapacity(0, InventorySlotCount);
         }
@@ -134,8 +134,6 @@ namespace Incheol.View.UI
 
         private void Update()
         {
-            // 선택한 물약이 재사용 대기 중일 때만 남은 시간을 갱신한다(그 외에는 아무 일도 하지 않는다). 대기가 막 끝난 프레임에는
-            // 아직 "사용 대기" 문구가 남아 있으므로 한 번 더 갱신해 원래 문구/활성 상태로 되돌린다.
             if (useButtonShowsCooldown || IsPotionCoolingDown())
             {
                 RefreshUseButton();

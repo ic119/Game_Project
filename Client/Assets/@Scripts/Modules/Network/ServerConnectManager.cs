@@ -270,7 +270,7 @@ namespace Incheol.Modules
                 return true;
             }
 
-            // 서버가 RefreshToken을 거부했다(만료/폐기, 401) - 다시 로그인하는 수밖에 없다. 네트워크 오류나 서버 오류(5xx)로
+            // 서버가 RefreshToken을 거부했다(만료/폐기, 401) - 다시 로그인 실행
             // 응답을 못 받은 경우는 세션을 유지한다 - 잠깐의 끊김으로 로그아웃시키지 않고, 다음 요청에서 다시 재발급을 시도한다.
             if (statusCode == 401)
             {

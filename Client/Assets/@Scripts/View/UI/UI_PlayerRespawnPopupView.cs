@@ -7,10 +7,7 @@ using UnityEngine.UI;
 namespace Incheol.View.UI
 {
     /// <summary>
-    /// 내 캐릭터가 사망했을 때 부활 방식(마을/제자리)을 고르는 팝업. 처음에는 "부활방식을 골라주세요"를 보여 주고,
-    /// 마을 부활을 누르면 "N초 후 마을로 돌아갑니다", 제자리 부활을 누르면 "N초 후 제자리에서 부활합니다" 카운트다운을 보여 준다. GameSceneManager가 사망 시 Show,
-    /// 부활 시 Hide를 호출한다. 실제 부활 시점과 위치는 서버가 정하므로(Game_PlayerRevived), 버튼을 눌러도/카운트다운이 0이 돼도
-    /// 스스로 닫지 않고 부활 알림을 받아 Hide가 호출될 때 닫힌다.
+    /// 유저 캐릭터가 사망했을 때 부활 방식(마을/제자리)을 고르는 팝업 담당
     /// </summary>
     public class UI_PlayerRespawnPopupView : MonoBehaviour
     {
@@ -23,27 +20,26 @@ namespace Incheol.View.UI
         [SerializeField] private Button inPlaceReviveButton;
 
         /// <summary>
-        /// 부활 방식을 골랐을 때 발생한다. 인자는 제자리 부활 여부(true면 제자리, false면 마을).
+        /// 부활 방식을 골랐을 때 발생 (매개변수 - 제자리 부활 여부(true면 제자리, false면 마을))
         /// </summary>
         public event Action<bool> ReviveSelected;
 
-        // 카운트다운 중이면 true.
+        // 카운트다운 중일 경우 true
         private bool isCountingDown;
 
-        // 카운트다운 중인 부활 방식. true면 제자리, false면 마을.
+        // 카운트다운 중인 부활 방식 true면 제자리, false면 마을.
         private bool countdownInPlace;
 
         // 부활까지 남은 시간(초).
         private float remainingSeconds;
 
-        // 마지막으로 표시한 초. 초가 바뀔 때만 텍스트를 갱신한다.
+        // 마지막으로 표시한 초. 초가 바뀔 때만 텍스트 갱신
         private int displayedSeconds = -1;
         #endregion
 
         #region LifeCycle
         private void Awake()
         {
-            // 프리팹에서 컨테이너가 켜진 채로 저장돼 있어도 게임 시작 시에는 보이지 않게 한다.
             Hide();
 
             if (townReviveButton != null)
@@ -167,12 +163,11 @@ namespace Incheol.View.UI
             }
         }
 
-        // 버튼을 눌러도 팝업은 닫지 않는다 - 서버가 부활을 승인해 Game_PlayerRevived가 오면 GameSceneManager가 Hide한다
-        // (중복 클릭은 서버가 이미 부활한 플레이어의 요청이라 무시한다).
+        // 버튼을 눌러도 팝업 비활성화 미실행 - 서버가 부활을 승인해 Game_PlayerRevived가 오면 GameSceneManager가 Hide처리
         private void HandleTownReviveClicked()
         {
             if (isCountingDown)
-            {
+            { 
                 return;
             }
 
@@ -191,7 +186,7 @@ namespace Incheol.View.UI
             StartCountdown(true, CombatTimings.InPlaceReviveDelaySeconds);
         }
 
-        // 남은 시간을 올림한 초로 표시한다(4.2초 남음 -> "5초 후 마을로 돌아갑니다" / "5초 후 제자리에서 부활합니다").
+        // 남은 시간을 올림한 초로 표시(4.2초 남음 -> "5초 후 마을로 돌아갑니다" / "5초 후 제자리에서 부활합니다").
         // 0이 되면 서버의 부활 알림을 기다리는 동안 "곧 부활합니다"를 보여준다.
         private void RefreshText()
         {
