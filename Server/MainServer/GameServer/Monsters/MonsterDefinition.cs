@@ -13,7 +13,7 @@ namespace GameServer.Monsters
         // 처치 시 지급할 경험치. 가이드라인: round(MaxHp * 0.4 + AttackPower * 2).
         public int ExpReward { get; init; } = 20;
 
-        // 인식/추적 AI 튜닝 값(GameRoom.TickMonsterAiAsync 참고). 몬스터 타입별 분기 없이 이 값들만으로
+        // 인식/추적 AI 튜닝 값(GameRoom.MonsterAi.cs 참고). 몬스터 타입별 분기 없이 이 값들만으로
         // 동작하므로, 새 몬스터를 추가할 때도 여기에 값만 채우면 자동으로 같은 AI를 갖는다.
         // 몬스터로부터 이 거리 안에 플레이어가 들어오면 추적을 시작한다.
         public float DetectionRange { get; init; } = 6f;

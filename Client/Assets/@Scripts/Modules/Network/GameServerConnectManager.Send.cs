@@ -246,8 +246,8 @@ namespace Incheol.Modules
         }
 
         /// <summary>
-        /// 인벤토리에서 장비를 장착/해제해 바뀐 공격력/방어력을 GameServer에 알린다(Game_StatUpdateRequest).
-        /// 서버는 이 값을 Game_EnterRequest 때와 같은 신뢰 수준으로 그대로 캐싱만 하고 응답하지 않는다.
+        /// 인벤토리에서 장비를 장착/해제했음을 GameServer에 알린다(Game_StatUpdateRequest).
+        /// 서버는 실린 값을 쓰지 않고 MainServer에서 다시 조회해 재계산한다(바뀐 외형은 Game_EquipmentChangedBroadcast로 돌아온다).
         /// 접속 전이면(아직 GameScene 진입 전, 또는 이미 끊긴 상태) 아무 것도 하지 않는다 - 그 경우 최신 값은
         /// 다음 Game_EnterRequest(재접속)에 자연히 실려 간다.
         /// </summary>

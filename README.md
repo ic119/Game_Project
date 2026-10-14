@@ -100,7 +100,7 @@ GameServer는 JWT 서명 키나 DB에 직접 접근하지 않고 MainServer에 �
   → 사망 시 경험치·골드·드랍 → 본인에게 Game_LootBroadcast
 ```
 - 공격 **모션**(`Game_AttackAnimationRequest/Broadcast`)은 판정과 분리해 그대로 중계만 합니다.
-- 몬스터는 반격하며, 플레이어가 죽으면 5초 뒤 서버가 자동 부활시킵니다(클라이언트 팝업 카운트다운과 같은 값).
+- 몬스터는 반격하며, 플레이어가 죽으면 부활 방식(마을/제자리)을 고르는 팝업이 뜨고, 선택 5초 뒤 서버가 부활시킵니다. 30초 안에 고르지 않으면 마을 부활로 자동 처리합니다(시간은 `appsettings.json`의 `Combat` 섹션과 클라이언트 `CombatTimings`가 같은 값).
 - 몬스터는 5종(RedMushroom, Spider, Orc, Werewolf, Golem)이며 플레이어 능력치·장비 기준으로 밸런싱했습니다(`Server/몬스터_밸런싱_공식.txt`).
 
 ### 4-2. 킬 보상 저장

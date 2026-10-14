@@ -1,9 +1,9 @@
 namespace Incheol.Modules.Networking
 {
     // 서버 Shared/Networking/Packets/S2CAttackAnimationBroadcast.cs와 형식이 동일해야 한다.
-    // WeaponType은 공격자가 보낸 값을 서버가 그대로 중계한 것이다 - 원격 플레이어의 장착 무기 "시각"(메시)
-    // 자체는 아직 동기화되지 않지만(RemotePlayerManager가 원격 캐릭터에 EquipItem을 호출하지 않음),
-    // RemoteCharacterController.PlayAttackAnimation은 이 값으로 정확한 무기별 콤보 모션을 재생한다.
+    // WeaponType은 공격자가 보낸 값을 서버가 그대로 중계한 것이다. RemoteCharacterController.PlayAttackAnimation은 이 값으로
+    // 정확한 무기별 콤보 모션/원거리 투사체를 재생한다. 원격 캐릭터의 무기/갑옷/투구 "시각"(메시)은 이 패킷이 아니라
+    // Game_EquipmentChangedBroadcast로 동기화된다(RemotePlayerManager).
     public class GameAttackAnimationBroadcastPacket
     {
         public long AttackerId;

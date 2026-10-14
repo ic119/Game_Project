@@ -47,8 +47,8 @@ public class PlayerCharacterModel : MonoBehaviour
     private int nextHitVariant = 1;
 
     /// <summary>
-    /// 세이브 데이터(UserSaveData.userExp)로부터 GameSceneController가 채워주는 경험치 런타임 상태.
-    /// ApplyExp로 초기화된 뒤에는 GainExp로 갱신된다. 체력/공격력/방어력은 각각 HealthComponent/CombatStatComponent가 전담한다.
+    /// 세이브 데이터(UserSaveData.userExp)로부터 GameSceneManager가 채워주는 경험치 런타임 상태.
+    /// ApplyExp로 초기화된 뒤에는 ApplyExpGain으로 갱신된다. 체력/공격력/방어력은 각각 HealthComponent/CombatStatComponent가 전담한다.
     /// UI_GameSceneView는 이 값을 계속 폴링해 슬라이더 연출에 사용한다.
     /// </summary>
     private int currentExp;

@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 namespace GameServer.Networking
 {
     // 몬스터 처치 보상을 MainServer에 저장한다. 세션과 분리된 백그라운드 작업으로, 실패하면 잠시 뒤 다시 보낸다.
-    // 예전에는 처치한 세션의 수신 루프가 저장을 직접 기다렸다(ClientSession.HandleMonsterAttackRequestAsync) -
+    // 예전에는 처치한 세션의 수신 루프가 저장을 직접 기다렸다(ClientSession.HandleMonsterAttackRequest) -
     // 한 번 실패하면(MainServer 순단/타임아웃) 골드/아이템이 로그만 남기고 사라졌고, 세션 종료 토큰으로 호출해 처치 직후
     // 접속을 끊으면 저장이 중간에 취소됐으며, MainServer가 느린 동안 그 플레이어의 이동/공격 처리까지 멈췄다.
     //

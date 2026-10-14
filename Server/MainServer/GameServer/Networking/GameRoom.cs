@@ -166,7 +166,8 @@ namespace GameServer.Networking
         // 인벤토리에서 장비를 장착/해제해 바뀐 공격력/방어력을 반영한다(Game_StatUpdateRequest). PlayerInfo가
         // class(참조 타입)라 이 메서드로 값만 바꿔주면 ApplyMonsterAttack/AttackPlayer가 다음 판정부터
         // 곧바로 새 값을 쓴다 - Game_EnterRequest 스냅샷 이후 갱신 경로가 이것뿐이므로, 호출하지 않으면 세션 내내
-        // 접속 시점 스탯으로 고정된다. 다른 접속자에게 알릴 필요는 없다(PvP 피해도 서버가 이 값으로 계산해 결과만 보낸다).
+        // 접속 시점 스탯으로 고정된다. 공격력/방어력은 다른 접속자에게 알릴 필요가 없다(PvP 피해도 서버가 이 값으로 계산해 결과만 보낸다).
+        // 외형 장비의 변경은 별도로 TryUpdateEquipment가 알린다.
         // snapshot(DB 원본)의 기본 스탯/장비를 서버 전용 기준값으로 갱신하고, 현재 레벨(접속 중 오른 레벨 포함) 기준으로 다시 계산한다.
         public bool TryUpdateCombatStats(long playerId, CharacterSnapshot snapshot)
         {

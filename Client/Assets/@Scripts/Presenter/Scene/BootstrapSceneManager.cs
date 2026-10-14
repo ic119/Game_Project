@@ -70,7 +70,7 @@ namespace Incheol.Presenter
 
             public async Awaitable<bool> Execute(CancellationToken _cancellationToken)
             {
-                // SoundController.Instance에 접근하는 것만으로 Awake()가 호출되어
+                // SoundManager.Instance에 접근하는 것만으로 Awake()가 호출되어
                 // Inspector에 등록된 SoundClip 목록으로 AudioSource가 준비된다.
                 _ = SoundManager.Instance;
 
@@ -277,7 +277,7 @@ private void Start()
 
         /// <summary>
         /// SequenceManager의 단계가 하나 끝날 때마다 호출된다. sequenceQueue에 등록된 전체 단계 수로 100을 나눈 만큼씩
-        /// 진행률이 누적 증가하며, 이 값을 UI_BootstrapSceneView(progressBarView의 퍼센트 텍스트/게이지)에 실시간으로 반영한다.
+        /// 진행률이 누적 증가하며, 이 값을 UI_LoadingBarView(progressBarView의 퍼센트 텍스트/게이지)에 실시간으로 반영한다.
         /// 또한 방금 완료된 단계의 StepName을 progressBarView의 타이틀 텍스트로 표출한다.
         /// </summary>
         private void OnBootstrapStepCompleted(int _completedCount, int _totalCount)

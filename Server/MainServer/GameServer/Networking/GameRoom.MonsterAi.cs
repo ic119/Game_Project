@@ -147,7 +147,7 @@ namespace GameServer.Networking
             }
         }
 
-        // 근접 사거리(공격 판정 자체는 서버 권위 - ApplyMonsterAttack/HandleMonsterAttackRequestAsync와
+        // 근접 사거리(공격 판정 자체는 서버 권위 - ApplyMonsterAttack/HandleMonsterAttackRequest와
         // 같은 이유로 몬스터는 신뢰할 공격 요청 주체가 없다) 및 공격 쿨다운.
         private static float MeleeAttackRange => CombatTuning.Current.MonsterMeleeRange;
         private static float AttackIntervalSeconds => CombatTuning.Current.MonsterAttackIntervalSeconds;

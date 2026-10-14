@@ -114,8 +114,8 @@ namespace Incheol.Presenter.Scene
         /// <summary>
         /// localInventory 중 장착 중인(equipSlot이 설정된) 스택들의 ItemData.bonusAttackPower/bonusDefense를
         /// 합산해 CombatStatComponent에 반영하고, GameServer 접속 중이면 갱신된 값을 알린다(Game_StatUpdateRequest).
-        /// GameServer는 Game_EnterRequest 시점 스냅샷(PlayerInfo.AttackPower/Defense)을 그대로 캐싱해서 전투 판정에
-        /// 쓰기 때문에(GameRoom.ApplyMonsterAttackAsync/AttackPlayerAsync), 이 알림이 없으면 인벤토리에는 스탯이
+        /// GameServer는 Game_EnterRequest 시점의 공격력/방어력을 캐싱해서 전투 판정에
+        /// 쓰기 때문에(GameRoom.ApplyMonsterAttack/ApplyPlayerAttack), 이 알림(서버가 재계산 트리거로 쓴다)이 없으면 인벤토리에는 스탯이
         /// 올랐다고 뜨지만 실제 몬스터 전투 데미지는 그대로인 불일치가 생긴다.
         /// 장착/해제(TryEquipItem/TryUnequipSlot)와 로그인 복원(ApplySelectedCharacterCustomization,
         /// HandleItemDatabaseLoaded) 양쪽에서 호출된다.

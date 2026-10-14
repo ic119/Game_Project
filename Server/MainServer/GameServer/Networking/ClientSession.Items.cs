@@ -31,7 +31,7 @@ namespace GameServer.Networking
         // 인벤토리에서 장비를 장착/해제해 공격력/방어력이 바뀌었을 때 클라이언트가 보낸다. request.AttackPower/
         // Defense(클라이언트 자기 계산값)는 신뢰하지 않고 트리거로만 쓴다 - Game_EnterRequest 때와 동일하게
         // MainServer에서 str/agi/장착 아이템을 다시 조회해 서버가 직접 재계산한다(CombatStatCalculator).
-        // 브로드캐스트는 필요 없어(GameRoom.TryUpdateCombatStats 주석 참고) 응답 없이 서버 캐시만 갱신한다.
+        // 스탯은 브로드캐스트가 필요 없어(GameRoom.TryUpdateCombatStats 주석 참고) 서버 캐시만 갱신하고, 외형 장비가 바뀐 경우에만 주변에 알린다.
         // 요청마다 바로 조회하지 않고 "갱신 필요" 표시만 한 뒤, 재조회 루프가 최소 간격을 지키며 한 번에 처리한다 - 요청을 그냥
         // 버리면 마지막 장비 상태가 반영되지 않을 수 있어서, 버리는 대신 합친다(마지막 상태는 항상 반영된다).
         private void HandleStatUpdateRequest(byte[] body, CancellationToken ct)
