@@ -118,8 +118,16 @@ namespace Incheol.Presenter.Scene
         }
 
         /// <summary>
-        /// 서버가 나를 자동 부활시켰을 때(Game_PlayerRevived) 서버가 정한 부활 위치로 옮긴 뒤 체력을 반영하고
-        /// 조작을 다시 켠다. 서버도 이미 그 위치를 내 위치로 알고 있으므로 이후 이동 검증의 기준점과 일치한다.
+        /// 팝업에서 부활 방식을 골랐을 때 서버에 요청한다. 부활 자체는 서버가 승인해 Game_PlayerRevived를 보낼 때 일어난다.
+        /// </summary>
+        private void HandleReviveSelected(bool inPlace)
+        {
+            GameServerConnectManager.Instance?.SendRevive(inPlace);
+        }
+
+        /// <summary>
+        /// 서버가 나를 부활시켰을 때(Game_PlayerRevived - 선택한 마을/제자리 부활, 또는 제한 시간 초과로 인한 마을 부활)
+        /// 서버가 정한 부활 위치로 옮긴 뒤 체력을 반영하고 조작을 다시 켠다. 서버도 이미 그 위치를 내 위치로 알고 있으므로 이후 이동 검증의 기준점과 일치한다.
         /// </summary>
         private void HandlePlayerRevived(GamePlayerRevivedPacket packet)
         {
@@ -171,8 +179,8 @@ namespace Incheol.Presenter.Scene
             // 사망하면 부활까지 남은 시간을 팝업으로 보여주고, 부활하면(서버 부활 알림, 또는 재접속으로 살아 있는 상태로 입장) 닫는다.
             if (spawnedPlayerModel.IsDead)
             {
-                chatView?.AddChatMessage("시스템", "사망했습니다. 잠시 후 부활합니다.");
-                respawnPopupView?.Show(ReviveDelaySeconds);
+                chatView?.AddChatMessage("시스템", "사망했습니다. 부활 방식을 선택하세요.");
+                respawnPopupView?.Show();
             }
             else
             {

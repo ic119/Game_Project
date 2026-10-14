@@ -99,6 +99,27 @@ namespace GameServer.Networking
             }
         }
 
+        // 부활 선택(마을/제자리). 사망 상태 검증과 위치 결정은 서버(GameRoom.TryReviveByRequest)가 하므로 살아 있는데 보내거나
+        // 도배해도 얻는 것이 없다 - 불필요한 처리를 막기 위해 세션별로 빈도만 제한한다.
+        private readonly RequestRateLimiter _reviveRateLimiter = new(capacity: 3, refillPerSecond: 1);
+
+        private void HandleReviveRequest(byte[] body)
+        {
+            if (!_reviveRateLimiter.TryAcquire())
+            {
+                return;
+            }
+
+            var request = C2SReviveRequest.Decode(body);
+
+            if (_playerId is not { } playerId || request.PlayerId != playerId || _room is not { } room)
+            {
+                return;
+            }
+
+            room.TryReviveByRequest(playerId, request.InPlace);
+        }
+
         // 플레이어 공격(HandleAttackRequest)과 같은 쿨다운(_lastAttackAtUtc)을 공유한다 - 그렇지 않으면
         // 플레이어 공격과 몬스터 공격 요청을 번갈아 보내 최소 공격 간격 제한을 우회할 수 있다.
         // 데미지 계산 자체(공격력-방어력)는 GameRoom.ApplyMonsterAttack이 서버 권위로 수행한다.

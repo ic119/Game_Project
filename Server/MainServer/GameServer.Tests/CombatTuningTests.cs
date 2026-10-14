@@ -32,7 +32,7 @@ public class CombatTuningTests
         Assert.Equal(defaults.MonsterMeleeRange, loaded.MonsterMeleeRange);
         Assert.Equal(defaults.MonsterAttackIntervalSeconds, loaded.MonsterAttackIntervalSeconds);
         Assert.Equal(defaults.MonsterAttackWindupSeconds, loaded.MonsterAttackWindupSeconds);
-        Assert.Equal(defaults.ReviveDelaySeconds, loaded.ReviveDelaySeconds);
+        Assert.Equal(defaults.ReviveTimeoutSeconds, loaded.ReviveTimeoutSeconds);
         Assert.Equal(defaults.DeathExpPenaltyPercent, loaded.DeathExpPenaltyPercent);
         Assert.Equal(defaults.MinAttackIntervalMs, loaded.MinAttackIntervalMs);
         Assert.Equal(defaults.MaxAttackRange, loaded.MaxAttackRange);
@@ -63,11 +63,11 @@ public class CombatTuningTests
         CombatTuning tuning = LoadFrom(new()
         {
             ["Combat:MonsterAttackWindupSeconds"] = "0.6",
-            ["Combat:ReviveDelaySeconds"] = "8",
+            ["Combat:ReviveTimeoutSeconds"] = "8",
         });
 
         Assert.Equal(0.6f, tuning.MonsterAttackWindupSeconds);
-        Assert.Equal(8, tuning.ReviveDelaySeconds);
+        Assert.Equal(8, tuning.ReviveTimeoutSeconds);
         Assert.Equal(new CombatTuning().DashInvulnerableSeconds, tuning.DashInvulnerableSeconds); // 나머지는 기본값
     }
 
@@ -81,7 +81,7 @@ public class CombatTuningTests
     [Theory]
     [InlineData("MonsterAttackWindupSeconds", "0")]
     [InlineData("MonsterAttackWindupSeconds", "-1")]
-    [InlineData("ReviveDelaySeconds", "999")]
+    [InlineData("ReviveTimeoutSeconds", "999")]
     [InlineData("MaxAttackRange", "0.1")]
     [InlineData("DashInvulnerableSeconds", "abc")]
     public void Load_RejectsOutOfRangeOrNonNumeric(string key, string value)
@@ -127,9 +127,21 @@ public class CombatTuningTests
     }
 
     [Fact]
-    public void Defaults_ReviveDelayMatchesClientCountdown()
+    public void Defaults_TownReviveDelayMatchesClientCountdown()
     {
-        Assert.Equal(CombatTimings.ReviveDelaySeconds, (float)new CombatTuning().ReviveDelaySeconds);
+        Assert.Equal(CombatTimings.TownReviveDelaySeconds, (float)new CombatTuning().TownReviveDelaySeconds);
+    }
+
+    [Fact]
+    public void Defaults_InPlaceReviveDelayMatchesClientCountdown()
+    {
+        Assert.Equal(CombatTimings.InPlaceReviveDelaySeconds, (float)new CombatTuning().InPlaceReviveDelaySeconds);
+    }
+
+    [Fact]
+    public void Defaults_ReviveTimeoutMatchesClientCountdown()
+    {
+        Assert.Equal(CombatTimings.ReviveTimeoutSeconds, (float)new CombatTuning().ReviveTimeoutSeconds);
     }
 
     [Fact]

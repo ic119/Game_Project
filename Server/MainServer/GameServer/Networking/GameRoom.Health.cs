@@ -20,8 +20,19 @@ namespace GameServer.Networking
         // 피격을 무시하는 변조 클라이언트가 무적이 될 수 있었고, 서버/클라이언트 HP가 서로 어긋났다.
         // HP는 AI 루프(몬스터 공격)와 여러 세션(PvP)이 동시에 바꿀 수 있으므로 PlayerInfo 인스턴스를 lock으로 쓴다.
 
-        // 사망 후 자동 부활까지 걸리는 시간. 클라이언트 부활 팝업의 카운트다운(GameSceneManager.ReviveDelaySeconds)과 같아야 한다.
-        private static TimeSpan ReviveDelay => TimeSpan.FromSeconds(CombatTuning.Current.ReviveDelaySeconds);
+        // 사망 후 부활 선택(마을/제자리)을 기다리는 시간. 이 시간이 지나면 마을 부활로 자동 처리한다.
+        // 클라이언트 부활 팝업의 카운트다운(GameSceneManager.ReviveTimeoutSeconds)과 같아야 한다.
+        private static TimeSpan ReviveTimeout => TimeSpan.FromSeconds(CombatTuning.Current.ReviveTimeoutSeconds);
+
+        // 마을/제자리 부활을 선택한 뒤 실제 부활까지의 대기 시간. 클라이언트 팝업 카운트다운(CombatTimings.TownReviveDelaySeconds/InPlaceReviveDelaySeconds)과 같아야 한다.
+        private static TimeSpan TownReviveDelay => TimeSpan.FromSeconds(CombatTuning.Current.TownReviveDelaySeconds);
+        private static TimeSpan InPlaceReviveDelay => TimeSpan.FromSeconds(CombatTuning.Current.InPlaceReviveDelaySeconds);
+
+        // 사망한 플레이어별로 예약된 부활: 처음엔 제한 시간 뒤 마을 부활(Chosen=false)이고, 플레이어가 방식을 고르면(Chosen=true)
+        // 대기 시간 뒤 그 방식의 부활로 교체된다. 고른 뒤에는 방식을 바꾸지 못한다(클라이언트도 두 버튼을 잠근다).
+        // 부활하면 취소해, 이후 다시 사망했을 때 이전 예약이 새 사망을 일찍 부활시키지 못하게 한다.
+        private sealed record PendingRevive(CancellationTokenSource Cts, bool InPlace, bool Chosen);
+        private readonly ConcurrentDictionary<long, PendingRevive> _pendingRevives = new();
 
         // target에게 방어력 적용 전 피해(rawDamage)를 준다. 이미 사망한 대상이면 false(피해 없음).
         // died는 이 피해로 체력이 0이 된 경우에만 true다 - 사망 처리(부활 예약)가 한 번만 일어나게 한다.
@@ -72,7 +83,7 @@ namespace GameServer.Networking
             if (died)
             {
                 ApplyDeathExpPenalty(targetEntry.Info);
-                _ = ReviveAfterDelayAsync(targetEntry.Info);
+                _ = AutoReviveAfterTimeoutAsync(targetEntry.Info);
             }
         }
 
@@ -214,32 +225,102 @@ namespace GameServer.Networking
             }
         }
 
-        // 사망한 플레이어를 ReviveDelay 뒤 가득 찬 체력으로 부활시킨다. 그 사이 접속이 끊겼으면(방에서 빠짐)
-        // 아무 것도 하지 않는다 - 재접속하면 입장 처리에서 어차피 가득 찬 체력으로 시작한다.
+        // 사망한 플레이어가 ReviveTimeout 안에 부활을 선택하지 않으면 마을 부활시킨다. 선택으로 먼저 부활했으면
+        // TryRevive가 이 타이머를 취소한다. 그 사이 접속이 끊겼으면(방에서 빠짐) 아무 것도 하지 않는다 -
+        // 재접속하면 입장 처리에서 어차피 가득 찬 체력으로 시작한다.
         // 사망 중에는 맵 이동이 막혀 있으므로(ClientSession.HandleMapChangeRequest) 다른 방으로 옮겨 갔을 일은 없다.
-        private async Task ReviveAfterDelayAsync(PlayerInfo player)
+        private Task AutoReviveAfterTimeoutAsync(PlayerInfo player)
         {
+            return RunScheduledReviveAsync(player, ReviveTimeout, inPlace: false, chosen: false);
+        }
+
+        // delay 뒤 player를 부활시키도록 예약한다. 이미 예약이 있으면 취소하고 이것으로 교체한다.
+        private async Task RunScheduledReviveAsync(PlayerInfo player, TimeSpan delay, bool inPlace, bool chosen)
+        {
+            CancelPendingRevive(player.PlayerId);
+
+            var cts = CancellationTokenSource.CreateLinkedTokenSource(_serverLifetimeCt);
+            var pending = new PendingRevive(cts, inPlace, chosen);
+            _pendingRevives[player.PlayerId] = pending;
+
             try
             {
-                await Task.Delay(ReviveDelay, _serverLifetimeCt);
+                await Task.Delay(delay, cts.Token);
             }
-            catch (TaskCanceledException)
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            finally
+            {
+                _pendingRevives.TryRemove(new KeyValuePair<long, PendingRevive>(player.PlayerId, pending));
+                cts.Dispose();
+            }
+
+            TryRevive(player, inPlace);
+        }
+
+        // 클라이언트의 부활 선택(Game_ReviveRequest)을 처리한다. 사망 상태가 아니거나 방에 없으면 false(무시).
+        // 고른 방식(마을 TownReviveDelay / 제자리 InPlaceReviveDelay)의 대기 시간 뒤로 부활을 예약한다.
+        public bool TryReviveByRequest(long playerId, bool inPlace)
+        {
+            if (!_players.TryGetValue(playerId, out var entry))
+            {
+                return false;
+            }
+
+            lock (entry.Info)
+            {
+                if (entry.Info.CurrentHp > 0)
+                {
+                    return false;
+                }
+            }
+
+            // 이미 방식을 골라 대기 중이면 무시한다(요청 반복으로 카운트다운이 리셋되거나 방식이 바뀌면 안 된다).
+            if (_pendingRevives.TryGetValue(playerId, out var existing) && existing.Chosen)
+            {
+                return false;
+            }
+
+            _ = RunScheduledReviveAsync(entry.Info, inPlace ? InPlaceReviveDelay : TownReviveDelay, inPlace, chosen: true);
+            return true;
+        }
+
+        private void CancelPendingRevive(long playerId)
+        {
+            if (!_pendingRevives.TryRemove(playerId, out var pending))
             {
                 return;
             }
 
+            try
+            {
+                pending.Cts.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // 예약이 방금 끝나 이미 정리됐다 - 그 경로가 부활을 처리한다.
+            }
+        }
+
+        // 사망한 플레이어를 가득 찬 체력/마나로 부활시킨다. inPlace면 쓰러진 자리에서, 아니면 맵의 RespawnPoint(마을)에서 일어난다.
+        // 선택 요청과 제한 시간 타이머가 겹쳐도 lock 안의 사망 검사로 한 번만 성공한다.
+        private bool TryRevive(PlayerInfo player, bool inPlace)
+        {
             if (!_players.TryGetValue(player.PlayerId, out var entry) || !ReferenceEquals(entry.Info, player))
             {
-                return;
+                return false;
             }
 
             int currentHp;
             int maxHp;
+            float x, y, z, rotationY;
             lock (player)
             {
                 if (player.CurrentHp > 0)
                 {
-                    return;
+                    return false;
                 }
 
                 player.CurrentHp = player.MaxHp;
@@ -250,29 +331,38 @@ namespace GameServer.Networking
                 player.CurrentMp = player.MaxMp;
                 player.ManaRegenRemainder = 0f;
 
-                // 부활 위치는 서버가 맵 데이터로 정한다(클라이언트가 옮긴 좌표를 받아주면 속도 검증을 우회하는 순간이동이 된다).
-                // 맵 데이터가 없으면 쓰러진 자리에서 부활한다. 사망 중에는 이동 요청이 거부되므로 여기서 위치를 바꿔도 경합이 없다.
-                if (MapDataCatalog.TryGet(_mapId, out MapData mapData) && mapData.RespawnPoint is { } respawnPoint)
+                // 마을 부활 위치는 서버가 맵 데이터로 정한다(클라이언트가 옮긴 좌표를 받아주면 속도 검증을 우회하는 순간이동이 된다).
+                // 제자리 부활이거나 맵 데이터가 없으면 쓰러진 자리(player.X/Y/Z)를 그대로 쓴다 - 사망 중에는 이동 요청이 거부되므로
+                // 그 값이 곧 사망 위치이고, 여기서 위치를 바꿔도 경합이 없다.
+                if (!inPlace && MapDataCatalog.TryGet(_mapId, out MapData mapData) && mapData.RespawnPoint is { } respawnPoint)
                 {
                     player.X = respawnPoint.X;
                     player.Y = respawnPoint.Y;
                     player.Z = respawnPoint.Z;
                     player.RotationY = respawnPoint.RotationY;
                 }
+
+                x = player.X;
+                y = player.Y;
+                z = player.Z;
+                rotationY = player.RotationY;
             }
+
+            CancelPendingRevive(player.PlayerId);
 
             var revived = new S2CPlayerRevived
             {
                 PlayerId = player.PlayerId,
                 CurrentHp = currentHp,
                 MaxHp = maxHp,
-                X = player.X,
-                Y = player.Y,
-                Z = player.Z,
-                RotationY = player.RotationY
+                X = x,
+                Y = y,
+                Z = z,
+                RotationY = rotationY
             };
             SendToViewersOfPlayer(player.PlayerId, OpCode.Game_PlayerRevived, revived.Encode());
             SendManaUpdate(player, force: true);
+            return true;
         }
         #endregion
     }

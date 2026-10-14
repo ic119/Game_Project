@@ -25,8 +25,14 @@ namespace GameServer.Combat
         // 몬스터 공격 선딜(초). 플레이어가 모션을 보고 대쉬로 반응할 시간이다.
         public float MonsterAttackWindupSeconds { get; init; } = 0.4f;
 
-        // 사망 후 자동 부활까지의 시간(초). 클라이언트 부활 팝업 카운트다운(CombatTimings.ReviveDelaySeconds)과 같아야 한다.
-        public double ReviveDelaySeconds { get; init; } = 5;
+        // 사망 후 부활 선택(마을/제자리)을 기다리는 시간(초). 이 시간 안에 선택하지 않으면 마을 부활로 자동 처리한다.
+        // 클라이언트 부활 팝업 카운트다운(CombatTimings.ReviveTimeoutSeconds)과 같아야 한다.
+        public double ReviveTimeoutSeconds { get; init; } = 30;
+
+        // 마을/제자리 부활을 선택한 뒤 실제로 부활하기까지의 대기 시간(초). 클라이언트 팝업 카운트다운
+        // (CombatTimings.TownReviveDelaySeconds / InPlaceReviveDelaySeconds)과 같아야 한다.
+        public double TownReviveDelaySeconds { get; init; } = 5;
+        public double InPlaceReviveDelaySeconds { get; init; } = 5;
 
         // 사망 시 잃는 경험치 비율(%). 현재 레벨에서 쌓인 경험치(PlayerInfo.Exp)에 곱한다 - 레벨은 내려가지 않는다. 0이면 패널티를 끈다.
         public double DeathExpPenaltyPercent { get; init; } = 10;
@@ -64,7 +70,7 @@ namespace GameServer.Combat
             var known = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
                 nameof(DashInvulnerableSeconds), nameof(MinDashIntervalSeconds), nameof(MonsterMeleeRange),
-                nameof(MonsterAttackIntervalSeconds), nameof(MonsterAttackWindupSeconds), nameof(ReviveDelaySeconds),
+                nameof(MonsterAttackIntervalSeconds), nameof(MonsterAttackWindupSeconds), nameof(ReviveTimeoutSeconds), nameof(TownReviveDelaySeconds), nameof(InPlaceReviveDelaySeconds),
                 nameof(DeathExpPenaltyPercent), nameof(MinAttackIntervalMs), nameof(MaxAttackRange), nameof(MinUseItemIntervalMs), nameof(ManaRegenPercentPerSecond),
             };
 
@@ -84,7 +90,9 @@ namespace GameServer.Combat
                 MonsterMeleeRange = (float)Read(section, nameof(MonsterMeleeRange), defaults.MonsterMeleeRange),
                 MonsterAttackIntervalSeconds = (float)Read(section, nameof(MonsterAttackIntervalSeconds), defaults.MonsterAttackIntervalSeconds),
                 MonsterAttackWindupSeconds = (float)Read(section, nameof(MonsterAttackWindupSeconds), defaults.MonsterAttackWindupSeconds),
-                ReviveDelaySeconds = Read(section, nameof(ReviveDelaySeconds), defaults.ReviveDelaySeconds),
+                ReviveTimeoutSeconds = Read(section, nameof(ReviveTimeoutSeconds), defaults.ReviveTimeoutSeconds),
+                TownReviveDelaySeconds = Read(section, nameof(TownReviveDelaySeconds), defaults.TownReviveDelaySeconds),
+                InPlaceReviveDelaySeconds = Read(section, nameof(InPlaceReviveDelaySeconds), defaults.InPlaceReviveDelaySeconds),
                 DeathExpPenaltyPercent = Read(section, nameof(DeathExpPenaltyPercent), defaults.DeathExpPenaltyPercent),
                 MinAttackIntervalMs = Read(section, nameof(MinAttackIntervalMs), defaults.MinAttackIntervalMs),
                 MaxAttackRange = (float)Read(section, nameof(MaxAttackRange), defaults.MaxAttackRange),
@@ -104,7 +112,9 @@ namespace GameServer.Combat
             Require(MonsterMeleeRange, 0.5, 10, nameof(MonsterMeleeRange));
             Require(MonsterAttackIntervalSeconds, 0.2, 30, nameof(MonsterAttackIntervalSeconds));
             Require(MonsterAttackWindupSeconds, 0.05, 5, nameof(MonsterAttackWindupSeconds));
-            Require(ReviveDelaySeconds, 0, 60, nameof(ReviveDelaySeconds));
+            Require(ReviveTimeoutSeconds, 1, 300, nameof(ReviveTimeoutSeconds));
+            Require(TownReviveDelaySeconds, 0, 60, nameof(TownReviveDelaySeconds));
+            Require(InPlaceReviveDelaySeconds, 0, 60, nameof(InPlaceReviveDelaySeconds));
             Require(DeathExpPenaltyPercent, 0, 100, nameof(DeathExpPenaltyPercent));
             Require(MinAttackIntervalMs, 0, 2000, nameof(MinAttackIntervalMs));
             Require(MaxAttackRange, 1, 50, nameof(MaxAttackRange));

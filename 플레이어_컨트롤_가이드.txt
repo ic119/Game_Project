@@ -443,7 +443,7 @@
    몬스터 공격 선딜 0.4초 ......................... GameRoom.MonsterAttackWindupSeconds
    판정 사거리 여유 0.25m ......................... MonsterAttackJudge.HitRangeTolerance
    대쉬 무적 0.35초 / 최소 대쉬 간격 1.0초 ......... GameRoom.DashInvulnerableDuration / MinDashInterval
-   사망 후 자동 부활 5초 .......................... GameRoom.ReviveDelay (클라이언트 GameSceneManager.ReviveDelaySeconds 와 같아야 함)
+   사망 후 부활 선택 제한 30초(초과 시 마을 부활) ... GameRoom.ReviveTimeout (클라이언트 GameSceneManager.ReviveTimeoutSeconds 와 같아야 함)
 
  * 서로 맞춰야 하는 값
    - 클라이언트 대쉬 값(0.25초 / 1초 / 3m)을 바꾸면 서버의 대쉬 무적 시간, 최소 대쉬 간격, 이동 거리 예산도 함께 조정한다.

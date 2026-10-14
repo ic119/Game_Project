@@ -54,7 +54,7 @@ namespace GameServer.Networking
                 return;
             }
 
-            // 사망 중에는 움직일 수 없다(클라이언트도 조작을 막는다). 부활 위치는 서버가 정한다(GameRoom.ReviveAfterDelayAsync).
+            // 사망 중에는 움직일 수 없다(클라이언트도 조작을 막는다). 부활 위치는 서버가 정한다(GameRoom.TryRevive).
             if (info.CurrentHp <= 0)
             {
                 return;

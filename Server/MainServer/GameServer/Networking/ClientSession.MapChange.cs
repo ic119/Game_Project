@@ -82,7 +82,7 @@ namespace GameServer.Networking
                 return;
             }
 
-            // 사망 중에는 맵을 옮기지 않는다 - 부활 예약(GameRoom.ReviveAfterDelayAsync)이 사망한 방에 걸려 있어,
+            // 사망 중에는 맵을 옮기지 않는다 - 부활 제한 시간 타이머(GameRoom.AutoReviveAfterTimeoutAsync)이 사망한 방에 걸려 있어,
             // 다른 방으로 옮겨 가면 부활 알림이 새 방에 전달되지 않는다. 클라이언트도 사망 중에는 포탈을 막지만, 로딩하는 사이에
             // 죽었을 수 있다 - 응답이 없으면 클라이언트가 계속 기다리므로 반드시 거부 응답을 보낸다.
             if (info.CurrentHp <= 0)

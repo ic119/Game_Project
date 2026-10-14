@@ -104,6 +104,10 @@ namespace Shared.Networking
         // 다른 플레이어의 캐릭터 연출(레벨업, 물약 사용 이펙트 등). 본인은 이미 로컬에서 재생했으므로 보고 있는 사람에게만 중계한다.
         Game_PlayerEffectBroadcast = 0x0231,
 
+        // 사망한 플레이어의 부활 선택(마을/제자리). 서버가 사망 상태를 검증해 부활시키고 결과는 Game_PlayerRevived로 방 전체에 알린다.
+        // 제한 시간(CombatTuning.ReviveTimeoutSeconds) 안에 요청하지 않으면 서버가 마을 부활로 자동 처리한다.
+        Game_ReviveRequest = 0x0232,
+
         // 0x03XX = Dungeon
     }
 }

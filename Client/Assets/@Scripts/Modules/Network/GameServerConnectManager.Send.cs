@@ -151,6 +151,21 @@ namespace Incheol.Modules
         }
 
         /// <summary>
+        /// 사망 후 부활 방식을 GameServer에 알린다(Game_ReviveRequest). inPlace가 true면 쓰러진 자리에서, false면 마을(맵의 RespawnPoint)에서 부활한다.
+        /// 실제 부활과 위치는 서버가 정하며 결과는 Game_PlayerRevived로 온다. 제한 시간 안에 보내지 않으면 서버가 마을 부활로 처리한다.
+        /// </summary>
+        public void SendRevive(bool inPlace)
+        {
+            if (!isConnected)
+            {
+                return;
+            }
+
+            var request = new GameReviveRequestPacket { PlayerId = localPlayerId, InPlace = inPlace };
+            _ = SendAsync(GameOpCode.Game_ReviveRequest, request.Encode());
+        }
+
+        /// <summary>
         /// 공격 모션을 GameServer에 알린다(Game_AttackAnimationRequest). SendAttack/SendMonsterAttack과 달리
         /// 대상 유무와 무관하게 콤보 타수마다(허공 스윙 포함) 매번 호출해야 한다 - 근처 다른 플레이어가
         /// 내 스윙 모션 자체를 볼 수 있어야 하기 때문이다. 데미지 판정에는 전혀 쓰이지 않는 순수 연출용이다.

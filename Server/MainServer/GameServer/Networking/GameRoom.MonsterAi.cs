@@ -316,7 +316,7 @@ namespace GameServer.Networking
             if (died)
             {
                 ApplyDeathExpPenalty(target);
-                _ = ReviveAfterDelayAsync(target);
+                _ = AutoReviveAfterTimeoutAsync(target);
             }
         }
 

@@ -29,10 +29,9 @@ namespace Incheol.Presenter.Scene
         private LocalPlayerSpawner playerSpawner;
 
         /// <summary>
-        /// 사망 후 자동 부활까지 걸리는 시간(초). 서버 CombatTuning.ReviveDelaySeconds와 같아야 한다(CombatTimings가 단일 출처, 서버 테스트가 일치를 검사한다) - 서버는 남은 시간을 보내지 않으므로
-        /// 부활 팝업(UI_PlayerRespawnPopupView)의 카운트다운에 이 값을 쓴다. 실제 부활은 서버의 Game_PlayerRevived를 받을 때 일어난다.
+        /// 사망 후 부활 방식을 고르는 시간이 지나면 서버가 마을 부활로 자동 처리한다(CombatTimings.ReviveTimeoutSeconds, 팝업에는 표시하지 않는다).
+        /// 실제 부활은 서버의 Game_PlayerRevived를 받을 때 일어난다.
         /// </summary>
-        private const float ReviveDelaySeconds = CombatTimings.ReviveDelaySeconds;
         private float lastMonsterTargetedTime;
         private const float MonsterTargetLostTimeoutSeconds = 8f;
 
@@ -214,6 +213,11 @@ namespace Incheol.Presenter.Scene
                 chatView.MessageSubmitted -= HandleChatMessageSubmitted;
             }
 
+            if (respawnPopupView != null)
+            {
+                respawnPopupView.ReviveSelected -= HandleReviveSelected;
+            }
+
             mapPresenter.Dispose();
 
             if (localPlayerAttackController != null)
@@ -309,6 +313,11 @@ namespace Incheol.Presenter.Scene
                         instance.TryGetComponent(out monsterTargetView);
                         instance.TryGetComponent(out dropItemPopupView);
                         instance.TryGetComponent(out respawnPopupView);
+                        if (respawnPopupView != null)
+                        {
+                            respawnPopupView.ReviveSelected += HandleReviveSelected;
+                        }
+
                         instance.TryGetComponent(out UI_MapViewPopupView mapViewPopupView);
                         mapPresenter.AttachView(gameSceneView, mapViewPopupView);
 

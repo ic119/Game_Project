@@ -4,14 +4,18 @@ namespace Incheol.Utils
     // 부활 대기, 최소 공격 간격)은 여기 값과 아래 관계를 지켜야 하고, GameServer.Tests의 CombatTuningTests가 이를 검사한다.
     //   - 서버 대쉬 무적 시간 >= DashDurationSeconds (대쉬 동작 내내 무적이어야 한다)
     //   - 서버 최소 대쉬 간격 <= DashDurationSeconds + DashCooldownSeconds (정상 연속 대쉬가 거부되면 안 된다)
-    //   - 서버 부활 대기 == ReviveDelaySeconds (부활 팝업 카운트다운과 같아야 한다)
+    //   - 서버 부활 선택 제한 시간 == ReviveTimeoutSeconds (초과 시 마을 부활. 팝업에는 표시하지 않지만 서버 값과 맞춘다)
+    //   - 서버 마을/제자리 부활 대기 == TownReviveDelaySeconds / InPlaceReviveDelaySeconds (부활 버튼 후 팝업 카운트다운과 같아야 한다)
     //   - 서버 최소 공격 간격 < ComboInputGuardSeconds (정상 콤보 2타 요청이 드롭되면 안 된다)
     // 값을 바꾸면 서버 설정(appsettings.json의 Combat 섹션)과 함께 확인한다. Unity 의존이 없어 서버 테스트 프로젝트가 그대로 링크한다.
+ 
     public static class CombatTimings
     {
         public const float DashDurationSeconds = 0.25f;
         public const float DashCooldownSeconds = 1f;
-        public const float ReviveDelaySeconds = 5f;
+        public const float ReviveTimeoutSeconds = 30f;
+        public const float TownReviveDelaySeconds = 5f;
+        public const float InPlaceReviveDelaySeconds = 5f;
         public const float ComboInputGuardSeconds = 0.15f;
 
         // 목록에 없는 무기 타입이 쓰는 기본 공격 길이(16프레임, 30fps).
