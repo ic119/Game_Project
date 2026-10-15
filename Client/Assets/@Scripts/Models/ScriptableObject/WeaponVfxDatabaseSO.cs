@@ -6,8 +6,9 @@ using UnityEngine;
 namespace Incheol.Models.SO
 {
     /// <summary>
-    /// WeaponType별 공격(스윙)/피격(임팩트) 이펙트 매핑 테이블. ItemDatabaseSO/AddressableAssetModelSO와
-    /// 같은 패턴 - 디자이너가 Inspector에서 무기 타입별 이펙트를 추가/수정하고, 런타임에는 WeaponType으로 조회만 한다.
+    /// WeaponType별 공격(스윙)/피격(임팩트) 이펙트 매핑 테이블. 
+    /// ItemDatabaseSO/AddressableAssetModelSO와 같은 패턴
+    /// 디자이너가 Inspector에서 무기 타입별 이펙트를 추가/수정하고, 런타임에는 WeaponType으로 조회만 한다.
     /// </summary>
     [CreateAssetMenu(fileName = "WeaponVfxDatabaseSO", menuName = "ScriptableObjectAssets/WeaponVfxDatabase")]
     public class WeaponVfxDatabaseSO : ScriptableObject

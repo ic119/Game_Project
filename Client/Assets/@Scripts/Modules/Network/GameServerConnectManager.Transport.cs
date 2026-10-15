@@ -71,7 +71,6 @@ namespace Incheol.Modules
         // 연결 하나의 수신 루프. 해당 연결의 스트림/소켓과 번호(generation)를 직접 수신
         private async Task ReadLoopAsync(Stream connectionStream, TcpClient connectionClient, int generation, CancellationToken ct)
         {
-            // 마지막으로 해석하던 프레임의 OpCode(오류 로그용).
             ushort lastOpCode = 0;
 
             try
@@ -89,7 +88,7 @@ namespace Incheol.Modules
                 }
             }
             catch (Exception exception) when (exception is IOException and not EndOfStreamException
-                                               || exception is ObjectDisposedException or OperationCanceledException)
+                                              || exception is ObjectDisposedException or OperationCanceledException)
             {
                 // 서버 종료/네트워크 단절/직접 Disconnect() - 정상적인 종료 경로로 취급한다.
             }
@@ -159,7 +158,7 @@ namespace Incheol.Modules
                     });
                     break;
 
-                // 페이로드 구조가 Game_EnterAck과 동일하므로(본인 상태 + 새 맵의 기존 접속자/몬스터 목록) 같은 디코더를 재사용한다.
+                // 페이로드 구조가 Game_EnterAck과 동일할 경우 같은 디코더를 재사용
                 // 맵 이동은 서버 승인(이 응답)을 받은 뒤에야 클라이언트가 맵을 교체하므로, 플레이어/몬스터를 여기서 바로 스폰하지
                 // 않고 한 번에 넘긴다 - 받은 쪽(GameSceneManager)이 이전 맵 정리와 새 맵 생성을 마친 뒤 DispatchMapChangeEntities로 적용한다.
                 case GameOpCode.Game_MapChangeAck:

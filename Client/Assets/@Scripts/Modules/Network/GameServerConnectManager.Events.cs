@@ -42,8 +42,7 @@ namespace Incheol.Modules
         public event Action<GameAttackAnimationBroadcastPacket> OnAttackAnimationReceived;
 
         /// <summary>
-        /// 다른 플레이어가 대쉬를 시작했을 때 발생한다(Game_DashBroadcast). 본인의 대쉬는 로컬에서 즉시 재생하므로
-        /// 이 이벤트로 오지 않는다 - 원격 캐릭터 전용이다.
+        /// 다른 플레이어가 대쉬를 시작했을 때 발생(Game_DashBroadcast)
         /// </summary>
         public event Action<GameDashBroadcastPacket> OnDashReceived;
 

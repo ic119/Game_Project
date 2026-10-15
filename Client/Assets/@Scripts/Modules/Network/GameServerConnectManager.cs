@@ -6,9 +6,7 @@ using System.IO;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Incheol.Modules
@@ -83,8 +81,6 @@ namespace Incheol.Modules
             base.Awake();
 
 #if !UNITY_EDITOR && !DEVELOPMENT_BUILD
-            // 릴리즈 빌드인데도 인스펙터 host 값이 기본값(localhost)이면 실서버 주소로 바꾸는 걸
-            // 잊었을 가능성이 크다 - 조용히 로컬에 접속 시도하다 실패하는 대신 눈에 띄게 알린다.
             if (host == "localhost")
             {
                 DebugLogManager.GenerateErrorMessage<GameServerConnectManager>("릴리즈 빌드인데 GameServer host가 기본값(localhost)입니다. 인스펙터에서 실제 서버 주소로 변경해야 합니다.");

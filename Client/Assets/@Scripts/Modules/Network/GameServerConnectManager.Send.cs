@@ -112,10 +112,10 @@ namespace Incheol.Modules
         }
 
         /// <summary>
-        /// 공격 의사 정보를 GameServer에 전송(Game_AttackRequest). 데미지 수치는 보내지 않는다 - 서버가
-        /// Game_EnterRequest 때 등록된 자신의 AttackPower를 사용해 그대로 중계하고, 방어력 차감은
-        /// 각 클라이언트가 target의 로컬 Defense로 직접 계산한다.
+        /// 공격 의사 정보를 GameServer에 전송(Game_AttackRequest)
         /// </summary>
+        // 데미지 수치는 보내지 않는다 - 서버가 Game_EnterRequest 때 등록된 자신의 AttackPower를 사용해 그대로 중계하고, 방어력 차감은
+        // 각 클라이언트가 target의 로컬 Defense로 직접 계산한다. 
         public void SendAttack(long targetId)
         {
             if (!isConnected)
@@ -134,11 +134,13 @@ namespace Incheol.Modules
         }
 
         /// <summary>
-        /// 대쉬 시작을 GameServer에 알린다(Game_DashRequest). 서버가 쿨다운을 검증한 뒤 짧은 무적 구간을 기록하고,
-        /// 그 구간(또는 선딜 도중 대쉬해 사거리를 벗어난 경우)에 도착한 몬스터 공격을 회피로 판정한다.
-        /// 대쉬 이동 자체는 클라이언트가 하고, 이 알림은 무적 판정의 근거와 다른 플레이어 화면의 대쉬 모션(Game_DashBroadcast)에 쓰인다.
-        /// isBackward는 어떤 모션(전방/후방)을 보여줄지 정하는 연출용 값이다.
+        /// 대쉬 시작을 GameServer에 전송(Game_DashRequest) 
         /// </summary>
+        // 서버가 쿨다운을 검증한 뒤 짧은 무적 구간을 기록하고,
+        // 그 구간(또는 선딜 도중 대쉬해 사거리를 벗어난 경우)에 도착한 몬스터 공격을 회피로 판정한다.
+        // 대쉬 이동 자체는 클라이언트가 하고, 이 알림은 무적 판정의 근거와 다른 플레이어 화면의 대쉬 모션(Game_DashBroadcast)에 쓰인다.
+        // isBackward는 어떤 모션(전방/후방)을 보여줄지 정하는 연출용 값이다.
+
         public void SendDash(bool isBackward)
         {
             if (!isConnected)
@@ -151,9 +153,10 @@ namespace Incheol.Modules
         }
 
         /// <summary>
-        /// 사망 후 부활 방식을 GameServer에 알린다(Game_ReviveRequest). inPlace가 true면 쓰러진 자리에서, false면 마을(맵의 RespawnPoint)에서 부활한다.
-        /// 실제 부활과 위치는 서버가 정하며 결과는 Game_PlayerRevived로 온다. 제한 시간 안에 보내지 않으면 서버가 마을 부활로 처리한다.
+        /// 사망 후 부활 방식을 GameServer에 전송(Game_ReviveRequest) 
         /// </summary>
+        // inPlace가 true면 쓰러진 자리에서, false면 마을(맵의 RespawnPoint)에서 부활한다.
+        // 실제 부활과 위치는 서버가 정하며 결과는 Game_PlayerRevived로 온다. 제한 시간 안에 보내지 않으면 서버가 마을 부활로 처리한다.
         public void SendRevive(bool inPlace)
         {
             if (!isConnected)
@@ -166,12 +169,13 @@ namespace Incheol.Modules
         }
 
         /// <summary>
-        /// 공격 모션을 GameServer에 알린다(Game_AttackAnimationRequest). SendAttack/SendMonsterAttack과 달리
-        /// 대상 유무와 무관하게 콤보 타수마다(허공 스윙 포함) 매번 호출해야 한다 - 근처 다른 플레이어가
-        /// 내 스윙 모션 자체를 볼 수 있어야 하기 때문이다. 데미지 판정에는 전혀 쓰이지 않는 순수 연출용이다.
-        /// weaponType은 현재 장착 무기(WeaponType enum 값)를 그대로 담아 보낸다 - 서버는 해석하지 않고
-        /// 그대로 중계하며, 받는 쪽(RemoteCharacterController)이 이 값으로 무기별 애니메이션을 고른다.
+        /// 공격 모션을 GameServer에 전송(Game_AttackAnimationRequest)
         /// </summary>
+        // SendAttack/SendMonsterAttack과 달리
+        // 대상 유무와 무관하게 콤보 타수마다(허공 스윙 포함) 매번 호출해야 한다 - 근처 다른 플레이어가
+        // 내 스윙 모션 자체를 볼 수 있어야 하기 때문이다. 데미지 판정에는 전혀 쓰이지 않는 순수 연출용이다.
+        // weaponType은 현재 장착 무기(WeaponType enum 값)를 그대로 담아 보낸다 - 서버는 해석하지 않고
+        // 그대로 중계하며, 받는 쪽(RemoteCharacterController)이 이 값으로 무기별 애니메이션을 고른다.
         public void SendAttackAnimation(int comboStage, WeaponType weaponType, AttackTargetKind targetKind = AttackTargetKind.None, long targetId = 0)
         {
             if (!isConnected)

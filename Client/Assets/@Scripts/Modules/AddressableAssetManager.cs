@@ -204,7 +204,7 @@ public void LoadPrefabAddress<T>(string _key, Action<T> _onLoad = null, Action _
             });
         }
 
-private void RegisterFailCallback(string _key, Action _onFail)
+        private void RegisterFailCallback(string _key, Action _onFail)
         {
             if (_onFail == null)
             {

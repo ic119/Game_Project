@@ -1,14 +1,9 @@
 using Incheol.Modules.Networking;
 using Incheol.Utils;
 using System;
-using System.Collections.Concurrent;
-using System.IO;
 using System.Net.Security;
 using System.Net.Sockets;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Incheol.Modules
@@ -24,7 +19,6 @@ namespace Incheol.Modules
         /// </summary>
         public void ConnectAndEnter(GamePlayerInfo localInfo)
         {
-            // 이전 게임에서 끊기지 않고 남은 연결이 있으면 선 정리 처리
             if (isConnected)
             {
                 Disconnect();
@@ -50,15 +44,17 @@ namespace Incheol.Modules
         // 그 사이 Disconnect()나 새 접속으로 generation이 바뀌었으면 만든 연결을 닫고 false를 반환한다.
         private async Awaitable<bool> ConnectAndEnterAsync(GamePlayerInfo localInfo, int generation)
         {
+            // 서버 연결 접속 상태 선 체크
             if (isConnected)
             {
                 DebugLogManager.GenerateErrorMessage<GameServerConnectManager>("이미 GameServer에 접속되어 있습니다.");
                 return false;
             }
 
-            // GameServer는 입장 시 이 토큰으로 MainServer에 캐릭터 소유권을 확인한다. 로비에 오래 머물렀으면 이미 만료됐을 수
-            // 있어(30분) AccessToken 속성을 그대로 쓰지 않고, 만료가 임박하면 재발급한 토큰을 받는다.
+            // GameServer는 입장 시 이 토큰으로 MainServer에 캐릭터 소유권을 확인한다.
+            // 로비에 오래 머물렀으면 이미 만료됐을 수 있어(30분) AccessToken 속성을 그대로 쓰지 않고, 만료가 임박하면 재발급한 토큰을 받는다.
             string accessToken = ServerConnectManager.Instance != null ? await ServerConnectManager.Instance.GetValidAccessTokenAsync() : null;
+            
             if (string.IsNullOrEmpty(accessToken))
             {
                 DebugLogManager.GenerateErrorMessage<GameServerConnectManager>("로그인 세션이 없어 GameServer에 접속할 수 없습니다.");
@@ -66,6 +62,7 @@ namespace Incheol.Modules
             }
 
             var newTcpClient = new TcpClient();
+
             try
             {
                 await newTcpClient.ConnectAsync(host, port);

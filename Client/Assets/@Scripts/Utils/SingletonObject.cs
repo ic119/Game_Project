@@ -54,7 +54,6 @@ namespace Incheol.Utils
 
             if (PersistAcrossScenes)
             {
-                // DontDestroyOnLoad는 루트 GameObject에서만 동작하므로, 부모가 있다면 먼저 분리한다.
                 transform.SetParent(null);
                 DontDestroyOnLoad(gameObject);
             }

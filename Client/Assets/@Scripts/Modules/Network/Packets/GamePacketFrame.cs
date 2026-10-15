@@ -17,6 +17,12 @@ namespace Incheol.Modules.Networking
         // 서버 Shared/Networking/PacketFrame.cs와 동일한 상한을 쓴다.
         private const int MaxPayloadSize = 64 * 1024;
 
+        /// <summary>
+        /// 프레임 생성 로직 담당
+        /// </summary>
+        /// <param name="opCode"></param>
+        /// <param name="body"></param>
+        /// <returns></returns>
         public static byte[] Encode(ushort opCode, byte[] body)
         {
             int payloadLength = OpCodeFieldSize + body.Length;
@@ -37,8 +43,7 @@ namespace Incheol.Modules.Networking
                 return null;
             }
 
-            // 규격을 벗어난 길이(OpCode조차 담을 수 없거나 상한 초과)는 손상된 스트림이라 이후 경계를 맞출 수 없다 -
-            // 정상 종료(null)와 구분해 원인을 로그로 남길 수 있도록 예외를 던진다(서버 Shared PacketFrame과 동일).
+            // 규격을 벗어난 길이(OpCode조차 담을 수 없거나 상한 초과)는 손상된 스트림이라 이후 경계를 맞출 수 없다
             uint payloadLength = BitConverter.ToUInt32(lengthBuffer, 0);
             if (payloadLength < OpCodeFieldSize || payloadLength > MaxPayloadSize)
             {

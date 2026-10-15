@@ -9,10 +9,9 @@ namespace Incheol.View.UI
     /// </summary>
     public static class InventoryStackPartitioner
     {
-        public static void Partition(
-            IReadOnlyList<InventoryItemStack> items,
-            out List<InventoryItemStack> unequipped,
-            out Dictionary<EquipmentSlotType, InventoryItemStack> equippedBySlot)
+        public static void Partition(IReadOnlyList<InventoryItemStack> items,
+                                     out List<InventoryItemStack> unequipped,
+                                     out Dictionary<EquipmentSlotType, InventoryItemStack> equippedBySlot)
         {
             unequipped = new List<InventoryItemStack>();
             equippedBySlot = new Dictionary<EquipmentSlotType, InventoryItemStack>();
