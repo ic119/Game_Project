@@ -21,7 +21,7 @@ namespace Incheol.Presenter.Scene
         #region LifeCycle
         private void Start()
         {
-            LoadAndInstantiateLobbySceneAssets();
+            _ = LoadAndInstantiateLobbySceneAssetsRoutineAsync();
         }
 
         private void OnDestroy()
@@ -47,7 +47,21 @@ namespace Incheol.Presenter.Scene
         /// EnterSceneWithLoadingBar가 UI 생성 전에 로딩바부터 숨겨버려, 화면에 UI_LobbyScene이 잠깐
         /// 깜빡이는 문제가 있었다.
         /// </summary>
-        private async void LoadAndInstantiateLobbySceneAssets()
+        private async Awaitable LoadAndInstantiateLobbySceneAssetsRoutineAsync()
+        {
+            // async void는 예외가 호출자에게 전달되지 않아 로딩바가 남은 채 멈출 수 있다 - Awaitable로 받아 실패 시 로딩바를 닫는다.
+            try
+            {
+                await LoadAndInstantiateLobbySceneAssetsAsync();
+            }
+            catch (System.Exception exception)
+            {
+                DebugLogManager.GenerateErrorMessage<LobbySceneManager>($"LobbyScene 리소스 로드 중 예외가 발생했습니다 : {exception}");
+                GameManager.Instance?.HideLoadingBar();
+            }
+        }
+
+        private async Awaitable LoadAndInstantiateLobbySceneAssetsAsync()
         {
             if (GameManager.Instance == null)
             {

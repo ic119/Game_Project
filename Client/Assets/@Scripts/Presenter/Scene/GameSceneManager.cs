@@ -108,7 +108,7 @@ namespace Incheol.Presenter.Scene
         private void Start()
         {
             loadingTracker.Begin();
-            LoadAndInstantiateGameSceneAssets();
+            _ = LoadAndInstantiateGameSceneAssetsRoutineAsync();
         }
 
         private void OnEnable()
@@ -244,7 +244,25 @@ namespace Incheol.Presenter.Scene
         /// GameScene 전용 에셋은 씬이 언로드될 때 함께 파괴되어야 하므로, ObjectPoolManager(PersistAcrossScenes) 기반인
         /// GameManager.LoadAndInstantiateByTag와는 별도로 여기서 직접 로드/인스턴스화한다.
         /// </summary>
-        private async void LoadAndInstantiateGameSceneAssets()
+        private async Awaitable LoadAndInstantiateGameSceneAssetsRoutineAsync()
+        {
+            // async void는 예외가 호출자에게 전달되지 않아 로딩바가 남은 채 멈출 수 있다 - Awaitable로 받아 실패 시 로비로 복귀시킨다.
+            try
+            {
+                await LoadAndInstantiateGameSceneAssetsAsync();
+            }
+            catch (System.Exception exception)
+            {
+                if (this == null)
+                {
+                    return;
+                }
+
+                AbortInitialLoad($"GameScene 리소스 로드 중 예외가 발생했습니다 : {exception}");
+            }
+        }
+
+        private async Awaitable LoadAndInstantiateGameSceneAssetsAsync()
         {
             if (GameManager.Instance == null)
             {

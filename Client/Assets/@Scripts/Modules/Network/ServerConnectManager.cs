@@ -305,8 +305,10 @@ namespace Incheol.Modules
 
                 return DateTimeOffset.UtcNow.ToUnixTimeSeconds() >= body.exp - AccessTokenRefreshMarginSeconds;
             }
-            catch (Exception)
+            catch (Exception exception)
             {
+                // 읽을 수 없는 토큰은 서버의 401에 맡기지만, 원인 추적을 위해 로그는 남긴다.
+                DebugLogManager.GenerateErrorMessage<ServerConnectManager>($"AccessToken 만료 시각(exp) 해석 실패 : {exception.Message}");
                 return false;
             }
         }
