@@ -6703,6 +6703,8 @@ MonoBehaviour:
   alarmTitleText: {fileID: 1742513567381317569}
   alarmContentText: {fileID: 8830267235344229867}
   checkButton: {fileID: 7353544187156434442}
+  loginContainer: {fileID: 0}
+  backgroundRect: {fileID: 0}
 --- !u!1 &8954349404022256247
 GameObject:
   m_ObjectHideFlags: 0
