@@ -1,3 +1,4 @@
+using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -36,12 +37,42 @@ namespace Incheol.View.UI
         [SerializeField] private TextMeshProUGUI alarmTitleText;
         [SerializeField] private TextMeshProUGUI alarmContentText;
         [SerializeField] private Button checkButton;
+
+        [Header("로그인 연출 (비워두면 자식에서 이름으로 탐색)")]
+        [SerializeField] private RectTransform loginContainer;
+        [SerializeField] private RectTransform backgroundRect;
+
+        private const float ClickPunchDuration = 0.15f;
+        private const float WaitingInputAlpha = 0.5f;
+        private const float WaitingTextCycleSeconds = 1.2f;
+        private const float SuccessFadeDuration = 0.4f;
+        private const float SuccessRiseDistance = 40f;
+        private const float SuccessBackgroundZoom = 1.08f;
+        private const float SuccessBackgroundZoomDuration = 0.6f;
+        private const float FailShakeDuration = 0.35f;
+        private const string LoginWaitingText = "로그인 중";
+
+        private CanvasGroup loginContainerGroup;
+        private TMP_Text loginButtonText;
+        private string loginButtonOriginalText;
+        private float accountFieldOriginalAlpha = 1f;
+        private float passwordFieldOriginalAlpha = 1f;
+        private Vector2 loginContainerOriginalPos;
+        private Vector3 backgroundOriginalScale = Vector3.one;
+
+        private Tween clickPunchTween;
+        private Tween waitingTextTween;
+        private Tween accountFadeTween;
+        private Tween passwordFadeTween;
+        private Sequence resultSequence;
         #endregion
 
         #region LifeCycle
 private void Awake()
         {
             inputFieldOrder = new[] { accountInputField, passwordInputField };
+
+            CacheLoginEffectTargets();
 
             accountInputField.onValidateInput += InputFieldValidator.AllowEnglishAndDigitsOnly;
             accountInputField.onSubmit.AddListener(_ => FocusNextInputField(accountInputField));
@@ -66,6 +97,16 @@ private void Awake()
         private void Update()
         {
             HandleTabNavigation();
+        }
+
+        private void OnDestroy()
+        {
+            // SetLink로도 정리되지만, 대기 텍스트처럼 무한 루프인 트윈은 명시적으로 끊어 둔다.
+            clickPunchTween?.Kill();
+            waitingTextTween?.Kill();
+            accountFadeTween?.Kill();
+            passwordFadeTween?.Kill();
+            resultSequence?.Kill();
         }
         #endregion
 
@@ -155,23 +196,211 @@ private void Awake()
                 return;
             }
 
+            PlayClickPunch();
             SetLoginInteractable(false);
+            PlayWaitingEffect();
             ServerConnectManager.Instance.Login(accountInputField.text, passwordInputField.text, OnLoginComplete);
         }
 
         private void OnLoginComplete(bool _success, string _error)
         {
-            SetLoginInteractable(true);
+            // 서버 응답이 오기 전에 화면이 파괴된 경우(씬 전환 등) 연출/알람을 건드리지 않는다.
+            if (this == null)
+            {
+                return;
+            }
+
+            StopWaitingEffect();
 
             if (!_success)
             {
-                ShowAlarm("로그인 실패", _error);
+                PlayFailEffect(_error);
                 return;
             }
 
             SaveAccountIfEnabled();
-            LoginSucceeded?.Invoke();
+
+            // 입력은 잠근 채로 성공 연출을 끝낸 뒤에 LoginSucceeded를 알려, 씬 전환이 연출을 자르지 않게 한다.
+            PlaySuccessEffect(() => LoginSucceeded?.Invoke());
         }
+
+        #region Login Effect
+        private void CacheLoginEffectTargets()
+        {
+            if (loginContainer == null)
+            {
+                loginContainer = transform.Find("LoginContainer") as RectTransform;
+            }
+
+            if (backgroundRect == null)
+            {
+                backgroundRect = transform.Find("BackGround") as RectTransform;
+            }
+
+            if (loginContainer != null)
+            {
+                loginContainerOriginalPos = loginContainer.anchoredPosition;
+
+                if (!loginContainer.TryGetComponent(out loginContainerGroup))
+                {
+                    loginContainerGroup = loginContainer.gameObject.AddComponent<CanvasGroup>();
+                }
+            }
+
+            if (backgroundRect != null)
+            {
+                backgroundOriginalScale = backgroundRect.localScale;
+            }
+
+            loginButtonText = loginButton.GetComponentInChildren<TMP_Text>();
+            if (loginButtonText != null)
+            {
+                loginButtonOriginalText = loginButtonText.text;
+            }
+
+            if (accountInputField.image != null)
+            {
+                accountFieldOriginalAlpha = accountInputField.image.color.a;
+            }
+
+            if (passwordInputField.image != null)
+            {
+                passwordFieldOriginalAlpha = passwordInputField.image.color.a;
+            }
+        }
+
+        private void PlayClickPunch()
+        {
+            // 연타로 스케일이 누적되지 않도록 이전 펀치를 끝 상태로 마무리하고 시작한다.
+            clickPunchTween?.Kill(true);
+            clickPunchTween = loginButton.transform
+                .DOPunchScale(Vector3.one * -0.1f, ClickPunchDuration, 8, 0.5f)
+                .SetLink(gameObject);
+        }
+
+        private void PlayWaitingEffect()
+        {
+            if (loginButtonText != null)
+            {
+                waitingTextTween?.Kill();
+                waitingTextTween = DOVirtual
+                    .Float(0f, 4f, WaitingTextCycleSeconds, v =>
+                    {
+                        loginButtonText.text = LoginWaitingText + new string('.', Mathf.Min((int)v, 3));
+                    })
+                    .SetEase(Ease.Linear)
+                    .SetLoops(-1, LoopType.Restart)
+                    .SetLink(gameObject);
+            }
+
+            FadeInputField(accountInputField, WaitingInputAlpha, ref accountFadeTween);
+            FadeInputField(passwordInputField, WaitingInputAlpha, ref passwordFadeTween);
+        }
+
+        /// <summary>대기 연출(점 애니메이션, 입력창 흐림)을 원래 상태로 되돌린다. 성공/실패 모두 가장 먼저 호출한다.</summary>
+        private void StopWaitingEffect()
+        {
+            waitingTextTween?.Kill();
+            waitingTextTween = null;
+
+            if (loginButtonText != null)
+            {
+                loginButtonText.text = loginButtonOriginalText;
+            }
+
+            FadeInputField(accountInputField, accountFieldOriginalAlpha, ref accountFadeTween);
+            FadeInputField(passwordInputField, passwordFieldOriginalAlpha, ref passwordFadeTween);
+        }
+
+        private void FadeInputField(TMP_InputField _field, float _alpha, ref Tween _tween)
+        {
+            _tween?.Kill();
+
+            if (_field.image == null)
+            {
+                return;
+            }
+
+            Image image = _field.image;
+            _tween = DOTween
+                .To(() => image.color.a, a =>
+                {
+                    Color c = image.color;
+                    c.a = a;
+                    image.color = c;
+                }, _alpha, 0.15f)
+                .SetLink(gameObject);
+        }
+
+        private void PlaySuccessEffect(Action _onComplete)
+        {
+            if (loginContainer == null || loginContainerGroup == null)
+            {
+                _onComplete?.Invoke();
+                return;
+            }
+
+            resultSequence?.Kill();
+            loginContainerGroup.interactable = false;
+            loginContainerGroup.blocksRaycasts = false;
+
+            resultSequence = DOTween.Sequence().SetLink(gameObject);
+            CanvasGroup group = loginContainerGroup;
+            RectTransform container = loginContainer;
+            float targetY = loginContainerOriginalPos.y + SuccessRiseDistance;
+
+            resultSequence.Append(DOTween.To(() => group.alpha, a => group.alpha = a, 0f, SuccessFadeDuration).SetEase(Ease.InQuad));
+            resultSequence.Join(DOTween
+                .To(() => container.anchoredPosition.y, y => container.anchoredPosition = new Vector2(container.anchoredPosition.x, y), targetY, SuccessFadeDuration)
+                .SetEase(Ease.OutQuad));
+
+            if (backgroundRect != null)
+            {
+                resultSequence.Join(backgroundRect
+                    .DOScale(backgroundOriginalScale * SuccessBackgroundZoom, SuccessBackgroundZoomDuration)
+                    .SetEase(Ease.OutSine));
+            }
+
+            resultSequence.OnComplete(() => _onComplete?.Invoke());
+        }
+
+        private void PlayFailEffect(string _error)
+        {
+            void Finish()
+            {
+                SetLoginInteractable(true);
+                ShowAlarm("로그인 실패", _error);
+            }
+
+            if (loginContainer == null)
+            {
+                Finish();
+                return;
+            }
+
+            resultSequence?.Kill();
+            loginContainer.anchoredPosition = loginContainerOriginalPos;
+
+            // 흔들림이 끝난 뒤 입력을 풀고 알람을 띄워 연타/겹침을 막는다. 끝나면 원래 위치로 복귀한다.
+            resultSequence = DOTween.Sequence().SetLink(gameObject);
+            RectTransform container = loginContainer;
+            Vector2 origin = loginContainerOriginalPos;
+            resultSequence.Append(DOVirtual
+                .Float(0f, 1f, FailShakeDuration, t =>
+                {
+                    // 시간이 지날수록 진폭이 줄어드는 좌우 흔들림.
+                    float damper = 1f - t;
+                    float offset = Mathf.Sin(t * 6f * Mathf.PI * 2f) * 18f * damper;
+                    container.anchoredPosition = new Vector2(origin.x + offset, origin.y);
+                })
+                .SetEase(Ease.Linear));
+            resultSequence.OnComplete(() =>
+            {
+                loginContainer.anchoredPosition = loginContainerOriginalPos;
+                Finish();
+            });
+        }
+        #endregion
 
         /// <summary>
         /// loginDataSaveToggle이 켜져 있으면 로그인 성공 시점의 아이디(계정)만 PlayerPrefs에 저장한다.
